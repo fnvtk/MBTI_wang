@@ -260,12 +260,39 @@
   font-weight: 600;
 }
 
-.ai-generated-tip {
-  text-align: center;
-  font-size: 24rpx;
-  color: #9CA3AF;
-  margin-top: 24rpx;
-  margin-bottom: 16rpx;
+/* AI 生成内容标识横幅（监管合规，始终显示） */
+.ai-disclosure-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+  margin: 24rpx 40rpx 16rpx;
+  padding: 16rpx 24rpx;
+  background: linear-gradient(135deg, #f0f4ff 0%, #e8ecf8 100%);
+  border: 1rpx solid #c7d2fe;
+  border-radius: 12rpx;
+  position: relative;
+  z-index: 1;
+}
+
+.ai-disclosure-icon {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #818cf8 100%);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ai-disclosure-text {
+  font-size: 22rpx;
+  color: #4338ca;
+  line-height: 1.4;
 }
 
 /* 确保底部导航显示 */
