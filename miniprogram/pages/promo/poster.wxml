@@ -1,0 +1,16 @@
+<view class="container">
+  <view class="poster-preview">
+    <image wx:if="{{posterUrl}}" class="poster-img" src="{{posterUrl}}" mode="widthFix" />
+    <view wx:if="{{loading}}" class="loading-mask">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">{{loadingText}}</text>
+    </view>
+  </view>
+  <view class="action-bar">
+    <button class="save-btn" bindtap="savePoster" disabled="{{loading || !posterUrl}}">
+      <text>保存海报分享</text>
+    </button>
+    <view class="tip-text">保存到相册后可分享至朋友圈</view>
+    <view class="safe-bottom"></view>
+  </view>
+</view>

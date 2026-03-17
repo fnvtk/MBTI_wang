@@ -1,0 +1,984 @@
+/* pages/index/result.wxss - AI分析结果（按旧版模板重构） */
+.container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 0 24rpx 60rpx;
+}
+
+/* ========== 分析中模态框 ========== */
+.analyzing-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.analyzing-content {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 80rpx 60rpx;
+  width: 560rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.analyzing-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spinner {
+  width: 120rpx;
+  height: 120rpx;
+  border: 8rpx solid #e0e0e0;
+  border-top-color: #e63946;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.analyzing-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 16rpx;
+}
+
+.analyzing-desc {
+  font-size: 28rpx;
+  color: #e63946;
+  margin-bottom: 24rpx;
+  text-align: center;
+  font-weight: 500;
+}
+
+.analyzing-bar {
+  width: 400rpx;
+  height: 12rpx;
+  background: #e5e5e5;
+  border-radius: 6rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+}
+
+.analyzing-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e63946, #ff6b9d);
+  border-radius: 6rpx;
+  transition: width 0.3s ease;
+}
+
+.analyzing-hint {
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ========== 状态横幅 ========== */
+.status-banner {
+  background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+  padding: 24rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  margin: 24rpx 0;
+}
+
+.status-dot {
+  width: 12rpx;
+  height: 12rpx;
+  background-color: #4caf50;
+  border-radius: 50%;
+  margin-right: 16rpx;
+}
+
+.status-text {
+  font-size: 26rpx;
+  color: #2e7d32;
+}
+
+.error-banner {
+  background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+}
+
+.error-dot {
+  background-color: #f44336;
+}
+
+.error-banner .status-text {
+  color: #c62828;
+  font-weight: bold;
+}
+
+.error-content {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  border-left: 4rpx solid #f44336;
+}
+
+.error-title {
+  font-size: 28rpx;
+  color: #c62828;
+  font-weight: bold;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.error-message {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.8;
+  display: block;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background-color: #f5f5f5;
+  padding: 16rpx;
+  border-radius: 8rpx;
+  margin-bottom: 24rpx;
+}
+
+.retry-btn {
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  padding: 20rpx;
+  border-radius: 12rpx;
+  text-align: center;
+}
+
+.retry-text {
+  font-size: 28rpx;
+  color: #fff;
+  font-weight: 500;
+}
+
+/* ========== 通用卡片 ========== */
+.card {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+  word-wrap: break-word;
+}
+
+.card-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 24rpx;
+}
+
+.card-text {
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.8;
+  display: block;
+}
+
+/* ========== 付费解锁毛玻璃区域 ========== */
+.paywall-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.paywall-content {
+  position: relative;
+}
+
+.paywall-blur {
+  padding: 32rpx 24rpx 140rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(18rpx);
+}
+
+.paywall-mask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 24rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(245, 245, 245, 0.98));
+  pointer-events: none;
+}
+
+.paywall-fake-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 16rpx;
+}
+
+.paywall-fake-line {
+  display: block;
+  font-size: 26rpx;
+  color: #888;
+  line-height: 1.8;
+}
+
+.paywall-btn {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  bottom: 56rpx;
+  padding: 20rpx 0;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  box-shadow: 0 8rpx 24rpx rgba(230, 57, 70, 0.35);
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.paywall-btn-main {
+  font-size: 30rpx;
+  color: #fff;
+  font-weight: 600;
+}
+
+.paywall-btn-price {
+  font-size: 24rpx;
+  color: #ffe5f0;
+}
+
+.paywall-tip {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  color: #999;
+  text-align: center;
+}
+
+/* ========== 性格类型卡片 ========== */
+.personality-card {
+  text-align: center;
+}
+
+.personality-type {
+  margin-bottom: 32rpx;
+}
+
+.type-code {
+  font-size: 72rpx;
+  font-weight: 700;
+  color: #e63946;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.type-name {
+  font-size: 28rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.type-desc {
+  font-size: 26rpx;
+  color: #888;
+  line-height: 1.6;
+  display: block;
+  text-align: center;
+  padding: 0 20rpx;
+}
+
+.type-details {
+  display: flex;
+  gap: 24rpx;
+  margin-bottom: 24rpx;
+}
+
+.type-box {
+  flex: 1;
+  padding: 24rpx;
+  border-radius: 12rpx;
+  text-align: center;
+}
+
+.pdp-box {
+  background: linear-gradient(135deg, #faf5fc 0%, #f3e5f5 100%);
+}
+
+.disc-box {
+  background: linear-gradient(135deg, #f5f9fd 0%, #e3f2fd 100%);
+}
+
+.type-label {
+  font-size: 24rpx;
+  color: #666;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.type-value {
+  font-size: 30rpx;
+  font-weight: 600;
+  display: block;
+  margin-bottom: 4rpx;
+}
+
+.pdp-box .type-value { color: #7b1fa2; }
+.disc-box .type-value { color: #1976d2; }
+
+.type-sub {
+  font-size: 22rpx;
+  color: #999;
+  display: block;
+}
+
+/* 主要优势 */
+.advantages-box {
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  padding: 24rpx;
+  border-radius: 12rpx;
+  margin-bottom: 24rpx;
+}
+
+.advantages-label {
+  font-size: 26rpx;
+  color: #666;
+  display: block;
+  text-align: center;
+  margin-bottom: 16rpx;
+}
+
+.advantages-list {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.advantage-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.advantage-dot {
+  width: 12rpx;
+  height: 12rpx;
+  background-color: #4caf50;
+  border-radius: 50%;
+  margin-bottom: 8rpx;
+}
+
+.advantage-text {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.next-btn {
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  padding: 24rpx;
+  border-radius: 48rpx;
+  box-shadow: 0 8rpx 16rpx rgba(230, 57, 70, 0.3);
+}
+
+.next-btn-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  display: block;
+  text-align: center;
+}
+
+/* ========== Tab切换 ========== */
+.tabs {
+  display: flex;
+  border-bottom: 2rpx solid #f0f0f0;
+  margin-bottom: 24rpx;
+  background-color: #fff;
+  border-radius: 16rpx 16rpx 0 0;
+}
+
+.tab {
+  flex: 1;
+  padding: 24rpx;
+  text-align: center;
+  position: relative;
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60rpx;
+  height: 4rpx;
+  background-color: #e63946;
+  border-radius: 2rpx;
+}
+
+.tab-text {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.tab-text.active {
+  color: #e63946;
+  font-weight: 600;
+}
+
+/* ========== 面相分析 ========== */
+.feature-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.feature-item {
+  display: flex;
+  font-size: 26rpx;
+  line-height: 1.8;
+}
+
+.feature-label {
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.feature-desc {
+  color: #666;
+  flex: 1;
+}
+
+/* 职业建议 */
+.career-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.career-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.career-header {
+  display: flex;
+  align-items: center;
+}
+
+.career-dot {
+  width: 12rpx;
+  height: 12rpx;
+  background-color: #e63946;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.career-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.career-reason {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  padding-left: 28rpx;
+}
+
+/* 人际关系 */
+.interpersonal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.interpersonal-item {
+  display: flex;
+  font-size: 26rpx;
+  line-height: 1.8;
+}
+
+.interpersonal-label {
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.interpersonal-text {
+  color: #666;
+  flex: 1;
+}
+
+/* 潜能 */
+.potential-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.potential-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.potential-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.potential-desc {
+  font-size: 24rpx;
+  color: #666;
+  line-height: 1.6;
+  padding-left: 20rpx;
+}
+
+/* ========== 骨相分析 ========== */
+.bone-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.bone-item {
+  display: flex;
+  font-size: 26rpx;
+  line-height: 1.8;
+}
+
+.bone-label {
+  font-weight: 600;
+  color: #333;
+  flex-shrink: 0;
+  min-width: 120rpx;
+}
+
+.bone-text {
+  color: #666;
+  flex: 1;
+}
+
+/* 人生阶段 */
+.life-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.life-stage-item {
+  background: linear-gradient(135deg, #fff9e6 0%, #fff3cd 100%);
+  padding: 20rpx;
+  border-radius: 12rpx;
+  border-left: 4rpx solid #ff9800;
+}
+
+.stage-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #e65100;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.stage-desc {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.8;
+  display: block;
+}
+
+/* 骨相总评 */
+.bone-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.summary-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.8;
+  display: block;
+}
+
+.suggestions-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  margin-top: 8rpx;
+}
+
+.suggestions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-top: 12rpx;
+}
+
+.suggestion-item {
+  background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%);
+  padding: 16rpx 20rpx;
+  border-radius: 8rpx;
+}
+
+.suggestion-text {
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+}
+
+/* ========== 简化版（无面相骨相数据） ========== */
+.simple-career-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.simple-career-tag {
+  padding: 12rpx 24rpx;
+  background: #f3f4f6;
+  border-radius: 24rpx;
+  font-size: 26rpx;
+  color: #374151;
+}
+
+.ai-generated-tip {
+  text-align: center;
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-top: 24rpx;
+  padding-bottom: 40rpx;
+}
+
+/* ========== 操作按钮 ========== */
+.action-section {
+  margin-top: 16rpx;
+  padding-bottom: 40rpx;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%!important;
+  height: 100rpx;
+  min-height: 100rpx;
+  border-radius: 28rpx;
+  margin-bottom: 20rpx;
+  padding: 0;
+  border: none;
+  line-height: 100rpx;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  box-shadow: 0 8rpx 24rpx rgba(230, 57, 70, 0.3);
+}
+
+.btn-outline {
+  background: #fff;
+  border: 2rpx solid #e63946;
+}
+
+.btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+.btn-text-outline {
+  font-size: 30rpx;
+  color: #e63946;
+  font-weight: 500;
+}
+
+/* ========== 无人脸错误状态 ========== */
+.no-face-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx 32rpx;
+  box-sizing: border-box;
+}
+
+.no-face-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 60rpx 48rpx;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.08);
+}
+
+.no-face-icon {
+  width: 120rpx;
+  height: 120rpx;
+  background: #fff3f3;
+  border-radius: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32rpx;
+}
+
+.no-face-emoji {
+  font-size: 56rpx;
+  line-height: 1;
+}
+
+.no-face-title {
+  font-size: 38rpx;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 16rpx;
+  text-align: center;
+}
+
+.no-face-desc {
+  font-size: 28rpx;
+  color: #e63946;
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 40rpx;
+}
+
+.no-face-tips {
+  width: 100%;
+  background: #f8f9fa;
+  border-radius: 16rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 48rpx;
+  box-sizing: border-box;
+}
+
+.no-face-tips-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 16rpx;
+}
+
+.no-face-tip-item {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.8;
+  display: block;
+}
+
+.no-face-btn {
+  width: 100%;
+  height: 96rpx;
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  border-radius: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 24rpx rgba(230, 57, 70, 0.3);
+}
+
+.no-face-btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* ========== 盖洛普优势卡片 ========== */
+.gallup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  margin-top: 12rpx;
+}
+
+.gallup-item {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  padding: 18rpx 24rpx;
+  background: linear-gradient(135deg, rgba(230, 57, 70, 0.06) 0%, rgba(255, 107, 157, 0.04) 100%);
+  border-radius: 16rpx;
+  border-left: 6rpx solid #e63946;
+}
+
+.gallup-rank {
+  width: 56rpx;
+  height: 56rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  text-align: center;
+  line-height: 56rpx;
+}
+
+.gallup-text {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+/* ========== 企业版：职业画像 / HR视角 / 老板视角 ========== */
+.enterprise-section {
+  margin-bottom: 24rpx;
+}
+
+.enterprise-section:last-child {
+  margin-bottom: 0;
+}
+
+.enterprise-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+  margin-bottom: 12rpx;
+}
+
+.enterprise-sublabel {
+  font-size: 24rpx;
+  color: #888;
+  display: block;
+  margin-bottom: 8rpx;
+}
+
+.enterprise-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.enterprise-tag {
+  padding: 10rpx 20rpx;
+  background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+  border-radius: 24rpx;
+  font-size: 24rpx;
+  color: #2e7d32;
+}
+
+.enterprise-tag.risk {
+  background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+  color: #e65100;
+}
+
+.lifecycle-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.lifecycle-item {
+  padding: 16rpx 20rpx;
+  background: #f8f9fa;
+  border-radius: 12rpx;
+}
+
+.lifecycle-key {
+  font-size: 24rpx;
+  color: #999;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.lifecycle-val {
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.6;
+  display: block;
+}
+
+.boss-card {
+  border-left: 6rpx solid #1976d2;
+}
+
+.boss-headline {
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #1a1a2e;
+  line-height: 1.6;
+  display: block;
+  margin-bottom: 20rpx;
+}
+
+.boss-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.boss-metric {
+  flex: 1;
+  min-width: 140rpx;
+  padding: 16rpx;
+  background: #f5f5f5;
+  border-radius: 12rpx;
+  text-align: center;
+}
+
+.boss-metric-label {
+  font-size: 22rpx;
+  color: #999;
+  display: block;
+  margin-bottom: 6rpx;
+}
+
+.boss-metric-value {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  display: block;
+}
+
+.boss-metric-value.high {
+  color: #4caf50;
+}
+
+.boss-metric-value.medium {
+  color: #ff9800;
+}
+
+.boss-metric-value.low {
+  color: #f44336;
+}

@@ -1,0 +1,212 @@
+<!--pages/profile/index.wxml-->
+<view class="page">
+
+  <!-- 顶部栏 -->
+  <view class="topbar">
+    <text class="topbar-title">我的</text>
+    <view class="topbar-actions">
+      <!-- <view class="settings-btn" bindtap="goToSettings">
+        <text class="settings-icon">⚙️</text>
+      </view> -->
+    </view>
+  </view>
+
+  <!-- 未登录 -->
+  <view class="user-card" wx:if="{{!hasLogin}}" bindtap="doLogin">
+    <view class="avatar-ring">
+      <view class="avatar-letter-wrap" style="background:{{avatarBgColor}}">
+        <text class="avatar-letter">{{avatarLetter}}</text>
+      </view>
+    </view>
+    <view class="user-meta">
+      <text class="user-name" wx:if="{{loginLoading}}">登录中...</text>
+      <text class="user-name" wx:elif="{{loginFailed}}">登录失败，点击重试</text>
+      <text class="user-name" wx:else>点击登录</text>
+      <text class="user-sub">登录后查看你的测试结果</text>
+    </view>
+    <text class="chevron">›</text>
+  </view>
+
+  <!-- 已登录：用户卡片（点击进入个人资料） -->
+  <view class="user-card" wx:if="{{hasLogin}}" bindtap="goToUserProfile">
+    <!-- 头像区 -->
+    <view class="avatar-wrap">
+      <view class="avatar-ring">
+        <image wx:if="{{userInfo && (userInfo.avatarUrl || userInfo.avatar)}}"
+               class="avatar-img"
+               src="{{userInfo.avatarUrl || userInfo.avatar}}"
+               mode="aspectFill"/>
+        <view wx:else class="avatar-letter-wrap" style="background:{{avatarBgColor}}">
+          <text class="avatar-letter">{{avatarLetter}}</text>
+        </view>
+      </view>
+      <view class="online-dot"></view>
+    </view>
+
+    <!-- 昵称 + 标签 -->
+    <view class="user-meta">
+      <text class="nickname-text">{{nicknameDisplay || '点击设置昵称'}}</text>
+      <!-- 类型标签 -->
+      <scroll-view scroll-x class="tags-scroll">
+        <view class="tags-row">
+          <view class="tag tag-purple" wx:if="{{mbtiType}}">
+            <text class="tag-text">{{mbtiType}}</text>
+          </view>
+          <view class="tag tag-blue" wx:if="{{discType}}">
+            <text class="tag-text">{{discType}}型</text>
+          </view>
+          <view class="tag tag-orange" wx:if="{{pdpType}}">
+            <text class="tag-text">{{pdpType}}</text>
+          </view>
+          <view class="tag tag-gray" wx:if="{{!mbtiType && !discType && !pdpType}}">
+            <text class="tag-text">暂无测试记录</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <text class="chevron">›</text>
+  </view>
+
+  <!-- 最新测试卡片（横向滚动） -->
+  <view class="section" wx:if="{{hasLogin && hasResults}}">
+    <view class="section-header">
+      <text class="section-title">最新测试</text>
+      <view class="section-link" bindtap="goToHistory">
+        <text class="section-link-text">查看全部</text>
+      </view>
+    </view>
+    <scroll-view scroll-x class="cards-scroll" enhanced show-scrollbar="{{false}}">
+      <view class="cards-row">
+        <!-- MBTI -->
+        <view class="result-card card-purple" wx:if="{{mbtiType}}" bindtap="viewMBTI">
+          <view class="card-deco"></view>
+          <view class="card-icon-wrap card-icon-purple">
+            <text class="card-icon">🧠</text>
+          </view>
+          <text class="card-label">MBTI性格</text>
+          <text class="card-value">{{mbtiType}}</text>
+          <text class="card-time">{{mbtiTime}}</text>
+        </view>
+        <!-- DISC -->
+        <view class="result-card card-blue" wx:if="{{discType}}" bindtap="viewDISC">
+          <view class="card-deco"></view>
+          <view class="card-icon-wrap card-icon-blue">
+            <text class="card-icon">📊</text>
+          </view>
+          <text class="card-label">DISC测评</text>
+          <text class="card-value">{{discType}}型</text>
+          <text class="card-time">{{discTime}}</text>
+        </view>
+        <!-- PDP -->
+        <view class="result-card card-orange" wx:if="{{pdpType}}" bindtap="viewPDP">
+          <view class="card-deco"></view>
+          <view class="card-icon-wrap card-icon-orange">
+            <text class="card-icon">🦁</text>
+          </view>
+          <text class="card-label">PDP行为</text>
+          <text class="card-value">{{pdpType}}</text>
+          <text class="card-time">{{pdpTime}}</text>
+        </view>
+        <!-- AI 面相 -->
+        <view class="result-card card-rose" wx:if="{{aiType}}" bindtap="viewAI">
+          <view class="card-deco"></view>
+          <view class="card-icon-wrap card-icon-rose">
+            <text class="card-icon">👁️</text>
+          </view>
+          <text class="card-label">面相分析</text>
+          <text class="card-value">{{aiType}}</text>
+          <text class="card-time">{{aiTime}}</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
+  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled}}">
+    <view class="promo-card" bindtap="goToPromo">
+      <view class="promo-header">
+        <view class="promo-title-wrap">
+          <text class="promo-icon">📈</text>
+          <text class="promo-title">{{promoCenterTitle}}</text>
+        </view>
+      </view>
+      <view class="promo-stats">
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">邀请好友</text>
+          <text class="promo-stat-value">{{promoTotalInvite}}</text>
+        </view>
+        <view class="promo-stat-divider"></view>
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">累计收益</text>
+          <text class="promo-stat-value">¥{{promoTotalEarned}}</text>
+        </view>
+        <view class="promo-stat-divider"></view>
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">可提现</text>
+          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 服务菜单 -->
+  <view class="section px-section">
+    <text class="section-title">深度服务</text>
+    <view class="menu-card">
+      <!-- 专业报告：跳到个人版开通页面 -->
+      <view class="menu-item" bindtap="goToPurchasePersonal">
+        <view class="menu-icon-wrap menu-icon-red">
+          <text class="menu-icon">📄</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">专业报告</text>
+          <text class="menu-sub">解锁完整的深度性格解析</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+      <view class="menu-divider"></view>
+
+      <!-- 企业版服务：跳到企业版开通页面 -->
+      <view class="menu-item" bindtap="goToPurchaseEnterprise">
+        <view class="menu-icon-wrap menu-icon-indigo">
+          <text class="menu-icon">🏢</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">企业版服务</text>
+          <text class="menu-sub">团队测评与人才管理方案</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+      <view class="menu-divider"></view>
+
+      <!-- 测试历史：仍然进入历史记录页面 -->
+      <view class="menu-item" bindtap="goToHistory">
+        <view class="menu-icon-wrap menu-icon-amber">
+          <text class="menu-icon">🕒</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">测试历史</text>
+          <text class="menu-sub">{{testCount > 0 ? testCount + '条记录' : '查看过往所有测试记录'}}</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+      <view class="menu-divider" wx:if="{{hasEnterprise}}"></view>
+      <!-- 我的简历：仅绑定企业的用户可见，展示当前企业下的简历并可设默认 -->
+      <view class="menu-item" wx:if="{{hasEnterprise}}" bindtap="goToMyResume">
+        <view class="menu-icon-wrap menu-icon-indigo">
+          <text class="menu-icon">📋</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">我的简历</text>
+          <text class="menu-sub">查看与设置默认简历</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+    </view>
+  </view>
+
+
+
+  <view class="bottom-safe"></view>
+</view>

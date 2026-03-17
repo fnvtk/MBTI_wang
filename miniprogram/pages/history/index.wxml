@@ -1,0 +1,74 @@
+<!--pages/history/index.wxml - 测试历史记录（按旧版模板重构）-->
+<view class="container">
+  <!-- 测试类型标签 -->
+  <view class="tabs-container">
+    <scroll-view scroll-x class="tabs-scroll">
+      <view class="tabs">
+        <view class="tab-item {{activeTab === 'all' ? 'active' : ''}}" bindtap="changeTab" data-tab="all">
+          <text class="tab-text">全部</text>
+        </view>
+        <view class="tab-item {{activeTab === 'mbti' ? 'active' : ''}}" bindtap="changeTab" data-tab="mbti">
+          <text class="tab-text">MBTI</text>
+        </view>
+        <view class="tab-item {{activeTab === 'pdp' ? 'active' : ''}}" bindtap="changeTab" data-tab="pdp">
+          <text class="tab-text">PDP</text>
+        </view>
+        <view class="tab-item {{activeTab === 'disc' ? 'active' : ''}}" bindtap="changeTab" data-tab="disc">
+          <text class="tab-text">DISC</text>
+        </view>
+        <view class="tab-item {{activeTab === 'ai' ? 'active' : ''}}" bindtap="changeTab" data-tab="ai">
+          <text class="tab-text">面相</text>
+        </view>
+        <view wx:if="{{isEnterprise}}" class="tab-item {{activeTab === 'resume' ? 'active' : ''}}" bindtap="changeTab" data-tab="resume">
+          <text class="tab-text">简历</text>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+
+  <!-- 空状态 -->
+  <view class="empty-container" wx:if="{{list.length === 0 && !loading}}">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无{{activeTab === 'all' ? '' : tabName}}历史记录</text>
+    <view class="primary-button" bindtap="goToTest">
+      <text class="button-text">开始测试</text>
+    </view>
+  </view>
+
+  <!-- 测试记录列表 -->
+  <view class="test-list" wx:if="{{list.length > 0}}">
+    <view class="test-card" wx:for="{{list}}" wx:key="key" bindtap="viewDetail" data-type="{{item.type}}" data-index="{{index}}" data-id="{{item.id}}">
+      <view class="card-content">
+        <view class="icon-circle icon-{{item.type}}">
+          <text class="icon-emoji">{{item.emoji}}</text>
+        </view>
+        <view class="test-details">
+          <view class="test-header-row">
+            <text class="test-title">{{item.typeName}}</text>
+            <view class="result-badge badge-{{item.type}}">
+              <text class="badge-text">{{item.resultText}}</text>
+            </view>
+          </view>
+          <view class="test-time-row">
+            <text class="test-time">{{item.testTime}}</text>
+            <text class="test-enterprise" wx:if="{{item.enterpriseName}}">{{item.enterpriseName}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加载中 -->
+    <view class="load-more-row" wx:if="{{loading}}">
+      <text class="load-more-text">加载中...</text>
+    </view>
+
+    <view wx:elif="{{list.length > 0}}" class="load-more-row">
+      <text class="load-more-text no-more">共 {{total}} 条</text>
+    </view>
+  </view>
+
+  <!-- 首次加载骨架 -->
+  <view class="empty-container" wx:if="{{loading && list.length === 0}}">
+    <text class="load-more-text">加载中...</text>
+  </view>
+</view>

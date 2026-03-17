@@ -1,0 +1,64 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/index/camera",
+    "pages/index/upload",
+    "pages/index/result",
+    "pages/test-select/index",
+    "pages/test/mbti",
+    "pages/test/disc",
+    "pages/test/pdp",
+    "pages/result/mbti",
+    "pages/result/disc",
+    "pages/result/pdp",
+    "pages/result/resume",
+    "pages/purchase/index",
+    "pages/recharge/index",
+    "pages/enterprise/index",
+    "pages/enterprise/resume-history",
+    "pages/profile/index",
+    "pages/user-profile/index",
+    "pages/history/index",
+    "pages/phone-auth/index",
+    "pages/promo/index",
+    "pages/promo/poster",
+    "pages/promo/withdrawals"
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#999999",
+    "selectedColor": "#7c3aed",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
+      },
+      {
+        "pagePath": "pages/index/camera",
+        "text": "查看报告",
+        "iconPath": "images/camera.png",
+        "selectedIconPath": "images/camera-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "images/user.png",
+        "selectedIconPath": "images/user-active.png"
+      }
+    ]
+  },
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "navigationBarTitleText": "神仙团队AI性格测试",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#F5F5F5"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

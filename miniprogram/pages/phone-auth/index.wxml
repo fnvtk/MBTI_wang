@@ -1,0 +1,5 @@
+<view class="container">
+  <view class="tip">为保障服务与联系需要，请授权您的手机号。</view>
+  <view class="tip sub">授权后可在「查看报告」「支付」「企业咨询」等场景使用，仅需授权一次。</view>
+  <button class="auth-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">授权手机号</button>
+</view>

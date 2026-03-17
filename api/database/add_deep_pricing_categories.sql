@@ -1,0 +1,7 @@
+-- 深度服务价格类目：个人版(deep_personal) 与 企业版(deep_enterprise)，可配置、可新增类目
+-- 表需有 UNIQUE(type, enterpriseId)。若已存在对应 type 会更新 config。
+
+INSERT INTO `mbti_pricing_config` (`type`, `enterpriseId`, `config`, `createdAt`, `updatedAt`) VALUES
+('deep_personal', NULL, '{"categories":[{"id":"personal_insight","title":"个人深度洞察版","price":198,"priceUnit":"/次","subtitle":"三张照片+问卷，全面解锁你的内在潜能","features":["AI面部分析（基于东方面相学与西方心理学）","MBTI性格测试（16型人格完整解读）","盖洛普优势Top5识别（发现你的核心天赋）","PDP行为偏好分析（了解你的行为模式）","DISC沟通风格分析（提升沟通效率）","多维度综合性格报告（包含优势解读、潜在盲区提示）","职业发展方向推荐（匹配最适合你的职业）"],"actionType":"buy","productKey":"personal_insight"}]}', UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
+('deep_enterprise', NULL, '{"categories":[{"id":"startup","title":"团队启动版","priceDisplay":"¥19,800","subtitle":"适合初创团队、小型部门","userLimit":"最多10人","features":["10人完成个人深度洞察报告","1次团队动力诊断分析会(2-3小时)","识别团队优势组合与潜在风险点"],"actionType":"consult","consultWechat":"28533368","buttonText":"申请咨询"},{"id":"growth","title":"团队成长版","priceDisplay":"¥39,800","subtitle":"适合成长型团队","userLimit":"10-30人","features":["最多30人完成个人深度洞察报告","包含\"启动版\"所有内容","1次定制化团队协作增效工作坊(7天)","聚焦沟通优化、优势协作等主题"],"actionType":"consult","consultWechat":"28533368","buttonText":"申请咨询"},{"id":"transform","title":"团队蜕变版","priceDisplay":"¥98,000","subtitle":"适合中大型团队","userLimit":"最多100人","features":["最多100人完成个人深度洞察报告","包含\"成长版\"所有内容","更深度、更定制化的系列组合(≥2工作日)","3个月的落地跟进顾问服务"],"actionType":"consult","consultWechat":"28533368","buttonText":"申请咨询"}]}', UNIX_TIMESTAMP(), UNIX_TIMESTAMP())
+ON DUPLICATE KEY UPDATE `config` = VALUES(`config`), `updatedAt` = UNIX_TIMESTAMP();
