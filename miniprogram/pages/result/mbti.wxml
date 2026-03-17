@@ -1,0 +1,107 @@
+<!--pages/result/mbti.wxml - MBTI结果页面（支持付费墙）-->
+<view class="result-page">
+  <scroll-view class="content-scroll" scroll-y>
+    <view class="content-container">
+      <view class="type-card">
+        <view class="type-header">
+          <text class="type-label">您的MBTI性格类型</text>
+          <text class="type-value">{{result.mbtiType}}</text>
+          <text class="type-title">{{mbtiDesc.title}}</text>
+          <text class="type-description">{{mbtiDesc.description}}</text>
+        </view>
+
+        <!-- 付费墙：未解锁时显示 -->
+        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+          <view class="paywall-content">
+            <view class="paywall-blur">
+              <text class="paywall-fake-title">完整性格分析</text>
+              <text class="paywall-fake-line">• 四维得分与主导倾向</text>
+              <text class="paywall-fake-line">• 优势与需要注意的方面</text>
+              <text class="paywall-fake-line">• 职业匹配与人际关系建议</text>
+            </view>
+            <view class="paywall-mask"></view>
+            <!-- 未有手机号：使用微信系统手机号授权 -->
+            <button
+              class="paywall-btn"
+              wx:if="{{!hasPhone}}"
+              open-type="getPhoneNumber"
+              bindgetphonenumber="onGetPhoneNumberForMbtiPay"
+            >
+              <text class="paywall-btn-main">解锁完整报告</text>
+              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            </button>
+            <!-- 已有手机号：普通按钮，直接解锁 -->
+            <button
+              class="paywall-btn"
+              wx:elif="{{hasPhone}}"
+              bindtap="unlockFullReport"
+            >
+              <text class="paywall-btn-main">解锁完整报告</text>
+              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            </button>
+          </view>
+        </view>
+
+        <view class="dimensions-section" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+          <view class="dimension-item" wx:for="{{dimensions}}" wx:key="key">
+            <view class="dimension-labels">
+              <text class="label-left">{{item.left}}</text>
+              <text class="label-right">{{item.right}}</text>
+            </view>
+            <view class="progress-bar-container">
+              <view class="progress-bar" style="width: {{item.percentage}}%"></view>
+            </view>
+            <view class="dimension-values">
+              <text class="value-left">{{item.dominant}}</text>
+              <text class="value-right">{{item.percentage}}%</text>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <text class="card-title">性格特征分析</text>
+        <view class="trait-section">
+          <text class="trait-title">优势</text>
+          <view class="trait-item" wx:for="{{mbtiDesc.strengths}}" wx:key="*this">
+            <text class="trait-bullet">•</text>
+            <text class="trait-text">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="trait-section">
+          <text class="trait-title">需要注意的方面</text>
+          <view class="trait-item" wx:for="{{mbtiDesc.weaknesses}}" wx:key="*this">
+            <text class="trait-bullet">•</text>
+            <text class="trait-text">{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <text class="card-title">职业匹配度分析</text>
+        <view class="career-item" wx:for="{{mbtiDesc.careers}}" wx:key="*this">
+          <view class="career-dot"></view>
+          <text class="career-text">{{item}}</text>
+        </view>
+      </view>
+
+      <view class="analysis-card" wx:if="{{(!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
+        <text class="card-title">人际关系分析</text>
+        <text class="relationship-text">{{mbtiDesc.relationships}}</text>
+      </view>
+
+      <view class="action-section">
+        <button class="btn btn-primary" open-type="share">
+          <text class="btn-text">分享结果</text>
+        </button>
+        <view class="btn btn-outline" bindtap="retakeTest">
+          <text class="btn-text-outline">重新测试</text>
+        </view>
+        <view class="btn btn-outline" bindtap="goHome">
+          <text class="btn-text-outline">返回首页</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

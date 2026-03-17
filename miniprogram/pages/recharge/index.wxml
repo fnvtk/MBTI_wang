@@ -1,0 +1,20 @@
+<view class="recharge-page">
+  <view class="card">
+    <view class="title">企业余额充值</view>
+    <view class="subtitle">扫码后在小程序内完成支付，支付成功后自动进入企业余额</view>
+
+    <view class="amount-box">
+      <text class="amount-label">充值金额</text>
+      <text class="amount-value">¥{{amountYuan}}</text>
+    </view>
+
+    <view class="meta-row">
+      <text class="meta-label">企业名称</text>
+      <text class="meta-value">{{enterpriseName || ('企业 #' + enterpriseId)}}</text>
+    </view>
+
+    <button class="pay-btn" loading="{{paying}}" disabled="{{paying}}" bindtap="submitRecharge">
+      <text class="pay-btn-text">{{paying ? '支付中...' : '立即充值'}}</text>
+    </button>
+  </view>
+</view>

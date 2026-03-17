@@ -1,0 +1,312 @@
+/* pages/index/camera.wxss - 一屏内展示，为底部自定义 tabBar（含中间浮起圆钮）预留空间 */
+.container {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #fff;
+  /* 预留底部空间，避免与自定义 tabBar（约 100rpx 高 + 中间圆钮上浮约 56rpx）重叠 */
+  padding-bottom: calc(160rpx + env(safe-area-inset-bottom));
+}
+
+.progress-section {
+  flex-shrink: 0;
+  margin: 16rpx 24rpx 0;
+  padding: 20rpx 32rpx 16rpx;
+  border-radius: 10rpx;
+  background: linear-gradient(to right, #fff5f5, #ffe5e8);
+}
+
+.progress-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10rpx;
+}
+
+.step-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #e63946;
+}
+
+.photo-count {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.progress-bars {
+  display: flex;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6rpx;
+  border-radius: 6rpx;
+}
+
+.progress-bar.completed {
+  background-color: #52c41a;
+}
+
+.progress-bar.pending {
+  background-color: #e5e5e5;
+}
+
+.instruction-card {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12rpx;
+  padding: 14rpx 18rpx;
+  border: 1rpx solid rgba(230, 57, 70, 0.1);
+}
+
+.instruction-content {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.step-number {
+  width: 40rpx;
+  height: 40rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: #e63946;
+  color: #fff;
+  font-size: 24rpx;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.instruction-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.angle-text {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #c41d2a;
+}
+
+.tip-text {
+  font-size: 22rpx;
+  color: #666;
+  line-height: 1.3;
+}
+
+.camera-container {
+  flex: 1;
+  min-height: 0;
+  padding: 16rpx 24rpx;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.camera-preview {
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  aspect-ratio: 1;
+  border-radius: 32rpx;
+  overflow: hidden;
+  border: 6rpx solid #e5e5e5;
+  background-color: #000;
+  position: relative;
+}
+
+.camera {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.photos-preview {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 12rpx;
+}
+
+.photo-item {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 16rpx;
+  overflow: hidden;
+  border: 4rpx solid #e5e5e5;
+}
+
+.photo-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-label {
+  position: absolute;
+  top: 8rpx;
+  left: 8rpx;
+  background: rgba(230, 57, 70, 0.9);
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 12rpx;
+  border-radius: 12rpx;
+}
+
+.button-container {
+  flex-shrink: 0;
+  padding: 16rpx 24rpx 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.capture-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20rpx;
+}
+
+.capture-actions .capture-button {
+  width: 100%;
+}
+
+.album-button {
+  width: 100%;
+  padding: 20rpx;
+  border-radius: 50rpx;
+  text-align: center;
+  background: #fff;
+  border: 2rpx solid #e63946;
+  box-sizing: border-box;
+}
+
+.album-button:active {
+  background: #fff5f5;
+}
+
+.album-button-text {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #e63946;
+  letter-spacing: 1rpx;
+}
+
+.phone-auth-section {
+  padding: 24rpx 24rpx 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.phone-auth-tip {
+  font-size: 26rpx;
+  color: #4b5563;
+}
+
+.phone-auth-btn {
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #ffffff;
+  font-size: 28rpx;
+}
+
+.phone-auth-btn::after {
+  border: none;
+}
+
+.capture-button {
+  width: 100%;
+  max-width: 100%;
+  padding: 22rpx;
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  border-radius: 50rpx;
+  text-align: center;
+  box-sizing: border-box;
+  box-shadow: 0 8rpx 24rpx rgba(230, 57, 70, 0.3);
+}
+
+.button-text {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1rpx;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 20rpx;
+  width: 100%;
+}
+
+.action-button {
+  flex: 1;
+  padding: 28rpx 24rpx;
+  border-radius: 50rpx;
+  text-align: center;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.action-button.secondary {
+  background: #fff;
+  border: 2rpx solid #e63946;
+}
+
+.action-button.secondary:active {
+  background: #fff5f5;
+  transform: scale(0.98);
+}
+
+.action-button.primary {
+  background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
+  box-shadow: 0 8rpx 24rpx rgba(230, 57, 70, 0.4);
+}
+
+.action-button.primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 4rpx 16rpx rgba(230, 57, 70, 0.3);
+}
+
+.action-button-text {
+  font-size: 28rpx;
+  font-weight: 700;
+  letter-spacing: 1rpx;
+}
+
+.action-button.secondary .action-button-text {
+  color: #e63946;
+}
+
+.action-button.primary .action-button-text {
+  color: #fff;
+}

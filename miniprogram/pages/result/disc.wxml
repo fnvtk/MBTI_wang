@@ -1,0 +1,81 @@
+<!--pages/result/disc.wxml - DISC结果（按旧版模板重构）-->
+<view class="result-page">
+  <scroll-view class="content-scroll" scroll-y>
+    <view class="content-container">
+      <view class="type-card">
+        <view class="type-header">
+          <text class="type-label">您的DISC性格类型</text>
+          <text class="type-value">{{result.dominantType}}{{result.secondaryType ? ' + ' + result.secondaryType : ''}}</text>
+          <text class="type-description" wx:if="{{result.description && result.description.description}}">{{result.description.description}}</text>
+        </view>
+
+        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+          <view class="paywall-content">
+            <view class="paywall-blur">
+              <text class="paywall-fake-title">完整DISC报告</text>
+              <text class="paywall-fake-line">• 四维得分详情</text>
+              <text class="paywall-fake-line">• 性格特征与优劣势</text>
+              <text class="paywall-fake-line">• 职业匹配建议</text>
+            </view>
+            <view class="paywall-mask"></view>
+            <view class="paywall-btn" bindtap="unlockFullReport">
+              <text class="paywall-btn-main">解锁完整报告</text>
+              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="scores-section" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+          <text class="section-title">DISC得分详情</text>
+          <view class="score-item" wx:for="{{typeList}}" wx:key="type">
+            <view class="score-header">
+              <text class="score-label">{{item.label}}</text>
+              <text class="score-value">{{result.percentagesInt[item.type] != null ? result.percentagesInt[item.type] + '%' : '0%'}}</text>
+            </view>
+            <view class="progress-bar-container">
+              <view class="progress-bar {{item.colorClass}}" style="width: {{result.percentages[item.type]}}%"></view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <text class="card-title">主要性格特征分析</text>
+        <view class="trait-section">
+          <text class="trait-title">优势</text>
+          <view class="trait-item" wx:for="{{result.description.strengths}}" wx:key="*this">
+            <text class="trait-bullet">•</text>
+            <text class="trait-text">{{item}}</text>
+          </view>
+        </view>
+        <view class="trait-section">
+          <text class="trait-title">需要注意的方面</text>
+          <view class="trait-item" wx:for="{{result.description.weaknesses}}" wx:key="*this">
+            <text class="trait-bullet">•</text>
+            <text class="trait-text">{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <text class="card-title">职业匹配度分析</text>
+        <view class="career-item" wx:for="{{result.description.careers}}" wx:key="*this">
+          <view class="career-dot"></view>
+          <text class="career-text">{{item}}</text>
+        </view>
+      </view>
+
+      <view class="action-section">
+        <button class="btn btn-primary" open-type="share">
+          <text class="btn-text">分享结果</text>
+        </button>
+        <view class="btn btn-outline" bindtap="retakeTest">
+          <text class="btn-text-outline">重新测试</text>
+        </view>
+        <view class="btn btn-outline" bindtap="goHome">
+          <text class="btn-text-outline">返回首页</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+</view>

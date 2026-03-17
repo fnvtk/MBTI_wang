@@ -1,0 +1,206 @@
+/* pages/user-profile/index.wxss */
+page {
+  background-color: #F9FAFB;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 32rpx;
+}
+
+.profile-card {
+  background: #FFFFFF;
+  border-radius: 28rpx;
+  padding: 48rpx 36rpx;
+  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.05);
+}
+
+.avatar-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 48rpx;
+}
+
+.avatar-btn {
+  width: 160rpx !important;
+  height: 160rpx !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.avatar-btn::after {
+  border: none !important;
+}
+
+.avatar-img {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  display: block;
+  border: 4rpx solid #F3F4F6;
+}
+
+.avatar-letter-wrap {
+  width: 160rpx;
+  height: 160rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4rpx solid #F3F4F6;
+}
+
+.avatar-letter {
+  font-size: 72rpx;
+  font-weight: 700;
+  color: #FFFFFF;
+}
+
+.avatar-hint {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-top: 16rpx;
+}
+
+.required-tip {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  margin-bottom: 24rpx;
+  padding: 0 4rpx;
+}
+
+.form-section {
+  border-top: 1rpx solid #F3F4F6;
+}
+
+.form-item {
+  display: flex;
+  align-items: center;
+  padding: 32rpx 0;
+  border-bottom: 1rpx solid #F3F4F6;
+}
+
+.form-item:last-child {
+  border-bottom: none;
+}
+
+.form-label {
+  width: 140rpx;
+  font-size: 28rpx;
+  color: #6B7280;
+  flex-shrink: 0;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 30rpx;
+  color: #111827;
+  min-width: 0;
+}
+
+.form-picker {
+  flex: 1;
+  font-size: 30rpx;
+  color: #111827;
+  min-width: 0;
+}
+
+.form-value {
+  font-size: 30rpx;
+  color: #111827;
+}
+
+.form-placeholder {
+  color: #9CA3AF;
+}
+
+.form-readonly {
+  color: #9CA3AF;
+}
+
+.form-picker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.form-arrow {
+  font-size: 36rpx;
+  color: #D1D5DB;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+/* 整行可点击 */
+.form-item-tappable {
+  cursor: pointer;
+}
+
+.form-item-tappable:active {
+  background: #F9FAFB;
+}
+
+.form-item-readonly {
+  /* 仅展示，点击有提示 */
+}
+
+.form-item-readonly:active {
+  background: #F9FAFB;
+}
+
+/* 手机号授权按钮 */
+.form-item-phone-auth {
+  padding: 0;
+}
+
+.phone-auth-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  text-align: left;
+}
+
+.phone-auth-btn::after {
+  border: none;
+}
+
+.phone-auth-text {
+  font-size: 30rpx;
+  color: #7C3AED;
+  font-weight: 500;
+}
+
+.picker-full-row {
+  display: block;
+  width: 100%;
+}
+
+/* 保存按钮 */
+.save-btn {
+  width: 100%;
+  margin-top: 48rpx;
+  padding: 28rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+  border-radius: 16rpx;
+  border: none;
+}
+
+.save-btn::after {
+  border: none;
+}
+
+.save-btn[disabled] {
+  opacity: 0.6;
+}

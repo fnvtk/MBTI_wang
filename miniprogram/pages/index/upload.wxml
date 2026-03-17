@@ -1,0 +1,113 @@
+<!--pages/index/camera.wxml - AI拍照页面（仿上传照片指南布局）-->
+<view class="page">
+  <!-- 主体内容 -->
+  <view class="content">
+    <!-- 引导文案 -->
+    <view class="intro">
+      <text class="intro-title">多角度拍摄更精准</text>
+      <view class="intro-desc-wrap">
+        <text class="intro-desc">为了更准确地通过骨相与面相分析您的性格，</text>
+        <text class="intro-desc">请上传以下三个维度的照片。</text>
+      </view>
+    </view>
+
+    <!-- 三个角度上传卡片 -->
+    <view class="steps">
+      <!-- 正面 -->
+      <view class="step-item">
+        <view class="step-index step-index-primary">
+          <text class="step-index-text step-index-text-primary">1</text>
+        </view>
+        <view class="step-body">
+          <text class="step-title">正面</text>
+          <text class="step-subtitle">目视前方，五官端正，不遮挡额头</text>
+          <view class="step-upload-row">
+            <image class="sample-image" mode="aspectFill" src="{{sampleImages[0]}}"></image>
+            <view class="upload-card" bindtap="onUploadFront">
+              <image wx:if="{{photos[0]}}" class="upload-preview" mode="aspectFill" src="{{photos[0]}}"></image>
+              <block wx:else>
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">点击上传</text>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 左侧 45 度 -->
+      <view class="step-item">
+        <view class="step-index step-index-secondary">
+          <text class="step-index-text step-index-text-secondary">2</text>
+        </view>
+        <view class="step-body">
+          <text class="step-title">左侧 45度</text>
+          <text class="step-subtitle">展示左侧面颊，用于分析面部轮廓</text>
+          <view class="step-upload-row">
+            <image class="sample-image" mode="aspectFill" src="{{sampleImages[1]}}"></image>
+            <view class="upload-card" bindtap="onUploadLeft">
+              <image wx:if="{{photos[1]}}" class="upload-preview" mode="aspectFill" src="{{photos[1]}}"></image>
+              <block wx:else>
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">点击上传</text>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 右侧 45 度 -->
+      <view class="step-item">
+        <view class="step-index step-index-secondary">
+          <text class="step-index-text step-index-text-secondary">3</text>
+        </view>
+        <view class="step-body">
+          <text class="step-title">右侧 45度</text>
+          <text class="step-subtitle">展示右侧面颊，完整捕捉面部信息</text>
+          <view class="step-upload-row">
+            <image class="sample-image" mode="aspectFill" src="{{sampleImages[2]}}"></image>
+            <view class="upload-card" bindtap="onUploadRight">
+              <image wx:if="{{photos[2]}}" class="upload-preview" mode="aspectFill" src="{{photos[2]}}"></image>
+              <block wx:else>
+                <text class="upload-icon">📷</text>
+                <text class="upload-text">点击上传</text>
+              </block>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 温馨提示 -->
+    <view class="tips-card">
+      <view class="tips-title-row">
+        <view class="tips-icon"></view>
+        <text class="tips-title">温馨提示</text>
+      </view>
+      <view class="tips-list">
+        <text class="tips-item">· 光线充足，背景整洁，避免过曝或过暗</text>
+        <text class="tips-item">· 保持表情自然，无需刻意微笑</text>
+        <text class="tips-item">· 如有佩戴眼镜，请确保镜片不反光</text>
+      </view>
+    </view>
+
+    <!-- 手机号授权入口：仅在未授权时显示 -->
+    <view class="phone-auth-section" wx:if="{{needPhoneAuth}}">
+      <text class="phone-auth-tip">为保障服务与联系，请先授权手机号。</text>
+      <button
+        class="phone-auth-btn"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumber"
+      >
+        授权手机号后开始查看报告
+      </button>
+    </view>
+  </view>
+
+  <!-- 底部操作按钮 -->
+  <view class="footer">
+    <button class="primary-btn" bindtap="completeCapture">智能分析</button>
+  </view>
+
+  <!-- 自定义底部导航，与首页保持一致 -->
+  <custom-tab-bar />
+</view>

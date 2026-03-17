@@ -1,0 +1,86 @@
+<!--pages/result/resume.wxml - 简历综合分析结果页 -->
+<view class="container">
+  <!-- 分析中状态 -->
+  <view class="analyzing-modal" wx:if="{{loading && !error}}">
+    <view class="analyzing-content">
+      <view class="analyzing-icon">
+        <view class="spinner"></view>
+      </view>
+      <text class="analyzing-title">{{analyzingTitle || '正在分析中'}}</text>
+      <text class="analyzing-desc">{{analyzingTip}}</text>
+      <view class="analyzing-bar">
+        <view class="analyzing-bar-fill" style="width: {{progress}}%"></view>
+      </view>
+      <text class="analyzing-hint">这个过程可能需要30秒到1分钟，请耐心等待...</text>
+    </view>
+  </view>
+
+  <!-- 结果显示 -->
+  <block wx:if="{{!loading || error || content}}">
+
+    <!-- 页面顶部 Hero -->
+    <view class="hero-banner {{error ? 'hero-error' : 'hero-success'}}">
+      <text class="hero-icon">{{error ? '⚠️' : '📋'}}</text>
+      <view class="hero-text-wrap">
+        <text class="hero-title">{{error ? '生成失败' : '人才综合评估报告'}}</text>
+        <text class="hero-sub">{{error ? '请检查后重新生成' : '基于测评结果 · AI 综合分析'}}</text>
+      </view>
+    </view>
+
+    <!-- 异常状态 -->
+    <view class="card error-card" wx:if="{{error}}">
+      <text class="card-title error-title">失败原因</text>
+      <text class="card-text error-message">{{error}}</text>
+      <view class="action-btn-retry" bindtap="fetchResumeAnalysis">
+        <text class="retry-text">点击重新生成</text>
+      </view>
+    </view>
+
+    <!-- 需要付费解锁 -->
+    <view class="card pay-gate-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid && !error}}">
+      <text class="pay-gate-icon">🔒</text>
+      <text class="pay-gate-title">报告已生成，需付费解锁</text>
+      <text class="pay-gate-desc">完整的简历综合分析报告已生成\n支付后即可查看全部内容</text>
+      <view class="pay-gate-amount">
+        <text class="pay-amount-label">解锁价格</text>
+        <text class="pay-amount-value">¥{{payInfo.amountYuan}}</text>
+      </view>
+      <view class="pay-gate-btn {{paying ? 'paying' : ''}}" bindtap="doPay">
+        <text class="pay-gate-btn-text">{{paying ? '支付中...' : '立即支付解锁'}}</text>
+      </view>
+    </view>
+
+    <!-- 成功内容：分块卡片展示 -->
+    <block wx:if="{{content && sections.length > 0 && !payInfo.requiresPayment}}">
+      <view class="card section-card" wx:for="{{sections}}" wx:key="index">
+        <view class="section-header">
+          <text class="section-icon">{{item.icon}}</text>
+          <text class="section-title-text">{{item.title}}</text>
+        </view>
+        <view class="section-body">
+          <text class="content-text">{{item.body}}</text>
+        </view>
+      </view>
+    </block>
+
+    <!-- 兜底显示：解析失败时显示原始内容 -->
+    <view class="card" wx:if="{{content && sections.length === 0 && !payInfo.requiresPayment}}">
+      <text class="card-title">综合分析综评</text>
+      <text class="card-text content-text">{{content}}</text>
+    </view>
+
+    <!-- 操作按钮 -->
+    <view class="action-section" wx:if="{{!loading || error}}">
+      <button class="btn btn-primary" open-type="share" wx:if="{{!payInfo.requiresPayment && content}}">
+        <text class="btn-text">分享分析报告</text>
+      </button>
+      <view class="btn btn-outline" bindtap="fetchResumeAnalysis" wx:if="{{!loading && content && !payInfo.requiresPayment}}">
+        <text class="btn-text-outline">重新分析生成</text>
+      </view>
+      <view class="btn btn-outline" bindtap="goHome">
+        <text class="btn-text-outline">返回首页</text>
+      </view>
+    </view>
+  </block>
+</view>
+

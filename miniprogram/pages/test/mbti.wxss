@@ -1,0 +1,172 @@
+/* pages/test/mbti.wxss - 按旧版模板重构 */
+.test-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+}
+
+.progress-section {
+  padding: 32rpx;
+  border-bottom: 1rpx solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.progress-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+}
+
+.question-count {
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #333;
+}
+
+.time-remaining {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.progress-bar-container {
+  width: 100%;
+  height: 8rpx;
+  background-color: #e5e5e5;
+  border-radius: 8rpx;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(135deg, #FF6B8A 0%, #ff8fa3 100%);
+  border-radius: 8rpx;
+  transition: width 0.3s ease;
+}
+
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32rpx;
+}
+
+.question-card {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 48rpx;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+
+.question-text {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 48rpx;
+}
+
+.options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 32rpx;
+}
+
+.option-item {
+  display: flex;
+  align-items: center;
+  padding: 32rpx;
+  border: 2rpx solid #e5e5e5;
+  border-radius: 16rpx;
+  transition: all 0.3s ease;
+}
+
+.option-item.selected {
+  background-color: rgba(255, 107, 138, 0.12);
+  border-color: #FF6B8A;
+}
+
+.radio-button {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid #d1d5db;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 24rpx;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.radio-button.checked {
+  background-color: #FF6B8A;
+  border-color: #FF6B8A;
+}
+
+.radio-inner {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background-color: #fff;
+}
+
+.option-text {
+  flex: 1;
+  font-size: 32rpx;
+  color: #333;
+  line-height: 1.5;
+}
+
+.footer-buttons {
+  display: flex;
+  gap: 24rpx;
+  padding: 32rpx;
+  border-top: 1rpx solid #e5e5e5;
+  flex-shrink: 0;
+}
+
+.nav-button {
+  flex: 1;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  text-align: center;
+}
+
+.nav-button.secondary {
+  background-color: #fff;
+  border: 2rpx solid #FF6B8A;
+}
+
+.nav-button.secondary .button-text {
+  color: #FF6B8A;
+}
+
+.nav-button.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.button-text {
+  font-size: 32rpx;
+  font-weight: 500;
+}
+
+.submit-wrap {
+  padding: 0 32rpx 32rpx;
+}
+
+.submit-button {
+  background: linear-gradient(135deg, #FF6B8A 0%, #ff8fa3 100%);
+  border-radius: 16rpx;
+  padding: 28rpx;
+  text-align: center;
+}
+
+.submit-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}

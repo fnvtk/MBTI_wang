@@ -1,0 +1,40 @@
+<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / PDP / DISC）-->
+<view class="container">
+  <view class="card intro-card">
+    <text class="intro-title">选择一项详细性格测试</text>
+    <text class="intro-desc">完成问卷即可获得对应维度的专业报告，与面相分析结果互补</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goMBTI">
+    <view class="entry-icon-wrap mbti">
+      <text class="entry-emoji">🧠</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">MBTI 性格测试</text>
+      <text class="entry-brief">16型人格 · 发现你的认知与决策风格</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goPDP">
+    <view class="entry-icon-wrap pdp">
+      <text class="entry-emoji">🦁</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">PDP 行为偏好测试</text>
+      <text class="entry-brief">老虎 / 孔雀 / 考拉 / 猫头鹰 · 行为风格</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goDISC">
+    <view class="entry-icon-wrap disc">
+      <text class="entry-emoji">📊</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">DISC 性格测试</text>
+      <text class="entry-brief">D/I/S/C 四维 · 沟通与行为倾向</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+</view>

@@ -1,0 +1,304 @@
+<!--pages/index/result.wxml - AI分析结果（按旧版模板重构）-->
+<view class="container">
+  <!-- 分析中状态 -->
+  <view class="analyzing-modal" wx:if="{{isAnalyzing}}">
+    <view class="analyzing-content">
+      <view class="analyzing-icon">
+        <view class="spinner"></view>
+      </view>
+      <text class="analyzing-title">{{analyzingTitle || '正在分析中'}}</text>
+      <text class="analyzing-desc">{{analyzingTip}}</text>
+      <view class="analyzing-bar">
+        <view class="analyzing-bar-fill" style="width: {{progress}}%"></view>
+      </view>
+      <text class="analyzing-hint">这个过程可能需要30秒到1分钟，请耐心等待...</text>
+    </view>
+  </view>
+
+  <!-- 无人脸错误状态 -->
+  <view class="no-face-wrap" wx:if="{{!isAnalyzing && noFaceError}}">
+    <view class="no-face-card">
+      <view class="no-face-icon">
+        <text class="no-face-emoji">🚫</text>
+      </view>
+      <text class="no-face-title">未检测到人脸</text>
+      <text class="no-face-desc">{{noFaceMessage}}</text>
+      <view class="no-face-tips">
+        <text class="no-face-tips-title">拍摄建议：</text>
+        <text class="no-face-tip-item">• 确保面部完整出现在画面中</text>
+        <text class="no-face-tip-item">• 保持光线充足，避免逆光</text>
+        <text class="no-face-tip-item">• 正对镜头，不要遮挡面部</text>
+        <text class="no-face-tip-item">• 保持适当距离，不要过近或过远</text>
+      </view>
+      <view class="no-face-btn" bindtap="retake">
+        <text class="no-face-btn-text">重新拍摄</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 分析结果 -->
+  <view wx:if="{{!isAnalyzing && showResult}}">
+    <!-- 状态横幅 -->
+    <view class="status-banner {{hasError ? 'error-banner' : ''}}">
+      <view class="status-dot {{hasError ? 'error-dot' : ''}}"></view>
+      <text class="status-text">{{hasError ? '分析出现异常' : '分析完成，以下是您的个性化报告'}}</text>
+    </view>
+
+    <!-- 错误内容 -->
+    <view class="error-content" wx:if="{{hasError}}">
+      <text class="error-title">错误信息</text>
+      <text class="error-message">{{errorMessage}}</text>
+      <view class="retry-btn" bindtap="retake">
+        <text class="retry-text">重新分析</text>
+      </view>
+    </view>
+
+    <!-- 性格类型分析卡片 -->
+    <view class="card personality-card" wx:if="{{!hasError}}">
+      <text class="card-title">性格类型分析</text>
+
+      <!-- MBTI类型 -->
+      <view class="personality-type">
+        <text class="type-code">{{result.mbti}}</text>
+        <text class="type-name">{{result.title}}</text>
+        <text class="type-desc">{{result.summary}}</text>
+      </view>
+
+      <!-- PDP和DISC -->
+      <view class="type-details">
+        <view class="type-box pdp-box">
+          <text class="type-label">PDP主性格</text>
+          <text class="type-value">{{result.pdp || '--'}}</text>
+          <text class="type-sub" wx:if="{{result.pdpAux}}">辅助: {{result.pdpAux}}</text>
+        </view>
+        <view class="type-box disc-box">
+          <text class="type-label">DISC类型</text>
+          <text class="type-value">{{result.disc || '--'}}型</text>
+          <text class="type-sub" wx:if="{{result.discAux}}">辅助: {{result.discAux}}</text>
+        </view>
+      </view>
+
+      <!-- 主要优势 -->
+      <view class="advantages-box" wx:if="{{result.traits.length > 0}}">
+        <text class="advantages-label">主要优势</text>
+        <view class="advantages-list">
+          <view class="advantage-item" wx:for="{{result.traits}}" wx:key="*this">
+            <view class="advantage-dot"></view>
+            <text class="advantage-text">{{item}}</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="next-btn" bindtap="goToMBTI">
+        <text class="next-btn-text">下一步：详细性格测试 →</text>
+      </view>
+    </view>
+
+    <!-- 性格概述 -->
+    <view class="card" wx:if="{{!hasError && result.summary}}">
+      <text class="card-title">性格概述</text>
+      <text class="card-text">{{result.summary}}</text>
+    </view>
+
+    <!-- 盖洛普前三大优势（付费后/免费皆展示，有数据才显示） -->
+    <view class="card gallup-card" wx:if="{{!hasError && result.gallupTop3.length > 0}}">
+      <text class="card-title">盖洛普前三大优势</text>
+      <view class="gallup-list">
+        <view class="gallup-item" wx:for="{{result.gallupTop3}}" wx:key="*this">
+          <text class="gallup-rank">{{index + 1}}</text>
+          <text class="gallup-text">{{item}}</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 付费解锁完整报告（不展示虚拟假数据） -->
+    <view class="card paywall-card" wx:if="{{!hasError && payInfo.requiresPayment && !payInfo.isPaid}}">
+      <view class="paywall-content">
+        <text class="paywall-fake-title">完整版性格深度解析</text>
+        <text class="paywall-tip">解锁后将展示完整报告内容</text>
+        <!-- 中间解锁按钮：未有手机号时就地触发微信手机号授权 -->
+        <button
+          class="paywall-btn"
+          wx:if="{{!hasPhone}}"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onGetPhoneNumberForFacePay"
+        >
+          <text class="paywall-btn-main">解锁完整报告</text>
+          <text class="paywall-btn-price">￥{{payInfo.amountYuan || 0}} / 次</text>
+        </button>
+        <!-- 已有手机号时：普通按钮，直接解锁 -->
+        <button
+          class="paywall-btn"
+          wx:elif="{{hasPhone}}"
+          bindtap="unlockFullReport"
+        >
+          <text class="paywall-btn-main">解锁完整报告</text>
+          <text class="paywall-btn-price">￥{{payInfo.amountYuan || 0}} / 次</text>
+        </button>
+        <text class="paywall-tip">一次性解锁本次{{reportTitle || '分析报告'}}，永久保存在「历史记录」中</text>
+      </view>
+    </view>
+
+    <!-- ========== 详细分析区（解锁后可见） ========== -->
+    <block wx:if="{{!hasError && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+
+      <!-- 面相分析 -->
+      <block wx:if="{{result.faceAnalysis}}">
+        <!-- 完整结构化面相（旧 object 格式） -->
+        <view class="card" wx:if="{{result.faceAnalysis.facialFeatures && result.faceAnalysis.facialFeatures.length > 0}}">
+          <text class="card-title">面部特征分析</text>
+          <view class="feature-list">
+            <view class="feature-item" wx:for="{{result.faceAnalysis.facialFeatures}}" wx:key="label">
+              <text class="feature-label">{{item.label}}：</text>
+              <text class="feature-desc">{{item.description}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+      <!-- 字符串版面相（新 prompt 返回） -->
+      <view class="card" wx:elif="{{result.faceAnalysisText}}">
+        <text class="card-title">面相分析</text>
+        <text class="card-text">{{result.faceAnalysisText}}</text>
+      </view>
+
+      <!-- 骨相分析 -->
+      <block wx:if="{{result.boneAnalysis && result.boneAnalysis.boneFormSummary}}">
+        <!-- 完整结构化骨相（旧 object 格式） -->
+        <view class="card">
+          <text class="card-title">骨相分析（《冰鉴》八骨）</text>
+          <view class="bone-content">
+            <view class="bone-item" wx:if="{{result.boneAnalysis.boneFormSummary.elementType}}">
+              <text class="bone-label">五行形相：</text>
+              <text class="bone-text">{{result.boneAnalysis.boneFormSummary.elementType}}</text>
+            </view>
+            <view class="bone-item" wx:if="{{result.boneAnalysis.boneFormSummary.boneFleshRelation}}">
+              <text class="bone-label">骨肉关系：</text>
+              <text class="bone-text">{{result.boneAnalysis.boneFormSummary.boneFleshRelation}}</text>
+            </view>
+          </view>
+        </view>
+      </block>
+      <!-- 字符串版骨相（新 prompt 返回） -->
+      <view class="card" wx:elif="{{result.boneAnalysisText}}">
+        <text class="card-title">骨相分析（《冰鉴》八骨）</text>
+        <text class="card-text">{{result.boneAnalysisText}}</text>
+      </view>
+
+      <!-- 人际关系 -->
+      <view class="card" wx:if="{{result.relationship}}">
+        <text class="card-title">人际关系与团队合作</text>
+        <text class="card-text">{{result.relationship}}</text>
+      </view>
+
+      <!-- 企业版：简历亮点 -->
+      <view class="card" wx:if="{{result.resumeHighlights}}">
+        <text class="card-title">简历亮点</text>
+        <text class="card-text">{{result.resumeHighlights}}</text>
+      </view>
+
+      <!-- 企业版：职业画像 portrait -->
+      <view class="card" wx:if="{{result.portrait}}">
+        <text class="card-title">职业画像</text>
+        <view class="enterprise-section" wx:if="{{result.portrait.coreStrengths && result.portrait.coreStrengths.length > 0}}">
+          <text class="enterprise-label">核心优势</text>
+          <view class="enterprise-tags">
+            <text class="enterprise-tag" wx:for="{{result.portrait.coreStrengths}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+        <view class="enterprise-section" wx:if="{{result.portrait.coreRisks && result.portrait.coreRisks.length > 0}}">
+          <text class="enterprise-label">潜在风险</text>
+          <view class="enterprise-tags">
+            <text class="enterprise-tag risk" wx:for="{{result.portrait.coreRisks}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+        <view class="enterprise-section" wx:if="{{result.portrait.workStyle}}">
+          <text class="enterprise-label">工作风格</text>
+          <text class="card-text">{{result.portrait.workStyle}}</text>
+        </view>
+      </view>
+
+      <!-- 企业版：HR视角 hrView -->
+      <view class="card" wx:if="{{result.hrView}}">
+        <text class="card-title">HR视角</text>
+        <view class="enterprise-section" wx:if="{{result.hrView.roleRecommend}}">
+          <text class="enterprise-label">岗位推荐</text>
+          <view wx:if="{{result.hrView.roleRecommend.bestFit && result.hrView.roleRecommend.bestFit.length > 0}}">
+            <text class="enterprise-sublabel">最适合</text>
+            <view class="enterprise-tags">
+              <text class="enterprise-tag" wx:for="{{result.hrView.roleRecommend.bestFit}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
+          <view wx:if="{{result.hrView.roleRecommend.notSuitable && result.hrView.roleRecommend.notSuitable.length > 0}}" style="margin-top: 12rpx;">
+            <text class="enterprise-sublabel">不适合</text>
+            <view class="enterprise-tags">
+              <text class="enterprise-tag risk" wx:for="{{result.hrView.roleRecommend.notSuitable}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="enterprise-section" wx:if="{{result.hrView.lifecycle}}">
+          <text class="enterprise-label">成长周期</text>
+          <view class="lifecycle-list">
+            <view class="lifecycle-item" wx:if="{{result.hrView.lifecycle.onboarding}}">
+              <text class="lifecycle-key">入职适应</text>
+              <text class="lifecycle-val">{{result.hrView.lifecycle.onboarding}}</text>
+            </view>
+            <view class="lifecycle-item" wx:if="{{result.hrView.lifecycle.probation}}">
+              <text class="lifecycle-key">试用期</text>
+              <text class="lifecycle-val">{{result.hrView.lifecycle.probation}}</text>
+            </view>
+            <view class="lifecycle-item" wx:if="{{result.hrView.lifecycle.growth}}">
+              <text class="lifecycle-key">成长期</text>
+              <text class="lifecycle-val">{{result.hrView.lifecycle.growth}}</text>
+            </view>
+            <view class="lifecycle-item" wx:if="{{result.hrView.lifecycle.retention}}">
+              <text class="lifecycle-key">留人因素</text>
+              <text class="lifecycle-val">{{result.hrView.lifecycle.retention}}</text>
+            </view>
+          </view>
+        </view>
+        <view class="enterprise-section" wx:if="{{result.hrView.performance}}">
+          <text class="enterprise-label">绩效潜力</text>
+          <text class="card-text" wx:if="{{result.hrView.performance.potential}}">潜力：{{result.hrView.performance.potential}}</text>
+          <view wx:if="{{result.hrView.performance.drivers && result.hrView.performance.drivers.length > 0}}" style="margin-top: 8rpx;">
+            <text class="enterprise-sublabel">驱动因子：</text>
+            <text class="card-text">{{result.hrView.performance.drivers.join('、')}}</text>
+          </view>
+        </view>
+        <view class="enterprise-section" wx:if="{{result.hrView.teamFit}}">
+          <text class="enterprise-label">团队适配</text>
+          <text class="card-text">{{result.hrView.teamFit.bestTeam || ''}}</text>
+          <text class="card-text" wx:if="{{result.hrView.teamFit.manageAdvice}}" style="margin-top: 8rpx; display: block;">管理建议：{{result.hrView.teamFit.manageAdvice}}</text>
+        </view>
+      </view>
+
+      <!-- 企业版：老板视角 bossView -->
+      <view class="card boss-card" wx:if="{{result.bossView}}">
+        <text class="card-title">老板视角</text>
+        <text class="boss-headline" wx:if="{{result.bossView.headline}}">{{result.bossView.headline}}</text>
+        <view class="boss-metrics" wx:if="{{result.bossView.metrics && result.bossView.metrics.length > 0}}">
+          <view class="boss-metric" wx:for="{{result.bossView.metrics}}" wx:key="label">
+            <text class="boss-metric-label">{{item.label}}</text>
+            <text class="boss-metric-value {{item.level}}">{{item.value}}</text>
+          </view>
+        </view>
+        <text class="card-text" wx:if="{{result.bossView.costInsight}}" style="margin-top: 16rpx;">用人成本预判：{{result.bossView.costInsight}}</text>
+      </view>
+
+    </block>
+
+    <!-- 操作按钮 -->
+    <view class="action-section" wx:if="{{!hasError}}">
+      <button class="btn btn-primary" open-type="share">
+        <text class="btn-text">分享我的分析报告</text>
+      </button>
+      <view class="btn btn-outline" bindtap="retake">
+        <text class="btn-text-outline">重新分析</text>
+      </view>
+      <view class="btn btn-outline" bindtap="goHome">
+        <text class="btn-text-outline">返回首页</text>
+      </view>
+    </view>
+
+    <view class="ai-generated-tip">人工智能生成</view>
+  </view>
+</view>
