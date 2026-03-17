@@ -1,0 +1,8 @@
+.cursor/
+api/runtime/
+api/vendor/
+*.code-workspace
+*.env
+api/database/
+*.zip
+.git222/
