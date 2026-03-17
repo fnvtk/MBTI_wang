@@ -2,6 +2,7 @@
 Component({
   data: {
     selected: 0,
+    reviewMode: false,
     list: [
       { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
       { pagePath: '/pages/index/camera', text: '查看报告', textKey: 'camera', icon: 'camera' },
@@ -11,29 +12,31 @@ Component({
   lifetimes: {
     attached() {
       this.updateSelected()
+      this.checkReviewMode()
     }
   },
   pageLifetimes: {
     show() {
       this.updateSelected()
+      this.checkReviewMode()
     }
   },
   methods: {
+    checkReviewMode() {
+      try {
+        const app = getApp()
+        const rm = !!(app && app.globalData && app.globalData.reviewMode)
+        this.setData({ reviewMode: rm })
+      } catch (e) {}
+    },
     updateSelected() {
       try {
         const pages = getCurrentPages()
-        if (!pages || pages.length === 0) {
-          return
-        }
-        
+        if (!pages || pages.length === 0) return
         const currentPage = pages[pages.length - 1]
-        if (!currentPage || !currentPage.route) {
-          return
-        }
-        
+        if (!currentPage || !currentPage.route) return
         const url = currentPage.route
         let selected = 0
-        
         if (url === 'pages/index/index' || url === 'pages/enterprise/index') {
           selected = 0
         } else if (url === 'pages/index/camera') {
@@ -41,11 +44,9 @@ Component({
         } else if (url === 'pages/profile/index') {
           selected = 2
         }
-        
         this.setData({ selected })
       } catch (error) {
         console.error('updateSelected error:', error)
-        // 默认选中第一个
         this.setData({ selected: 0 })
       }
     },
@@ -53,18 +54,23 @@ Component({
       const index = parseInt(e.currentTarget.dataset.index, 10)
       let url = e.currentTarget.dataset.path
 
-      // 点击"首页"（index=0）时，根据当前 scope 跳到企业版或个人版首页
       if (index === 0) {
         try {
           const app = getApp()
           const scope = (app && app.globalData && app.globalData.appScope) || 'personal'
           if (scope === 'enterprise') {
-            // 企业版：navigateTo（不是 tabBar 页面，不能用 switchTab）
             wx.navigateTo({ url: '/pages/enterprise/index' })
             this.setData({ selected: index })
             return
           }
         } catch (e) {}
+      }
+
+      // 审核模式：中间按钮跳转到测试选择页而非相机
+      if (index === 1 && this.data.reviewMode) {
+        wx.navigateTo({ url: '/pages/test-select/index' })
+        this.setData({ selected: index })
+        return
       }
 
       wx.switchTab({ url })

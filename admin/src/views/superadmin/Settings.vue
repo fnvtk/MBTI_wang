@@ -35,6 +35,93 @@
       </div>
 
       <div class="tab-content-card">
+        <!-- 审核模式 -->
+        <div v-if="activeTab === 'review'" class="tab-content">
+          <el-card shadow="never" class="settings-card">
+            <template #header>
+              <div class="card-header">
+                <div class="header-title">
+                  <el-icon class="header-icon"><Document /></el-icon>
+                  <span>小程序审核模式</span>
+                </div>
+                <p class="header-description">提交微信审核前开启，审核通过后关闭。开启后小程序将隐藏所有AI相关功能。</p>
+              </div>
+            </template>
+            <div class="card-content">
+              <div class="review-mode-alert" :class="{ active: reviewMode.enabled }">
+                <div class="review-mode-status">
+                  <span class="review-dot" :class="{ on: reviewMode.enabled }"></span>
+                  <span class="review-status-text">{{ reviewMode.enabled ? '审核模式已开启' : '审核模式已关闭' }}</span>
+                </div>
+                <p class="review-mode-desc">{{ reviewMode.enabled ? '当前小程序处于审核状态，AI面相分析功能已隐藏' : '当前小程序正常运行，所有功能可用' }}</p>
+              </div>
+
+              <div class="switch-section">
+                <div class="switch-item">
+                  <div class="switch-info">
+                    <p class="switch-title">开启审核模式</p>
+                    <p class="switch-desc">开启后小程序将执行以下变更：</p>
+                  </div>
+                  <el-switch
+                    v-model="reviewMode.enabled"
+                    active-color="#ef4444"
+                    inactive-color="#d1d5db"
+                  />
+                </div>
+              </div>
+
+              <div class="review-changes-list">
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">首页「面相分析」「骨相分析」标签</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">AI拍照分析入口（相机/上传）</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">底部导航「拍照」Tab</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">结果页「人工智能生成」标签</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">所有含「AI」字样的文案</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">MBTI / DISC / PDP 问卷测试功能</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">问卷测试结果展示</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">用户中心、历史记录等基础功能</span>
+                </div>
+              </div>
+
+              <div class="review-tip">
+                <strong>使用流程：</strong>开启审核模式 → 提交小程序代码审核 → 审核通过后关闭审核模式
+              </div>
+
+              <el-button
+                type="primary"
+                :color="reviewMode.enabled ? '#ef4444' : '#6366f1'"
+                class="save-button"
+                @click="handleSave('review')"
+              >
+                <el-icon class="mr-1"><Document /></el-icon>
+                {{ reviewMode.enabled ? '保存并开启审核模式' : '保存并关闭审核模式' }}
+              </el-button>
+            </div>
+          </el-card>
+        </div>
+
         <!-- 系统配置 -->
         <div v-if="activeTab === 'system'" class="tab-content">
           <el-card shadow="never" class="settings-card">
@@ -371,16 +458,22 @@ import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import PosterEditor from './PosterEditor.vue'
 
-const activeTab = ref('system')
+const activeTab = ref('review')
 const saveSuccess = ref<string | null>(null)
 
 const tabs = [
+  { label: '审核模式', value: 'review', icon: Document },
   { label: '系统配置', value: 'system', icon: Setting },
   { label: '通知设置', value: 'notification', icon: Bell },
   { label: '提示词配置', value: 'prompts', icon: ChatDotRound },
   { label: '海报配置', value: 'poster', icon: Postcard },
   { label: '账户安全', value: 'security', icon: Lock }
 ]
+
+// 审核模式
+const reviewMode = reactive({
+  enabled: false
+})
 
 // 系统配置
 const systemConfig = reactive({
@@ -429,6 +522,10 @@ const loadSettings = async () => {
     const response: any = await request.get('/superadmin/settings')
     
     if (response.code === 200 && response.data) {
+      // 加载审核模式
+      if (response.data.reviewMode) {
+        Object.assign(reviewMode, response.data.reviewMode)
+      }
       // 加载系统配置
       if (response.data.system) {
         Object.assign(systemConfig, response.data.system)
@@ -478,6 +575,17 @@ const handleSave = async (section: string) => {
     let response: any
     
     switch (section) {
+      case 'review':
+        response = await request.put('/superadmin/settings/review-mode', {
+          enabled: reviewMode.enabled
+        })
+        if (response.code === 200) {
+          ElMessage.success(reviewMode.enabled ? '审核模式已开启，小程序将隐藏AI功能' : '审核模式已关闭，AI功能已恢复')
+          saveSuccess.value = section
+          setTimeout(() => { saveSuccess.value = null }, 3000)
+        }
+        break
+
       case 'system':
         response = await request.put('/superadmin/settings/system', {
           ...systemConfig,
@@ -867,5 +975,104 @@ const handleSave = async (section: string) => {
   :deep(.el-card__body) {
     padding: 0;
   }
+}
+
+.review-mode-alert {
+  padding: 16px 20px;
+  border-radius: 8px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  transition: all 0.3s;
+
+  &.active {
+    background-color: #fef2f2;
+    border-color: #fecaca;
+  }
+
+  .review-mode-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .review-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #22c55e;
+
+    &.on {
+      background-color: #ef4444;
+      animation: pulse-dot 1.5s infinite;
+    }
+  }
+
+  .review-status-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: #111827;
+  }
+
+  .review-mode-desc {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.review-changes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+}
+
+.review-change-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background-color: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #374151;
+
+  .change-icon {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+
+    &.hide {
+      background-color: #fef2f2;
+      color: #dc2626;
+    }
+
+    &.show {
+      background-color: #f0fdf4;
+      color: #16a34a;
+    }
+  }
+
+  .change-text {
+    flex: 1;
+  }
+}
+
+.review-tip {
+  padding: 12px 16px;
+  background-color: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #92400e;
+  line-height: 1.5;
 }
 </style>

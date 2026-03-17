@@ -25,7 +25,9 @@ App({
     mbtiResult: null,
     discResult: null,
     pdpResult: null,
-    aiResult: null
+    aiResult: null,
+    // 审核模式：true 时隐藏AI面相分析功能，仅展示问卷测试
+    reviewMode: false
   },
 
   onLaunch() {
@@ -35,10 +37,11 @@ App({
     // 静默登录获取openId
     this.silentLogin()
 
-    // 预加载站点/小程序名称（供导航栏展示）
+    // 预加载站点/小程序名称 + 审核模式
     this.getRuntimeConfig().then((cfg) => {
-      if (cfg && cfg.siteTitle) {
-        this.globalData.siteTitle = cfg.siteTitle
+      if (cfg) {
+        if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
+        this.globalData.reviewMode = !!cfg.reviewMode
       }
     }).catch(() => {})
   },
@@ -332,6 +335,7 @@ App({
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
+            this.globalData.reviewMode = !!data.reviewMode
             resolve(data)
           } else {
             reject(new Error(res.data && res.data.message ? res.data.message : '获取配置失败'))

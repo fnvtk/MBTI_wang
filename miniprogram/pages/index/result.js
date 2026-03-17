@@ -52,12 +52,16 @@ Page({
     hasPhone: false,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    reviewMode: false
   },
 
   onLoad(options) {
     const id = options && options.id
     const type = options && options.type
+
+    // 同步审核模式
+    this.setData({ reviewMode: !!app.globalData.reviewMode })
 
     // 加载文案配置（分析中提示、报告标题等）
     const tc = app.globalData.textConfig
@@ -519,20 +523,22 @@ Page({
 
   onShareAppMessage() {
     const r = this.data.result
-    const t = this.data.aiAnalysisText || '智能分析'
+    const rm = this.data.reviewMode
+    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '智能分析')
     const { getSharePathByScope } = require('../../utils/share')
     return {
-      title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
+      title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
       path: getSharePathByScope('/pages/index/index')
     }
   },
 
   onShareTimeline() {
     const r = this.data.result
-    const t = this.data.aiAnalysisText || '智能分析'
+    const rm = this.data.reviewMode
+    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '智能分析')
     const { buildShareQuery } = require('../../utils/share')
     return {
-      title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
+      title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
       query: buildShareQuery()
     }
   }

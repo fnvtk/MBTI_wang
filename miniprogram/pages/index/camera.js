@@ -29,6 +29,11 @@ Page({
   },
 
   onShow() {
+    // 审核模式下重定向到测试选择页
+    if (app.globalData.reviewMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
     if (!ensureProfileCompleteAndRedirect()) return
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 })

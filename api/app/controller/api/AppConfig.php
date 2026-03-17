@@ -134,6 +134,16 @@ class AppConfig extends BaseController
             }
         }
 
+        // 审核模式开关
+        $reviewMode = false;
+        $rmRow = Db::name('system_config')->where('key', 'review_mode')->where('enterprise_id', 0)->find();
+        if ($rmRow && !empty($rmRow['value'])) {
+            $rmVal = is_string($rmRow['value']) ? json_decode($rmRow['value'], true) : $rmRow['value'];
+            if (is_array($rmVal) && !empty($rmVal['enabled'])) {
+                $reviewMode = true;
+            }
+        }
+
         return success([
             'pricingType' => $pricingType,
             'pricing' => $pricing,
@@ -144,6 +154,7 @@ class AppConfig extends BaseController
             'miniprogramName' => $miniprogramName,
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
+            'reviewMode' => $reviewMode,
         ]);
     }
 

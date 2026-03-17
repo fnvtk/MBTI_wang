@@ -299,6 +299,6 @@
       </view>
     </view>
 
-    <view class="ai-generated-tip">人工智能生成</view>
+    <view class="ai-generated-tip" wx:if="{{!reviewMode}}">人工智能生成</view>
   </view>
 </view>

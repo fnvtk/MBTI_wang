@@ -9,7 +9,8 @@ Page({
     showEnterpriseEntry: false,
     siteTitle: '神仙团队AI性格测试',
     startButtonText: '开始面相测试',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    reviewMode: false
   },
 
   onLoad(options) {
@@ -27,24 +28,28 @@ Page({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
-      siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonText: (gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      siteTitle: gd.reviewMode ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队AI性格测试'),
+      startButtonText: gd.reviewMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      aiAnalysisText: gd.reviewMode ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'),
+      reviewMode: !!gd.reviewMode
     })
     // 预加载站点名称与文案配置
     app.getRuntimeConfig().then((cfg) => {
       if (cfg) {
+        const rm = !!cfg.reviewMode
+        getApp().globalData.reviewMode = rm
         if (cfg.siteTitle) {
           getApp().globalData.siteTitle = cfg.siteTitle
-          this.setData({ siteTitle: cfg.siteTitle })
+          this.setData({ siteTitle: rm ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
         }
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
-            startButtonText: cfg.textConfig.startButtonText || '开始面相测试',
-            aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析'
+            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '开始面相测试'),
+            aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '智能分析')
           })
         }
+        this.setData({ reviewMode: rm })
       }
     }).catch(() => {})
     // ── 解析入参（兼容扫码 scene / 分享链接 options）──
@@ -92,10 +97,12 @@ Page({
       getApp().globalData.enterpriseIdFromScene = null
     } catch (e) {}
     const gd = getApp().globalData
+    const rm = !!gd.reviewMode
     this.setData({
-      siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonText: (gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队AI性格测试'),
+      startButtonText: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'),
+      reviewMode: rm
     })
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
     this.setData({ showEnterpriseEntry: userInfo.hasEnterprise === true })
@@ -117,12 +124,14 @@ Page({
     }
   },
 
-  // 开始拍照（个人版入口：强制本次链路为个人定价）
+  // 开始测试（审核模式跳问卷，正常模式跳拍照）
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    wx.switchTab({
-      url: '/pages/index/camera'
-    })
+    if (this.data.reviewMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+    } else {
+      wx.switchTab({ url: '/pages/index/camera' })
+    }
   },
 
   // 上传照片（个人版入口：强制本次链路为个人定价）
@@ -161,16 +170,18 @@ Page({
 
   onShareAppMessage() {
     const { getSharePathByScope } = require('../../utils/share')
+    const rm = this.data.reviewMode
     return {
-      title: 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
+      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
       path: getSharePathByScope('/pages/index/index')
     }
   },
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
+    const rm = this.data.reviewMode
     return {
-      title: 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
+      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
       query: buildShareQuery()
     }
   }
