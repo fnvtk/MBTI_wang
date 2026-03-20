@@ -1,0 +1,29 @@
+.container {
+  padding: 48rpx 32rpx;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+.tip {
+  font-size: 30rpx;
+  color: #333;
+  line-height: 1.6;
+  margin-bottom: 24rpx;
+}
+.tip.sub {
+  color: #666;
+  font-size: 26rpx;
+  margin-bottom: 64rpx;
+}
+.auth-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+  color: #fff;
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  border: none;
+}
+.auth-btn::after {
+  border: none;
+}

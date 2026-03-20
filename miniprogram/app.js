@@ -6,7 +6,7 @@ App({
     userInfo: null,
     openId: null,
     token: null,
-    siteTitle: '神仙团队AI性格测试',
+    siteTitle: '神仙团队性格测试',
     textConfig: null, // 从 /api/config/runtime 动态加载：analyzingTitle, startButtonText, reportTitle, aiAnalysisText 等
     // 当前使用范围：personal 个人版 / enterprise 企业版（影响定价与 enterpriseId 写入）
     appScope: 'personal',
@@ -26,8 +26,8 @@ App({
     discResult: null,
     pdpResult: null,
     aiResult: null,
-    // 审核模式：true 时隐藏AI面相分析功能，仅展示问卷测试
-    reviewMode: false
+    // 审核模式：true=纯问卷模式（默认），服务端 reviewMode:false 时解锁 AI 功能
+    reviewMode: true
   },
 
   onLaunch() {
@@ -37,11 +37,12 @@ App({
     // 静默登录获取openId
     this.silentLogin()
 
-    // 预加载站点/小程序名称 + 审核模式
+    // 预加载站点/小程序名称（审核期间 reviewMode 硬编码为 true，审核通过后恢复后端控制）
     this.getRuntimeConfig().then((cfg) => {
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
-        this.globalData.reviewMode = !!cfg.reviewMode
+        // TODO: 审核通过后取消注释下行，恢复后端控制
+        // this.globalData.reviewMode = !!cfg.reviewMode
       }
     }).catch(() => {})
   },
@@ -335,7 +336,8 @@ App({
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
-            this.globalData.reviewMode = !!data.reviewMode
+            // TODO: 审核通过后取消注释下行，恢复后端控制
+            // this.globalData.reviewMode = !!data.reviewMode
             resolve(data)
           } else {
             reject(new Error(res.data && res.data.message ? res.data.message : '获取配置失败'))

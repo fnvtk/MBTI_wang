@@ -1,0 +1,104 @@
+/* 自定义 tabBar：白底、顶部分割线、中间浮起圆钮 */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 9999;
+}
+
+.tab-bar-line {
+  height: 1rpx;
+  background: #e5e7eb;
+  width: 100%;
+}
+
+.tab-bar-inner {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 100rpx;
+  padding: 0 20rpx 8rpx;
+  position: relative;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 8rpx;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-text {
+  font-size: 20rpx;
+  color: #999999;
+}
+
+.tab-item.active .tab-text {
+  color: #7c3aed;
+}
+
+/* 中间项：浮起彩色圆钮 + 相机图标 */
+.tab-item-center {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: -56rpx;
+  padding-bottom: 8rpx;
+}
+
+.center-circle {
+  width: 96rpx;
+  height: 96rpx;
+  min-width: 96rpx;
+  min-height: 96rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4rpx;
+  box-shadow: 0 4rpx 20rpx rgba(124, 58, 237, 0.4);
+  border: 4rpx solid #ffffff;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.tab-item-center.active .center-circle {
+  background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  box-shadow: 0 4rpx 20rpx rgba(124, 58, 237, 0.6);
+}
+
+.center-icon {
+  width: 44rpx;
+  height: 44rpx;
+}
+
+/* 占位：与「首页」「我的」文字等高，保证中间圆钮与两侧图标对齐 */
+.center-text-placeholder {
+  height: 24rpx;
+  width: 1rpx;
+  visibility: hidden;
+}
+
+.tab-item-center .center-text {
+  color: #7c3aed;
+  font-size: 20rpx;
+  font-weight: 600;
+}
+
+.tab-item-center.active .center-text {
+  color: #6d28d9;
+}

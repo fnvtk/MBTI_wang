@@ -1,4 +1,4 @@
-<!--pages/index/result.wxml - AI分析结果（按旧版模板重构）-->
+<!--pages/index/result.wxml - 分析结果页-->
 <view class="container">
   <!-- 分析中状态 -->
   <view class="analyzing-modal" wx:if="{{isAnalyzing}}">
@@ -38,12 +38,6 @@
 
   <!-- 分析结果 -->
   <view wx:if="{{!isAnalyzing && showResult}}">
-    <!-- AI生成内容标识（顶部显著位置，始终显示） -->
-    <view class="ai-disclosure-banner">
-      <view class="ai-disclosure-icon">AI</view>
-      <text class="ai-disclosure-text">以下报告由人工智能生成，结果仅供参考</text>
-    </view>
-
     <!-- 状态横幅 -->
     <view class="status-banner {{hasError ? 'error-banner' : ''}}">
       <view class="status-dot {{hasError ? 'error-dot' : ''}}"></view>
@@ -148,9 +142,8 @@
     <!-- ========== 详细分析区（解锁后可见） ========== -->
     <block wx:if="{{!hasError && (!payInfo.requiresPayment || payInfo.isPaid)}}">
 
-      <!-- 面相分析 -->
-      <block wx:if="{{result.faceAnalysis}}">
-        <!-- 完整结构化面相（旧 object 格式） -->
+      <!-- 面相分析（审核模式隐藏） -->
+      <block wx:if="{{!reviewMode && result.faceAnalysis}}">
         <view class="card" wx:if="{{result.faceAnalysis.facialFeatures && result.faceAnalysis.facialFeatures.length > 0}}">
           <text class="card-title">面部特征分析</text>
           <view class="feature-list">
@@ -161,15 +154,13 @@
           </view>
         </view>
       </block>
-      <!-- 字符串版面相（新 prompt 返回） -->
-      <view class="card" wx:elif="{{result.faceAnalysisText}}">
+      <view class="card" wx:elif="{{!reviewMode && result.faceAnalysisText}}">
         <text class="card-title">面相分析</text>
         <text class="card-text">{{result.faceAnalysisText}}</text>
       </view>
 
-      <!-- 骨相分析 -->
-      <block wx:if="{{result.boneAnalysis && result.boneAnalysis.boneFormSummary}}">
-        <!-- 完整结构化骨相（旧 object 格式） -->
+      <!-- 骨相分析（审核模式隐藏） -->
+      <block wx:if="{{!reviewMode && result.boneAnalysis && result.boneAnalysis.boneFormSummary}}">
         <view class="card">
           <text class="card-title">骨相分析（《冰鉴》八骨）</text>
           <view class="bone-content">
@@ -184,8 +175,7 @@
           </view>
         </view>
       </block>
-      <!-- 字符串版骨相（新 prompt 返回） -->
-      <view class="card" wx:elif="{{result.boneAnalysisText}}">
+      <view class="card" wx:elif="{{!reviewMode && result.boneAnalysisText}}">
         <text class="card-title">骨相分析（《冰鉴》八骨）</text>
         <text class="card-text">{{result.boneAnalysisText}}</text>
       </view>
@@ -305,10 +295,5 @@
       </view>
     </view>
 
-    <!-- AI生成内容标识（底部，始终显示） -->
-    <view class="ai-disclosure-banner bottom">
-      <view class="ai-disclosure-icon">AI</view>
-      <text class="ai-disclosure-text">以上内容由人工智能生成，结果仅供参考</text>
-    </view>
   </view>
 </view>

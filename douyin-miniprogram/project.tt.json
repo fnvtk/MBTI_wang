@@ -1,0 +1,15 @@
+{
+  "miniprogramRoot": ".",
+  "projectname": "mbti-douyin",
+  "description": "MBTI/DISC/PDP性格测试系统 - 抖音小程序版",
+  "appid": "YOUR_DOUYIN_APPID",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "postcss": true,
+    "minified": true,
+    "autoCompileOnSave": true
+  },
+  "compileType": "miniprogram",
+  "condition": {}
+}

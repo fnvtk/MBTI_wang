@@ -6,9 +6,10 @@ Page({
   data: {
     statusBarHeight: 0,
     navbarHeight: 88,
-    siteTitle: '神仙团队AI性格测试',
-    startButtonEnterprise: '开始面部测试',
-    aiAnalysisText: '智能分析'
+    siteTitle: '神仙团队性格测试',
+    startButtonEnterprise: '开始性格测试',
+    aiAnalysisText: '分析',
+    reviewMode: true
   },
 
   onLoad(options) {
@@ -59,12 +60,14 @@ Page({
     const statusBarHeightRpx = (statusBarHeight * 750) / screenWidth
     const navbarHeightRpx = statusBarHeightRpx + 88
     const gd = app.globalData
+    const rm = !!gd.reviewMode
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
-      siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: (gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
+      startButtonEnterprise: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
+      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
+      reviewMode: rm
     })
 
     // 未绑定企业的用户：若从邀请码扫码进入（有 enterpriseIdFromScene）也允许使用企业版
@@ -100,9 +103,10 @@ Page({
           }
           if (cfg.textConfig) {
             app.globalData.textConfig = cfg.textConfig
+            const rm2 = !!app.globalData.reviewMode
             this.setData({
-              startButtonEnterprise: cfg.textConfig.startButtonEnterprise || '开始面部测试',
-              aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析'
+              startButtonEnterprise: rm2 ? '开始性格测试' : (cfg.textConfig.startButtonEnterprise || '开始性格测试'),
+              aiAnalysisText: rm2 ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
             })
           }
         }
@@ -140,10 +144,12 @@ Page({
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
+    const rm = !!gd.reviewMode
     this.setData({
-      siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: (gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
+      startButtonEnterprise: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
+      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
+      reviewMode: rm
     })
   },
 
@@ -154,8 +160,11 @@ Page({
     })
   },
 
-  // 开始AI面部测试（先校验是否已上传简历，再跳转相机）
   startAITest() {
+    if (this.data.reviewMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
     const eid = (app.globalData && app.globalData.enterpriseIdFromScene) || (app.globalData && app.globalData.userInfo && app.globalData.userInfo.enterpriseId) || (wx.getStorageSync('userInfo') || {}).enterpriseId || null
     const query = eid ? `?enterpriseId=${eid}&pageSize=1` : '?pageSize=1'
     request({
@@ -167,23 +176,23 @@ Page({
         if (!list.length) {
           wx.showModal({
             title: '提示',
-            content: '需要先上传简历后再开始面部测试，请到「我的」-「我的简历」中上传',
-            showCancel: true,
-            confirmText: '去上传',
-            success: (r) => {
-              if (r.confirm) {
-                wx.navigateTo({ url: '/pages/enterprise/resume-history' })
-              }
+          content: '需要先上传简历后再开始测试，请到「我的」-「我的简历」中上传',
+          showCancel: true,
+          confirmText: '去上传',
+          success: (r) => {
+            if (r.confirm) {
+              wx.navigateTo({ url: '/pages/enterprise/resume-history' })
             }
-          })
-          return
-        }
-        wx.switchTab({ url: '/pages/index/camera' })
-      },
-      fail: () => {
-        wx.showModal({
-          title: '提示',
-          content: '需要先上传简历后再开始面部测试，请到「我的」-「我的简历」中上传',
+          }
+        })
+        return
+      }
+      wx.switchTab({ url: '/pages/index/camera' })
+    },
+    fail: () => {
+      wx.showModal({
+        title: '提示',
+        content: '需要先上传简历后再开始测试，请到「我的」-「我的简历」中上传',
           showCancel: true,
           confirmText: '去上传',
           success: (r) => {
@@ -198,16 +207,18 @@ Page({
 
   onShareAppMessage() {
     const { getSharePath } = require('../../utils/share')
+    const rm = this.data.reviewMode
     return {
-      title: '神仙团队AI性格测试 (企业版) - 团队分析与优化',
+      title: rm ? '神仙团队性格测试 (企业版) - 团队分析与优化' : '神仙团队性格测试 (企业版) - 团队分析与优化',
       path: getSharePath('/pages/enterprise/index')
     }
   },
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
+    const rm = this.data.reviewMode
     return {
-      title: '神仙团队AI性格测试 (企业版) - 团队分析与优化',
+      title: rm ? '神仙团队性格测试 (企业版) - 团队分析与优化' : '神仙团队性格测试 (企业版) - 团队分析与优化',
       query: buildShareQuery()
     }
   }

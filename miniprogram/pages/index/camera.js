@@ -1,4 +1,4 @@
-// pages/index/camera.js - 面相分析拍照页，拍完后上传到服务器再跳转结果页
+// pages/index/camera.js - 拍照页，拍完后上传到服务器再跳转结果页
 const app = getApp()
 const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
@@ -10,7 +10,8 @@ Page({
     guideText: '请正对镜头',
     uploading: false,
     needPhoneAuth: false,
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '分析',
+    reviewMode: true
   },
 
   onLoad() {
@@ -22,7 +23,7 @@ Page({
       app.getRuntimeConfig().then((cfg) => {
         if (cfg && cfg.textConfig) {
           app.globalData.textConfig = cfg.textConfig
-          this.setData({ aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析' })
+          this.setData({ aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析' })
         }
       }).catch(() => {})
     }
@@ -189,7 +190,7 @@ Page({
     console.error('相机错误:', e)
     wx.showModal({
       title: '相机权限',
-      content: '请允许使用相机权限以进行AI人脸分析',
+      content: '请允许使用相机权限以进行性格分析',
       confirmText: '去设置',
       success: (res) => {
         if (res.confirm) {

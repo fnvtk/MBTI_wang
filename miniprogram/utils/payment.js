@@ -318,7 +318,7 @@ function purchaseSingleTest(testType, success, fail) {
     mbti: 'MBTI性格测试',
     disc: 'DISC行为风格测试',
     pdp: 'PDP动物性格测试',
-    ai: 'AI人脸性格分析'
+    ai: '性格分析'
   }
   
   const orderId = generateOrderId(`single_${testType}`)
@@ -339,7 +339,7 @@ function purchaseSingleTest(testType, success, fail) {
 
 /**
  * 使用后台定价购买单项测试/报告
- * 支持：人脸测试/MBTI测试/DISC测试/PDP测试/完整报告/团队分析
+ * 支持：性格测试/MBTI测试/DISC测试/PDP测试/完整报告/团队分析
  * @param {String} productType - 'face' | 'mbti' | 'disc' | 'pdp' | 'report' | 'team_analysis'
  * @param {String} description - 商品描述
  * @param {Function|Object} extra - 兼容两种调用方式：
@@ -369,7 +369,7 @@ function purchaseByPricing(productType, description, extra, maybeFail) {
   })
 }
 
-// 人脸测试完整报告
+// 性格测试完整报告
 // 兼容两种调用方式：
 // - purchaseFaceTest(success, fail)
 // - purchaseFaceTest({ testResultId, success, fail })
@@ -384,7 +384,7 @@ function purchaseFaceTest(arg1, arg2) {
 
   const { testResultId, success, fail } = opts
 
-  purchaseByPricing('face', 'AI人脸性格分析完整报告', { testResultId, success, fail })
+  purchaseByPricing('face', '性格分析完整报告', { testResultId, success, fail })
 }
 
 // MBTI测试付费版（支持 purchaseMbtiTest({ testResultId, success, fail })）
@@ -415,7 +415,7 @@ function purchaseResumeAnalysis(arg1, arg2) {
   purchaseByPricing('resume', '简历综合分析付费版', { testResultId, success, fail })
 }
 
-// 完整报告（整合MBTI/DISC/PDP/AI人脸等深度解读）
+// 完整报告（整合MBTI/DISC/PDP等深度解读）
 function purchaseFullReport(success, fail) {
   purchaseByPricing('report', '完整人格与职业发展报告', success, fail)
 }

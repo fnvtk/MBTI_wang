@@ -307,7 +307,7 @@ Page({
     const { getSharePathByScope } = require('../../utils/share')
     const rm = !!app.globalData.reviewMode
     return {
-      title: rm ? '神仙团队性格测试 - 发现你的MBTI类型' : '神仙团队AI性格测试 - 发现你的MBTI类型',
+      title: '神仙团队性格测试 - 发现你的MBTI类型',
       path: getSharePathByScope('/pages/index/index')
     }
   },
@@ -316,7 +316,7 @@ Page({
     const { buildShareQuery } = require('../../utils/share')
     const rm = !!app.globalData.reviewMode
     return {
-      title: rm ? '神仙团队性格测试 - 发现你的MBTI类型' : '神仙团队AI性格测试 - 发现你的MBTI类型',
+      title: '神仙团队性格测试 - 发现你的MBTI类型',
       query: buildShareQuery()
     }
   }

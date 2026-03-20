@@ -1,5 +1,5 @@
-<!--pages/index/camera.wxml - AI拍照页面（按旧版模板重构）-->
-<view class="container">
+<!--pages/index/camera.wxml - 拍照页面-->
+<view class="container" wx:if="{{!reviewMode}}">
   <view class="progress-section">
     <view class="progress-info">
       <text class="step-text">步骤 {{photoIndex + 1}}/3</text>
@@ -54,7 +54,7 @@
         <text class="action-button-text">重新拍摄</text>
       </view>
       <view class="action-button primary" bindtap="completeCapture">
-        <text class="action-button-text">立即{{aiAnalysisText || '智能分析'}}</text>
+        <text class="action-button-text">立即{{aiAnalysisText || '分析'}}</text>
       </view>
     </view>
   </view>

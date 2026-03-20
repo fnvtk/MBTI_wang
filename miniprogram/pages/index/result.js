@@ -1,4 +1,4 @@
-// pages/index/result.js - AI分析结果页（按旧版模板重构）
+// pages/index/result.js - 分析结果页
 const app = getApp()
 const payment = require('../../utils/payment')
 const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
@@ -12,7 +12,7 @@ Page({
     noFaceError: false,
     noFaceMessage: '',
     progress: 0,
-    analyzingTip: '正在识别面部特征...',
+    analyzingTip: '正在分析中...',
     activeTab: 'face', // 'face' | 'bone'
     // 报告付费信息
     payInfo: {
@@ -52,8 +52,8 @@ Page({
     hasPhone: false,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
-    aiAnalysisText: '智能分析',
-    reviewMode: false
+    aiAnalysisText: '分析',
+    reviewMode: true
   },
 
   onLoad(options) {
@@ -69,7 +69,7 @@ Page({
       this.setData({
         analyzingTitle: tc.analyzingTitle || '正在分析中',
         reportTitle: tc.reportTitle || '分析报告',
-        aiAnalysisText: tc.aiAnalysisText || '智能分析'
+        aiAnalysisText: tc.aiAnalysisText || '分析'
       })
       if (tc.reportTitle) wx.setNavigationBarTitle({ title: tc.reportTitle })
     } else {
@@ -80,7 +80,7 @@ Page({
           this.setData({
             analyzingTitle: t.analyzingTitle || '正在分析中',
             reportTitle: t.reportTitle || '分析报告',
-            aiAnalysisText: t.aiAnalysisText || '智能分析'
+            aiAnalysisText: t.aiAnalysisText || '分析'
           })
           if (t.reportTitle) wx.setNavigationBarTitle({ title: t.reportTitle })
         }
@@ -145,7 +145,7 @@ Page({
       this.setData({
         analyzingTitle: tc.analyzingTitle || '正在分析中',
         reportTitle: tc.reportTitle || '分析报告',
-        aiAnalysisText: tc.aiAnalysisText || '智能分析'
+        aiAnalysisText: tc.aiAnalysisText || '分析'
       })
     }
   },
@@ -169,9 +169,9 @@ Page({
       return
     }
     const tips = [
-      '正在识别面部特征...',
-      '分析眉眼特征...',
-      '结合《冰鉴》分析骨形...',
+      '正在分析数据...',
+      '匹配性格特征...',
+      '综合评估中...',
       '匹配MBTI/PDP/DISC...',
       '生成综合报告...'
     ]
@@ -524,7 +524,7 @@ Page({
   onShareAppMessage() {
     const r = this.data.result
     const rm = this.data.reviewMode
-    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '智能分析')
+    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '分析')
     const { getSharePathByScope } = require('../../utils/share')
     return {
       title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
@@ -535,7 +535,7 @@ Page({
   onShareTimeline() {
     const r = this.data.result
     const rm = this.data.reviewMode
-    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '智能分析')
+    const t = rm ? '测试结果' : (this.data.aiAnalysisText || '分析')
     const { buildShareQuery } = require('../../utils/share')
     return {
       title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,

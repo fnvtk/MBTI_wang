@@ -7,10 +7,10 @@ Page({
     statusBarHeight: 0,
     navbarHeight: 88,
     showEnterpriseEntry: false,
-    siteTitle: '神仙团队AI性格测试',
-    startButtonText: '开始面相测试',
-    aiAnalysisText: '智能分析',
-    reviewMode: false
+    siteTitle: '神仙团队性格测试',
+    startButtonText: '开始性格测试',
+    aiAnalysisText: '分析',
+    reviewMode: true
   },
 
   onLoad(options) {
@@ -28,9 +28,9 @@ Page({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
-      siteTitle: gd.reviewMode ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队AI性格测试'),
+      siteTitle: gd.reviewMode ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
       startButtonText: gd.reviewMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
-      aiAnalysisText: gd.reviewMode ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'),
+      aiAnalysisText: gd.reviewMode ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: !!gd.reviewMode
     })
     // 预加载站点名称与文案配置
@@ -46,7 +46,7 @@ Page({
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
             startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '开始面相测试'),
-            aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '智能分析')
+            aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
         this.setData({ reviewMode: rm })
@@ -99,9 +99,9 @@ Page({
     const gd = getApp().globalData
     const rm = !!gd.reviewMode
     this.setData({
-      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队AI性格测试'),
+      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
       startButtonText: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
-      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'),
+      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm
     })
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
@@ -172,7 +172,7 @@ Page({
     const { getSharePathByScope } = require('../../utils/share')
     const rm = this.data.reviewMode
     return {
-      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
+      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : '性格测试 - 看看你的面相透露了什么性格密码',
       path: getSharePathByScope('/pages/index/index')
     }
   },
@@ -181,7 +181,7 @@ Page({
     const { buildShareQuery } = require('../../utils/share')
     const rm = this.data.reviewMode
     return {
-      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : 'AI人脸性格分析 - 看看你的面相透露了什么性格密码',
+      title: rm ? '性格测试 - 快来测测你的MBTI性格类型' : '性格测试 - 看看你的面相透露了什么性格密码',
       query: buildShareQuery()
     }
   }

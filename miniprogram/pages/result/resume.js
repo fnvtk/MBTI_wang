@@ -93,7 +93,7 @@ Page({
     const tips = [
       '正在汇总各项测评结果...',
       '正在解析简历内容...',
-      'AI 正在进行深度匹配分析...',
+      '正在进行深度匹配分析...',
       '正在生成综合评估报告...',
       '分析即将完成，请稍候...'
     ]
@@ -187,7 +187,7 @@ Page({
         const isTimeout = err && (err.errMsg || '').indexOf('timeout') !== -1
         this.setData({
           loading: false,
-          error: isTimeout ? 'AI 分析耗时较长，请点击「重新生成」再试。' : '网络请求失败，请检查网络后重试。'
+          error: isTimeout ? '分析耗时较长，请点击「重新生成」再试。' : '网络请求失败，请检查网络后重试。'
         })
       }
     })

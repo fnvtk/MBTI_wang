@@ -1,0 +1,135 @@
+<!--pages/purchase/index.wxml - 开通会员（深度服务类目由接口拉取，个人/企业区分）-->
+
+<!-- 成功弹窗 -->
+<view class="success-mask" tt:if="{{successModal.visible}}" bindtap="closeSuccessModal">
+  <view class="success-dialog" catchtap="catchTap">
+    <view class="success-icon-wrap">
+      <view class="success-icon-circle">
+        <text class="success-icon-check">✓</text>
+      </view>
+    </view>
+    <text class="success-dialog-title">{{successModal.title}}</text>
+    <text class="success-dialog-content">{{successModal.content}}</text>
+    <view tt:if="{{successModal.wechat}}" class="success-wechat-wrap">
+      <text class="success-wechat-label">客服微信</text>
+      <text class="success-wechat-val">{{successModal.wechat}}</text>
+    </view>
+    <view class="success-dialog-btns">
+      <button tt:if="{{successModal.wechat}}" class="success-btn-copy" bindtap="copyWechat">复制微信号</button>
+      <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
+    </view>
+  </view>
+</view>
+
+<view class="container">
+
+  <view tt:if="{{loading}}" class="loading-wrap">
+    <text class="loading-text">加载中...</text>
+  </view>
+
+  <!-- 个人版：按类目列表渲染 -->
+  <view tt:elif="{{activeTab === 'personal'}}">
+    <view tt:for="{{personalCategories}}" tt:key="id" class="pricing-card {{index === 0 ? 'featured' : ''}}" style="margin: 24rpx;">
+      <view class="card-header">
+        <text class="plan-title">{{item.title}}</text>
+        <view class="price-section" tt:if="{{item.price !== undefined}}">
+          <text class="price-symbol">¥</text>
+          <text class="price-amount">{{item.price}}</text>
+          <text class="price-unit">{{item.priceUnit || '/次'}}</text>
+        </view>
+        <text class="plan-subtitle" tt:if="{{item.subtitle}}">{{item.subtitle}}</text>
+      </view>
+      <view class="features-list" tt:if="{{item.features && item.features.length}}">
+        <view class="feature-item" tt:for="{{item.features}}" tt:for-item="f" tt:key="*this">
+          <view class="check-icon">✓</view>
+          <text class="feature-text">{{f}}</text>
+        </view>
+      </view>
+      <!-- 未有手机号时：使用微信系统手机号授权组件 -->
+      <button
+        class="purchase-button primary"
+        tt:if="{{item.actionType === 'buy' && !hasPhone}}"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumberForPurchase"
+        data-tab="personal"
+        data-index="{{index}}"
+      >
+        <text class="button-text">立即购买</text>
+      </button>
+      <!-- 已有手机号时：普通按钮，直接走支付 -->
+      <button
+        class="purchase-button primary"
+        tt:elif="{{item.actionType === 'buy' && hasPhone}}"
+        bindtap="handlePurchaseTap"
+        data-tab="personal"
+        data-index="{{index}}"
+      >
+        <text class="button-text">立即购买</text>
+      </button>
+    </view>
+    <view tt:if="{{!loading && activeTab === 'personal' && personalCategories.length === 0}}" class="empty-tip">
+      <text>暂无可用的个人版套餐</text>
+    </view>
+  </view>
+
+  <!-- 企业版：按类目列表渲染 -->
+  <view tt:elif="{{activeTab === 'enterprise'}}">
+    <view tt:for="{{enterpriseCategories}}" tt:key="id" class="pricing-card {{index === 1 ? 'featured-blue' : ''}}" style="margin: 24rpx;">
+      <view class="card-header-flex">
+        <view class="header-left">
+          <text class="plan-title-sm">{{item.title}}</text>
+          <text class="plan-desc" tt:if="{{item.subtitle}}">{{item.subtitle}}</text>
+        </view>
+        <view class="header-right" tt:if="{{item.priceDisplay || item.price}}">
+          <text class="price-amount-small">{{item.priceDisplay || '¥' + item.price}}</text>
+          <text class="price-limit" tt:if="{{item.userLimit}}">{{item.userLimit}}</text>
+        </view>
+      </view>
+      <view class="features-list" tt:if="{{item.features && item.features.length}}">
+        <view class="feature-item" tt:for="{{item.features}}" tt:for-item="f" tt:key="*this">
+          <view class="check-icon blue">✓</view>
+          <text class="feature-text">{{f}}</text>
+        </view>
+      </view>
+      <!-- 未有手机号时：使用微信系统手机号授权组件 -->
+      <button
+        class="purchase-button secondary"
+        tt:if="{{!hasPhone}}"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onGetPhoneNumberForPurchase"
+        data-tab="enterprise"
+        data-index="{{index}}"
+      >
+        <text class="button-text">{{item.buttonText || '申请咨询'}}</text>
+      </button>
+      <!-- 已有手机号时：普通按钮，直接触发咨询逻辑 -->
+      <button
+        class="purchase-button secondary"
+        tt:elif="{{hasPhone}}"
+        bindtap="handlePurchaseTap"
+        data-tab="enterprise"
+        data-index="{{index}}"
+      >
+        <text class="button-text">{{item.buttonText || '申请咨询'}}</text>
+      </button>
+    </view>
+    <view tt:if="{{!loading && activeTab === 'enterprise' && enterpriseCategories.length === 0}}" class="empty-tip">
+      <text>暂无可用的企业版套餐</text>
+    </view>
+  </view>
+
+  <view class="safety-tips">
+    <view class="safety-item">
+      <text class="safety-icon">🔒</text>
+      <text class="safety-text">微信安全支付</text>
+    </view>
+    <view class="safety-item">
+      <text class="safety-icon">✅</text>
+      <text class="safety-text">即时到账开通</text>
+    </view>
+    <view class="safety-item">
+      <text class="safety-icon">📞</text>
+      <text class="safety-text">7×24客服</text>
+    </view>
+  </view>
+</view>

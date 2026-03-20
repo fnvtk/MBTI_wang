@@ -234,13 +234,13 @@ Page({
 
   onShareAppMessage() {
     const { getSharePath } = require('../../utils/share')
-    return { title: '神仙团队AI性格测试 - 发现你的内在潜能', path: getSharePath('/pages/purchase/index') }
+    return { title: '神仙团队性格测试 - 发现你的内在潜能', path: getSharePath('/pages/purchase/index') }
   },
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
     return {
-      title: '神仙团队AI性格测试 - 发现你的内在潜能',
+      title: '神仙团队性格测试 - 发现你的内在潜能',
       query: buildShareQuery()
     }
   }
