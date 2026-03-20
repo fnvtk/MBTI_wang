@@ -9,7 +9,8 @@ Page({
     showEnterpriseEntry: false,
     siteTitle: '神仙团队AI性格测试',
     startButtonText: '开始面相测试',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    maintenanceMode: false
   },
 
   onLoad(options) {
@@ -23,13 +24,15 @@ Page({
     
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
     const gd = getApp().globalData
+    const maintenanceMode = !!(gd.maintenanceMode)
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonText: (gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      startButtonText: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
+      maintenanceMode
     })
     // 预加载站点名称与文案配置
     app.getRuntimeConfig().then((cfg) => {
@@ -40,11 +43,16 @@ Page({
         }
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
-          this.setData({
-            startButtonText: cfg.textConfig.startButtonText || '开始面相测试',
-            aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析'
-          })
         }
+        const maintenanceMode = !!(cfg && cfg.maintenanceMode)
+        if (cfg.maintenanceMode !== undefined) getApp().globalData.maintenanceMode = maintenanceMode
+        this.setData({
+          startButtonText: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonText || '开始面相测试'),
+          aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
+          maintenanceMode
+        })
+        const tabBar = typeof this.getTabBar === 'function' && this.getTabBar()
+        if (tabBar) tabBar.setData({ maintenanceMode })
       }
     }).catch(() => {})
     // ── 解析入参（兼容扫码 scene / 分享链接 options）──
@@ -83,19 +91,20 @@ Page({
   },
 
   onShow() {
-    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0 })
-    }
+    const tabBar = typeof this.getTabBar === 'function' && this.getTabBar()
+    if (tabBar) tabBar.setData({ selected: 0, maintenanceMode: !!getApp().globalData.maintenanceMode })
     // 个人版首页：固定 scope=personal，并清除企业来源上下文
     try {
       getApp().globalData.appScope = 'personal'
       getApp().globalData.enterpriseIdFromScene = null
     } catch (e) {}
     const gd = getApp().globalData
+    const maintenanceMode = !!(gd.maintenanceMode)
     this.setData({
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonText: (gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      startButtonText: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
+      maintenanceMode
     })
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
     this.setData({ showEnterpriseEntry: userInfo.hasEnterprise === true })
@@ -117,9 +126,13 @@ Page({
     }
   },
 
-  // 开始拍照（个人版入口：强制本次链路为个人定价）
+  // 开始拍照（个人版入口：强制本次链路为个人定价）；审核模式下跳转 test-select
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
+    if (this.data.maintenanceMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
     wx.switchTab({
       url: '/pages/index/camera'
     })

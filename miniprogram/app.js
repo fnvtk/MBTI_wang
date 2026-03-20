@@ -8,6 +8,7 @@ App({
     token: null,
     siteTitle: '神仙团队AI性格测试',
     textConfig: null, // 从 /api/config/runtime 动态加载：analyzingTitle, startButtonText, reportTitle, aiAnalysisText 等
+    maintenanceMode: undefined, // 审核模式，undefined=未加载，等 getRuntimeConfig 后再决定，避免 tabBar 闪烁
     // 当前使用范围：personal 个人版 / enterprise 企业版（影响定价与 enterpriseId 写入）
     appScope: 'personal',
     // 扫码进入企业页时 scene 解析出的企业ID（e_123），提交测试/分析时优先使用
@@ -35,10 +36,11 @@ App({
     // 静默登录获取openId
     this.silentLogin()
 
-    // 预加载站点/小程序名称（供导航栏展示）
+    // 预加载站点/小程序名称、审核模式（供导航栏展示）
     this.getRuntimeConfig().then((cfg) => {
-      if (cfg && cfg.siteTitle) {
-        this.globalData.siteTitle = cfg.siteTitle
+      if (cfg) {
+        if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
+        if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
       }
     }).catch(() => {})
   },
@@ -332,6 +334,7 @@ App({
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
+            if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
             resolve(data)
           } else {
             reject(new Error(res.data && res.data.message ? res.data.message : '获取配置失败'))

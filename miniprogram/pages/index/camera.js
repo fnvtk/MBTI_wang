@@ -1,6 +1,6 @@
 // pages/index/camera.js - 面相分析拍照页，拍完后上传到服务器再跳转结果页
 const app = getApp()
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -29,10 +29,8 @@ Page({
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
-    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 })
-    }
+    const tabBar = typeof this.getTabBar === 'function' && this.getTabBar()
+    if (tabBar) tabBar.setData({ selected: 1, maintenanceMode: !!app.globalData.maintenanceMode })
     this.setData({ needPhoneAuth: !hasPhone() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
@@ -115,14 +113,8 @@ Page({
     })
   },
 
-  // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
+  // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页（不强制完善资料）
   completeCapture() {
-    if (!ensureProfileCompleteAndRedirect()) return
-    if (!hasPhone()) {
-      wx.showToast({ title: '请先授权手机号', icon: 'none' })
-      this.setData({ needPhoneAuth: true })
-      return
-    }
     const photos = this.data.photos
     if (!photos || photos.length === 0) {
       wx.showToast({ title: '请先拍摄照片', icon: 'none' })

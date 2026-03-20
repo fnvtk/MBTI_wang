@@ -9,7 +9,8 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom) + 40rpx); 
+  /* 底部留足空间，避免开始按钮遮挡 tabBar 中间浮起圆钮（上浮 56rpx） */
+  padding-bottom: calc(156rpx + env(safe-area-inset-bottom) + 40rpx);
 }
 
 /* 背景装饰圆形 */

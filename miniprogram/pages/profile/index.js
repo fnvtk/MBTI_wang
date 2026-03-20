@@ -50,9 +50,8 @@ Page({
       this.loadData()
     }
     
-    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 2 })
-    }
+    const tabBar = typeof this.getTabBar === 'function' && this.getTabBar()
+    if (tabBar) tabBar.setData({ selected: 2, maintenanceMode: !!app.globalData.maintenanceMode })
   },
 
   /** 先确保登录完成（静默登录），再刷新页面数据 */

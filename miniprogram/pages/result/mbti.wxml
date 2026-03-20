@@ -10,8 +10,8 @@
           <text class="type-description">{{mbtiDesc.description}}</text>
         </view>
 
-        <!-- 付费墙：未解锁时显示 -->
-        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+        <!-- 付费墙：审核模式下跳过资料检查；非审核模式下未完善资料显示「完善资料」 -->
+        <view class="paywall-card" wx:if="{{(!maintenanceMode && !isProfileComplete) || ((maintenanceMode || isProfileComplete) && payInfo.requiresPayment && !payInfo.isPaid)}}">
           <view class="paywall-content">
             <view class="paywall-blur">
               <text class="paywall-fake-title">完整性格分析</text>
@@ -20,29 +20,38 @@
               <text class="paywall-fake-line">• 职业匹配与人际关系建议</text>
             </view>
             <view class="paywall-mask"></view>
-            <!-- 未有手机号：使用微信系统手机号授权 -->
-            <button
+            <!-- 未完善资料（非审核模式）：显示完善资料按钮，用户点击后手动跳转 -->
+            <view
               class="paywall-btn"
-              wx:if="{{!hasPhone}}"
-              open-type="getPhoneNumber"
-              bindgetphonenumber="onGetPhoneNumberForMbtiPay"
+              wx:if="{{!maintenanceMode && !isProfileComplete}}"
+              bindtap="goToCompleteProfile"
             >
-              <text class="paywall-btn-main">解锁完整报告</text>
-              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
-            </button>
-            <!-- 已有手机号：普通按钮，直接解锁 -->
-            <button
-              class="paywall-btn"
-              wx:elif="{{hasPhone}}"
-              bindtap="unlockFullReport"
-            >
-              <text class="paywall-btn-main">解锁完整报告</text>
-              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
-            </button>
+              <text class="paywall-btn-main">完善资料</text>
+            </view>
+            <!-- 有价格：解锁按钮 -->
+            <block wx:elif="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+              <button
+                class="paywall-btn"
+                wx:if="{{!hasPhone}}"
+                open-type="getPhoneNumber"
+                bindgetphonenumber="onGetPhoneNumberForMbtiPay"
+              >
+                <text class="paywall-btn-main">解锁完整报告</text>
+                <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+              </button>
+              <view
+                class="paywall-btn"
+                wx:elif="{{hasPhone}}"
+                bindtap="unlockFullReport"
+              >
+                <text class="paywall-btn-main">解锁完整报告</text>
+                <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+              </view>
+            </block>
           </view>
         </view>
 
-        <view class="dimensions-section" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <view class="dimensions-section" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
           <view class="dimension-item" wx:for="{{dimensions}}" wx:key="key">
             <view class="dimension-labels">
               <text class="label-left">{{item.left}}</text>
@@ -59,7 +68,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
         <text class="card-title">性格特征分析</text>
         <view class="trait-section">
           <text class="trait-title">优势</text>
@@ -78,7 +87,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
         <text class="card-title">职业匹配度分析</text>
         <view class="career-item" wx:for="{{mbtiDesc.careers}}" wx:key="*this">
           <view class="career-dot"></view>
@@ -86,7 +95,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{(!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
+      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
         <text class="card-title">人际关系分析</text>
         <text class="relationship-text">{{mbtiDesc.relationships}}</text>
       </view>

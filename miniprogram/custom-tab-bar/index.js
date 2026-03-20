@@ -2,6 +2,7 @@
 Component({
   data: {
     selected: 0,
+    maintenanceMode: true, // 默认隐藏，等配置加载后再决定是否显示，避免闪烁或残留
     list: [
       { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
       { pagePath: '/pages/index/camera', text: '查看报告', textKey: 'camera', icon: 'camera' },
@@ -33,6 +34,9 @@ Component({
         
         const url = currentPage.route
         let selected = 0
+        // 未加载配置时视为审核模式（隐藏按钮），避免残留或闪烁
+        const gd = getApp().globalData || {}
+        const maintenanceMode = gd.maintenanceMode === false ? false : true
         
         if (url === 'pages/index/index' || url === 'pages/enterprise/index') {
           selected = 0
@@ -42,7 +46,7 @@ Component({
           selected = 2
         }
         
-        this.setData({ selected })
+        this.setData({ selected, maintenanceMode })
       } catch (error) {
         console.error('updateSelected error:', error)
         // 默认选中第一个

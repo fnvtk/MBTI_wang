@@ -103,6 +103,16 @@ class AppConfig extends BaseController
         }
         $siteTitle = $miniprogramName !== '' ? $miniprogramName : ($siteName !== '' ? $siteName : '神仙团队AI性格测试');
 
+        // 审核模式（原 maintenanceMode）：开启后首页展示「开始性格测试」并跳转 test-select
+        $maintenanceMode = false;
+        $systemRow = Db::name('system_config')->where('key', 'system')->find();
+        if ($systemRow && !empty($systemRow['value'])) {
+            $sysVal = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
+            if (is_array($sysVal) && !empty($sysVal['maintenanceMode'])) {
+                $maintenanceMode = true;
+            }
+        }
+
         // 小程序文案配置（分析中提示、按钮、报告标题等）
         $textConfig = [
             'analyzingTitle' => '正在分析中',
@@ -144,6 +154,7 @@ class AppConfig extends BaseController
             'miniprogramName' => $miniprogramName,
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
+            'maintenanceMode' => $maintenanceMode,
         ]);
     }
 

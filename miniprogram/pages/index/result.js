@@ -1,7 +1,7 @@
 // pages/index/result.js - AI分析结果页（按旧版模板重构）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -50,6 +50,7 @@ Page({
     hasReloadedAfterPay: false,
     // 是否已在本地拥有手机号（决定是否还需要弹出微信手机号授权）
     hasPhone: false,
+    isProfileComplete: false,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
     aiAnalysisText: '智能分析'
@@ -134,8 +135,7 @@ Page({
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
-    this.setData({ hasPhone: hasPhone() })
+    this.setData({ hasPhone: hasPhone(), isProfileComplete: isProfileComplete() })
     const tc = app.globalData.textConfig
     if (tc) {
       this.setData({
@@ -324,7 +324,8 @@ Page({
           requiresPayment: needPay,
           isPaid: !!detailPayload.isPaid,
           amountYuan: needPay ? amountYuan : 0
-        }
+        },
+        isProfileComplete: isProfileComplete()
       })
       return
     }
@@ -363,12 +364,15 @@ Page({
       })
   },
 
+  goToCompleteProfile() {
+    wx.navigateTo({ url: '/pages/user-profile/index' })
+  },
+
   // 解锁完整报告：发起人脸测试付费
   unlockFullReport() {
-    const { payInfo, testResultId, hasReloadedAfterPay } = this.data
-    if (!payInfo.requiresPayment || payInfo.isPaid) {
-      return
-    }
+    const { payInfo, testResultId, hasReloadedAfterPay, isProfileComplete } = this.data
+    if (!isProfileComplete) return
+    if (!payInfo.requiresPayment || payInfo.isPaid) return
 
     app.ensureLogin().then((logged) => {
       if (!logged) {
@@ -402,14 +406,13 @@ Page({
 
   // AI结果页付费按钮：就地触发微信手机号授权，然后调用 unlockFullReport
   onGetPhoneNumberForFacePay(e) {
-    if (!ensureProfileCompleteAndRedirect()) return
     const { code, errMsg } = e.detail || {}
     if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
-      if (!hasPhone()) {
+      if (hasPhone()) {
+        this.unlockFullReport()
+      } else {
         wx.showToast({ title: '需要授权手机号才能继续', icon: 'none' })
-        return
       }
-      this.unlockFullReport()
       return
     }
     if (!code) {

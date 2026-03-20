@@ -1,6 +1,7 @@
 // pages/result/disc.js - DISC结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
+const { isProfileComplete } = require('../../utils/phoneAuth.js')
 
 function toIntPercent(v) {
   if (v == null) return 0
@@ -32,7 +33,14 @@ Page({
     ],
     payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 },
     testResultId: null,
-    hasReloadedAfterPay: false
+    hasReloadedAfterPay: false,
+    isProfileComplete: false,
+    maintenanceMode: false
+  },
+
+  onShow() {
+    const maintenanceMode = !!(getApp().globalData && getApp().globalData.maintenanceMode)
+    this.setData({ isProfileComplete: isProfileComplete(), maintenanceMode })
   },
 
   onLoad(options) {
@@ -77,7 +85,8 @@ Page({
             isPaid,
             amountYuan: needPaymentToUnlock ? amountYuan : 0
           }
-          this.setData({ payInfo })
+          const maintenanceMode = !!(getApp().globalData && getApp().globalData.maintenanceMode)
+          this.setData({ payInfo, isProfileComplete: isProfileComplete(), maintenanceMode })
         } else {
           wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
         }
@@ -101,8 +110,13 @@ Page({
       .catch(() => this.setData({ payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 } }))
   },
 
+  goToCompleteProfile() {
+    wx.navigateTo({ url: '/pages/user-profile/index' })
+  },
+
   unlockFullReport() {
-    const { payInfo, testResultId, hasReloadedAfterPay } = this.data
+    const { payInfo, testResultId, hasReloadedAfterPay, isProfileComplete } = this.data
+    if (!isProfileComplete) return
     if (!payInfo.requiresPayment || payInfo.isPaid) return
     app.ensureLogin && app.ensureLogin().then((logged) => {
       if (!logged) { wx.showToast({ title: '请先登录', icon: 'none' }); return }

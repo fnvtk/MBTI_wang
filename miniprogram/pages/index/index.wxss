@@ -9,7 +9,8 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom) + 40rpx);
+  /* 底部留足空间，避免开始按钮遮挡 tabBar 中间浮起圆钮（上浮 56rpx） */
+  padding-bottom: calc(156rpx + env(safe-area-inset-bottom) + 40rpx);
 }
 
 /* 背景装饰圆形（与企业版一致） */
@@ -258,14 +259,6 @@
   font-size: 26rpx;
   color: #8b5cf6;
   font-weight: 600;
-}
-
-.ai-generated-tip {
-  text-align: center;
-  font-size: 24rpx;
-  color: #9CA3AF;
-  margin-top: 24rpx;
-  margin-bottom: 16rpx;
 }
 
 /* 确保底部导航显示 */

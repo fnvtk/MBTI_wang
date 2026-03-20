@@ -12,6 +12,7 @@
       <text class="tab-text">首页</text>
     </view>
     <view
+      wx:if="{{!maintenanceMode}}"
       class="tab-item-center {{selected === 1 ? 'active' : ''}}"
       data-index="1"
       data-path="/pages/index/camera"

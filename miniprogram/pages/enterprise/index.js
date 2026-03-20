@@ -8,7 +8,8 @@ Page({
     navbarHeight: 88,
     siteTitle: '神仙团队AI性格测试',
     startButtonEnterprise: '开始面部测试',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    maintenanceMode: false
   },
 
   onLoad(options) {
@@ -59,12 +60,14 @@ Page({
     const statusBarHeightRpx = (statusBarHeight * 750) / screenWidth
     const navbarHeightRpx = statusBarHeightRpx + 88
     const gd = app.globalData
+    const maintenanceMode = !!(gd.maintenanceMode)
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: (gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      startButtonEnterprise: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
+      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
+      maintenanceMode
     })
 
     // 未绑定企业的用户：若从邀请码扫码进入（有 enterpriseIdFromScene）也允许使用企业版
@@ -78,9 +81,18 @@ Page({
     if (!fromInvite) {
       if (userInfo.hasEnterprise === true) {
         app.getRuntimeConfig().then((cfg) => {
-          if (cfg && cfg.siteTitle) {
-            app.globalData.siteTitle = cfg.siteTitle
-            this.setData({ siteTitle: cfg.siteTitle })
+          if (cfg) {
+            if (cfg.siteTitle) {
+              app.globalData.siteTitle = cfg.siteTitle
+              this.setData({ siteTitle: cfg.siteTitle })
+            }
+            const maintenanceMode = !!(cfg.maintenanceMode)
+            if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = maintenanceMode
+            this.setData({
+              startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+              aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
+              maintenanceMode
+            })
           }
         }).catch(() => {})
         return
@@ -98,13 +110,14 @@ Page({
             app.globalData.siteTitle = cfg.siteTitle
             this.setData({ siteTitle: cfg.siteTitle })
           }
-          if (cfg.textConfig) {
-            app.globalData.textConfig = cfg.textConfig
-            this.setData({
-              startButtonEnterprise: cfg.textConfig.startButtonEnterprise || '开始面部测试',
-              aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析'
-            })
-          }
+          if (cfg.textConfig) app.globalData.textConfig = cfg.textConfig
+          const maintenanceMode = !!(cfg && cfg.maintenanceMode)
+          if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = maintenanceMode
+          this.setData({
+            startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+            aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
+            maintenanceMode
+          })
         }
         if ((cfg && cfg.pricingType) !== 'enterprise' && !app.globalData.enterpriseIdFromScene) {
           redirectBack()
@@ -136,14 +149,17 @@ Page({
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0 })
+      const tabBar = this.getTabBar()
+      tabBar.setData({ selected: 0, maintenanceMode: !!getApp().globalData.maintenanceMode })
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
+    const maintenanceMode = !!(gd.maintenanceMode)
     this.setData({
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: (gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试',
-      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+      startButtonEnterprise: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
+      aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
+      maintenanceMode
     })
   },
 
@@ -154,8 +170,12 @@ Page({
     })
   },
 
-  // 开始AI面部测试（先校验是否已上传简历，再跳转相机）
+  // 开始AI面部测试（先校验是否已上传简历，再跳转相机）；审核模式下直接跳转 test-select
   startAITest() {
+    if (this.data.maintenanceMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
     const eid = (app.globalData && app.globalData.enterpriseIdFromScene) || (app.globalData && app.globalData.userInfo && app.globalData.userInfo.enterpriseId) || (wx.getStorageSync('userInfo') || {}).enterpriseId || null
     const query = eid ? `?enterpriseId=${eid}&pageSize=1` : '?pageSize=1'
     request({
