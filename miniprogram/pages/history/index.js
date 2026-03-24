@@ -9,7 +9,8 @@ Page({
     list: [],
     total: 0,
     loading: false,
-    isEnterprise: false
+    isEnterprise: false,
+    reviewMode: false
   },
 
   _checkIsEnterprise() {
@@ -26,7 +27,7 @@ Page({
   },
 
   onShow() {
-    this.setData({ isEnterprise: this._checkIsEnterprise() })
+    this.setData({ isEnterprise: this._checkIsEnterprise(), reviewMode: !!app.globalData.reviewMode })
     this.loadAll()
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 })
@@ -104,7 +105,7 @@ Page({
     if (mbtiResult) list.push({ type: 'mbti', key: 'mbti', emoji: '🧠', typeName: 'MBTI性格测试', resultText: mbtiResult.mbtiType || '未知', testTime: this.formatTime(mbtiResult.timestamp), data: mbtiResult })
     if (pdpResult)  list.push({ type: 'pdp',  key: 'pdp',  emoji: pdpResult.description?.emoji || '🦁', typeName: 'PDP行为偏好测试', resultText: pdpResult.description?.type || '未知', testTime: this.formatTime(pdpResult.timestamp || pdpResult.completedAt), data: pdpResult })
     if (discResult) list.push({ type: 'disc', key: 'disc', emoji: '📊', typeName: 'DISC性格测试', resultText: (discResult.dominantType || '未知') + '型', testTime: this.formatTime(discResult.timestamp || discResult.completedAt), data: discResult })
-    if (aiResult)   list.push({ type: 'ai',   key: 'ai',   emoji: '👁️', typeName: '面相分析', resultText: aiResult.mbti || '未知', testTime: this.formatTime(aiResult.timestamp || aiResult.completedAt), data: aiResult })
+    if (aiResult && !app.globalData.reviewMode) list.push({ type: 'ai', key: 'ai', emoji: '👁️', typeName: '面相分析', resultText: aiResult.mbti || '未知', testTime: this.formatTime(aiResult.timestamp || aiResult.completedAt), data: aiResult })
     this.setData({ list, total: list.length, loading: false })
   },
 

@@ -11,8 +11,20 @@
       <image class="tab-icon" src="{{selected === 0 ? '/images/home-active.png' : '/images/home.png'}}" mode="aspectFit" />
       <text class="tab-text">首页</text>
     </view>
+    <!-- 审核模式：中间按钮显示"测试"文字 -->
     <view
-      wx:if="{{!maintenanceMode}}"
+      wx:if="{{reviewMode}}"
+      class="tab-item {{selected === 1 ? 'active' : ''}}"
+      data-index="1"
+      data-path="/pages/test-select/index"
+      bindtap="switchTab"
+    >
+      <image class="tab-icon" src="{{selected === 1 ? '/images/home-active.png' : '/images/home.png'}}" mode="aspectFit" />
+      <text class="tab-text">测试</text>
+    </view>
+    <!-- 正常模式：中间浮起拍照按钮 -->
+    <view
+      wx:else
       class="tab-item-center {{selected === 1 ? 'active' : ''}}"
       data-index="1"
       data-path="/pages/index/camera"

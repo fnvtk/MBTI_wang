@@ -16,7 +16,7 @@
         <view class="tab-item {{activeTab === 'disc' ? 'active' : ''}}" bindtap="changeTab" data-tab="disc">
           <text class="tab-text">DISC</text>
         </view>
-        <view class="tab-item {{activeTab === 'ai' ? 'active' : ''}}" bindtap="changeTab" data-tab="ai">
+        <view wx:if="{{!reviewMode}}" class="tab-item {{activeTab === 'ai' ? 'active' : ''}}" bindtap="changeTab" data-tab="ai">
           <text class="tab-text">面相</text>
         </view>
         <view wx:if="{{isEnterprise}}" class="tab-item {{activeTab === 'resume' ? 'active' : ''}}" bindtap="changeTab" data-tab="resume">

@@ -1,7 +1,7 @@
 // pages/purchase/index.js - 开通会员（深度服务价格：个人/企业区分，类目由后端配置可新增）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -27,6 +27,7 @@ Page({
   },
 
   onShow() {
+    if (!ensureProfileCompleteAndRedirect()) return
     this.setData({ hasPhone: hasPhone() })
   },
 
@@ -81,8 +82,9 @@ Page({
     this.handlePurchase(tab, index)
   },
 
-  // 实际执行购买/咨询逻辑（不强制完善资料）
+  // 实际执行购买/咨询逻辑（已确保有手机号）
   handlePurchase(tab, index) {
+    if (!ensureProfileCompleteAndRedirect()) return
     if (index === undefined || index === null) return
     const list = tab === 'enterprise' ? this.data.enterpriseCategories : this.data.personalCategories
     const category = list[index]
@@ -232,13 +234,13 @@ Page({
 
   onShareAppMessage() {
     const { getSharePath } = require('../../utils/share')
-    return { title: '神仙团队AI性格测试 - 发现你的内在潜能', path: getSharePath('/pages/purchase/index') }
+    return { title: '神仙团队性格测试 - 发现你的内在潜能', path: getSharePath('/pages/purchase/index') }
   },
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
     return {
-      title: '神仙团队AI性格测试 - 发现你的内在潜能',
+      title: '神仙团队性格测试 - 发现你的内在潜能',
       query: buildShareQuery()
     }
   }

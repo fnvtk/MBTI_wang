@@ -23,7 +23,7 @@
       <text class="hero-icon">{{error ? '⚠️' : '📋'}}</text>
       <view class="hero-text-wrap">
         <text class="hero-title">{{error ? '生成失败' : '人才综合评估报告'}}</text>
-        <text class="hero-sub">{{error ? '请检查后重新生成' : '基于测评结果 · AI 综合分析'}}</text>
+        <text class="hero-sub">{{error ? '请检查后重新生成' : '基于测评结果 · 综合分析'}}</text>
       </view>
     </view>
 

@@ -18,6 +18,7 @@ Page({
     discTime: '',
     pdpTime: '',
     aiTime: '',
+    reviewMode: false,
     /** 最近记录的数据库 ID，用于跳转时传参 */
     mbtiResultId: null,
     discResultId: null,
@@ -45,13 +46,16 @@ Page({
     this.runLoginThenLoad()
   },
   onShow() {
+    // 同步审核模式
+    this.setData({ reviewMode: !!app.globalData.reviewMode })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
     }
     
-    const tabBar = typeof this.getTabBar === 'function' && this.getTabBar()
-    if (tabBar) tabBar.setData({ selected: 2, maintenanceMode: !!app.globalData.maintenanceMode })
+    if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+      this.getTabBar().setData({ selected: 2 })
+    }
   },
 
   /** 先确保登录完成（静默登录），再刷新页面数据 */
@@ -301,16 +305,18 @@ Page({
 
   onShareAppMessage() {
     const { getSharePathByScope } = require('../../utils/share')
+    const rm = !!app.globalData.reviewMode
     return {
-      title: '神仙团队AI性格测试 - 发现你的MBTI类型',
+      title: '神仙团队性格测试 - 发现你的MBTI类型',
       path: getSharePathByScope('/pages/index/index')
     }
   },
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
+    const rm = !!app.globalData.reviewMode
     return {
-      title: '神仙团队AI性格测试 - 发现你的MBTI类型',
+      title: '神仙团队性格测试 - 发现你的MBTI类型',
       query: buildShareQuery()
     }
   }

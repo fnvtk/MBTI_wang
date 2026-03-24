@@ -1,0 +1,219 @@
+<!--pages/promo/index.wxml-->
+<view class="container">
+  <!-- 顶部统计卡片 -->
+  <view class="hero-card">
+    <view class="hero-header-row">
+      <view class="hero-left">
+        <view class="wallet-icon">
+          <text class="emoji">🧧</text>
+        </view>
+        <view class="title-text">
+          <text class="label">可提现金额</text>
+          <view class="badge">
+            <view class="dot"></view>
+          <text class="badge-text">{{commissionRate}}% 高额返利</text>
+          </view>
+        </view>
+      </view>
+      <view class="hero-right">
+        <text class="amount">¥{{balance}}</text>
+        <text class="amount-sub">累计: ¥{{totalEarned}} | 待审核: ¥{{pendingAmount}}</text>
+      </view>
+    </view>
+    
+    <button class="withdraw-btn {{balance > 0 ? '' : 'disabled'}}" bindtap="handleWithdraw">
+      <text>{{balance > 0 ? '立即提现' : '暂无提现'}}</text>
+    </button>
+    
+    <view class="record-link" bindtap="goToWithdrawHistory">
+      <text>查看提现记录</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 自定义提现金额弹框 -->
+  <view class="withdraw-mask" tt:if="{{showWithdrawDialog}}">
+    <view class="withdraw-dialog">
+      <view class="dialog-title">申请提现</view>
+      <view class="dialog-sub">可提现 ¥{{balance}}，请输入本次提现金额</view>
+
+      <view class="amount-input-row">
+        <text class="currency">¥</text>
+        <input
+          class="amount-input"
+          type="digit"
+          focus="true"
+          value="{{withdrawAmountInput}}"
+          placeholder="至少 1.00 元"
+          bindinput="onWithdrawInput"
+        />
+      </view>
+      <view class="amount-hint">
+        <text>本次最高可提 ¥{{balance}}</text>
+      </view>
+      <view class="fee-actual-row" tt:if="{{withdrawFeePct > 0}}">
+        <text>手续费 ¥{{withdrawFeeYuan}}</text>
+        <text class="actual">实际到账 ¥{{withdrawActualYuan}}</text>
+      </view>
+      <view class="error-text" tt:if="{{withdrawError}}">
+        <text>{{withdrawError}}</text>
+      </view>
+
+      <view class="dialog-actions">
+        <view class="btn cancel" bindtap="closeWithdrawDialog">取消</view>
+        <view class="btn confirm" bindtap="confirmWithdraw">确定</view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 四格统计 -->
+  <view class="stats-grid">
+    <view class="stat-item">
+      <text class="stat-val">{{bindingCount}}</text>
+      <text class="stat-label">绑定中</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-val">{{paidCount}}</text>
+      <text class="stat-label">已付款</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-val highlight">{{expiringCount}}</text>
+      <text class="stat-label">即将过期</text>
+    </view>
+    <view class="stat-item">
+      <text class="stat-val">{{totalInvite}}</text>
+      <text class="stat-label">总邀请</text>
+    </view>
+  </view>
+
+  <!-- 收益规则 -->
+  <view class="section rule-section">
+    <view class="section-header">
+      <view class="header-icon red">
+        <text class="emoji-sm">🛡️</text>
+      </view>
+      <text class="section-title">推广收益规则</text>
+    </view>
+    <view class="rule-list">
+      <view class="rule-item">
+        <text class="rule-bullet">✨</text>
+        <text class="rule-text">用户绑定有效期为 <text class="highlight">{{bindingDays}}天</text>，期满自动解除</text>
+      </view>
+      <view class="rule-item">
+        <text class="rule-bullet">💰</text>
+        <text class="rule-text">单笔提现：最低 <text class="highlight">¥{{withdrawMinYuan}}</text>，</text>
+        <text class="rule-text" tt:if="{{withdrawMaxYuan}}">最高 <text class="highlight">¥{{withdrawMaxYuan}}</text></text>
+        <text class="rule-text" tt:else>不设上限</text>
+      </view>
+      <view class="rule-item" tt:if="{{withdrawFeePct > 0}}">
+        <text class="rule-bullet">📋</text>
+        <text class="rule-text">提现手续费：<text class="highlight">{{withdrawFeePct}}%</text></text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 绑定用户列表 -->
+  <view class="section user-section">
+    <view class="section-header border-b">
+      <view class="header-left">
+        <text class="emoji-sm">👥</text>
+        <text class="section-title">绑定用户</text>
+        <text class="count-label">({{totalInvite}})</text>
+      </view>
+    </view>
+    
+    <!-- Tab 切换 -->
+    <view class="tab-bar">
+      <view class="tab-item {{activeTab === 0 ? 'active' : ''}}" bindtap="switchTab" data-index="0">
+        绑定中 ({{bindingCount}})
+      </view>
+      <view class="tab-item {{activeTab === 1 ? 'active' : ''}}" bindtap="switchTab" data-index="1">
+        已付款 ({{paidCount}})
+      </view>
+      <view class="tab-item {{activeTab === 2 ? 'active' : ''}}" bindtap="switchTab" data-index="2">
+        已过期 ({{expiringCount}})
+      </view>
+    </view>
+
+    <!-- 空状态 -->
+    <view class="empty-state" tt:if="{{userList.length === 0}}">
+      <view class="empty-icon">
+        <text class="emoji-lg">🔍</text>
+      </view>
+      <text class="empty-text">目前还没有绑定的用户哦</text>
+      <text class="empty-sub">快去分享链接邀请好友吧</text>
+    </view>
+    
+    <!-- 用户列表 -->
+    <view class="user-list" tt:else>
+      <view class="user-item" tt:for="{{userList}}" tt:key="id">
+        <!-- 头像 -->
+        <image tt:if="{{item.avatar}}" class="user-avatar" src="{{item.avatar}}" mode="aspectFill"/>
+        <view tt:else class="user-avatar user-avatar-placeholder">
+          <text class="user-avatar-letter">{{item.nickname ? item.nickname[0] : '?'}}</text>
+        </view>
+        <!-- 昵称 + 绑定时间 -->
+        <view class="user-info">
+          <text class="user-name">{{item.nickname || '微信用户'}}</text>
+          <text class="user-time">绑定于 {{item.createdAtStr}}</text>
+        </view>
+        <!-- 状态 / 剩余天数 -->
+        <view class="user-badge {{item.status === 'active' ? 'badge-active' : (item.status === 'expired' ? 'badge-expired' : 'badge-paid')}}">
+          <text tt:if="{{item.status === 'active'}}">{{item.remainDays}}天到期</text>
+          <text tt:elif="{{item.status === 'expired'}}">已过期</text>
+          <text tt:else>已付款</text>
+        </view>
+      </view>
+
+      <!-- 加载更多 / 没有更多 -->
+      <view class="list-footer" tt:if="{{listLoading}}">
+        <text class="list-footer-text">加载中...</text>
+      </view>
+      <view class="list-footer" tt:elif="{{listFinished && userList.length > 0}}">
+        <text class="list-footer-text">— 已加载全部 —</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作菜单 -->
+  <view class="menu-card">
+    <view class="menu-item" bindtap="generatePoster">
+      <view class="menu-icon-wrap rose">
+        <text class="emoji-sm">🎨</text>
+      </view>
+      <view class="menu-info">
+        <text class="menu-name">生成推广海报</text>
+        <text class="menu-desc">一键生成您的专属精美海报</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="shareToTimeline">
+      <view class="menu-icon-wrap emerald">
+        <text class="emoji-sm">💬</text>
+      </view>
+      <view class="menu-info">
+        <text class="menu-name">分享到朋友圈</text>
+        <text class="menu-desc">通过右上角菜单分享到朋友圈</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </view>
+    <button class="menu-item share-btn" open-type="share">
+      <view class="menu-icon-wrap violet">
+        <text class="emoji-sm">📤</text>
+      </view>
+      <view class="menu-info">
+        <text class="menu-name">分享给好友</text>
+        <text class="menu-desc">通过系统面板发送给微信好友</text>
+      </view>
+      <text class="menu-arrow">›</text>
+    </button>
+  </view>
+
+  <!-- 底部提示 -->
+  <view class="footer-tip">
+    <text>分享专属链接，好友通过链接点击后自动绑定</text>
+    <text>购买任意测评即可获得 <text class="highlight">90%</text> 的现金返利</text>
+  </view>
+
+  <view class="safe-bottom"></view>
+</view>

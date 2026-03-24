@@ -1,0 +1,82 @@
+<!--pages/index/index.wxml - 首页-->
+<view class="container" style="padding-top: {{navbarHeight}}px;">
+  <!-- 自定义导航栏 -->
+  <view class="custom-navbar" style="padding-top: {{statusBarHeight}}rpx;">
+    <view class="navbar-content">
+      <view class="switch-enterprise-btn" tt:if="{{showEnterpriseEntry && !reviewMode}}" bindtap="switchToEnterprise">
+        <text class="enterprise-icon">🏢</text>
+        <text class="enterprise-text">企业版</text>
+      </view>
+      <view class="navbar-title">{{siteTitle || '神仙团队性格测试'}}</view>
+      <view class="navbar-placeholder"></view>
+    </view>
+  </view>
+
+  <!-- 背景装饰 -->
+  <view class="bg-decoration bg-top-right"></view>
+  <view class="bg-decoration bg-bottom-left"></view>
+
+  <view class="top-image-section">
+    <view class="image-container">
+      <view class="image-wrapper">
+        <image class="main-image" src="/images/mbti-team-image.png" mode="aspectFit"></image>
+      </view>
+      <!-- 审核模式：只显示性格测评标签 -->
+      <view class="float-tag tag-1" tt:if="{{!reviewMode}}">面相分析</view>
+      <view class="float-tag tag-2" tt:if="{{!reviewMode}}">骨相分析</view>
+      <view class="float-tag tag-3">性格测评</view>
+      <view class="float-tag tag-1" tt:if="{{reviewMode}}">MBTI</view>
+      <view class="float-tag tag-2" tt:if="{{reviewMode}}">DISC</view>
+    </view>
+  </view>
+
+  <view class="process-section">
+    <view class="section-title">测试流程</view>
+    <view class="process-steps" tt:if="{{!reviewMode}}">
+      <view class="step-item">
+        <view class="step-circle active">1</view>
+        <text class="step-label">STEP1</text>
+        <text class="step-text">拍摄照片</text>
+      </view>
+      <view class="step-line"></view>
+      <view class="step-item">
+        <view class="step-circle">2</view>
+        <text class="step-label">STEP2</text>
+        <text class="step-text">{{aiAnalysisText || '分析'}}</text>
+      </view>
+      <view class="step-line"></view>
+      <view class="step-item">
+        <view class="step-circle">3</view>
+        <text class="step-label">STEP3</text>
+        <text class="step-text">生成报告</text>
+      </view>
+    </view>
+    <!-- 审核模式：纯问卷流程 -->
+    <view class="process-steps" tt:if="{{reviewMode}}">
+      <view class="step-item">
+        <view class="step-circle active">1</view>
+        <text class="step-label">STEP1</text>
+        <text class="step-text">选择测试</text>
+      </view>
+      <view class="step-line"></view>
+      <view class="step-item">
+        <view class="step-circle">2</view>
+        <text class="step-label">STEP2</text>
+        <text class="step-text">回答问题</text>
+      </view>
+      <view class="step-line"></view>
+      <view class="step-item">
+        <view class="step-circle">3</view>
+        <text class="step-label">STEP3</text>
+        <text class="step-text">查看结果</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="start-button" bindtap="startCamera">
+    <text class="button-text">{{startButtonText || '开始性格测试'}}</text>
+  </view>
+
+  <!-- 自定义底部导航 -->
+  <custom-tab-bar />
+</view>

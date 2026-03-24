@@ -1,7 +1,7 @@
 // pages/result/mbti.js - MBTI结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -22,9 +22,7 @@ Page({
     },
     testResultId: null,
     hasReloadedAfterPay: false,
-    hasPhone: false,
-    isProfileComplete: false,
-    maintenanceMode: false
+    hasPhone: false
   },
 
   onLoad(options) {
@@ -48,8 +46,8 @@ Page({
   },
 
   onShow() {
-    const maintenanceMode = !!(getApp().globalData && getApp().globalData.maintenanceMode)
-    this.setData({ hasPhone: hasPhone(), isProfileComplete: isProfileComplete(), maintenanceMode })
+    if (!ensureProfileCompleteAndRedirect()) return
+    this.setData({ hasPhone: hasPhone() })
   },
 
   loadDetail(id) {
@@ -79,8 +77,7 @@ Page({
             isPaid,
             amountYuan: needPaymentToUnlock ? amountYuan : 0
           }
-          const maintenanceMode = !!(getApp().globalData && getApp().globalData.maintenanceMode)
-          this.setData({ payInfo, isProfileComplete: isProfileComplete(), maintenanceMode })
+          this.setData({ payInfo })
         } else {
           wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
         }
@@ -160,20 +157,16 @@ Page({
     })
   },
 
-  // 完善资料：用户点击后手动跳转，不强制
-  goToCompleteProfile() {
-    wx.navigateTo({ url: '/pages/user-profile/index' })
-  },
-
   // 付费解锁按钮：就地触发微信手机号授权，然后调用 unlockFullReport
   onGetPhoneNumberForMbtiPay(e) {
+    if (!ensureProfileCompleteAndRedirect()) return
     const { code, errMsg } = e.detail || {}
     if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
-      if (hasPhone()) {
-        this.unlockFullReport()
-      } else {
+      if (!hasPhone()) {
         wx.showToast({ title: '需要授权手机号才能继续', icon: 'none' })
+        return
       }
+      this.unlockFullReport()
       return
     }
     if (!code) {

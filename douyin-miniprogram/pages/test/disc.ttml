@@ -1,0 +1,48 @@
+<!--pages/test/disc.wxml - DISC测试页面（按旧版模板重构）-->
+<view class="test-page">
+  <view class="progress-section">
+    <view class="progress-info">
+      <text class="question-count">问题 {{currentIndex + 1}}/{{total}}</text>
+      <text class="time-remaining">剩余时间: {{formatTime}}</text>
+    </view>
+    <view class="progress-bar-container">
+      <view class="progress-bar" style="width: {{progress}}%"></view>
+    </view>
+  </view>
+
+  <view class="content-area">
+    <view class="question-card">
+      <text class="question-text">{{currentQuestion.question}}</text>
+      <view class="options-container">
+      <view 
+        class="option-item {{selectedAnswer === option.value ? 'selected' : ''}}"
+        tt:for="{{currentQuestion.options}}"
+        tt:for-item="option"
+        tt:key="value"
+        bindtap="selectAnswer"
+        data-value="{{option.value}}"
+      >
+        <view class="radio-button {{selectedAnswer === option.value ? 'checked' : ''}}">
+          <view tt:if="{{selectedAnswer === option.value}}" class="radio-inner"></view>
+        </view>
+        <text class="option-text">{{option.text}}</text>
+      </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="footer-buttons">
+    <view class="nav-button secondary {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="prevQuestion">
+      <text class="button-text">上一题</text>
+    </view>
+    <view class="nav-button secondary {{currentIndex === total - 1 ? 'disabled' : ''}}" bindtap="nextQuestion">
+      <text class="button-text">跳过</text>
+    </view>
+  </view>
+
+  <view class="submit-wrap" tt:if="{{answeredCount === total}}">
+    <view class="submit-button" bindtap="submitTest">
+      <text class="submit-text">{{isSubmitting ? '计算中...' : '完成测试，查看结果'}}</text>
+    </view>
+  </view>
+</view>

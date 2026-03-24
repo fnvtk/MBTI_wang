@@ -10,7 +10,7 @@
           <text class="type-description" wx:if="{{result.description.description}}">{{result.description.description}}</text>
         </view>
 
-        <view class="paywall-card" wx:if="{{(!maintenanceMode && !isProfileComplete) || ((maintenanceMode || isProfileComplete) && payInfo.requiresPayment && !payInfo.isPaid)}}">
+        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
           <view class="paywall-content">
             <view class="paywall-blur">
               <text class="paywall-fake-title">完整PDP报告</text>
@@ -19,25 +19,14 @@
               <text class="paywall-fake-line">• 推荐职业</text>
             </view>
             <view class="paywall-mask"></view>
-            <view
-              class="paywall-btn"
-              wx:if="{{!maintenanceMode && !isProfileComplete}}"
-              bindtap="goToCompleteProfile"
-            >
-              <text class="paywall-btn-main">完善资料</text>
-            </view>
-            <view
-              wx:elif="{{payInfo.requiresPayment && !payInfo.isPaid}}"
-              class="paywall-btn"
-              bindtap="unlockFullReport"
-            >
+            <view class="paywall-btn" bindtap="unlockFullReport">
               <text class="paywall-btn-main">解锁完整报告</text>
               <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
             </view>
           </view>
         </view>
 
-        <view class="scores-section" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <view class="scores-section" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
           <text class="section-title">PDP得分详情</text>
           <view class="score-item" wx:for="{{typeList}}" wx:key="type">
             <view class="score-header">
@@ -51,7 +40,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
         <text class="card-title">性格特征</text>
         <view class="trait-section">
           <text class="trait-title">优势</text>
@@ -69,12 +58,12 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
         <text class="card-title">团队角色</text>
         <text class="relationship-text">{{result.description.teamRole}}</text>
       </view>
 
-      <view class="analysis-card" wx:if="{{(maintenanceMode || isProfileComplete) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
         <text class="card-title">推荐职业</text>
         <view class="career-item" wx:for="{{result.description.careers}}" wx:key="*this">
           <view class="career-dot"></view>

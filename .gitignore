@@ -1,9 +1,29 @@
-.cursor/
-api/runtime/
-api/vendor/
-*.code-workspace
-*.env
-api/database/
-*.zip
-.git222/
-.git22222/
+# 依赖
+node_modules/
+vendor/
+
+# 构建产物
+dist/
+dist-ssr/
+build/
+
+# 环境与敏感信息
+.env
+.env.local
+.env.*.local
+
+# 日志与运行时
+*.log
+api/runtime/log/
+api/runtime/cache/
+api/runtime/temp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# 小程序私有配置（含 AppID 等）
+miniprogram/project.private.config.json

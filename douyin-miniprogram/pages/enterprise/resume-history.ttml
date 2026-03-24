@@ -1,0 +1,66 @@
+<!--pages/enterprise/resume-history.wxml-->
+<view class="page">
+  <!-- 背景装饰 -->
+  <view class="bg-decoration bg-top-right"></view>
+  <view class="bg-decoration bg-bottom-left"></view>
+
+  <view class="container">
+    <!-- 提示语 + 上传入口 -->
+    <view class="tip-section" tt:if="{{!loading}}">
+      <text class="tip-text" tt:if="{{list.length > 0}}">仅展示当前绑定企业的简历上传记录</text>
+    </view>
+
+    <view class="content" tt:if="{{!loading && list.length > 0}}">
+      <view class="resume-card" tt:for="{{list}}" tt:key="id">
+        <view class="card-body">
+          <view class="file-info">
+            <view class="file-icon-wrap">
+              <text class="file-icon">📄</text>
+            </view>
+            <view class="file-meta">
+              <text class="name">{{item.fileName}}</text>
+              <text class="time">{{item.uploadedAtStr}}</text>
+            </view>
+            <view class="top-right-actions">
+              <view class="default-badge" tt:if="{{item.isDefault}}">默认</view>
+              <view class="set-default-text" tt:if="{{!item.isDefault}}" bindtap="setDefault" data-id="{{item.id}}">设为默认</view>
+            </view>
+          </view>
+          
+          <view class="card-footer">
+            <view class="secondary-actions">
+              <view class="action-btn text-btn delete-btn" bindtap="deleteResume" data-id="{{item.id}}">删除</view>
+            </view>
+            <view class="primary-actions">
+              <view class="action-btn primary-btn" bindtap="previewResume" data-url="{{item.url}}" data-file-name="{{item.fileName}}">
+                预览查看
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="empty-state" tt:if="{{!loading && empty}}">
+      <view class="empty-icon-wrap">
+        <text class="empty-icon">📁</text>
+      </view>
+      <text class="empty-text">暂无上传记录</text>
+      <text class="empty-tip">点击下方按钮上传简历，或返回企业版首页上传</text>
+      <view class="go-upload-btn" bindtap="uploadResume">上传简历</view>
+      <view class="back-home-btn" bindtap="goBack">返回首页</view>
+    </view>
+
+    <view class="loading-wrap" tt:if="{{loading}}">
+      <view class="loading-spinner"></view>
+      <text class="loading-text">加载中...</text>
+    </view>
+  </view>
+
+  <!-- 底部悬浮上传：有数据时显示 -->
+  <view class="float-upload-wrap" tt:if="{{!loading && list.length > 0}}" bindtap="uploadResume">
+    <view class="float-upload-btn">
+      <text class="float-upload-text">上传简历</text>
+    </view>
+  </view>
+</view>

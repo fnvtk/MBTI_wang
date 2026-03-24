@@ -108,8 +108,8 @@
           <text class="card-value">{{pdpType}}</text>
           <text class="card-time">{{pdpTime}}</text>
         </view>
-        <!-- AI 面相 -->
-        <view class="result-card card-rose" wx:if="{{aiType}}" bindtap="viewAI">
+        <!-- AI 面相（审核模式下隐藏） -->
+        <view class="result-card card-rose" wx:if="{{aiType && !reviewMode}}" bindtap="viewAI">
           <view class="card-deco"></view>
           <view class="card-icon-wrap card-icon-rose">
             <text class="card-icon">👁️</text>

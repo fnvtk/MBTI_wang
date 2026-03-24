@@ -1,6 +1,6 @@
-// pages/index/camera.js - 面相分析拍照页，拍完后上传到服务器再跳转结果页
+// pages/index/upload.js - 上传照片引导页
 const app = getApp()
-const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -16,7 +16,7 @@ Page({
     guideText: '请正对镜头',
     uploading: false,
     needPhoneAuth: false,
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '分析'
   },
 
   onLoad() {
@@ -27,13 +27,19 @@ Page({
       app.getRuntimeConfig().then((cfg) => {
         if (cfg && cfg.textConfig) {
           app.globalData.textConfig = cfg.textConfig
-          this.setData({ aiAnalysisText: cfg.textConfig.aiAnalysisText || '智能分析' })
+          this.setData({ aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析' })
         }
       }).catch(() => {})
     }
   },
 
   onShow() {
+    // 审核模式下重定向到测试选择页
+    if (app.globalData.reviewMode) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
+    if (!ensureProfileCompleteAndRedirect()) return
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 })
     }
@@ -162,8 +168,9 @@ Page({
     })
   },
 
-  // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页（不强制完善资料）
+  // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
   completeCapture() {
+    if (!ensureProfileCompleteAndRedirect()) return
     const urls = (this.data.uploadedUrls || []).filter(Boolean)
     if (!urls.length) {
       wx.showToast({ title: '请先上传至少一张照片', icon: 'none' })
@@ -179,7 +186,7 @@ Page({
     console.error('相机错误:', e)
     wx.showModal({
       title: '相机权限',
-      content: '请允许使用相机权限以进行AI人脸分析',
+      content: '请允许使用相机权限以进行性格分析',
       confirmText: '去设置',
       success: (res) => {
         if (res.confirm) {

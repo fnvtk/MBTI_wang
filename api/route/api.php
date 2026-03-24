@@ -218,6 +218,7 @@ Route::group('api/v1/superadmin', function () {
     Route::get('settings/fonts', 'superadmin.Settings/getFonts');
     Route::get('settings/poster', 'superadmin.Settings/getPosterConfig');
     Route::put('settings/poster', 'superadmin.Settings/updatePosterConfig');
+    Route::put('settings/review-mode', 'superadmin.Settings/updateReviewMode');
     Route::get('settings', 'superadmin.Settings/index');
     Route::put('settings/system', 'superadmin.Settings/updateSystem');
     Route::put('settings/report-requires-payment', 'superadmin.Settings/updateReportRequiresPayment');

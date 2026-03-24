@@ -32,6 +32,7 @@ class Settings extends BaseController
             $promptsConfig = SystemConfigModel::where('key', 'prompts')->where('enterprise_id', 0)->find();
             $reportRequiresPaymentConfig = SystemConfigModel::where('key', 'report_requires_payment')->where('enterprise_id', 0)->find();
             $textConfigModel = SystemConfigModel::where('key', 'text_config')->where('enterprise_id', 0)->find();
+            $reviewModeConfig = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
 
             // 获取当前超管用户名（直接使用JWT中的username）
             $jwtUsername = $user['username'] ?? null;
@@ -59,6 +60,7 @@ class Settings extends BaseController
                     'trialTestCount' => 10,
                     'defaultEnterpriseId' => null,
                 ],
+                'reviewMode' => $reviewModeConfig && !empty($reviewModeConfig->value) ? $reviewModeConfig->value : ['enabled' => false],
                 'notification' => $notificationConfig ? $notificationConfig->value : [
                     'emailNotification' => true,
                     'lowBalanceAlert' => true,
@@ -382,6 +384,40 @@ class Settings extends BaseController
             ], '账户信息已更新');
         } catch (\Exception $e) {
             return error('更新失败：' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * 更新审核模式配置
+     * PUT body: { "enabled": true/false }
+     * 开启后小程序隐藏AI面相分析功能，仅展示问卷测试，用于通过微信审核
+     */
+    public function updateReviewMode()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+
+        $input = json_decode($this->request->getContent(), true);
+        if (!is_array($input)) {
+            $input = Request::param();
+        }
+        $enabled = !empty($input['enabled']);
+
+        try {
+            $config = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
+            if (!$config) {
+                $config = new SystemConfigModel();
+                $config->key = 'review_mode';
+                $config->enterprise_id = 0;
+                $config->description = '审核模式：开启后隐藏AI功能以通过微信审核';
+            }
+            $config->value = ['enabled' => $enabled];
+            $config->save();
+            return success($config->value, '审核模式已' . ($enabled ? '开启' : '关闭'));
+        } catch (\Exception $e) {
+            return error('保存失败：' . $e->getMessage(), 500);
         }
     }
 

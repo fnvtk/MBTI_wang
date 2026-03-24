@@ -1,0 +1,66 @@
+<!--pages/user-profile/index.wxml - 个人资料页 -->
+<view class="page">
+  <view class="profile-card">
+    <!-- 头像 -->
+    <view class="avatar-section">
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image tt:if="{{avatar}}" class="avatar-img" src="{{avatar}}" mode="aspectFill"/>
+        <view tt:else class="avatar-letter-wrap" style="background:{{avatarBgColor}}">
+          <text class="avatar-letter">{{avatarLetter}}</text>
+        </view>
+      </button>
+      <text class="avatar-hint">点击更换头像</text>
+    </view>
+
+    <!-- 必填提示 -->
+    <view class="required-tip">头像、昵称、手机号为必填项</view>
+
+    <!-- 表单 -->
+    <view class="form-section">
+      <!-- 昵称：整行可点击聚焦输入 -->
+      <view class="form-item form-item-tappable" bindtap="onNicknameRowTap">
+        <text class="form-label">昵称</text>
+        <input class="form-input"
+               id="nicknameInput"
+               type="nickname"
+               placeholder="请输入昵称"
+               value="{{nickname}}"
+               focus="{{nicknameFocused}}"
+               bindinput="onNicknameChange"
+               bindblur="onNicknameBlur"/>
+        <text class="form-arrow">›</text>
+      </view>
+      <!-- 生日：整行可点击打开日期选择 -->
+      <picker mode="date" value="{{birthday}}" bindchange="onBirthdayChange" class="picker-full-row">
+        <view class="form-item form-item-tappable">
+          <text class="form-label">生日</text>
+          <view class="form-picker">
+            <text class="{{birthday ? 'form-value' : 'form-placeholder'}}">{{birthday || '请选择生日'}}</text>
+            <text class="form-arrow">›</text>
+          </view>
+        </view>
+      </picker>
+      <!-- 性别：整行可点击选择 -->
+      <picker mode="selector" range="{{genderOptions}}" value="{{genderIndex}}" bindchange="onGenderChange" class="picker-full-row">
+        <view class="form-item form-item-tappable">
+          <text class="form-label">性别</text>
+          <view class="form-picker">
+            <text class="form-value">{{genderText}}</text>
+            <text class="form-arrow">›</text>
+          </view>
+        </view>
+      </picker>
+      <!-- 手机号：整行可点击重新授权 -->
+      <view class="form-item form-item-phone-auth">
+        <text class="form-label">手机号</text>
+        <button class="phone-auth-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
+          <text class="{{phone ? 'form-value' : 'phone-auth-text'}}">{{phone || '点击授权获取手机号'}}</text>
+          <text class="form-arrow">›</text>
+        </button>
+      </view>
+    </view>
+
+    <!-- 保存按钮 -->
+    <button class="save-btn" bindtap="onSave" disabled="{{saving}}">保存</button>
+  </view>
+</view>
