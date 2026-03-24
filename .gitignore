@@ -27,3 +27,5 @@ api/runtime/temp/
 
 # 小程序私有配置（含 AppID 等）
 miniprogram/project.private.config.json
+.git222/
+.cursor/
