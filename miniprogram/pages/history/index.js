@@ -1,5 +1,6 @@
 // pages/history/index.js - 测试历史记录（一次拉取全部，时间行右侧展示企业名）
 const app = getApp()
+const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -15,10 +16,7 @@ Page({
     const gd = app.globalData || {}
     const storedUser = wx.getStorageSync('userInfo') || null
     const scope = gd.appScope || 'personal'
-    const enterpriseId = gd.enterpriseIdFromScene
-      || (gd.userInfo && gd.userInfo.enterpriseId)
-      || (storedUser && storedUser.enterpriseId)
-      || null
+    const enterpriseId = getEffectiveEnterpriseId()
     return scope === 'enterprise' || !!enterpriseId
   },
 

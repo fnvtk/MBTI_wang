@@ -2,6 +2,7 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
+const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -182,12 +183,8 @@ Page({
       this.setData({ progress: Math.floor(progress), analyzingTip: tips[tipIndex] })
     }, 200)
 
-    // 调用后端API：appScope='enterprise' 时才传 enterpriseId，个人版不传
-    const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo') || {}
-    const scope = (app.globalData && app.globalData.appScope) || 'personal'
-    const enterpriseId = scope === 'enterprise'
-      ? (app.globalData.enterpriseIdFromScene || userInfo.enterpriseId || null)
-      : null
+    // 个人版入口不带企业参数；企业版才回落绑定/默认企业
+    const enterpriseId = getEnterpriseIdForApiPayload()
     wx.request({
       url: `${app.globalData.apiBase}/api/analyze`,
       method: 'POST',
@@ -198,7 +195,7 @@ Page({
       data: {
         photoUrls: photos,
         userId: app.globalData.openId || '',
-        ...(enterpriseId ? { enterpriseId: Number(enterpriseId) } : {})
+        ...(enterpriseId != null ? { enterpriseId: Number(enterpriseId) } : {})
       },
       success: (res) => {
         clearInterval(timer)

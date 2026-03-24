@@ -1,5 +1,6 @@
 // pages/enterprise/resume-history.js - 简历上传记录（历史）
 const app = getApp()
+const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
 const { request } = require('../../utils/request')
 
 Page({
@@ -21,7 +22,7 @@ Page({
 
   loadList() {
     this.setData({ loading: true })
-    const eid = (app.globalData && app.globalData.enterpriseIdFromScene) || (app.globalData && app.globalData.userInfo && app.globalData.userInfo.enterpriseId) || (wx.getStorageSync('userInfo') || {}).enterpriseId || null
+    const eid = getEffectiveEnterpriseId()
     const query = eid ? `?enterpriseId=${eid}&pageSize=100` : '?pageSize=100'
     request({
       url: '/api/enterprise/resume-uploads' + query,
@@ -48,7 +49,7 @@ Page({
   },
 
   uploadResume() {
-    const eid = (app.globalData && app.globalData.enterpriseIdFromScene) || (app.globalData && app.globalData.userInfo && app.globalData.userInfo.enterpriseId) || (wx.getStorageSync('userInfo') || {}).enterpriseId || null
+    const eid = getEffectiveEnterpriseId()
     wx.chooseMessageFile({
       count: 1,
       type: 'file',

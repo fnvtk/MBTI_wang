@@ -1,4 +1,5 @@
 const { getApiBase } = require('../../utils/request')
+const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -21,9 +22,7 @@ Page({
     const token = wx.getStorageSync('token') || gd.token || ''
     const scope = gd.appScope || 'personal'
     // 企业 ID：按优先级取 scene > globalData.userInfo > storage.userInfo
-    const eid = scope === 'enterprise'
-      ? (gd.enterpriseIdFromScene || (gd.userInfo && gd.userInfo.enterpriseId) || storedUser.enterpriseId || null)
-      : null
+    const eid = scope === 'enterprise' ? getEffectiveEnterpriseId() : null
     let url = apiBase.replace(/\/$/, '') + '/api/distribution/poster'
     if (eid) url += `?eid=${eid}&scope=enterprise`
     else if (scope === 'enterprise') url += '?scope=enterprise'  // 企业模式但 eid 未知，后端从 DB 取

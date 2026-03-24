@@ -98,6 +98,11 @@ class Payment extends BaseController
                 }
             }
 
+            // 测试结果未带 enterpriseId 时，使用小程序请求中的企业上下文（scene/绑定/超管默认企业）
+            if (empty($enterpriseId) && $enterpriseIdParam > 0) {
+                $enterpriseId = $enterpriseIdParam;
+            }
+
             // 充值场景：优先使用显式传入的企业ID，否则回退到当前用户已绑定企业
             if ($productType === 'recharge') {
                 if ($enterpriseIdParam > 0) {

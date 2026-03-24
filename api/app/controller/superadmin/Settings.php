@@ -4,6 +4,7 @@ namespace app\controller\superadmin;
 use app\BaseController;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\User as UserModel;
+use app\model\Enterprise as EnterpriseModel;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -55,7 +56,8 @@ class Settings extends BaseController
                     'miniprogramName' => '神仙团队AI性格测试',
                     'maintenanceMode' => false,
                     'maxTestsPerDay' => 100,
-                    'trialTestCount' => 10
+                    'trialTestCount' => 10,
+                    'defaultEnterpriseId' => null,
                 ],
                 'notification' => $notificationConfig ? $notificationConfig->value : [
                     'emailNotification' => true,
@@ -100,11 +102,29 @@ class Settings extends BaseController
             $input = [];
         }
 
-        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'maintenanceMode', 'maxTestsPerDay', 'trialTestCount'];
+        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'maintenanceMode', 'maxTestsPerDay', 'trialTestCount', 'defaultEnterpriseId'];
         $data = array_intersect_key($input, array_flip($allowedKeys));
         // 兼容 fallback：JSON 解析失败时尝试 Request::only
         if (empty($data)) {
             $data = Request::only($allowedKeys);
+        }
+        // 默认企业：0 或空视为不启用
+        if (array_key_exists('defaultEnterpriseId', $data)) {
+            $de = $data['defaultEnterpriseId'];
+            if ($de === '' || $de === null) {
+                $data['defaultEnterpriseId'] = null;
+            } else {
+                $deInt = (int) $de;
+                if ($deInt <= 0) {
+                    $data['defaultEnterpriseId'] = null;
+                } else {
+                    $exists = EnterpriseModel::where('id', $deInt)->find();
+                    if (!$exists) {
+                        return error('所选默认企业不存在', 400);
+                    }
+                    $data['defaultEnterpriseId'] = $deInt;
+                }
+            }
         }
         $textConfig = $input['textConfig'] ?? (Request::param('textConfig') ?: []);
 
@@ -117,7 +137,13 @@ class Settings extends BaseController
                 $config->enterprise_id = 0;
                 $config->description = '系统基础配置';
             }
-            $config->value = $data;
+            // 合并保存，避免仅提交部分字段时丢失其它键（如 defaultEnterpriseId）
+            $oldVal = $config->value;
+            $oldArr = is_array($oldVal) ? $oldVal : (is_string($oldVal) ? (json_decode($oldVal, true) ?: []) : []);
+            if (!is_array($oldArr)) {
+                $oldArr = [];
+            }
+            $config->value = array_merge($oldArr, $data);
             $config->save();
 
             // 更新站点信息

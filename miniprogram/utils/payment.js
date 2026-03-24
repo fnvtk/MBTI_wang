@@ -2,6 +2,13 @@
 // 微信支付工具类 - 复刻自Soul项目
 
 const app = getApp()
+const { getEnterpriseIdForApiPayload } = require('./enterpriseContext.js')
+
+/** 创建订单时传给后端的 enterpriseId（0 表示无企业上下文）；与个人/企业 Tab 一致 */
+function enterpriseIdForOrder() {
+  const eid = getEnterpriseIdForApiPayload()
+  return eid != null && Number(eid) > 0 ? Number(eid) : 0
+}
 
 /**
  * 生成符合微信规则的订单号
@@ -364,6 +371,7 @@ function purchaseByPricing(productType, description, extra, maybeFail) {
     description,
     productType,
     testResultId,
+    enterpriseId: enterpriseIdForOrder(),
     success,
     fail
   })
@@ -486,6 +494,7 @@ function purchasePersonalDeepService(arg1, arg2, arg3) {
     description: desc,
     productType: 'deep_personal',
     deepProductId,
+    enterpriseId: enterpriseIdForOrder(),
     success,
     fail
   })
@@ -502,6 +511,7 @@ function purchaseTeamDeepService(success, fail) {
     amount: 0,
     description: '团队深度服务（团队画像+策略）',
     productType: 'deep_team',
+    enterpriseId: enterpriseIdForOrder(),
     success,
     fail
   })

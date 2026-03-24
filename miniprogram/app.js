@@ -13,6 +13,8 @@ App({
     appScope: 'personal',
     // 扫码进入企业页时 scene 解析出的企业ID（e_123），提交测试/分析时优先使用
     enterpriseIdFromScene: null,
+    // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
+    defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
     apiBase: 'https://mbtiapi.quwanzhi.com',
     //apiBase: 'http://mbti.com',
@@ -41,6 +43,11 @@ App({
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
         if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
+        if (cfg.defaultEnterpriseId != null && Number(cfg.defaultEnterpriseId) > 0) {
+          this.globalData.defaultEnterpriseId = Number(cfg.defaultEnterpriseId)
+        } else {
+          this.globalData.defaultEnterpriseId = null
+        }
       }
     }).catch(() => {})
   },
@@ -275,20 +282,16 @@ App({
     })
   },
 
-  // 保存测试结果
+    // 保存测试结果
   saveTestResult(type, result) {
+    const { getEnterpriseIdForApiPayload } = require('./utils/enterpriseContext.js')
     const key = `${type}Result`
     wx.setStorageSync(key, result)
     this.globalData[key] = result
     
     // 同步到服务器（需携带 token，后端从 JWT 解析 userId）
     if (this.globalData.token) {
-      const scope = this.globalData.appScope || 'personal'
-      const storedUser = wx.getStorageSync('userInfo') || null
-      const enterpriseId =
-        scope === 'enterprise'
-          ? (this.globalData.enterpriseIdFromScene || (this.globalData.userInfo && this.globalData.userInfo.enterpriseId) || (storedUser && storedUser.enterpriseId) || null)
-          : null
+      const enterpriseId = getEnterpriseIdForApiPayload()
       wx.request({
         url: `${this.globalData.apiBase}/api/test/submit`,
         method: 'POST',
@@ -301,7 +304,7 @@ App({
           answers: result.answers || [],
           result: result,
           userId: this.globalData.userInfo?.id ?? this.globalData.openId,
-          enterpriseId: enterpriseId || undefined,
+          enterpriseId: enterpriseId != null ? enterpriseId : undefined,
           testDuration: result.testDuration || 0,
           timestamp: new Date().toISOString()
         }
@@ -335,6 +338,11 @@ App({
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
             if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
+            if (data.defaultEnterpriseId != null && Number(data.defaultEnterpriseId) > 0) {
+              this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)
+            } else {
+              this.globalData.defaultEnterpriseId = null
+            }
             resolve(data)
           } else {
             reject(new Error(res.data && res.data.message ? res.data.message : '获取配置失败'))

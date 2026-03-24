@@ -90,6 +90,24 @@
                   class="form-input"
                 />
               </div>
+              <div class="form-item form-item-full">
+                <label class="form-label">小程序默认企业</label>
+                <el-select
+                  v-model="systemConfig.defaultEnterpriseId"
+                  class="form-input w-full"
+                  placeholder="不设置则小程序无带参入口时不回落企业"
+                  clearable
+                  filterable
+                >
+                  <el-option
+                    v-for="ent in enterpriseOptions"
+                    :key="ent.id"
+                    :label="`${ent.name}（ID: ${ent.id}）`"
+                    :value="ent.id"
+                  />
+                </el-select>
+                <span class="form-hint">未带企业入口参数（如 scene / 链接中的 eid）时，小程序回落使用该企业的上下文；优先级：扫码或链接中的企业 &gt; 用户已绑定企业 &gt; 此处默认企业</span>
+              </div>
             </div>
 
             <!-- 小程序文案配置 -->
@@ -390,7 +408,11 @@ const systemConfig = reactive({
   maintenanceMode: false,
   maxTestsPerDay: 100,
   trialTestCount: 10,
+  defaultEnterpriseId: null as number | null,
 })
+
+/** 下拉：企业管理中的企业列表 */
+const enterpriseOptions = ref<Array<{ id: number; name: string }>>([])
 
 // 超管凭据
 const credentials = reactive({
@@ -432,6 +454,9 @@ const loadSettings = async () => {
       // 加载系统配置
       if (response.data.system) {
         Object.assign(systemConfig, response.data.system)
+        const de = response.data.system.defaultEnterpriseId
+        systemConfig.defaultEnterpriseId =
+          de != null && de !== '' && Number(de) > 0 ? Number(de) : null
       }
       // 加载小程序文案配置
       if (response.data.textConfig && typeof response.data.textConfig === 'object') {
@@ -468,8 +493,21 @@ const loadSettings = async () => {
   }
 }
 
+async function loadEnterpriseOptions() {
+  try {
+    const res: any = await request.get('/enterprises', { params: { page: 1, pageSize: 500 } })
+    const list = (res?.code === 200 && res?.data?.list) ? res.data.list : []
+    enterpriseOptions.value = Array.isArray(list)
+      ? list.map((r: any) => ({ id: Number(r.id), name: String(r.name || '') }))
+      : []
+  } catch {
+    enterpriseOptions.value = []
+  }
+}
+
 onMounted(() => {
   loadSettings()
+  loadEnterpriseOptions()
 })
 
 // 保存配置
@@ -691,6 +729,14 @@ const handleSave = async (section: string) => {
   @media (min-width: 768px) {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .form-item-full {
+    grid-column: 1 / -1;
+  }
+}
+
+.w-full {
+  width: 100%;
 }
 
 .form-section {

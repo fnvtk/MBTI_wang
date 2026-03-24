@@ -202,10 +202,15 @@ class Analyze extends BaseController
             'amountYuan'      => $standardAmountFen > 0 ? round($standardAmountFen / 100, 2) : 0,
         ];
 
-        // 若该类型需付费才显示完整报告：返回给前端的也做脱敏，与详情/历史一致（只显示部分，付费后从详情接口拿完整）
-        if ($requiresPayment) {
-            $responsePayload['faceAnalysis'] = null;
-            $responsePayload['boneAnalysis'] = null;
+        // 未付费 / 资料未完善：与 /api/test/detail 一致做预览脱敏，防止直接抓包拿到完整报告
+        $gateResponse = false;
+        if ($requiresPayment > 0) {
+            $gateResponse = true;
+        } elseif ($earlyUserId > 0 && !TestController::isWechatProfileComplete($earlyUserId)) {
+            $gateResponse = true;
+        }
+        if (is_array($responsePayload) && $gateResponse) {
+            $responsePayload = TestController::filterFaceResultToPreview($responsePayload);
         }
 
         // 把本次测试记录ID一起返回，便于解锁后通过 /api/test/detail 拉取完整数据

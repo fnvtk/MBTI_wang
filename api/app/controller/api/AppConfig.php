@@ -50,6 +50,30 @@ class AppConfig extends BaseController
             }
         }
 
+        // 系统配置：审核模式、默认企业（无带参入口时小程序回落）
+        $maintenanceMode = false;
+        $defaultEnterpriseId = null;
+        $systemRow = Db::name('system_config')->where('key', 'system')->find();
+        if ($systemRow && !empty($systemRow['value'])) {
+            $sysValEarly = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
+            if (is_array($sysValEarly)) {
+                if (!empty($sysValEarly['maintenanceMode'])) {
+                    $maintenanceMode = true;
+                }
+                if (!empty($sysValEarly['defaultEnterpriseId'])) {
+                    $de = (int) $sysValEarly['defaultEnterpriseId'];
+                    if ($de > 0) {
+                        $defaultEnterpriseId = $de;
+                    }
+                }
+            }
+        }
+        // scope=enterprise 且用户未绑定企业时，用超管默认企业拉企业定价与文案
+        if ($scope !== 'personal' && $enterpriseId === null && $defaultEnterpriseId !== null) {
+            $enterpriseId = $defaultEnterpriseId;
+            $pricingType = 'enterprise';
+        }
+
         $config = PricingConfigModel::getByTypeAndEnterprise($pricingType, $enterpriseId);
         if ($config && !empty($config->config)) {
             // PricingConfig 模型已对 config 做 JSON 转换，这里直接当数组/对象用即可
@@ -103,16 +127,6 @@ class AppConfig extends BaseController
         }
         $siteTitle = $miniprogramName !== '' ? $miniprogramName : ($siteName !== '' ? $siteName : '神仙团队AI性格测试');
 
-        // 审核模式（原 maintenanceMode）：开启后首页展示「开始性格测试」并跳转 test-select
-        $maintenanceMode = false;
-        $systemRow = Db::name('system_config')->where('key', 'system')->find();
-        if ($systemRow && !empty($systemRow['value'])) {
-            $sysVal = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
-            if (is_array($sysVal) && !empty($sysVal['maintenanceMode'])) {
-                $maintenanceMode = true;
-            }
-        }
-
         // 小程序文案配置（分析中提示、按钮、报告标题等）
         $textConfig = [
             'analyzingTitle' => '正在分析中',
@@ -155,6 +169,7 @@ class AppConfig extends BaseController
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
             'maintenanceMode' => $maintenanceMode,
+            'defaultEnterpriseId' => $defaultEnterpriseId,
         ]);
     }
 

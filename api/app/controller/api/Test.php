@@ -80,6 +80,9 @@ class Test extends BaseController
             $requiresPayment = (int) ($row['requiresPayment'] ?? 0);
             $isPaid = (int) ($row['isPaid'] ?? 0);
             $orderId = isset($row['orderId']) ? (int) $row['orderId'] : null;
+            $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
+            $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+            $profileIncomplete = !self::isWechatProfileComplete($userId);
 
             $raw = $row['resultData'] ?? ($row['result'] ?? null);
             $data = null;
@@ -87,8 +90,14 @@ class Test extends BaseController
                 $decoded = json_decode($raw, true);
                 $data = is_array($decoded) ? $decoded : $raw;
             }
-            if ($requiresPayment && !$isPaid && $data !== null) {
-                $data = $this->filterResultToPartial($testType, $data);
+            if ($data !== null && is_array($data)) {
+                if (in_array($testType, ['face', 'ai'], true)) {
+                    if ($needPayUnlock || $profileIncomplete) {
+                        $data = self::filterFaceResultToPreview($data);
+                    }
+                } elseif ($requiresPayment && !$isPaid) {
+                    $data = $this->filterResultToPartial($testType, $data);
+                }
             }
 
             $paymentFields = [
@@ -358,8 +367,15 @@ class Test extends BaseController
         $testType = $row['testType'] ?? '';
         // 仅当需要付款且未付款且金额>0 时才脱敏；系统设置需付款但金额为0 则直接可查看
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
-        if ($needPaymentToUnlock && $data !== null) {
-            $data = $this->filterResultToPartial($testType, $data);
+        $profileIncomplete = !self::isWechatProfileComplete($userId);
+        if ($data !== null && is_array($data)) {
+            if (in_array($testType, ['face', 'ai'], true)) {
+                if ($needPaymentToUnlock || $profileIncomplete) {
+                    $data = self::filterFaceResultToPreview($data);
+                }
+            } elseif ($needPaymentToUnlock) {
+                $data = $this->filterResultToPartial($testType, $data);
+            }
         }
 
         return success([
@@ -550,12 +566,6 @@ class Test extends BaseController
         if (!is_array($data)) {
             return $data;
         }
-        if ($testType === 'face' || $testType === 'ai') {
-            $out = $data;
-            $out['faceAnalysis'] = null;
-            $out['boneAnalysis'] = null;
-            return $out;
-        }
         if ($testType === 'mbti') {
             return [
                 'mbtiType' => $data['mbtiType'] ?? $data['mbti'] ?? '',
@@ -575,6 +585,82 @@ class Test extends BaseController
             ];
         }
         return $data;
+    }
+
+    /**
+     * 微信用户资料是否与小程序 isProfileComplete 一致：头像、昵称、手机号必填
+     */
+    public static function isWechatProfileComplete(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        $row = Db::name('wechat_users')->where('id', $userId)->field('nickname,avatar,phone')->find();
+        if (!$row) {
+            return false;
+        }
+        $nick = trim((string) ($row['nickname'] ?? ''));
+        $avatar = trim((string) ($row['avatar'] ?? ''));
+        $phone = trim((string) ($row['phone'] ?? ''));
+
+        return $nick !== '' && $avatar !== '' && $phone !== '';
+    }
+
+    /**
+     * 人脸/AI 分析报告：未付费或资料未完善时仅返回预览级字段（防止抓包看全文）
+     */
+    public static function filterFaceResultToPreview(array $data): array
+    {
+        $out = $data;
+        $out['faceAnalysis'] = null;
+        $out['boneAnalysis'] = null;
+        unset($out['faceAnalysisText'], $out['boneAnalysisText']);
+        $out['relationship'] = '';
+        $out['portrait'] = null;
+        $out['hrView'] = null;
+        $out['bossView'] = null;
+        $out['resumeHighlights'] = '';
+        if (isset($out['careers'])) {
+            $out['careers'] = [];
+        }
+
+        $sum = (string) ($out['personalitySummary'] ?? '');
+        $ov = (string) ($out['overview'] ?? '');
+        $out['personalitySummary'] = self::truncatePreviewText($sum, 72);
+        $out['overview'] = self::truncatePreviewText($ov, 72);
+        $out['gallupTop3'] = [];
+
+        $adv = $out['advantages'] ?? [];
+        if (is_array($adv) && $adv !== []) {
+            $slice = array_slice($adv, 0, 2);
+            $out['advantages'] = array_map(function ($x) {
+                return self::truncatePreviewText((string) $x, 28);
+            }, $slice);
+        } else {
+            $out['advantages'] = [];
+        }
+
+        return $out;
+    }
+
+    private static function truncatePreviewText(string $s, int $maxChars): string
+    {
+        $s = trim($s);
+        if ($s === '') {
+            return '';
+        }
+        if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+            if (mb_strlen($s, 'UTF-8') > $maxChars) {
+                return mb_substr($s, 0, $maxChars, 'UTF-8') . '…';
+            }
+
+            return $s;
+        }
+        if (strlen($s) > $maxChars) {
+            return substr($s, 0, $maxChars) . '…';
+        }
+
+        return $s;
     }
 
     /**

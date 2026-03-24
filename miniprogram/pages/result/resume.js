@@ -1,6 +1,7 @@
 // pages/result/resume.js - 简历综合分析结果页
 const app = getApp()
 const payment = require('../../utils/payment')
+const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -111,13 +112,7 @@ Page({
     const apiBase = (app.globalData && app.globalData.apiBase) || wx.getStorageSync('apiBase') || ''
     const token = (app.globalData && app.globalData.token) || wx.getStorageSync('token') || ''
 
-    // 获取 enterpriseId
-    const gd = app.globalData || {}
-    const storedUser = wx.getStorageSync('userInfo') || null
-    const enterpriseId = gd.enterpriseIdFromScene
-      || (gd.userInfo && gd.userInfo.enterpriseId)
-      || (storedUser && storedUser.enterpriseId)
-      || null
+    const enterpriseId = getEnterpriseIdForApiPayload()
 
     const postData = {}
     if (this.data.fileUrl) postData.fileUrl = this.data.fileUrl

@@ -1,6 +1,7 @@
 // pages/enterprise/index.js - 企业版首页
 const app = getApp()
 const { request } = require('../../utils/request')
+const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -70,9 +71,9 @@ Page({
       maintenanceMode
     })
 
-    // 未绑定企业的用户：若从邀请码扫码进入（有 enterpriseIdFromScene）也允许使用企业版
+    // 未绑定企业的用户：扫码带 eid 或超管配置了默认企业时也允许使用企业版
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo') || {}
-    const fromInvite = !!app.globalData.enterpriseIdFromScene
+    const fromInvite = !!app.globalData.enterpriseIdFromScene || !!(app.globalData.defaultEnterpriseId && Number(app.globalData.defaultEnterpriseId) > 0)
     const redirectBack = () => {
       wx.showToast({ title: '您尚未绑定任何企业，无法使用企业版', icon: 'none', duration: 2500 })
       setTimeout(() => wx.switchTab({ url: '/pages/index/index' }), 600)
@@ -119,7 +120,7 @@ Page({
             maintenanceMode
           })
         }
-        if ((cfg && cfg.pricingType) !== 'enterprise' && !app.globalData.enterpriseIdFromScene) {
+        if ((cfg && cfg.pricingType) !== 'enterprise' && !app.globalData.enterpriseIdFromScene && !(app.globalData.defaultEnterpriseId && Number(app.globalData.defaultEnterpriseId) > 0)) {
           redirectBack()
           return
         }
@@ -176,7 +177,7 @@ Page({
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }
-    const eid = (app.globalData && app.globalData.enterpriseIdFromScene) || (app.globalData && app.globalData.userInfo && app.globalData.userInfo.enterpriseId) || (wx.getStorageSync('userInfo') || {}).enterpriseId || null
+    const eid = getEffectiveEnterpriseId()
     const query = eid ? `?enterpriseId=${eid}&pageSize=1` : '?pageSize=1'
     request({
       url: '/api/enterprise/resume-uploads' + query,

@@ -8,6 +8,8 @@
  * 接收方（落地页 onLoad options）直接读 options.uid / options.eid
  */
 
+const { getEffectiveEnterpriseId } = require('./enterpriseContext.js')
+
 function getApp_() {
   try { return getApp() } catch (e) { return null }
 }
@@ -24,9 +26,7 @@ function buildShareQuery() {
     const parts = []
     if (uid) parts.push('uid=' + uid)
     if (scope === 'enterprise') {
-      const eid = (app && app.globalData && app.globalData.enterpriseIdFromScene)
-        || userInfo.enterpriseId
-        || ''
+      const eid = getEffectiveEnterpriseId() || ''
       if (eid) parts.push('eid=' + eid)
     }
     return parts.join('&')

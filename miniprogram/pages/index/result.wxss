@@ -273,6 +273,156 @@
   text-align: center;
 }
 
+.paywall-tip-panel {
+  margin-top: 16rpx;
+  padding: 0 8rpx;
+  line-height: 1.5;
+}
+
+/* ========== 报告预览门禁（人脸分析报告）：整区遮罩 + 预览截断 ========== */
+.report-gate-wrap {
+  position: relative;
+  margin-bottom: 24rpx;
+}
+
+.report-gate-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  overflow: hidden;
+}
+
+/* 占据遮罩下半区，组内标题/说明/按钮垂直居中，避免贴底留白过大 */
+.report-gate-cta-wrap {
+  width: 100%;
+  box-sizing: border-box;
+  /* 占遮罩层约一半高度，保证内部 flex 垂直居中真正留白上下对称 */
+  height: 48%;
+  min-height: 400rpx;
+  max-height: 640rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  /* 整体上移，避免贴底 */
+  margin-bottom: 96rpx;
+  padding: 16rpx 0 calc(20rpx + env(safe-area-inset-bottom));
+}
+
+.report-gate-gradient {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  /* 高透明白雾，避免大块灰底发闷 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.22) 10%,
+    rgba(255, 255, 255, 0.48) 28%,
+    rgba(255, 255, 255, 0.72) 48%,
+    rgba(255, 255, 255, 0.88) 100%
+  );
+}
+
+.report-gate-panel {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 20rpx 20rpx 8rpx;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, transparent 0%, rgba(255, 255, 255, 0.5) 18%, rgba(255, 255, 255, 0.96) 55%);
+}
+
+.report-gate-panel .paywall-fake-title {
+  text-align: center;
+}
+
+.report-gate-panel .paywall-tip {
+  text-align: center;
+}
+
+/* 遮罩内主按钮：不再用绝对定位贴底，避免区域过矮 */
+.paywall-btn-inline {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 90% !important;
+  max-width: 640rpx;
+  margin: 28rpx auto 0;
+  box-sizing: border-box;
+}
+
+.report-gate-panel .paywall-btn-inline::after {
+  border: none;
+}
+
+/* 未解锁：限制概述与盖洛普可见行数 */
+.report-gate-teaser--locked .card-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-gate-teaser--locked .gallup-list {
+  max-height: 96rpx;
+  overflow: hidden;
+  position: relative;
+}
+
+.report-gate-teaser--locked .gallup-list::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 48rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff);
+}
+
+/* 未解锁：压缩首屏性格区可读内容 */
+.personality-card--locked .type-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.personality-card--locked .advantages-box {
+  max-height: 140rpx;
+  overflow: hidden;
+  position: relative;
+}
+
+.personality-card--locked .advantages-box::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 56rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff);
+}
+
+.personality-card--locked .next-btn {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 /* ========== 性格类型卡片 ========== */
 .personality-card {
   text-align: center;

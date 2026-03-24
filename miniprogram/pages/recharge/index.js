@@ -1,6 +1,7 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { request } = require('../../utils/request')
+const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -29,15 +30,31 @@ Page({
       app.globalData.enterpriseIdFromScene = enterpriseId
     }
 
+    const resolveEnterpriseId = () => {
+      if (enterpriseId > 0) return enterpriseId
+      return getEffectiveEnterpriseId() || 0
+    }
+
     this.setData({
-      enterpriseId,
+      enterpriseId: resolveEnterpriseId(),
       enterpriseName: (app.globalData.userInfo && app.globalData.userInfo.enterpriseName) || '',
       amountFen,
       amountYuan
     })
 
     app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          wx.showToast({ title: '请先登录', icon: 'none' })
+          return Promise.reject(new Error('no login'))
+        }
+        return app.getRuntimeConfig().catch(() => {})
+      })
       .then(() => {
+        const finalEid = resolveEnterpriseId()
+        if (finalEid > 0 && enterpriseId <= 0) {
+          this.setData({ enterpriseId: finalEid })
+        }
         if (enterpriseId > 0) {
           request({
             url: '/api/enterprise/bind',
@@ -52,9 +69,7 @@ Page({
           })
         }
       })
-      .catch(() => {
-        wx.showToast({ title: '请先登录', icon: 'none' })
-      })
+      .catch(() => {})
   },
 
   submitRecharge() {

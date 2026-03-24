@@ -205,27 +205,36 @@
   border-radius: 24rpx;
   overflow: hidden;
 }
-.paywall-content { position: relative; }
+.paywall-content { position: relative; min-height: 360rpx; }
 .paywall-blur {
-  padding: 32rpx 24rpx 140rpx;
+  padding: 32rpx 24rpx 200rpx;
   border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(18rpx);
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(6rpx);
 }
 .paywall-mask {
   position: absolute;
   left: 0; top: 0; right: 0; bottom: 0;
   border-radius: 24rpx;
-  background: linear-gradient(180deg, rgba(255,255,255,0.1), rgba(245,245,245,0.98));
+  z-index: 1;
+  /* 更轻的白纱，底部也保持通透 */
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.28) 38%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
   pointer-events: none;
 }
 .paywall-fake-title { display: block; font-size: 30rpx; font-weight: 600; color: #444; margin-bottom: 16rpx; }
 .paywall-fake-line { display: block; font-size: 26rpx; color: #888; line-height: 1.8; }
 .paywall-btn {
   position: absolute;
-  left: 5%; right: 5%;
+  left: 5%;
+  right: 5%;
   width: 90%;
-  bottom: 56rpx;
+  bottom: 132rpx;
+  z-index: 3;
   padding: 20rpx 0;
   border-radius: 999rpx;
   background: linear-gradient(135deg, #FF6B8A 0%, #ff8fa3 100%);
