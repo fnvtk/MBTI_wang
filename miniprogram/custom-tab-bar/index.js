@@ -26,7 +26,21 @@ Component({
       try {
         const app = getApp()
         const rm = !!(app && app.globalData && app.globalData.reviewMode)
-        this.setData({ reviewMode: rm })
+        if (this.data.reviewMode !== rm) {
+          this.setData({ reviewMode: rm })
+        }
+        // 首次加载时 getRuntimeConfig 可能尚未返回，延迟再检查一次
+        if (!rm && !this._retried) {
+          this._retried = true
+          setTimeout(() => {
+            try {
+              const rmLater = !!(getApp() && getApp().globalData && getApp().globalData.reviewMode)
+              if (rmLater && !this.data.reviewMode) {
+                this.setData({ reviewMode: true })
+              }
+            } catch (e) {}
+          }, 1500)
+        }
       } catch (e) {}
     },
     updateSelected() {

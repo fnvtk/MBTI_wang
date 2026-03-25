@@ -54,7 +54,7 @@ Page({
     }
     
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 2 })
+      this.getTabBar().setData({ selected: 2, reviewMode: !!app.globalData.reviewMode })
     }
   },
 
@@ -265,7 +265,13 @@ Page({
   goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },
-  goToPromo() { wx.navigateTo({ url: '/pages/promo/index' }) },
+  goToPromo() {
+    if (app.globalData.reviewMode) {
+      wx.showToast({ title: '审核模式下暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
   goToMyResume() { wx.navigateTo({ url: '/pages/enterprise/resume-history' }) },
   goToSettings() {
     wx.showToast({ title: '开发中', icon: 'none' })

@@ -1,6 +1,7 @@
 // pages/promo/index.js
 const app = getApp()
 const { request } = require('../../utils/request')
+const { afterReviewModeChecked } = require('../../utils/reviewModePromo.js')
 
 Page({
   data: {
@@ -34,11 +35,17 @@ Page({
   },
 
   onLoad() {
-    this.loadStats()
-    this.loadBindings(true)
+    afterReviewModeChecked(() => {
+      this.loadStats()
+      this.loadBindings(true)
+    })
   },
 
   onShow() {
+    if (app.globalData.reviewMode) {
+      wx.switchTab({ url: '/pages/profile/index' })
+      return
+    }
     this.loadStats()
   },
 

@@ -2,6 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\common\service\EnterprisePlatformBillingService;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use think\facade\Db;
@@ -461,7 +462,9 @@ class Test extends BaseController
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
             $standardAmountFen = $requiresPayment ? $this->getStandardAmountFenByTestType($testType, $enterpriseId, $pricingEnterpriseId) : 0;
-            $id = Db::name('test_results')->insertGetId([
+            $billingEnterpriseId = (int) ($writeEnterpriseId ?? 0);
+            $enterpriseScope     = EnterprisePlatformBillingService::isEnterpriseTestScope($enterpriseId);
+            $testResultRow         = [
                 'userId'          => $userId,
                 'enterpriseId'    => $writeEnterpriseId,
                 'testScope'       => $enterpriseId !== null ? 'enterprise' : 'personal',
@@ -475,7 +478,16 @@ class Test extends BaseController
                 'paidAt'          => null,
                 'createdAt'       => $now,
                 'updatedAt'       => $now,
-            ]);
+            ];
+            [$id, $billingErr] = EnterprisePlatformBillingService::insertTestResultWithPlatformDeduction(
+                $billingEnterpriseId,
+                $testType,
+                $enterpriseScope,
+                $testResultRow
+            );
+            if ($billingErr !== null) {
+                return error($billingErr, 400);
+            }
 
             if ($id > 0) {
                 UserProfileModel::recordTest($userId, $testType, $id, $writeEnterpriseId, $now);

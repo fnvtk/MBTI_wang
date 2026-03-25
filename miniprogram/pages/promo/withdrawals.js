@@ -1,5 +1,6 @@
 // pages/promo/withdrawals.js - 提现记录列表页
 const { request } = require('../../utils/request')
+const { afterReviewModeChecked } = require('../../utils/reviewModePromo.js')
 
 Page({
   data: {
@@ -14,7 +15,7 @@ Page({
   },
 
   onLoad() {
-    this.loadData(true)
+    afterReviewModeChecked(() => this.loadData(true))
   },
 
   // 加载提现记录列表（reset 为 true 时重置分页）

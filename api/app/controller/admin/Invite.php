@@ -11,8 +11,10 @@ use think\facade\Db;
 class Invite extends BaseController
 {
     /**
-     * 生成专属邀请小程序码，scene 带企业 ID，扫码进入 pages/enterprise/index 可解析
-     * GET /api/v1/admin/invite/qrcode
+     * 生成专属邀请小程序码
+     * GET /api/v1/admin/invite/qrcode?type=enterprise|personal
+     *   type=enterprise（默认）：scene 带企业 ID，扫码进入 pages/enterprise/index
+     *   type=personal          ：scene 带企业 ID，扫码进入 pages/index/index（个人版首页）
      * 可选：?enterpriseId=1 仅普通管理员指定企业时传；企业管理员用自身 enterpriseId
      *
      * 返回 data:image/png;base64,... 形式的图片地址
@@ -38,9 +40,18 @@ class Invite extends BaseController
             return error('无法确定企业，仅企业管理员或指定 enterpriseId 可生成邀请码', 400);
         }
 
-        // 场景值：e_企业ID，小程序 onLoad(options.scene) 可解析
-        $scene = 'e_' . $enterpriseId;
-        $page = 'pages/enterprise/index';
+        // type 参数：enterprise（企业版）或 personal（个人版），默认企业版
+        $type = strtolower($this->request->param('type', 'enterprise'));
+
+        if ($type === 'personal') {
+            // 个人版：scene 带企业 ID（eid），扫码后小程序首页可识别来源企业
+            $scene = 'eid=' . $enterpriseId;
+            $page  = 'pages/index/index';
+        } else {
+            // 企业版：场景值 e_企业ID，扫码直接进入企业版首页
+            $scene = 'e_' . $enterpriseId;
+            $page  = 'pages/enterprise/index';
+        }
 
         $result = WechatService::getWxacodeUnlimited($scene, $page, 430);
         if (isset($result['errcode'])) {
@@ -58,6 +69,7 @@ class Invite extends BaseController
             'qrcode' => $base64,
             'scene'  => $scene,
             'page'   => $page,
+            'type'   => $type,
         ]);
     }
 }

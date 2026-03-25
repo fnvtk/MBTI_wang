@@ -7,6 +7,7 @@ use app\model\AiProvider as AiProviderModel;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
+use app\common\service\EnterprisePlatformBillingService;
 use app\common\service\JwtService;
 use think\facade\Db;
 use think\facade\Log;
@@ -86,6 +87,19 @@ class Analyze extends BaseController
             return error('图片中未检测到人脸，请重新拍摄清晰的正面照片', 422);
         }
 
+        // 已登录且会写入 test_results 时：先校验企业平台结算余额，避免 AI 分析完成后无法落库
+        if ($earlyUserId > 0) {
+            $platformFenFace = EnterprisePlatformBillingService::getSuperAdminPlatformFenByTestType(
+                'face',
+                EnterprisePlatformBillingService::isEnterpriseTestScope($enterpriseId)
+            );
+            $billEidFace = (int) ($writeEnterpriseId ?? 0);
+            $quickErrFace = EnterprisePlatformBillingService::assertEnterpriseBalanceCovers($billEidFace, $platformFenFace);
+            if ($quickErrFace !== null) {
+                return error($quickErrFace, 400);
+            }
+        }
+
         // 企业版：拉取用户已完成的 MBTI/PDP/DISC 测试数据 + 简历（默认或最新），拼入 prompt 供 AI 交叉验证
         $existingTestContext = '';
         $resumeImageUrl = '';
@@ -153,7 +167,7 @@ class Analyze extends BaseController
                     try {
                         $now = time();
 
-                        $testResultId = Db::name('test_results')->insertGetId([
+                        $faceRow = [
                             'userId'          => $userId,
                             'enterpriseId'    => $writeEnterpriseId,
                             'testScope'       => $enterpriseFromRequest ? 'enterprise' : 'personal',
@@ -167,7 +181,16 @@ class Analyze extends BaseController
                             'paidAt'          => null,
                             'createdAt'       => $now,
                             'updatedAt'       => $now,
-                        ]);
+                        ];
+                        [$testResultId, $faceBillingErr] = EnterprisePlatformBillingService::insertTestResultWithPlatformDeduction(
+                            (int) ($writeEnterpriseId ?? 0),
+                            'face',
+                            EnterprisePlatformBillingService::isEnterpriseTestScope($enterpriseId),
+                            $faceRow
+                        );
+                        if ($faceBillingErr !== null) {
+                            return error($faceBillingErr, 400);
+                        }
 
                         if ($testResultId) {
                             UserProfileModel::recordTest($userId, 'face', $testResultId, $writeEnterpriseId, $now);
@@ -296,6 +319,14 @@ class Analyze extends BaseController
             return error('AI 服务未配置有效密钥', 503);
         }
 
+        $resumeEnterpriseScope = $enterpriseId > 0;
+        $resumeBillingEid      = $enterpriseId > 0 ? $enterpriseId : 0;
+        $resumePlatformFen     = EnterprisePlatformBillingService::getSuperAdminPlatformFenByTestType('resume', $resumeEnterpriseScope);
+        $resumeQuickErr        = EnterprisePlatformBillingService::assertEnterpriseBalanceCovers($resumeBillingEid, $resumePlatformFen);
+        if ($resumeQuickErr !== null) {
+            return error($resumeQuickErr, 400);
+        }
+
         $rawContent = $this->callResumeAi($provider, $apiKey, $systemPrompt, $userContext);
 
         // 尝试解析 AI 返回的结构化 JSON；失败时降级为纯文本兼容格式
@@ -317,7 +348,7 @@ class Analyze extends BaseController
         $resultData = json_encode($resultStruct, JSON_UNESCAPED_UNICODE);
         $testResultId = 0;
         try {
-            $testResultId = (int) Db::name('test_results')->insertGetId([
+            $resumeRow = [
                 'userId'          => $userId,
                 'enterpriseId'    => $enterpriseId > 0 ? $enterpriseId : null,
                 'testScope'       => $enterpriseId > 0 ? 'enterprise' : 'personal',
@@ -330,7 +361,17 @@ class Analyze extends BaseController
                 'orderId'         => null,
                 'createdAt'       => $now,
                 'updatedAt'       => $now,
-            ]);
+            ];
+            [$insertedId, $resumeBillingErr] = EnterprisePlatformBillingService::insertTestResultWithPlatformDeduction(
+                $resumeBillingEid,
+                'resume',
+                $resumeEnterpriseScope,
+                $resumeRow
+            );
+            if ($resumeBillingErr !== null) {
+                return error($resumeBillingErr, 400);
+            }
+            $testResultId = (int) $insertedId;
 
             if ($testResultId > 0) {
                 UserProfileModel::recordTest($userId, 'resume', $testResultId, $enterpriseId > 0 ? $enterpriseId : null, $now);

@@ -48,8 +48,8 @@ Page({
 
     if (eid > 0) app.globalData.enterpriseIdFromScene = eid
 
-    // 企业版分销绑定：uid > 0 且 eid > 0 时触发
-    if (uid > 0 && eid > 0) {
+    // 企业版分销绑定：uid > 0 且 eid > 0 时触发（审核模式下不记录）
+    if (uid > 0 && eid > 0 && !app.globalData.reviewMode) {
       app.globalData._pendingInviterId    = uid
       app.globalData._pendingInviterScope = 'enterprise'
       app.globalData._pendingInviterEid   = eid

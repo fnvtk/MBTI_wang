@@ -64,20 +64,26 @@
       <div class="section-header">
         <h2 class="section-title">专属邀请小程序码</h2>
         <p class="section-subtitle">生成专属邀请二维码，员工/客户扫码即可进入小程序完成测试</p>
-        <el-button size="small" type="primary" @click="loadInviteQrcode" :loading="inviteLoading">
-          重新生成
+        <el-button size="small" type="primary" @click="loadBothQrcodes" :loading="inviteLoading">
+          {{ inviteQrcodeEnterprise ? '重新生成' : '生成二维码' }}
         </el-button>
       </div>
 
-      <div class="invite-content">
-        <div v-if="inviteQrcode">
-          <img :src="inviteQrcode" alt="邀请小程序码" class="invite-qrcode" />
-          <div class="invite-tip">右键/长按保存二维码，用于宣传物料或群内邀请</div>
+      <div class="invite-content" v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
+        <div class="invite-qrcode-wrap">
+          <img :src="inviteQrcodeEnterprise" alt="企业版小程序码" class="invite-qrcode" />
+          <div class="invite-qrcode-label enterprise">企业版</div>
+          <div class="invite-qrcode-path">/pages/enterprise/index</div>
         </div>
-        <div v-else class="empty-state">
-          <el-button type="primary" size="small" @click="loadInviteQrcode" :loading="inviteLoading">
-            生成邀请二维码
-          </el-button>
+        <div class="invite-qrcode-wrap">
+          <img :src="inviteQrcodePersonal" alt="个人版小程序码" class="invite-qrcode" />
+          <div class="invite-qrcode-label personal">个人版</div>
+          <div class="invite-qrcode-path">/pages/index/index</div>
+        </div>
+      </div>
+      <div class="invite-content" v-else>
+        <div class="empty-state">
+          <span>点击上方按钮生成企业版与个人版二维码</span>
         </div>
       </div>
     </div>
@@ -113,7 +119,8 @@ const testTrends = ref<
 >([])
 const loading = ref(false)
 const inviteLoading = ref(false)
-const inviteQrcode = ref<string>('')
+const inviteQrcodeEnterprise = ref<string>('')
+const inviteQrcodePersonal = ref<string>('')
 
 const chartOption = computed(() => {
   const dates = testTrends.value.map(d => d.date.slice(5))
@@ -206,20 +213,20 @@ onMounted(() => {
   loadData()
 })
 
-// 加载邀请小程序码
-const loadInviteQrcode = async () => {
+// 同时生成企业版+个人版二维码
+const loadBothQrcodes = async () => {
   if (inviteLoading.value) return
   inviteLoading.value = true
   try {
-    const res: any = await request.get('/admin/invite/qrcode')
-    const data = res.data ?? res
-    if (data && data.qrcode) {
-      inviteQrcode.value = data.qrcode
-    } else if (data.code === 200 && data.data?.qrcode) {
-      inviteQrcode.value = data.data.qrcode
-    } else {
-      ElMessage.error('生成邀请二维码失败')
-    }
+    const [entRes, perRes]: any[] = await Promise.all([
+      request.get('/admin/invite/qrcode', { params: { type: 'enterprise' } }),
+      request.get('/admin/invite/qrcode', { params: { type: 'personal' } })
+    ])
+    const entQr = entRes?.qrcode || entRes?.data?.qrcode || ''
+    const perQr = perRes?.qrcode || perRes?.data?.qrcode || ''
+    if (entQr) inviteQrcodeEnterprise.value = entQr
+    if (perQr) inviteQrcodePersonal.value = perQr
+    if (!entQr && !perQr) ElMessage.error('生成邀请二维码失败')
   } catch (error: any) {
     console.error('生成邀请二维码失败:', error)
     ElMessage.error(error?.message || '生成邀请二维码失败')
@@ -346,6 +353,9 @@ const loadInviteQrcode = async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
 
     .section-title {
       margin-bottom: 0;
@@ -354,9 +364,16 @@ const loadInviteQrcode = async () => {
 
   .invite-content {
     display: flex;
-    align-items: center;
-    gap: 24px;
-    margin-top: 8px;
+    align-items: flex-start;
+    gap: 40px;
+  }
+
+  .invite-qrcode-wrap {
+    text-align: center;
+    padding: 16px 20px;
+    border-radius: 10px;
+    border: 1px solid #f3f4f6;
+    background: #fafafa;
   }
 
   .invite-qrcode {
@@ -364,13 +381,36 @@ const loadInviteQrcode = async () => {
     height: 160px;
     border-radius: 8px;
     border: 1px solid #e5e7eb;
-    background: #f9fafb;
+    background: #fff;
+  }
+
+  .invite-qrcode-label {
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 10px;
+
+    &.enterprise { color: #7c3aed; }
+    &.personal   { color: #3b82f6; }
+  }
+
+  .invite-qrcode-path {
+    font-size: 12px;
+    color: #9ca3af;
+    font-family: monospace;
+    margin-top: 2px;
   }
 
   .invite-tip {
-    font-size: 13px;
+    font-size: 12px;
     color: #6b7280;
-    margin-top: 8px;
+    margin-top: 6px;
+    max-width: 180px;
+  }
+
+  .empty-state {
+    padding: 24px 0;
+    color: #9ca3af;
+    font-size: 14px;
   }
 }
 

@@ -1,5 +1,6 @@
 const { getApiBase } = require('../../utils/request')
 const { getEffectiveEnterpriseId } = require('../../utils/enterpriseContext.js')
+const { afterReviewModeChecked } = require('../../utils/reviewModePromo.js')
 
 Page({
   data: {
@@ -9,7 +10,7 @@ Page({
   },
 
   onLoad() {
-    this.loadPoster()
+    afterReviewModeChecked(() => this.loadPoster())
   },
 
   /** 从后端接口下载完整合成海报 */

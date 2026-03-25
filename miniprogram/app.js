@@ -8,7 +8,8 @@ App({
     token: null,
     siteTitle: '神仙团队AI性格测试',
     textConfig: null, // 从 /api/config/runtime 动态加载：analyzingTitle, startButtonText, reportTitle, aiAnalysisText 等
-    maintenanceMode: undefined, // 审核模式，undefined=未加载，等 getRuntimeConfig 后再决定，避免 tabBar 闪烁
+    maintenanceMode: undefined, // 与后端 maintenanceMode 同步（部分页面用）
+    reviewMode: false, // 审核模式：隐藏 AI/分销等，与 /api/config/runtime 的 reviewMode 同步
     // 当前使用范围：personal 个人版 / enterprise 企业版（影响定价与 enterpriseId 写入）
     appScope: 'personal',
     // 扫码进入企业页时 scene 解析出的企业ID（e_123），提交测试/分析时优先使用
@@ -43,6 +44,10 @@ App({
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
         if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
+        if (cfg.reviewMode !== undefined) {
+          this.globalData.reviewMode = !!cfg.reviewMode
+          if (this.globalData.reviewMode) this._clearPendingDistributionBind()
+        }
         if (cfg.defaultEnterpriseId != null && Number(cfg.defaultEnterpriseId) > 0) {
           this.globalData.defaultEnterpriseId = Number(cfg.defaultEnterpriseId)
         } else {
@@ -160,10 +165,22 @@ App({
     return this.silentLogin()
   },
 
+  /** 审核模式下丢弃待处理的分销邀请，避免绑定 */
+  _clearPendingDistributionBind() {
+    this.globalData._pendingInviterId    = null
+    this.globalData._pendingInviterScope = null
+    this.globalData._pendingInviterEid   = null
+  },
+
   /**
    * 登录成功后尝试分销绑定（处理进入时携带的 uid 参数）
    */
   _tryDistributionBind() {
+    if (this.globalData.reviewMode) {
+      this._clearPendingDistributionBind()
+      return
+    }
+
     const inviterId = this.globalData._pendingInviterId
     const scope     = this.globalData._pendingInviterScope || 'personal'
     const eid       = this.globalData._pendingInviterEid || null
@@ -338,6 +355,10 @@ App({
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
             if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
+            if (data.reviewMode !== undefined) {
+              this.globalData.reviewMode = !!data.reviewMode
+              if (this.globalData.reviewMode) this._clearPendingDistributionBind()
+            }
             if (data.defaultEnterpriseId != null && Number(data.defaultEnterpriseId) > 0) {
               this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)
             } else {

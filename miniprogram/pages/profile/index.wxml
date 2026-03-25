@@ -122,8 +122,8 @@
     </scroll-view>
   </view>
 
-  <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
-  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled}}">
+  <!-- 推广中心（审核模式下隐藏；否则根据管理端开关） -->
+  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled && !reviewMode}}">
     <view class="promo-card" bindtap="goToPromo">
       <view class="promo-header">
         <view class="promo-title-wrap">

@@ -51,14 +51,14 @@ class AppConfig extends BaseController
         }
 
         // 系统配置：审核模式、默认企业（无带参入口时小程序回落）
-        $maintenanceMode = false;
+        $reviewMode = false;
         $defaultEnterpriseId = null;
         $systemRow = Db::name('system_config')->where('key', 'system')->find();
         if ($systemRow && !empty($systemRow['value'])) {
             $sysValEarly = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
             if (is_array($sysValEarly)) {
-                if (!empty($sysValEarly['maintenanceMode'])) {
-                    $maintenanceMode = true;
+                if (!empty($sysValEarly['reviewMode'])) {
+                    $reviewMode = true;
                 }
                 if (!empty($sysValEarly['defaultEnterpriseId'])) {
                     $de = (int) $sysValEarly['defaultEnterpriseId'];
@@ -168,7 +168,7 @@ class AppConfig extends BaseController
             'miniprogramName' => $miniprogramName,
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
-            'maintenanceMode' => $maintenanceMode,
+            'reviewMode' => $reviewMode,
             'defaultEnterpriseId' => $defaultEnterpriseId,
         ]);
     }

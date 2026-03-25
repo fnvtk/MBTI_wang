@@ -38,6 +38,9 @@ Page({
       if (cfg) {
         const rm = !!cfg.reviewMode
         getApp().globalData.reviewMode = rm
+        if (rm && typeof getApp()._clearPendingDistributionBind === 'function') {
+          getApp()._clearPendingDistributionBind()
+        }
         if (cfg.siteTitle) {
           getApp().globalData.siteTitle = cfg.siteTitle
           this.setData({ siteTitle: rm ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
@@ -50,6 +53,10 @@ Page({
           })
         }
         this.setData({ reviewMode: rm })
+        // 同步 reviewMode 到自定义 TabBar 组件
+        if (typeof this.getTabBar === 'function' && this.getTabBar()) {
+          this.getTabBar().setData({ reviewMode: rm })
+        }
       }
     }).catch(() => {})
     // ── 解析入参（兼容扫码 scene / 分享链接 options）──
@@ -80,8 +87,8 @@ Page({
       return
     }
 
-    // 个人版分销绑定
-    if (uid > 0) {
+    // 个人版分销绑定（审核模式下不记录邀请，避免登录后绑定）
+    if (uid > 0 && !app.globalData.reviewMode) {
       app.globalData._pendingInviterId    = uid
       app.globalData._pendingInviterScope = 'personal'
     }
@@ -89,7 +96,8 @@ Page({
 
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0 })
+      const rm = !!getApp().globalData.reviewMode
+      this.getTabBar().setData({ selected: 0, reviewMode: rm })
     }
     // 个人版首页：固定 scope=personal，并清除企业来源上下文
     try {

@@ -32,7 +32,6 @@ class Settings extends BaseController
             $promptsConfig = SystemConfigModel::where('key', 'prompts')->where('enterprise_id', 0)->find();
             $reportRequiresPaymentConfig = SystemConfigModel::where('key', 'report_requires_payment')->where('enterprise_id', 0)->find();
             $textConfigModel = SystemConfigModel::where('key', 'text_config')->where('enterprise_id', 0)->find();
-            $reviewModeConfig = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
 
             // 获取当前超管用户名（直接使用JWT中的username）
             $jwtUsername = $user['username'] ?? null;
@@ -55,12 +54,11 @@ class Settings extends BaseController
                     'siteName' => '神仙团队AI性格测试',
                     'siteDescription' => '专业的AI性格测试平台',
                     'miniprogramName' => '神仙团队AI性格测试',
-                    'maintenanceMode' => false,
+                    'reviewMode' => false,
                     'maxTestsPerDay' => 100,
                     'trialTestCount' => 10,
                     'defaultEnterpriseId' => null,
                 ],
-                'reviewMode' => $reviewModeConfig && !empty($reviewModeConfig->value) ? $reviewModeConfig->value : ['enabled' => false],
                 'notification' => $notificationConfig ? $notificationConfig->value : [
                     'emailNotification' => true,
                     'lowBalanceAlert' => true,
@@ -104,7 +102,7 @@ class Settings extends BaseController
             $input = [];
         }
 
-        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'maintenanceMode', 'maxTestsPerDay', 'trialTestCount', 'defaultEnterpriseId'];
+        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'reviewMode', 'maxTestsPerDay', 'trialTestCount', 'defaultEnterpriseId'];
         $data = array_intersect_key($input, array_flip($allowedKeys));
         // 兼容 fallback：JSON 解析失败时尝试 Request::only
         if (empty($data)) {
@@ -387,39 +385,6 @@ class Settings extends BaseController
         }
     }
 
-    /**
-     * 更新审核模式配置
-     * PUT body: { "enabled": true/false }
-     * 开启后小程序隐藏AI面相分析功能，仅展示问卷测试，用于通过微信审核
-     */
-    public function updateReviewMode()
-    {
-        $user = $this->request->user ?? null;
-        if (!$user || $user['role'] !== 'superadmin') {
-            return error('无权限访问', 403);
-        }
-
-        $input = json_decode($this->request->getContent(), true);
-        if (!is_array($input)) {
-            $input = Request::param();
-        }
-        $enabled = !empty($input['enabled']);
-
-        try {
-            $config = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
-            if (!$config) {
-                $config = new SystemConfigModel();
-                $config->key = 'review_mode';
-                $config->enterprise_id = 0;
-                $config->description = '审核模式：开启后隐藏AI功能以通过微信审核';
-            }
-            $config->value = ['enabled' => $enabled];
-            $config->save();
-            return success($config->value, '审核模式已' . ($enabled ? '开启' : '关闭'));
-        } catch (\Exception $e) {
-            return error('保存失败：' . $e->getMessage(), 500);
-        }
-    }
 
     /**
      * 获取可用字体列表

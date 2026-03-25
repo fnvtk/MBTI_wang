@@ -11,10 +11,13 @@ Page({
     uploading: false,
     needPhoneAuth: false,
     aiAnalysisText: '分析',
-    reviewMode: true
+    // 须与 app.globalData.reviewMode 一致；误设为 true 会导致 wxml 整页 wx:if 不渲染而白屏
+    reviewMode: false
   },
 
   onLoad() {
+    const rm = !!(app.globalData && app.globalData.reviewMode)
+    this.setData({ reviewMode: rm })
     this.cameraContext = wx.createCameraContext()
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
@@ -30,14 +33,16 @@ Page({
   },
 
   onShow() {
+    const rm = !!(app.globalData && app.globalData.reviewMode)
+    this.setData({ reviewMode: rm })
     // 审核模式下重定向到测试选择页
-    if (app.globalData.reviewMode) {
+    if (rm) {
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }
     if (!ensureProfileCompleteAndRedirect()) return
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 })
+      this.getTabBar().setData({ selected: 1, reviewMode: !!app.globalData.reviewMode })
     }
     this.setData({ needPhoneAuth: !hasPhone() })
     const tc = app.globalData.textConfig
