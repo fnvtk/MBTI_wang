@@ -142,6 +142,12 @@ class Dashboard extends BaseController
 
             $topTestUsers = $this->buildTopTestUsers($enterpriseId, 10);
 
+            $testCatalog = $this->buildTestCatalog($enterpriseId);
+            $distributionMbti = $this->aggregateTestLabels($enterpriseId, 'mbti', 14);
+            $distributionDisc = $this->aggregateTestLabels($enterpriseId, 'disc', 12);
+            $distributionPdp = $this->aggregateTestLabels($enterpriseId, 'pdp', 12);
+            $faceSubtypeHints = $this->aggregateFaceSubtypeHints($enterpriseId, 8);
+
             return success([
                 'totalUsers' => $totalUsers,
                 'testsCompleted' => $testsCompleted,
@@ -149,6 +155,11 @@ class Dashboard extends BaseController
                 'pendingReviews' => $pendingReviews,
                 'testTrends' => $trendData,
                 'topTestUsers' => $topTestUsers,
+                'testCatalog' => $testCatalog,
+                'distributionMbti' => $distributionMbti,
+                'distributionDisc' => $distributionDisc,
+                'distributionPdp' => $distributionPdp,
+                'faceSubtypeHints' => $faceSubtypeHints,
             ]);
         } catch (\Exception $e) {
             return error('获取统计数据失败：' . $e->getMessage(), 500);
@@ -246,6 +257,148 @@ class Dashboard extends BaseController
         }
 
         return $out;
+    }
+
+    /**
+     * 四类测评完成人次 / 参与人数（本企业口径）
+     *
+     * @return array<int, array{key:string,label:string,records:int,uniqueUsers:int}>
+     */
+    private function buildTestCatalog(?int $enterpriseId): array
+    {
+        $defs = [
+            ['key' => 'face', 'label' => '人脸分析'],
+            ['key' => 'mbti', 'label' => 'MBTI'],
+            ['key' => 'disc', 'label' => 'DISC'],
+            ['key' => 'pdp', 'label' => 'PDP'],
+        ];
+        $out = [];
+        foreach ($defs as $def) {
+            $tt = $def['key'];
+            $q = Db::name('test_results')->where('testType', $tt);
+            if ($enterpriseId) {
+                $q->where('enterpriseId', $enterpriseId);
+            }
+            $records = (int) $q->count();
+            $q2 = Db::name('test_results')->where('testType', $tt);
+            if ($enterpriseId) {
+                $q2->where('enterpriseId', $enterpriseId);
+            }
+            $uniqueUsers = (int) $q2->distinct(true)->count('userId');
+            $out[] = [
+                'key'         => $tt,
+                'label'       => $def['label'],
+                'records'     => $records,
+                'uniqueUsers' => $uniqueUsers,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * 按结果标签聚合单类测评（与列表摘要同一解析逻辑）
+     *
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function aggregateTestLabels(?int $enterpriseId, string $testType, int $topN): array
+    {
+        $counts = [];
+        $query = Db::name('test_results')
+            ->where('testType', $testType)
+            ->field('id,resultData');
+        if ($enterpriseId) {
+            $query->where('enterpriseId', $enterpriseId);
+        }
+        $query->chunk(400, function ($rows) use (&$counts, $testType) {
+            foreach ($rows as $row) {
+                $raw = $row['resultData'] ?? '';
+                $label = $this->labelFromResultRow($testType, $raw);
+                if ($label === '') {
+                    $label = '未识别';
+                }
+                $counts[$label] = ($counts[$label] ?? 0) + 1;
+            }
+        });
+        arsort($counts);
+
+        return $this->countsToTopNWithOther($counts, $topN);
+    }
+
+    /**
+     * 人脸结果中推测的 MBTI / DISC / PDP 标签分布（辅助「面相」侧报告）
+     *
+     * @return array{mbti:array,disc:array,pdp:array}
+     */
+    private function aggregateFaceSubtypeHints(?int $enterpriseId, int $topN): array
+    {
+        $subMaps = ['mbti' => [], 'disc' => [], 'pdp' => []];
+        $query = Db::name('test_results')
+            ->where('testType', 'face')
+            ->field('id,resultData');
+        if ($enterpriseId) {
+            $query->where('enterpriseId', $enterpriseId);
+        }
+        $query->chunk(400, function ($rows) use (&$subMaps) {
+            foreach ($rows as $row) {
+                $raw = $row['resultData'] ?? '';
+                $str = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+                if ($str === '' || $str === 'null') {
+                    continue;
+                }
+                foreach (['mbti', 'disc', 'pdp'] as $sub) {
+                    $label = $this->extractFaceSubType([['testType' => 'face', 'result' => $str]], $sub);
+                    if ($label === '') {
+                        continue;
+                    }
+                    $subMaps[$sub][$label] = ($subMaps[$sub][$label] ?? 0) + 1;
+                }
+            }
+        });
+
+        $out = [];
+        foreach ($subMaps as $k => $counts) {
+            arsort($counts);
+            $out[$k] = $this->countsToTopNWithOther($counts, $topN);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string,int> $counts
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function countsToTopNWithOther(array $counts, int $topN): array
+    {
+        $topN = min(max($topN, 1), 50);
+        $items = [];
+        $i = 0;
+        $other = 0;
+        foreach ($counts as $label => $c) {
+            $c = (int) $c;
+            if ($i < $topN) {
+                $items[] = ['label' => (string) $label, 'count' => $c];
+                $i++;
+            } else {
+                $other += $c;
+            }
+        }
+        if ($other > 0) {
+            $items[] = ['label' => '其他', 'count' => $other];
+        }
+
+        return $items;
+    }
+
+    private function labelFromResultRow(string $testType, $raw): string
+    {
+        $str = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+        if ($str === '' || $str === 'null') {
+            return '';
+        }
+
+        return $this->extractResultType([['testType' => $testType, 'result' => $str]], $testType);
     }
 
     /**

@@ -448,7 +448,183 @@ class AppUser extends BaseController
         $data['faceDiscType'] = $this->extractFaceSubType($tests, 'disc');
         $data['facePdpType'] = $this->extractFaceSubType($tests, 'pdp');
 
+        $data['matchingEnterprises'] = $this->buildMatchingEnterprises(
+            (int) $id,
+            (string) ($data['mbtiType'] ?? ''),
+            (string) ($data['pdpType'] ?? ''),
+            (string) ($data['discType'] ?? '')
+        );
+
         return success($data);
+    }
+
+    /**
+     * 按企业测评池内与用户 MBTI/PDP/DISC 的同质比例推荐企业，并附带登记负责人联系方式。
+     * 仅超级管理后台使用；无测评维度时按池内活跃人数近似排序。
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function buildMatchingEnterprises(int $userId, string $userMbti, string $userPdp, string $userDisc): array
+    {
+        $userMbtiU = strtoupper(preg_replace('/[^A-Z]/', '', $userMbti));
+        $userPdpN = $this->normalizePoolTypeKey($userPdp);
+        $userDiscN = $this->normalizePoolTypeKey($userDisc);
+
+        try {
+            $entRows = Db::name('enterprises')
+                ->whereNull('deletedAt')
+                ->whereIn('status', ['operating', 'trial'])
+                ->field('id,name,code,contactName,contactPhone,contactEmail,status')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (!$entRows) {
+            return [];
+        }
+
+        $scored = [];
+        foreach ($entRows as $e) {
+            $eid = (int) ($e['id'] ?? 0);
+            if ($eid <= 0) {
+                continue;
+            }
+
+            $mbtiS = $this->enterprisePoolTypeHistogram($eid, 'mbti');
+            $pdpS = $this->enterprisePoolTypeHistogram($eid, 'pdp');
+            $discS = $this->enterprisePoolTypeHistogram($eid, 'disc');
+
+            $score = 36;
+            $reasons = [];
+
+            if ($userMbtiU !== '' && $mbtiS['total'] > 0) {
+                $hit = (int) ($mbtiS['byKey'][$userMbtiU] ?? 0);
+                $ratio = $hit / $mbtiS['total'];
+                $part = (int) round(44 * $ratio);
+                $score += $part;
+                $pct = (int) round($ratio * 100);
+                $reasons[] = 'MBTI 同质 ' . $pct . '%（池内 ' . $mbtiS['total'] . ' 人有效结果）';
+            }
+
+            if ($userPdpN !== '' && $pdpS['total'] > 0) {
+                $hit = (int) ($pdpS['byKey'][$userPdpN] ?? 0);
+                $ratio = $hit / $pdpS['total'];
+                $score += (int) round(12 * $ratio);
+                if ($ratio > 0) {
+                    $reasons[] = 'PDP 同质 ' . (int) round($ratio * 100) . '%';
+                }
+            }
+
+            if ($userDiscN !== '' && $discS['total'] > 0) {
+                $hit = (int) ($discS['byKey'][$userDiscN] ?? 0);
+                $ratio = $hit / $discS['total'];
+                $score += (int) round(12 * $ratio);
+                if ($ratio > 0) {
+                    $reasons[] = 'DISC 同质 ' . (int) round($ratio * 100) . '%';
+                }
+            }
+
+            $tested = max($mbtiS['total'], $pdpS['total'], $discS['total']);
+            if ($userMbtiU === '' && $userPdpN === '' && $userDiscN === '') {
+                $score = 40 + (int) min(38, $tested * 2);
+                $reasons[] = $tested > 0 ? '按池内测评活跃度推荐' : '暂无同质维度，展示登记企业';
+            }
+
+            $score = max(30, min(99, $score));
+
+            $typeLabel = '综合型';
+            if ($userMbtiU !== '' && $mbtiS['total'] > 0 && (($mbtiS['byKey'][$userMbtiU] ?? 0) / $mbtiS['total']) >= 0.25) {
+                $typeLabel = '文化相近（MBTI 分布）';
+            } elseif ($userPdpN !== '' && $pdpS['total'] > 0) {
+                $typeLabel = '行为风格相近（PDP 分布）';
+            } elseif ($userDiscN !== '' && $discS['total'] > 0) {
+                $typeLabel = '协作风格相近（DISC 分布）';
+            }
+
+            $scored[] = [
+                'id' => $eid,
+                'name' => (string) ($e['name'] ?? ''),
+                'code' => (string) ($e['code'] ?? ''),
+                'contactName' => (string) ($e['contactName'] ?? ''),
+                'contactPhone' => (string) ($e['contactPhone'] ?? ''),
+                'contactEmail' => (string) ($e['contactEmail'] ?? ''),
+                'status' => (string) ($e['status'] ?? ''),
+                'matchScore' => $score,
+                'matchTypeLabel' => $typeLabel,
+                'matchReason' => $reasons ? implode('；', $reasons) : '可与负责人沟通用人匹配',
+                'poolTestedUsers' => $tested,
+            ];
+        }
+
+        usort($scored, static function ($a, $b) {
+            return ($b['matchScore'] ?? 0) <=> ($a['matchScore'] ?? 0);
+        });
+
+        return array_slice($scored, 0, 10);
+    }
+
+    /**
+     * 企业池内各用户对某测评类型的「最新一条」结果类型分布
+     *
+     * @return array{total:int,byKey:array<string,int>}
+     */
+    private function enterprisePoolTypeHistogram(int $enterpriseId, string $testType): array
+    {
+        $targetType = strtolower($testType);
+        try {
+            $rows = Db::name('test_results')
+                ->where('enterpriseId', $enterpriseId)
+                ->where('testType', $testType)
+                ->order('createdAt', 'desc')
+                ->field('userId,resultData')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return ['total' => 0, 'byKey' => []];
+        }
+
+        $seen = [];
+        $byKey = [];
+        foreach ($rows as $r) {
+            $uid = (int) ($r['userId'] ?? 0);
+            if ($uid <= 0 || isset($seen[$uid])) {
+                continue;
+            }
+
+            $raw = $r['resultData'] ?? '';
+            $result = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+            $mock = [['result' => $result, 'testType' => $testType]];
+            $label = $this->extractResultType($mock, $testType);
+            if ($label === '' || ($targetType === 'face' && $label === '人脸分析')) {
+                continue;
+            }
+
+            $key = $targetType === 'mbti'
+                ? strtoupper(preg_replace('/[^A-Z]/', '', $label))
+                : $this->normalizePoolTypeKey($label);
+            if ($key === '') {
+                continue;
+            }
+            $seen[$uid] = true;
+            $byKey[$key] = ($byKey[$key] ?? 0) + 1;
+        }
+
+        $totalTyped = array_sum($byKey);
+
+        return ['total' => $totalTyped, 'byKey' => $byKey];
+    }
+
+    private function normalizePoolTypeKey(string $s): string
+    {
+        $s = trim($s);
+        if ($s === '') {
+            return '';
+        }
+        $s = str_replace([' ', '　'], '', $s);
+
+        return mb_strtolower($s, 'UTF-8');
     }
 
     private function parseMbtiFromResult($result): string

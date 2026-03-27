@@ -281,6 +281,7 @@ class Test extends BaseController
         $resultText = '';
         $emoji      = '';
         $typeName   = '';
+        $gallupPreview = '';
 
         switch ($testType) {
             case 'mbti':
@@ -313,7 +314,17 @@ class Test extends BaseController
                 break;
         }
 
-        return [
+        if (in_array($testType, ['face', 'ai'], true)) {
+            $g = $data['gallupTop3'] ?? null;
+            if (is_array($g) && $g !== []) {
+                $slice = array_slice($g, 0, 3);
+                $gallupPreview = implode('、', array_map(static function ($x) {
+                    return (string) $x;
+                }, $slice));
+            }
+        }
+
+        $out = [
             'id'              => (int) $row['id'],
             'testType'        => ($testType === 'face') ? 'ai' : $testType,
             'emoji'           => $emoji,
@@ -323,6 +334,11 @@ class Test extends BaseController
             'isPaid'          => (int) ($row['isPaid'] ?? 0),
             'requiresPayment' => (int) ($row['requiresPayment'] ?? 0),
         ];
+        if ($gallupPreview !== '') {
+            $out['gallupPreview'] = $gallupPreview;
+        }
+
+        return $out;
     }
 
     /**
@@ -620,6 +636,9 @@ class Test extends BaseController
         $out['hrView'] = null;
         $out['bossView'] = null;
         $out['resumeHighlights'] = '';
+        $out['careerDevelopment'] = '';
+        $out['familyParenting'] = '';
+        $out['partnerCofounder'] = '';
         if (isset($out['careers'])) {
             $out['careers'] = [];
         }

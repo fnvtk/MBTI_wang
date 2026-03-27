@@ -626,6 +626,9 @@ PROMPT;
                 if (!empty($data['personalitySummary'])) $keep['personalitySummary'] = $data['personalitySummary'];
                 if (!empty($data['faceAnalysis'])) $keep['faceAnalysis'] = $data['faceAnalysis'];
                 if (!empty($data['boneAnalysis'])) $keep['boneAnalysis'] = $data['boneAnalysis'];
+                if (!empty($data['careerDevelopment'])) $keep['careerDevelopment'] = $data['careerDevelopment'];
+                if (!empty($data['familyParenting'])) $keep['familyParenting'] = $data['familyParenting'];
+                if (!empty($data['partnerCofounder'])) $keep['partnerCofounder'] = $data['partnerCofounder'];
                 return $keep;
 
             case 'mbti':
@@ -917,12 +920,15 @@ PROMPT;
             . "6. 骨相分析（结合《冰鉴》八骨，约100字）\n"
             . "7. 主要优势（3个关键词）\n"
             . "8. 性格概述（50字以内）\n"
-            . "9. 人际关系与团队合作风格（50字以内）\n";
+            . "9. 人际关系与团队合作风格（50字以内）\n"
+            . "10. 职业发展方向分析（80字以内，结合 MBTI 给出路径与阶段建议）\n"
+            . "11. 家庭与亲子关系分析（80字以内，沟通与期待管理）\n"
+            . "12. 寻找合伙人/合作搭档分析（80字以内，互补、分工与风险点）\n";
 
         if ($isEnterprise) {
-            $analysisItems .= "10. 职业画像：核心优势（3项）、潜在风险（2项）、一句话工作风格\n"
-                . "11. HR视角：最适合岗位（3个）、不适合场景（2个）、入职/试用/成长期预测、绩效潜力（高潜/中潜/稳健）、合规风险（低/中/高）、团队适配建议\n"
-                . "12. 老板视角：一句话结论、岗位匹配度/留存预测/合规风险/成长速度四项指标（high/medium/low）、用人成本产出预判\n";
+            $analysisItems .= "13. 职业画像：核心优势（3项）、潜在风险（2项）、一句话工作风格\n"
+                . "14. HR视角：最适合岗位（3个）、不适合场景（2个）、入职/试用/成长期预测、绩效潜力（高潜/中潜/稳健）、合规风险（低/中/高）、团队适配建议\n"
+                . "15. 老板视角：一句话结论、岗位匹配度/留存预测/合规风险/成长速度四项指标（high/medium/low）、用人成本产出预判\n";
         }
 
         $defaultJsonTemplate = $analysisItems;
@@ -934,7 +940,8 @@ PROMPT;
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（额头/眼睛/耳朵/鼻子/嘴巴/下巴，约100字），'
             . 'boneAnalysis=《冰鉴》八骨骨相描述（颧骨/驿马骨/将军骨/日角骨/月角骨/龙宫骨/伏犀骨/龙角骨，约100字），'
-            . 'relationship=人际关系与团队合作风格约50字，gallupTop3=盖洛普前三大优势主题名称。' . "\n"
+            . 'relationship=人际关系与团队合作风格约50字，gallupTop3=盖洛普前三大优势主题名称，'
+            . 'careerDevelopment=职业发展方向分析约80字，familyParenting=家庭与亲子关系分析约80字，partnerCofounder=寻找合伙人合作搭档分析约80字。' . "\n"
             . '【第一步-人脸检测】先判断图片中是否有清晰可见的人脸：'
             . '若无人脸/图片模糊/非人像，只返回 {"hasFace":false}，不要其他内容。'
             . '若检测到清晰人脸，直接给出结论，返回以下完整 JSON（所有字段必填，参考示例格式）：'
@@ -944,7 +951,10 @@ PROMPT;
             . '"faceAnalysis":"额头宽阔平整，眼神专注深邃，耳廓厚实饱满，鼻头圆润有肉，嘴唇紧闭有力，下巴方正坚毅，整体气质沉稳内敛",'
             . '"boneAnalysis":"颧骨适度有权势，驿马骨平稳利于坚守，将军骨有力主领导，日角骨平整主贵气，月角骨匀称主柔韧，龙宫骨丰隆主聪慧，伏犀骨突显主谋略，龙角骨匀称主志向",'
             . '"relationship":"人际关系中注重深度交流，团队中承担规划与执行角色，重承诺守规则",'
-            . '"gallupTop3":["执行","责任","分析"]}'
+            . '"gallupTop3":["执行","责任","分析"],'
+            . '"careerDevelopment":"职业上宜走专业纵深或项目管理路线，前几年夯实流程与协作，中期可争取主导关键模块或小团队。",'
+            . '"familyParenting":"亲子沟通宜多倾听少评判，给孩子清晰边界也保留讨论空间；避免把职场高标准直接迁移为对孩子的苛责。",'
+            . '"partnerCofounder":"合伙宜找执行力或对外沟通互补型，股权与分工尽早书面化，退出机制与决策规则写清比口头默契更稳。"}'
             . "\n【重要】只返回 JSON 对象，不得有任何额外文字、注释或 markdown 代码块。";
 
         // 企业版在个人版基础上追加 portrait / hrView / bossView / resumeHighlights 字段说明和示例
@@ -954,6 +964,7 @@ PROMPT;
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（约100字），boneAnalysis=《冰鉴》八骨骨相描述（约100字），'
             . 'relationship=人际关系与团队合作风格约50字，gallupTop3=盖洛普前三大优势主题名称，'
+            . 'careerDevelopment=职业发展方向分析约80字，familyParenting=家庭与亲子关系分析约80字，partnerCofounder=寻找合伙人合作搭档分析约80字，'
             . 'portrait=职业画像（coreStrengths/coreRisks/workStyle），'
             . 'hrView=HR视角（roleRecommend/lifecycle/performance/complianceRisk/teamFit），'
             . 'bossView=老板视角（headline/metrics/costInsight），'
@@ -968,6 +979,9 @@ PROMPT;
             . '"boneAnalysis":"颧骨适度有权势，驿马骨平稳利于坚守，将军骨有力主领导，日角骨平整主贵气，月角骨匀称主柔韧，龙宫骨丰隆主聪慧，伏犀骨突显主谋略，龙角骨匀称主志向",'
             . '"relationship":"人际关系中注重深度交流，团队中承担规划与执行角色，重承诺守规则",'
             . '"gallupTop3":["执行","责任","分析"],'
+            . '"careerDevelopment":"职业上宜走专业纵深或项目管理路线，前几年夯实流程与协作，中期可争取主导关键模块或小团队。",'
+            . '"familyParenting":"亲子沟通宜多倾听少评判，给孩子清晰边界也保留讨论空间；避免把职场高标准直接迁移为对孩子的苛责。",'
+            . '"partnerCofounder":"合伙宜找执行力或对外沟通互补型，股权与分工尽早书面化，退出机制与决策规则写清比口头默契更稳。",'
             . '"portrait":{"coreStrengths":["执行力强","逻辑缜密","责任心高"],"coreRisks":["灵活性不足","沟通偏封闭"],"workStyle":"偏独立作战，需要清晰目标和充分授权"},'
             . '"hrView":{"roleRecommend":{"bestFit":["项目管理","运营执行","技术主管"],"notSuitable":["高创意策划","销售BD"]},'
             . '"lifecycle":{"onboarding":"适应期约1-2个月，建议配备清晰的工作手册","probation":"试用期执行稳定，交付质量高","growth":"6-12个月可承担独立模块负责人","retention":"核心留人因素是稳定的工作环境与晋升通道"},'
@@ -1334,6 +1348,9 @@ PROMPT;
             'personalitySummary' => $p['personalitySummary'] ?? '',
             'relationship'       => $p['relationship'] ?? '',
             'gallupTop3'         => $gallupTop3,
+            'careerDevelopment'  => isset($p['careerDevelopment']) ? trim((string) $p['careerDevelopment']) : '',
+            'familyParenting'    => isset($p['familyParenting']) ? trim((string) $p['familyParenting']) : '',
+            'partnerCofounder'   => isset($p['partnerCofounder']) ? trim((string) $p['partnerCofounder']) : '',
         ];
 
         // 企业版额外字段：AI 返回则透传，未返回则不输出

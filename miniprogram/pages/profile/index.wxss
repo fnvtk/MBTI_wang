@@ -325,6 +325,11 @@ custom-tab-bar {
   line-height: 1.55;
 }
 
+.depth-empty-hint--compact {
+  padding-top: 4rpx;
+  padding-bottom: 16rpx;
+}
+
 .depth-inner-divider {
   height: 1rpx;
   background: #F3F4F6;
@@ -391,6 +396,30 @@ custom-tab-bar {
   flex-shrink: 0;
 }
 
+/* 未完成测评：灰阶可点击 */
+.result-card--placeholder {
+  background: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+.result-card--placeholder .card-deco {
+  opacity: 0.12 !important;
+}
+
+.result-card--placeholder .card-label,
+.result-card--placeholder .card-time {
+  color: #9ca3af !important;
+}
+
+.result-card--placeholder .card-value {
+  color: #6b7280 !important;
+}
+
+.result-card--placeholder .card-icon-wrap {
+  opacity: 0.65;
+}
+
 .card-deco {
   position: absolute;
   top: -24rpx;
@@ -405,6 +434,7 @@ custom-tab-bar {
 .card-blue .card-deco   { background: #BFDBFE; }
 .card-orange .card-deco { background: #FDE68A; }
 .card-rose .card-deco   { background: #FECDD3; }
+.card-teal .card-deco   { background: #99f6e4; }
 
 .card-icon-wrap {
   width: 64rpx;
@@ -419,6 +449,7 @@ custom-tab-bar {
 .card-icon-blue   { background: #DBEAFE; }
 .card-icon-orange { background: #FEF3C7; }
 .card-icon-rose   { background: #FFE4E6; }
+.card-icon-teal   { background: #ccfbf1; }
 
 .card-icon {
   font-size: 32rpx;
@@ -440,6 +471,17 @@ custom-tab-bar {
 .card-blue .card-value   { color: #2563EB; }
 .card-orange .card-value { color: #D97706; }
 .card-rose .card-value   { color: #E11D48; }
+.card-teal .card-value   { color: #0f766e; }
+
+.card-value--small {
+  font-size: 26rpx !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
 
 .card-time {
   font-size: 20rpx;

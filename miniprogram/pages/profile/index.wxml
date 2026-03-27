@@ -79,52 +79,70 @@
           <text class="depth-header-chevron">›</text>
         </view>
       </view>
-      <block wx:if="{{hasResults}}">
-        <scroll-view scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
-          <view class="cards-row cards-row--in-card">
-            <view class="result-card card-purple" wx:if="{{mbtiType}}" bindtap="viewMBTI">
-              <view class="card-deco"></view>
-              <view class="card-icon-wrap card-icon-purple">
-                <text class="card-icon">🧠</text>
-              </view>
-              <text class="card-label">MBTI性格</text>
-              <text class="card-value">{{mbtiType}}</text>
-              <text class="card-time">{{mbtiTime}}</text>
+      <scroll-view scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
+        <view class="cards-row cards-row--in-card">
+          <view class="result-card card-purple {{mbtiType ? '' : 'result-card--placeholder'}}" bindtap="viewMBTI">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-purple">
+              <text class="card-icon">🧠</text>
             </view>
-            <view class="result-card card-blue" wx:if="{{discType}}" bindtap="viewDISC">
-              <view class="card-deco"></view>
-              <view class="card-icon-wrap card-icon-blue">
-                <text class="card-icon">📊</text>
-              </view>
-              <text class="card-label">DISC测评</text>
-              <text class="card-value">{{discType}}型</text>
-              <text class="card-time">{{discTime}}</text>
-            </view>
-            <view class="result-card card-orange" wx:if="{{pdpType}}" bindtap="viewPDP">
-              <view class="card-deco"></view>
-              <view class="card-icon-wrap card-icon-orange">
-                <text class="card-icon">🦁</text>
-              </view>
-              <text class="card-label">PDP行为</text>
-              <text class="card-value">{{pdpType}}</text>
-              <text class="card-time">{{pdpTime}}</text>
-            </view>
-            <view class="result-card card-rose" wx:if="{{aiType && !reviewMode}}" bindtap="viewAI">
-              <view class="card-deco"></view>
-              <view class="card-icon-wrap card-icon-rose">
-                <text class="card-icon">👁️</text>
-              </view>
-              <text class="card-label">面相分析</text>
-              <text class="card-value">{{aiType}}</text>
-              <text class="card-time">{{aiTime}}</text>
-            </view>
+            <text class="card-label">MBTI性格</text>
+            <text class="card-value">{{mbtiType || '未测评'}}</text>
+            <text class="card-time">{{mbtiType ? mbtiTime : '点击进入问卷'}}</text>
           </view>
-        </scroll-view>
-      </block>
-      <view wx:else class="depth-empty-hint">
-        <text>完成任一测评后，此处展示最近一次结果；右上角可查看全部历史。</text>
+          <view class="result-card card-orange {{pdpType ? '' : 'result-card--placeholder'}}" bindtap="viewPDP">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-orange">
+              <text class="card-icon">🦁</text>
+            </view>
+            <text class="card-label">PDP行为</text>
+            <text class="card-value">{{pdpType || '未测评'}}</text>
+            <text class="card-time">{{pdpType ? pdpTime : '点击进入问卷'}}</text>
+          </view>
+          <view class="result-card card-blue {{discType ? '' : 'result-card--placeholder'}}" bindtap="viewDISC">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-blue">
+              <text class="card-icon">📊</text>
+            </view>
+            <text class="card-label">DISC测评</text>
+            <text class="card-value">{{discType ? discType + '型' : '未测评'}}</text>
+            <text class="card-time">{{discType ? discTime : '点击进入问卷'}}</text>
+          </view>
+          <view class="result-card card-teal {{(gallupPreview || aiType) ? '' : 'result-card--placeholder'}}" bindtap="viewGallup" wx:if="{{!reviewMode}}">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-teal">
+              <text class="card-icon">⭐</text>
+            </view>
+            <text class="card-label">盖洛普优势</text>
+            <text class="card-value card-value--small">{{gallupPreview || (aiType ? '见面相报告' : '未测评')}}</text>
+            <text class="card-time">{{gallupPreview ? aiTime : (aiType ? '已拍面相可查看' : '先完成面相拍摄')}}</text>
+          </view>
+          <view class="result-card card-rose {{aiType ? '' : 'result-card--placeholder'}}" bindtap="viewAI" wx:if="{{!reviewMode}}">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-rose">
+              <text class="card-icon">👁️</text>
+            </view>
+            <text class="card-label">面相分析</text>
+            <text class="card-value">{{aiType || '未测评'}}</text>
+            <text class="card-time">{{aiType ? aiTime : '去拍摄分析'}}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="depth-empty-hint depth-empty-hint--compact">
+        <text>灰色为未完成项，点击即可进入测评或拍摄；右上方可查看全部历史。</text>
       </view>
       <view class="depth-inner-divider"></view>
+      <view class="menu-item menu-item--flat" bindtap="goToActionTest" wx:if="{{!reviewMode}}">
+        <view class="menu-icon-wrap menu-icon-amber">
+          <text class="menu-icon">📷</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">动作测试（拍摄）</text>
+          <text class="menu-sub">拍摄人像照片，生成面相、骨相与盖洛普等解析</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+      <view class="menu-divider menu-divider--in-card" wx:if="{{!reviewMode}}"></view>
       <view class="menu-item menu-item--flat" bindtap="goToDeepService">
         <view class="menu-icon-wrap menu-icon-purple">
           <text class="menu-icon">✨</text>

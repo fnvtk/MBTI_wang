@@ -19,11 +19,53 @@
       </div>
     </div>
 
+    <div class="dash-catalog" v-if="testCatalog.length">
+      <div
+        v-for="(row, i) in catalogRows"
+        :key="row.key"
+        class="catalog-card"
+        :style="{ animationDelay: `${120 + i * 40}ms` }"
+      >
+        <div :class="['catalog-icon', row.tone]">
+          <el-icon><component :is="row.icon" /></el-icon>
+        </div>
+        <div class="catalog-body">
+          <div class="catalog-label">{{ row.label }}</div>
+          <div class="catalog-metrics">
+            <span><em>{{ row.records }}</em> 人次</span>
+            <span class="sep">·</span>
+            <span><em>{{ row.uniqueUsers }}</em> 人</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="dash-main">
       <section class="panel panel-chart">
         <div class="panel-head">
           <h2 class="panel-title">近 14 日测试趋势</h2>
-          <p class="panel-desc">人脸 · MBTI · PDP · DISC 完成量</p>
+          <p class="panel-desc">人脸 · MBTI · PDP · DISC 完成量；下方为性格结果分布（与本企业测评数据一致）</p>
+        </div>
+        <div v-if="hasDistribution" class="distr-band">
+          <div v-for="block in distributionBlocks" :key="block.key" class="distr-col">
+            <div class="distr-col-head">
+              <el-icon class="distr-head-ic"><component :is="block.icon" /></el-icon>
+              <span>{{ block.title }}</span>
+            </div>
+            <div class="distr-list">
+              <div v-for="it in block.items" :key="block.key + it.label" class="distr-row-line">
+                <span class="distr-lab" :title="it.label">{{ it.label }}</span>
+                <div class="distr-bar-track">
+                  <div
+                    class="distr-bar-fill"
+                    :class="block.barClass"
+                    :style="{ width: barWidthPct(block.max, it.count) }"
+                  />
+                </div>
+                <span class="distr-num">{{ it.count }}</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="chart-box">
           <VChart v-if="testTrends.length" class="trend-chart" :option="chartOption" autoresize />
@@ -87,7 +129,15 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { User, Document, TrendCharts } from '@element-plus/icons-vue'
+import {
+  User,
+  Document,
+  TrendCharts,
+  Camera,
+  Reading,
+  Histogram,
+  Medal
+} from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { use } from 'echarts/core'
@@ -125,6 +175,18 @@ const testTrends = ref<
   Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>
 >([])
 const topTestUsers = ref<TopUserRow[]>([])
+const testCatalog = ref<
+  Array<{ key: string; label: string; records: number; uniqueUsers: number }>
+>([])
+const distributionMbti = ref<Array<{ label: string; count: number }>>([])
+const distributionDisc = ref<Array<{ label: string; count: number }>>([])
+const distributionPdp = ref<Array<{ label: string; count: number }>>([])
+const faceSubtypeHints = ref<{
+  mbti: Array<{ label: string; count: number }>
+  disc: Array<{ label: string; count: number }>
+  pdp: Array<{ label: string; count: number }>
+}>({ mbti: [], disc: [], pdp: [] })
+
 const loading = ref(false)
 const inviteLoading = ref(false)
 const inviteQrcode = ref<string>('')
@@ -138,6 +200,69 @@ const kpiCards = computed(() => [
   { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' },
   { key: 'p', label: '待审核', value: stats.pendingReviews, icon: User, tone: 'orange' }
 ])
+
+const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
+  face: { icon: Camera, tone: 'teal' },
+  mbti: { icon: Reading, tone: 'blue' },
+  disc: { icon: Histogram, tone: 'indigo' },
+  pdp: { icon: Medal, tone: 'amber' }
+}
+
+const catalogRows = computed(() =>
+  testCatalog.value.map(row => {
+    const m = catalogIconMap[row.key] || { icon: Document, tone: 'blue' }
+    return {
+      ...row,
+      icon: m.icon,
+      tone: m.tone,
+      records: row.records ?? 0,
+      uniqueUsers: row.uniqueUsers ?? 0
+    }
+  })
+)
+
+function sliceItems(items: Array<{ label: string; count: number }>, n: number) {
+  return (items || []).slice(0, n)
+}
+
+const distributionBlocks = computed(() => {
+  const mbti = sliceItems(distributionMbti.value, 6)
+  const disc = sliceItems(distributionDisc.value, 6)
+  const pdp = sliceItems(distributionPdp.value, 6)
+  const faceMerged: Array<{ label: string; count: number }> = []
+  const fh = faceSubtypeHints.value || { mbti: [], disc: [], pdp: [] }
+  const pushPref = (prefix: string, arr: Array<{ label: string; count: number }>, max: number) => {
+    let k = 0
+    for (const it of arr || []) {
+      if (k >= max) break
+      faceMerged.push({ label: `${prefix}${it.label}`, count: it.count })
+      k++
+    }
+  }
+  pushPref('面·MBTI ', fh.mbti, 2)
+  pushPref('面·DISC ', fh.disc, 2)
+  pushPref('面·PDP ', fh.pdp, 2)
+
+  const blocks = [
+    { key: 'mbti', title: 'MBTI（答题）', items: mbti, icon: Reading, barClass: 'bar-mbti' },
+    { key: 'disc', title: 'DISC（答题）', items: disc, icon: Histogram, barClass: 'bar-disc' },
+    { key: 'pdp', title: 'PDP（答题）', items: pdp, icon: Medal, barClass: 'bar-pdp' },
+    { key: 'face', title: '面相推测', items: faceMerged, icon: Camera, barClass: 'bar-face' }
+  ]
+  return blocks.map(b => ({
+    ...b,
+    max: Math.max(1, ...b.items.map(i => i.count))
+  }))
+})
+
+const hasDistribution = computed(() =>
+  distributionBlocks.value.some(b => b.items.length > 0)
+)
+
+function barWidthPct(max: number, count: number) {
+  if (!max || !count) return '0%'
+  return `${Math.round((count / max) * 100)}%`
+}
 
 const chartOption = computed(() => {
   const dates = testTrends.value.map(d => d.date.slice(5))
@@ -226,6 +351,25 @@ const loadData = async () => {
       stats.pendingReviews = response.data.pendingReviews || 0
       testTrends.value = response.data.testTrends || []
       topTestUsers.value = Array.isArray(response.data.topTestUsers) ? response.data.topTestUsers : []
+      testCatalog.value = Array.isArray(response.data.testCatalog) ? response.data.testCatalog : []
+      distributionMbti.value = Array.isArray(response.data.distributionMbti)
+        ? response.data.distributionMbti
+        : []
+      distributionDisc.value = Array.isArray(response.data.distributionDisc)
+        ? response.data.distributionDisc
+        : []
+      distributionPdp.value = Array.isArray(response.data.distributionPdp)
+        ? response.data.distributionPdp
+        : []
+      const fh = response.data.faceSubtypeHints
+      faceSubtypeHints.value =
+        fh && typeof fh === 'object'
+          ? {
+              mbti: Array.isArray(fh.mbti) ? fh.mbti : [],
+              disc: Array.isArray(fh.disc) ? fh.disc : [],
+              pdp: Array.isArray(fh.pdp) ? fh.pdp : []
+            }
+          : { mbti: [], disc: [], pdp: [] }
     }
   } catch (error: any) {
     console.error('加载数据失败:', error)
@@ -307,7 +451,94 @@ const loadInviteQrcode = async () => {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+}
+
+.dash-catalog {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.catalog-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  animation: dashFadeUp 0.45s ease-out both;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06);
+  }
+}
+
+.catalog-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+
+  &.teal {
+    background: #f0fdfa;
+    color: #0d9488;
+  }
+
+  &.blue {
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+
+  &.indigo {
+    background: #eef2ff;
+    color: #6366f1;
+  }
+
+  &.amber {
+    background: #fffbeb;
+    color: #d97706;
+  }
+}
+
+.catalog-body {
+  min-width: 0;
+}
+
+.catalog-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.catalog-metrics {
+  font-size: 11px;
+  color: #6b7280;
+
+  em {
+    font-style: normal;
+    font-weight: 700;
+    color: #374151;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sep {
+    margin: 0 4px;
+    color: #d1d5db;
+  }
 }
 
 .stat-card {
@@ -396,6 +627,97 @@ const loadInviteQrcode = async () => {
   min-height: 0;
 }
 
+.distr-band {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.distr-col {
+  min-width: 0;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #f3f4f6;
+}
+
+.distr-col-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+
+  .distr-head-ic {
+    font-size: 14px;
+    color: #6b7280;
+  }
+}
+
+.distr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 108px;
+  overflow-y: auto;
+}
+
+.distr-row-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(36px, 42%) 22px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.distr-lab {
+  color: #4b5563;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distr-bar-track {
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.distr-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.35s ease;
+
+  &.bar-mbti {
+    background: #3b82f6;
+  }
+
+  &.bar-disc {
+    background: #6366f1;
+  }
+
+  &.bar-pdp {
+    background: #f97316;
+  }
+
+  &.bar-face {
+    background: #14b8a6;
+  }
+}
+
+.distr-num {
+  text-align: right;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
 .panel-side {
   gap: 10px;
   padding: 10px;
@@ -435,7 +757,7 @@ const loadInviteQrcode = async () => {
 .trend-chart {
   width: 100%;
   height: 100%;
-  min-height: 160px;
+  min-height: 140px;
 }
 
 .panel-empty {
@@ -522,6 +844,14 @@ const loadInviteQrcode = async () => {
 
 @media (max-width: 640px) {
   .dash-kpis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dash-catalog {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .distr-band {
     grid-template-columns: repeat(2, 1fr);
   }
 }

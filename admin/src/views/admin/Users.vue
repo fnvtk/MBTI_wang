@@ -164,80 +164,13 @@
       </div>
     </div>
 
-    <!-- 用户详情对话框：测试记录 -->
-    <el-dialog
+    <UserDetailDialog
       v-model="showDetailDialog"
-      title="测试记录"
-      width="55%"
-      destroy-on-close
-      v-loading="detailLoading"
-    >
-      <template v-if="detailUser">
-        <div class="detail-section" v-if="testTableData.length">
-          <el-table :data="paginatedTests" size="small" max-height="500" class="test-table">
-            <el-table-column prop="createdAt" label="时间" width="140">
-              <template #default="{ row }">{{ formatDate(row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column prop="testType" label="类型" width="120">
-              <template #default="{ row }">{{ formatTestType(row.testType) }}</template>
-            </el-table-column>
-            <el-table-column prop="testScope" label="版本" width="90" align="center">
-              <template #default="{ row }">
-                <el-tag
-                  size="small"
-                  :type="row.testScope === 'enterprise' ? 'primary' : 'info'"
-                >
-                  {{ row.testScope === 'enterprise' ? '企业版' : '个人版' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column prop="summary" label="结果摘要" min-width="160" show-overflow-tooltip />
-            <el-table-column label="需付费" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag size="small" :type="row.requiresPayment ? 'warning' : 'info'">
-                  {{ row.requiresPayment ? '是' : '否' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="已付费" width="100" align="center">
-              <template #default="{ row }">
-                <el-tag size="small" :type="row.isPaid ? 'success' : 'info'">
-                  {{ row.isPaid ? '是' : '否' }}
-                </el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="付款金额" width="110" align="center">
-              <template #default="{ row }">
-                <span class="payment-cell">
-                  {{ row.isPaid ? formatAmount(row.paidAmount) : '-' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column label="付款时间" width="140" align="center">
-              <template #default="{ row }">
-                <span class="time-cell">
-                  {{ row.isPaid ? formatDate(row.paidAt) : '-' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="100">
-              <template #default="{ row }">
-                <el-button link type="primary" @click="handleViewTest(row)">查看</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <div class="test-pagination" v-if="testTableData.length > testPageSize">
-            <el-pagination
-              v-model:current-page="testPage"
-              :page-size="testPageSize"
-              :total="testTableData.length"
-              layout="prev, pager, next, total"
-              @current-change="handleTestPageChange"
-            />
-          </div>
-          </div>
-      </template>
-    </el-dialog>
+      :user="detailUser"
+      :loading="detailLoading"
+      :show-enterprise-match="false"
+      @view-test="handleViewTest"
+    />
 
     <!-- 单次测试详情对话框 -->
     <el-dialog
@@ -572,6 +505,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Download, Search, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import UserDetailDialog from '@/components/UserDetailDialog.vue'
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -583,8 +517,6 @@ const searchTerm = ref('')
 const showDetailDialog = ref(false)
 const detailUser = ref<Record<string, any> | null>(null)
 
-const testPage = ref(1)
-const testPageSize = 10
 const showTestDetailDialog = ref(false)
 const currentTest = ref<any | null>(null)
 
@@ -592,18 +524,6 @@ const rawTests = computed<any[]>(() => {
   const u: any = detailUser.value
   if (!u) return []
   return (u.testList || []) as any[]
-})
-
-const testTableData = computed(() =>
-  rawTests.value.map(t => ({
-    ...t,
-    summary: extractTestSummary(t)
-  }))
-)
-
-const paginatedTests = computed(() => {
-  const start = (testPage.value - 1) * testPageSize
-  return testTableData.value.slice(start, start + testPageSize)
 })
 
 const currentTestType = computed(() => (currentTest.value?.testType || '').toLowerCase())
@@ -833,10 +753,6 @@ function handlePageChange() {
   loadUsers()
 }
 
-function handleTestPageChange(page: number) {
-  testPage.value = page
-}
-
 function exportData() {
   ElMessage.info('导出功能开发中')
 }
@@ -874,7 +790,6 @@ async function loadDetailUser(userId: number) {
 }
 
 async function handleView(row: any) {
-  testPage.value = 1
   detailUser.value = null
   showDetailDialog.value = true
 
@@ -892,7 +807,6 @@ function handleViewTest(row: any) {
 
 async function handleClickTestTag(row: any, testType: string) {
   // 仅加载用户测试记录，弹出单次测试详情对话框并显示加载动画
-  testPage.value = 1
   currentTest.value = null
   showTestDetailDialog.value = true
   testDetailLoading.value = true

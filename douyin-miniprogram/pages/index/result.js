@@ -1,7 +1,47 @@
 // pages/index/result.js - 分析结果页
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
+const { mbtiDescriptions } = require('../../utils/descriptions')
+
+function buildSceneFallback(baseResult) {
+  const mbti = baseResult.mbti || ''
+  const d = mbtiDescriptions[mbti] || {}
+  const jobs = (d.careers || []).slice(0, 2).join('、') || '专业岗位'
+  const name = d.name || baseResult.title || ''
+  return {
+    careerDevelopment: `结合 ${mbti}${name ? '（' + name + '）' : ''} 特质，${jobs} 等与系统性、长期主义更契合的路径往往更容易做出成绩；建议前 1～3 年夯实基本功与协作习惯，再向骨干或专家角色过渡。`,
+    familyParenting: '家庭互动中可减少「对错评判」、增加情感确认；给孩子清晰边界的同时也留出讨论与试错空间，更利于信任感与自驱力。',
+    partnerCofounder: '寻找合伙人时建议重点考察责任感与信息透明度，角色分工、决策机制与退出规则尽量书面化；互补型搭档通常比同特质堆叠更有效。'
+  }
+}
+
+function mergeSceneBlocks(apiData, baseResult) {
+  const trim = (s) => (s && String(s).trim()) || ''
+  const apiC = trim(apiData.careerDevelopment)
+  const apiF = trim(apiData.familyParenting)
+  const apiP = trim(apiData.partnerCofounder)
+  const fa = apiData.faceAnalysis
+  const bone = apiData.boneAnalysis
+  const rel = typeof apiData.relationship === 'string' ? apiData.relationship.trim() : ''
+  const hasUnlockedReport =
+    rel.length > 8 ||
+    (typeof fa === 'string' && fa.length > 40) ||
+    (fa && typeof fa === 'object' && !Array.isArray(fa)) ||
+    (typeof apiData.faceAnalysisText === 'string' && apiData.faceAnalysisText.length > 40) ||
+    (typeof bone === 'string' && bone.length > 40) ||
+    (bone && typeof bone === 'object' && !Array.isArray(bone)) ||
+    (typeof apiData.boneAnalysisText === 'string' && apiData.boneAnalysisText.length > 40)
+  if (!hasUnlockedReport) {
+    return { careerDevelopment: '', familyParenting: '', partnerCofounder: '' }
+  }
+  const fb = buildSceneFallback(baseResult)
+  return {
+    careerDevelopment: apiC || fb.careerDevelopment,
+    familyParenting: apiF || fb.familyParenting,
+    partnerCofounder: apiP || fb.partnerCofounder
+  }
+}
 
 Page({
   data: {
@@ -42,7 +82,10 @@ Page({
       portrait: null,
       hrView: null,
       bossView: null,
-      resumeHighlights: ''
+      resumeHighlights: '',
+      careerDevelopment: '',
+      familyParenting: '',
+      partnerCofounder: ''
     },
     // 当前这次AI分析对应的测试记录ID（mbti_test_results.id）
     testResultId: null,
@@ -50,6 +93,7 @@ Page({
     hasReloadedAfterPay: false,
     // 是否已在本地拥有手机号（决定是否还需要弹出微信手机号授权）
     hasPhone: false,
+    isProfileComplete: false,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
     aiAnalysisText: '分析',
@@ -138,8 +182,7 @@ Page({
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
-    this.setData({ hasPhone: hasPhone() })
+    this.setData({ hasPhone: hasPhone(), isProfileComplete: isProfileComplete() })
     const tc = app.globalData.textConfig
     if (tc) {
       this.setData({
@@ -244,7 +287,7 @@ Page({
 
   // 处理API返回结果
   processResult(apiData) {
-    const result = {
+    const base = {
       mbti:             apiData.mbti?.type || '',
       title:            apiData.mbti?.title || '',
       summary:          apiData.personalitySummary || apiData.overview || '',
@@ -258,7 +301,12 @@ Page({
       boneAnalysisText: typeof apiData.boneAnalysis === 'string' ? apiData.boneAnalysis : '',
       careers:          Array.isArray(apiData.careers) ? apiData.careers : [],
       relationship:     apiData.relationship || '',
-      gallupTop3:       Array.isArray(apiData.gallupTop3) ? apiData.gallupTop3 : [],
+      gallupTop3:       Array.isArray(apiData.gallupTop3) ? apiData.gallupTop3 : []
+    }
+    const scene = mergeSceneBlocks(apiData, base)
+    const result = {
+      ...base,
+      ...scene,
       faceAnalysis:     null,
       boneAnalysis:     null,
       portrait:         apiData.portrait || null,
@@ -289,17 +337,20 @@ Page({
     // 优先使用后端 /api/analyze 返回的价格信息，避免二次请求
     if (apiData._payment) {
       const p = apiData._payment || {}
+      let amountYuan = typeof p.amountYuan === 'number'
+        ? p.amountYuan
+        : (p.amountFen ? (p.amountFen / 100) : 0)
+      if (p.requiresPayment && amountYuan <= 0) amountYuan = 1
       this.setData({
         payInfo: {
           requiresPayment: !!p.requiresPayment,
           isPaid: false,
-          amountYuan: typeof p.amountYuan === 'number'
-            ? p.amountYuan
-            : (p.amountFen ? (p.amountFen / 100) : 0)
+          amountYuan
         }
       })
+    } else {
+      this.initPayInfoFromRuntime()
     }
-    // 无 _payment 时（如从历史详情进入）不在这里调 initPayInfoFromRuntime，避免异步 getRuntimeConfig 后覆盖详情接口返回的 needPaymentToUnlock；由调用方用 detail 的 payload 单独设置 payInfo
   },
 
 
@@ -328,7 +379,9 @@ Page({
           requiresPayment: needPay,
           isPaid: !!detailPayload.isPaid,
           amountYuan: needPay ? amountYuan : 0
-        }
+        },
+        hasPhone: hasPhone(),
+        isProfileComplete: isProfileComplete()
       })
       return
     }
@@ -342,18 +395,24 @@ Page({
           : Number(facePriceRaw || 0)
 
         const requiresByConfig = !!(reportRequires && reportRequires.face)
-        const requiresPayment =
+        let requiresPayment =
           typeof recordRequires === 'boolean' ? recordRequires : requiresByConfig
-        // 系统设置需付款但金额为0 则直接可查看，不展示付费墙
-        const needPay = requiresPayment && facePrice > 0
-        const amountYuan = facePrice > 0 ? facePrice : 0
+        let amountYuan = facePrice > 0 ? facePrice : 0
+        let needPay = requiresPayment && amountYuan > 0
+        if (requiresByConfig && !needPay) {
+          amountYuan = 1
+          needPay = true
+          requiresPayment = true
+        }
 
         this.setData({
           payInfo: {
             requiresPayment: needPay,
             isPaid: !!recordIsPaid,
-            amountYuan
-          }
+            amountYuan: needPay ? amountYuan : 0
+          },
+          hasPhone: hasPhone(),
+          isProfileComplete: isProfileComplete()
         })
       })
       .catch(() => {
@@ -362,9 +421,19 @@ Page({
             requiresPayment: false,
             isPaid: !!recordIsPaid,
             amountYuan: 0
-          }
+          },
+          hasPhone: hasPhone(),
+          isProfileComplete: isProfileComplete()
         })
       })
+  },
+
+  goToCompleteProfile() {
+    tt.navigateTo({ url: '/pages/user-profile/index' })
+  },
+
+  onTapUnlockPay() {
+    this.unlockFullReport()
   },
 
   // 解锁完整报告：发起人脸测试付费
@@ -384,12 +453,12 @@ Page({
         success: () => {
           tt.showToast({ title: '已解锁完整报告', icon: 'success' })
 
-          // 本地先标记已付费，避免按钮仍然提示“需要解锁”
           this.setData({
-            'payInfo.isPaid': true
+            'payInfo.isPaid': true,
+            hasPhone: hasPhone(),
+            isProfileComplete: isProfileComplete()
           })
 
-          // 避免重复触发刷新：只在还没刷新的情况下，延迟 0.5s 拉一次详情
           if (testResultId && !hasReloadedAfterPay) {
             this.setData({ hasReloadedAfterPay: true })
             setTimeout(() => {
@@ -397,41 +466,27 @@ Page({
             }, 500)
           }
         },
-        fail: () => {
-          // 支付失败或取消，这里不做额外处理
-        }
+        fail: () => {}
       })
     })
   },
 
-  // AI结果页付费按钮：就地触发微信手机号授权，然后调用 unlockFullReport
-  onGetPhoneNumberForFacePay(e) {
-    if (!ensureProfileCompleteAndRedirect()) return
+  onPostPayBindPhone(e) {
     const { code, errMsg } = e.detail || {}
     if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
-      if (!hasPhone()) {
-        tt.showToast({ title: '需要授权手机号才能继续', icon: 'none' })
-        return
-      }
-      this.unlockFullReport()
+      tt.showToast({ title: '需要手机号以便保存报告', icon: 'none' })
       return
     }
     if (!code) {
-      if (hasPhone()) {
-        this.unlockFullReport()
-      } else {
-        tt.showToast({ title: '获取手机号失败', icon: 'none' })
-      }
+      tt.showToast({ title: '获取手机号失败', icon: 'none' })
       return
     }
     bindPhoneByCode(code)
       .then(() => {
-        this.setData({ hasPhone: true })
-        this.unlockFullReport()
+        this.setData({ hasPhone: true, isProfileComplete: isProfileComplete() })
+        tt.showToast({ title: '已绑定手机号', icon: 'success' })
       })
-      .catch(() => {
-        // 保持在当前页，等待用户重新点击
-      })
+      .catch(() => {})
   },
 
   // 解锁成功后，根据测试记录ID重新拉取完整详情
