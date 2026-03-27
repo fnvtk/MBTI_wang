@@ -1,20 +1,23 @@
 /**
  * 手机号授权工具：基于微信 getPhoneNumber + 服务器端换取手机号接口
- * 个人资料完整性检查：头像、昵称、手机号为必填，生日和性别选填
+ * 手机号与个人资料：详见 isProfileComplete 规则
  */
 
 /**
- * 个人资料是否已完善（头像、昵称、手机号必填，生日和性别选填）
+ * 个人资料是否已满足业务门禁（避免反复跳转「完善资料」）
+ * - 已绑定手机号：视为可用（付费/深度服务以手机为准；仅首字头像无 URL 不再卡死）
+ * - 未绑手机：需昵称+头像，引导去资料页补齐并授权手机
  * @returns {boolean}
  */
 function isProfileComplete() {
   const app = getApp()
   const user = app.globalData.userInfo || wx.getStorageSync('userInfo')
   if (!user) return false
-  const avatar = (user.avatar || user.avatarUrl || '').trim()
-  const nickname = (user.nickname || user.nickName || '').trim()
   const phone = (user.phone || user.phoneNumber || '').trim()
-  return avatar.length > 0 && nickname.length > 0 && phone.length > 0
+  if (phone.length > 0) return true
+  const nickname = (user.nickname || user.nickName || user.username || '').trim()
+  const avatar = (user.avatar || user.avatarUrl || '').trim()
+  return nickname.length > 0 && avatar.length > 0
 }
 
 /**

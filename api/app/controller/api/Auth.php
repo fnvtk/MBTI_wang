@@ -6,6 +6,7 @@ use app\model\User as UserModel;
 use app\model\WechatUser;
 use app\common\service\JwtService;
 use app\common\service\WechatService;
+use app\common\service\FeishuLeadWebhookService;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -443,10 +444,20 @@ class Auth extends BaseController
             return error('未获取到手机号', 400);
         }
 
+        $prevRow = Db::name('wechat_users')->where('id', $userId)->field('phone')->find();
+        $hadPhone = $prevRow && trim((string) ($prevRow['phone'] ?? '')) !== '';
+
         Db::name('wechat_users')->where('id', $userId)->update([
             'phone'     => $phone,
             'updatedAt' => time(),
         ]);
+
+        if (!$hadPhone) {
+            try {
+                FeishuLeadWebhookService::onPhoneBound($userId, $phone);
+            } catch (\Throwable $e) {
+            }
+        }
         $row = Db::name('wechat_users')->where('id', $userId)->find();
         unset($row['sessionKey'], $row['openid']);
         $row['avatarUrl'] = $row['avatar'] ?? '';

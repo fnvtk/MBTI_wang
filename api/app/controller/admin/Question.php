@@ -48,10 +48,14 @@ class Question extends BaseController
         // 如果指定了企业ID，优先查询企业题库
         // 如果没有企业题库，则查询超管题库（enterpriseId = NULL）
         if ($enterpriseId !== null) {
-            // 先检查企业是否有自己的题库
-            $enterpriseQuestionCount = QuestionModel::where('enterpriseId', $enterpriseId)
-                ->where('type', $type ?: ['mbti', 'disc', 'pdp'])
-                ->count();
+            // 先检查企业是否有自己的题库（未指定 type 时需统计 mbti/disc/pdp 三类）
+            $countQuery = QuestionModel::where('enterpriseId', $enterpriseId);
+            if ($type !== '') {
+                $countQuery->where('type', $type);
+            } else {
+                $countQuery->whereIn('type', ['mbti', 'disc', 'pdp']);
+            }
+            $enterpriseQuestionCount = $countQuery->count();
             
             if ($enterpriseQuestionCount > 0) {
                 // 使用企业题库

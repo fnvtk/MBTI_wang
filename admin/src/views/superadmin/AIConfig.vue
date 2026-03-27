@@ -2,8 +2,10 @@
   <div class="page-container">
     <div class="page-header">
       <div class="header-left">
-        <h2>AI 服务商配置</h2>
-        <p class="subtitle">管理 AI 服务商的API密钥、模型参数和余额监控</p>
+        <h2>智能算力</h2>
+        <p class="subtitle">
+          多服务商 API、模型、余额与 Token 消耗；保障各企业管理后台与小程序侧 AI 能力可用。
+        </p>
       </div>
       <div class="header-actions">
         <el-button

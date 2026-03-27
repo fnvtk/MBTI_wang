@@ -4,6 +4,11 @@
 const app = getApp()
 const { getEnterpriseIdForApiPayload } = require('./enterpriseContext.js')
 
+function paymentApiBase() {
+  const b = (app.globalData && app.globalData.apiBase) ? String(app.globalData.apiBase) : ''
+  return b.replace(/\/$/, '')
+}
+
 /** 创建订单时传给后端的 enterpriseId（0 表示无企业上下文）；与个人/企业 Tab 一致 */
 function enterpriseIdForOrder() {
   const eid = getEnterpriseIdForApiPayload()
@@ -64,7 +69,21 @@ function generateOrderId(productType) {
  */
 function wxPay(options) {
   const { orderId, amount = 0, description, productType, testResultId, deepProductId, enterpriseId, success, fail } = options
-  
+
+  try {
+    const analyticsMod = require('./analytics')
+    if (analyticsMod && typeof analyticsMod.track === 'function') {
+      if (productType === 'recharge') {
+        analyticsMod.track('click_recharge', { action: '点击充值并发起支付', productType: 'recharge' })
+      } else {
+        analyticsMod.track('click_pay', { action: '发起支付', productType: productType || '' })
+      }
+      if (typeof analyticsMod.flush === 'function') {
+        analyticsMod.flush()
+      }
+    }
+  } catch (e) {}
+
   wx.showLoading({
     title: '正在支付...',
     mask: true
@@ -72,7 +91,7 @@ function wxPay(options) {
 
   // 1. 调用后端创建支付订单
   wx.request({
-    url: `${app.globalData.apiBase}/api/payment/create`,
+    url: `${paymentApiBase()}/api/payment/create`,
     method: 'POST',
     header: {
       'Authorization': `Bearer ${wx.getStorageSync('token')}`,
@@ -174,7 +193,7 @@ function wxPay(options) {
  */
 function notifyPaymentSuccess(orderId, prepayId) {
   wx.request({
-    url: `${app.globalData.apiBase}/api/payment/notify`,
+    url: `${paymentApiBase()}/api/payment/notify`,
     method: 'POST',
     header: {
       'Authorization': `Bearer ${wx.getStorageSync('token')}`,
@@ -199,7 +218,7 @@ function notifyPaymentSuccess(orderId, prepayId) {
  */
 function queryOrderStatus(orderId, callback) {
   wx.request({
-    url: `${app.globalData.apiBase}/api/payment/query`,
+    url: `${paymentApiBase()}/api/payment/query`,
     method: 'GET',
     header: {
       'Authorization': `Bearer ${wx.getStorageSync('token')}`

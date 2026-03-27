@@ -1,9 +1,9 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
-        <h2>订单管理</h2>
-        <p class="subtitle">管理所有支付订单，含用户与关联测试数据</p>
+        <h2>成交与订单</h2>
+        <p class="subtitle">支付订单、成交状态与关联测试数据</p>
       </div>
       <div class="header-actions">
         <el-button @click="loadOrders" class="refresh-btn">
@@ -185,6 +185,11 @@ import { ref, computed, onMounted } from 'vue'
 import { Refresh, ShoppingCart, Box, Money, Search } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 
+const props = withDefaults(
+  defineProps<{ embedded?: boolean; ordersApiPath?: string }>(),
+  { embedded: false, ordersApiPath: '/admin/orders' }
+)
+
 const loading = ref(false)
 const searchQuery = ref('')
 const statusFilter = ref('')
@@ -300,7 +305,7 @@ function statusTagType(
 async function loadOrders() {
   loading.value = true
   try {
-    const res: any = await request.get('/admin/orders', {
+    const res: any = await request.get(props.ordersApiPath, {
       params: {
         page: currentPage.value,
         pageSize,
@@ -607,5 +612,9 @@ onMounted(() => loadOrders())
       padding-bottom: 4px;
     }
   }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

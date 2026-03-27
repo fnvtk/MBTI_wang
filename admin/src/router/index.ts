@@ -1,5 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
+import {
+  migrateLegacyAuthStorage,
+  getAdminToken,
+  getAdminRole,
+  getSuperadminToken,
+  getSuperadminRole,
+  clearAdminAuthKeys,
+  clearSuperadminAuthKeys
+} from '@/utils/authStorage'
 
 const routes: RouteRecordRaw[] = [
   // 普通管理后台路由
@@ -18,43 +27,37 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'AdminDashboard',
         component: () => import('@/views/admin/Dashboard.vue'),
-        meta: { title: '数据概览' }
+        meta: { title: '概览' }
       },
       {
         path: 'users',
         name: 'AdminUsers',
-        component: () => import('@/views/admin/Users.vue'),
-        meta: { title: '用户管理' }
+        component: () => import('@/views/admin/UsersHub.vue'),
+        meta: { title: '用户运营' }
       },
       {
         path: 'orders',
         name: 'AdminOrders',
-        component: () => import('@/views/admin/Orders.vue'),
-        meta: { title: '订单管理' }
+        component: () => import('@/views/admin/OrdersHub.vue'),
+        meta: { title: '订单运营' }
       },
       {
         path: 'distribution',
         name: 'AdminDistribution',
         component: () => import('@/views/admin/Distribution.vue'),
-        meta: { title: '分销管理' }
+        meta: { title: '分销推广' }
       },
       {
         path: 'questions',
-        name: 'AdminQuestions',
-        component: () => import('@/views/admin/Questions.vue'),
-        meta: { title: '题库管理' }
+        redirect: { path: '/admin/orders', query: { tab: 'questions' } }
       },
       {
         path: 'pricing',
-        name: 'AdminPricing',
-        component: () => import('@/views/admin/Pricing.vue'),
-        meta: { title: '价格设置' }
+        redirect: { path: '/admin/orders', query: { tab: 'pricing' } }
       },
       {
         path: 'finance',
-        name: 'AdminFinance',
-        component: () => import('@/views/admin/Finance.vue'),
-        meta: { title: '企业余额' }
+        redirect: { path: '/admin/settings', query: { tab: 'finance' } }
       },
       {
         path: 'settings',
@@ -75,61 +78,65 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/superadmin',
     component: () => import('@/layouts/SuperAdminLayout.vue'),
-    redirect: '/superadmin/overview',
+    redirect: '/superadmin/ops',
     children: [
       {
-        path: 'overview',
-        name: 'SuperAdminOverview',
-        component: () => import('@/views/superadmin/Overview.vue'),
-        meta: { title: '概览' }
-      },
-      {
-        path: 'enterprises',
-        name: 'SuperAdminEnterprises',
-        component: () => import('@/views/superadmin/Enterprises.vue'),
-        meta: { title: '企业管理' }
+        path: 'ops',
+        name: 'SuperAdminOps',
+        component: () => import('@/views/superadmin/OpsHub.vue'),
+        meta: { title: '总览' },
+        beforeEnter: (to, _from, next) => {
+          const t = to.query.tab
+          if (t === 'distribution') {
+            next({ path: '/superadmin/distribution' })
+            return
+          }
+          if (t === 'analytics') {
+            next({ path: '/superadmin/distribution', query: { tab: 'analytics' } })
+            return
+          }
+          next()
+        }
       },
       {
         path: 'users',
         name: 'SuperAdminUsers',
-        component: () => import('@/views/superadmin/Users.vue'),
-        meta: { title: '用户总览' }
+        redirect: to => ({
+          path: '/superadmin/enterprises',
+          query: { ...to.query, tab: 'users' }
+        })
       },
       {
-        path: 'questions',
-        name: 'SuperAdminQuestions',
-        component: () => import('@/views/superadmin/Questions.vue'),
-        meta: { title: '题库管理' }
+        path: 'enterprises',
+        name: 'SuperAdminEnterprises',
+        component: () => import('@/views/superadmin/EnterpriseHub.vue'),
+        meta: { title: '企业管理' }
+      },
+      {
+        path: 'commerce',
+        name: 'SuperAdminCommerce',
+        component: () => import('@/views/superadmin/CommerceHub.vue'),
+        meta: { title: '订单和财务' }
+      },
+      {
+        path: 'distribution',
+        name: 'SuperAdminDistribution',
+        component: () => import('@/views/superadmin/DistributionStandalone.vue'),
+        meta: { title: '分销管理' }
+      },
+      {
+        path: 'analytics',
+        name: 'SuperAdminMpAnalytics',
+        redirect: to => ({
+          path: '/superadmin/distribution',
+          query: { ...to.query, tab: 'analytics' }
+        })
       },
       {
         path: 'ai-config',
         name: 'SuperAdminAIConfig',
         component: () => import('@/views/superadmin/AIConfig.vue'),
-        meta: { title: 'AI 服务配置' }
-      },
-      {
-        path: 'pricing',
-        name: 'SuperAdminPricing',
-        component: () => import('@/views/superadmin/Pricing.vue'),
-        meta: { title: '全局定价' }
-      },
-      {
-        path: 'distribution',
-        name: 'SuperAdminDistribution',
-        component: () => import('@/views/superadmin/Distribution.vue'),
-        meta: { title: '分销管理' }
-      },
-      {
-        path: 'finance',
-        name: 'SuperAdminFinance',
-        component: () => import('@/views/superadmin/Finance.vue'),
-        meta: { title: '财务数据' }
-      },
-      {
-        path: 'database',
-        name: 'SuperAdminDatabase',
-        component: () => import('@/views/superadmin/Database.vue'),
-        meta: { title: '数据库管理' }
+        meta: { title: '智能算力' }
       },
       {
         path: 'settings',
@@ -137,6 +144,26 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/superadmin/Settings.vue'),
         meta: { title: '系统设置' }
       },
+      {
+        path: 'overview',
+        redirect: to => ({ path: '/superadmin/ops', query: { ...to.query, tab: 'overview' } })
+      },
+      {
+        path: 'questions',
+        redirect: to => ({ path: '/superadmin/settings', query: { ...to.query, tab: 'questions' } })
+      },
+      {
+        path: 'pricing',
+        redirect: to => ({ path: '/superadmin/commerce', query: { ...to.query, tab: 'pricing' } })
+      },
+      {
+        path: 'database',
+        redirect: to => ({ path: '/superadmin/settings', query: { ...to.query, tab: 'database' } })
+      },
+      {
+        path: 'finance',
+        redirect: to => ({ path: '/superadmin/commerce', query: { ...to.query, tab: 'finance' } })
+      }
     ]
   },
 
@@ -152,47 +179,40 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
+// 路由守卫：管理端仅 admin / enterprise_admin；超管端仅 superadmin；两套 Token 分存
 router.beforeEach((to, _from, next) => {
-  // 设置页面标题
+  migrateLegacyAuthStorage()
+
   document.title = to.meta.title ? `${to.meta.title} - MBTI 管理后台` : 'MBTI 管理后台'
 
-  // 检查登录状态（使用Token）
-  const token = localStorage.getItem('authToken')
-  const userRole = localStorage.getItem('userRole')
+  const adminToken = getAdminToken()
+  const adminRole = getAdminRole()
+  const saToken = getSuperadminToken()
+  const saRole = getSuperadminRole()
 
-  // 管理后台路由守卫
   if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
-    if (!token || !userRole || !['admin', 'enterprise_admin', 'superadmin'].includes(userRole)) {
-      // 清除登录状态
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('adminLoggedIn')
+    if (!adminToken || !adminRole || !['admin', 'enterprise_admin'].includes(adminRole)) {
+      clearAdminAuthKeys()
       next('/admin/login')
       return
     }
   }
 
-  // 超级管理后台路由守卫
   if (to.path.startsWith('/superadmin') && to.path !== '/superadmin/login') {
-    if (!token || userRole !== 'superadmin') {
-      // 清除登录状态
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('superAdminLoggedIn')
+    if (!saToken || saRole !== 'superadmin') {
+      clearSuperadminAuthKeys()
       next('/superadmin/login')
       return
     }
   }
 
-  // 如果已登录，访问登录页则跳转到对应首页
-  if (to.path === '/admin/login' && token && userRole && ['admin', 'enterprise_admin', 'superadmin'].includes(userRole)) {
+  if (to.path === '/admin/login' && adminToken && adminRole && ['admin', 'enterprise_admin'].includes(adminRole)) {
     next('/admin/dashboard')
     return
   }
 
-  if (to.path === '/superadmin/login' && token && userRole === 'superadmin') {
-    next('/superadmin/overview')
+  if (to.path === '/superadmin/login' && saToken && saRole === 'superadmin') {
+    next('/superadmin/ops')
     return
   }
 

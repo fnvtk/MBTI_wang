@@ -6,7 +6,14 @@ page {
 .page {
   min-height: 100vh;
   background-color: #F9FAFB;
-  padding-bottom: 140rpx;
+  /* 自定义 tabBar 加高 + 中间浮钮上移，多留底边距 */
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom));
+}
+
+custom-tab-bar {
+  display: block;
+  height: 0;
+  overflow: visible;
 }
 
 /* ===== 顶部栏 ===== */
@@ -259,6 +266,87 @@ page {
   margin-bottom: 20rpx;
 }
 
+.depth-parse-title {
+  letter-spacing: 4rpx;
+  margin-bottom: 16rpx;
+}
+
+/* 深度解析：单卡整合 */
+.depth-unified-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.05);
+  border: 1rpx solid rgba(0,0,0,0.04);
+}
+
+.depth-unified-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 12rpx;
+}
+
+.depth-unified-subtitle {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.depth-header-link {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.depth-header-link:active {
+  opacity: 0.75;
+}
+
+.depth-header-link-text {
+  font-size: 24rpx;
+  color: #F43F5E;
+  font-weight: 500;
+}
+
+.depth-header-chevron {
+  font-size: 28rpx;
+  color: #F43F5E;
+  font-weight: 300;
+}
+
+.depth-empty-hint {
+  padding: 8rpx 32rpx 20rpx;
+}
+
+.depth-empty-hint text {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  line-height: 1.55;
+}
+
+.depth-inner-divider {
+  height: 1rpx;
+  background: #F3F4F6;
+  margin: 8rpx 32rpx 0;
+}
+
+.cards-scroll--in-card {
+  width: 100%;
+}
+
+.cards-row--in-card {
+  padding: 8rpx 24rpx 20rpx;
+}
+
+.menu-item--flat {
+  padding: 28rpx 32rpx;
+}
+
+.menu-divider--in-card {
+  margin: 0 32rpx;
+}
+
 .section-header .section-title {
   margin-bottom: 0;
 }
@@ -363,71 +451,39 @@ page {
   color: #D1D5DB;
 }
 
-/* ===== 推广中心 ===== */
-.promo-card {
-  background: #FFFFFF;
-  border-radius: 32rpx;
-  padding: 40rpx;
-  box-shadow: 0 4rpx 24rpx rgba(0,0,0,0.05);
-  border: 1rpx solid rgba(0,0,0,0.04);
+/* ===== 推广入口（弱化：置底、小字、低对比） ===== */
+.promo-section-subtle {
+  margin-top: 12rpx;
+  padding: 0 32rpx 8rpx;
 }
 
-.promo-header {
+.promo-row-subtle {
   display: flex;
   align-items: center;
-  margin-bottom: 40rpx;
+  padding: 16rpx 8rpx 20rpx;
+  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
 }
 
-.promo-title-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.promo-icon {
-  font-size: 32rpx;
-}
-
-.promo-title {
-  font-size: 32rpx;
-  font-weight: 700;
-  color: #1F2937;
-}
-
-.promo-stats {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.promo-stat-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.promo-stat-label {
+.promo-row-label {
   font-size: 24rpx;
+  font-weight: 500;
   color: #9CA3AF;
+  letter-spacing: 0.5rpx;
 }
 
-.promo-stat-value {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #111827;
-  font-family: "DIN Alternate", "Courier New", Courier, monospace;
+.promo-row-meta {
+  flex: 1;
+  text-align: right;
+  font-size: 22rpx;
+  color: #D1D5DB;
+  margin-right: 4rpx;
+  font-variant-numeric: tabular-nums;
 }
 
-.promo-stat-divider {
-  width: 1rpx;
-  height: 60rpx;
-  background: #F3F4F6;
-}
-
-.promo-highlight {
-  color: #F43F5E;
+.promo-row-chevron {
+  font-size: 26rpx;
+  color: #E5E7EB;
+  font-weight: 300;
 }
 
 /* ===== 服务菜单 ===== */

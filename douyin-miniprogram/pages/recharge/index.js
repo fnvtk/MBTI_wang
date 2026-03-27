@@ -1,6 +1,10 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { request } = require('../../utils/request')
+let analyticsMod = null
+try {
+  analyticsMod = require('../../utils/analytics')
+} catch (e) {}
 
 Page({
   data: {
@@ -65,6 +69,16 @@ Page({
     }
 
     this.setData({ paying: true })
+    if (analyticsMod && typeof analyticsMod.track === 'function') {
+      analyticsMod.track('click_recharge', {
+        action: '充值页确认充值',
+        enterpriseId: this.data.enterpriseId,
+        amountFen: this.data.amountFen
+      })
+      if (typeof analyticsMod.flush === 'function') {
+        analyticsMod.flush()
+      }
+    }
     payment.recharge({
       amountYuan: Number(this.data.amountYuan),
       enterpriseId: this.data.enterpriseId,

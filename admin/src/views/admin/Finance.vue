@@ -1,6 +1,6 @@
 <template>
-  <div class="finance-page">
-    <div class="page-header">
+  <div class="finance-page" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div>
         <h2>企业余额</h2>
         <p class="subtitle">{{ overview.enterpriseName || '当前企业' }}的余额、测试收入和充值流水</p>
@@ -100,6 +100,8 @@
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const loading = ref(false)
 const recordsLoading = ref(false)
@@ -375,5 +377,10 @@ onMounted(() => {
   .stats-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.finance-page.is-embedded {
+  padding: 0;
+  min-height: auto;
 }
 </style>

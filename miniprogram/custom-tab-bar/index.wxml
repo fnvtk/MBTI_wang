@@ -1,4 +1,4 @@
-<!-- 自定义 tabBar：顶部分割线 + 三栏，中间浮起圆钮 -->
+<!-- 自定义 tabBar：顶部分割线 + 三栏；中间单独一列避免浮钮与左右叠层 -->
 <view class="tab-bar">
   <view class="tab-bar-line"></view>
   <view class="tab-bar-inner">
@@ -11,30 +11,22 @@
       <image class="tab-icon" src="{{selected === 0 ? '/images/home-active.png' : '/images/home.png'}}" mode="aspectFit" />
       <text class="tab-text">首页</text>
     </view>
-    <!-- 审核模式：中间按钮显示"测试"文字 -->
-    <view
-      wx:if="{{reviewMode}}"
-      class="tab-item {{selected === 1 ? 'active' : ''}}"
-      data-index="1"
-      data-path="/pages/test-select/index"
-      bindtap="switchTab"
-    >
-      <image class="tab-icon" src="{{selected === 1 ? '/images/home-active.png' : '/images/home.png'}}" mode="aspectFit" />
-      <text class="tab-text">测试</text>
-    </view>
-    <!-- 正常模式：中间浮起拍照按钮 -->
-    <view
-      wx:else
-      class="tab-item-center {{selected === 1 ? 'active' : ''}}"
-      data-index="1"
-      data-path="/pages/index/camera"
-      bindtap="switchTab"
-    >
-      <view class="center-circle">
-        <image class="center-icon" src="{{selected === 1 ? '/images/camera-active.png' : '/images/camera.png'}}" mode="aspectFit" />
+
+    <!-- 中间列：与审核态无关，固定「拍摄」+ 始终进 camera -->
+    <view class="tab-slot-middle">
+      <view
+        class="middle-fab {{selected === 1 ? 'active' : ''}}"
+        data-index="1"
+        data-path="/pages/index/camera"
+        bindtap="switchTab"
+      >
+        <view class="center-circle">
+          <image class="center-icon" src="{{selected === 1 ? '/images/camera-active.png' : '/images/camera.png'}}" mode="aspectFit" />
+        </view>
+        <text class="tab-text tab-text-fab">拍摄</text>
       </view>
-      <view class="center-text-placeholder"></view>
     </view>
+
     <view
       class="tab-item {{selected === 2 ? 'active' : ''}}"
       data-index="2"

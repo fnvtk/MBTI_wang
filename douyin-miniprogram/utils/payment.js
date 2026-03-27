@@ -50,6 +50,20 @@ function generateOrderId(productType) {
 function douyinPay(options) {
   const { orderId, amount = 0, description, productType, testResultId, deepProductId, enterpriseId, success, fail } = options
 
+  try {
+    const analyticsMod = require('./analytics')
+    if (analyticsMod && typeof analyticsMod.track === 'function') {
+      if (productType === 'recharge') {
+        analyticsMod.track('click_recharge', { action: '点击充值并发起支付', productType: 'recharge' })
+      } else {
+        analyticsMod.track('click_pay', { action: '发起支付', productType: productType || '' })
+      }
+      if (typeof analyticsMod.flush === 'function') {
+        analyticsMod.flush()
+      }
+    }
+  } catch (e) {}
+
   tt.showLoading({
     title: '正在支付...',
     mask: true

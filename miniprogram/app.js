@@ -9,6 +9,7 @@ App({
     siteTitle: '神仙团队AI性格测试',
     textConfig: null, // 从 /api/config/runtime 动态加载：analyzingTitle, startButtonText, reportTitle, aiAnalysisText 等
     maintenanceMode: undefined, // 审核模式，undefined=未加载，等 getRuntimeConfig 后再决定，避免 tabBar 闪烁
+    reviewMode: undefined, // 面相审核开关，与 camera/index 一致，由 runtime.reviewMode 写入
     // 当前使用范围：personal 个人版 / enterprise 企业版（影响定价与 enterpriseId 写入）
     appScope: 'personal',
     // 扫码进入企业页时 scene 解析出的企业ID（e_123），提交测试/分析时优先使用
@@ -38,11 +39,14 @@ App({
     // 静默登录获取openId
     this.silentLogin()
 
-    // 预加载站点/小程序名称、审核模式（供导航栏展示）
+    // 预加载站点/小程序名称、维护模式与面相审核模式（camera/首页文案）
     this.getRuntimeConfig().then((cfg) => {
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
         if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
+        if (typeof cfg.reviewMode === 'boolean') {
+          this.globalData.reviewMode = cfg.reviewMode
+        }
         if (cfg.defaultEnterpriseId != null && Number(cfg.defaultEnterpriseId) > 0) {
           this.globalData.defaultEnterpriseId = Number(cfg.defaultEnterpriseId)
         } else {
@@ -50,6 +54,20 @@ App({
         }
       }
     }).catch(() => {})
+  },
+
+  onShow() {
+    try {
+      const { reportPageView } = require('./utils/analytics.js')
+      reportPageView()
+    } catch (e) {}
+  },
+
+  onHide() {
+    try {
+      const { flush } = require('./utils/analytics.js')
+      flush()
+    } catch (e) {}
   },
 
   // 加载本地存储数据
@@ -338,6 +356,9 @@ App({
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
             if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
+            if (typeof data.reviewMode === 'boolean') {
+              this.globalData.reviewMode = data.reviewMode
+            }
             if (data.defaultEnterpriseId != null && Number(data.defaultEnterpriseId) > 0) {
               this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)
             } else {

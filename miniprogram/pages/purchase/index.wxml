@@ -1,4 +1,4 @@
-<!--pages/purchase/index.wxml - 开通会员（深度服务类目由接口拉取，个人/企业区分）-->
+<!--pages/purchase/index.wxml - 深度服务（个人/企业 Tab，类目由接口拉取）-->
 
 <!-- 成功弹窗 -->
 <view class="success-mask" wx:if="{{successModal.visible}}" bindtap="closeSuccessModal">
@@ -27,109 +27,122 @@
     <text class="loading-text">加载中...</text>
   </view>
 
-  <!-- 个人版：按类目列表渲染 -->
-  <view wx:elif="{{activeTab === 'personal'}}">
-    <view wx:for="{{personalCategories}}" wx:key="id" class="pricing-card {{index === 0 ? 'featured' : ''}}" style="margin: 24rpx;">
-      <view class="card-header">
-        <text class="plan-title">{{item.title}}</text>
-        <view class="price-section" wx:if="{{item.price !== undefined}}">
-          <text class="price-symbol">¥</text>
-          <text class="price-amount">{{item.price}}</text>
-          <text class="price-unit">{{item.priceUnit || '/次'}}</text>
-        </view>
-        <text class="plan-subtitle" wx:if="{{item.subtitle}}">{{item.subtitle}}</text>
-      </view>
-      <view class="features-list" wx:if="{{item.features && item.features.length}}">
-        <view class="feature-item" wx:for="{{item.features}}" wx:for-item="f" wx:key="*this">
-          <view class="check-icon">✓</view>
-          <text class="feature-text">{{f}}</text>
-        </view>
-      </view>
-      <!-- 未有手机号时：使用微信系统手机号授权组件 -->
-      <button
-        class="purchase-button primary"
-        wx:if="{{item.actionType === 'buy' && !hasPhone}}"
-        open-type="getPhoneNumber"
-        bindgetphonenumber="onGetPhoneNumberForPurchase"
-        data-tab="personal"
-        data-index="{{index}}"
-      >
-        <text class="button-text">立即购买</text>
-      </button>
-      <!-- 已有手机号时：普通按钮，直接走支付 -->
-      <button
-        class="purchase-button primary"
-        wx:elif="{{item.actionType === 'buy' && hasPhone}}"
-        bindtap="handlePurchaseTap"
-        data-tab="personal"
-        data-index="{{index}}"
-      >
-        <text class="button-text">立即购买</text>
-      </button>
+  <block wx:else>
+    <view class="deep-intro">
+      <text class="deep-intro-text">先选服务类型，查看说明与权益；具体安排可在下一步与顾问沟通确认。</text>
     </view>
-    <view wx:if="{{!loading && activeTab === 'personal' && personalCategories.length === 0}}" class="empty-tip">
-      <text>暂无可用的个人版套餐</text>
-    </view>
-  </view>
 
-  <!-- 企业版：按类目列表渲染 -->
-  <view wx:elif="{{activeTab === 'enterprise'}}">
-    <view wx:for="{{enterpriseCategories}}" wx:key="id" class="pricing-card {{index === 1 ? 'featured-blue' : ''}}" style="margin: 24rpx;">
-      <view class="card-header-flex">
-        <view class="header-left">
-          <text class="plan-title-sm">{{item.title}}</text>
-          <text class="plan-desc" wx:if="{{item.subtitle}}">{{item.subtitle}}</text>
+    <view class="tabs-container deep-tabs">
+      <view class="tabs-list">
+        <view class="tab-item {{activeTab === 'personal' ? 'active' : ''}}" data-tab="personal" bindtap="switchTab">
+          <text class="tab-text">个人解读</text>
         </view>
-        <view class="header-right" wx:if="{{item.priceDisplay || item.price}}">
-          <text class="price-amount-small">{{item.priceDisplay || '¥' + item.price}}</text>
-          <text class="price-limit" wx:if="{{item.userLimit}}">{{item.userLimit}}</text>
+        <view class="tab-item {{activeTab === 'enterprise' ? 'active' : ''}}" data-tab="enterprise" bindtap="switchTab">
+          <text class="tab-text">团队与企业</text>
         </view>
       </view>
-      <view class="features-list" wx:if="{{item.features && item.features.length}}">
-        <view class="feature-item" wx:for="{{item.features}}" wx:for-item="f" wx:key="*this">
-          <view class="check-icon blue">✓</view>
-          <text class="feature-text">{{f}}</text>
-        </view>
-      </view>
-      <!-- 未有手机号时：使用微信系统手机号授权组件 -->
-      <button
-        class="purchase-button secondary"
-        wx:if="{{!hasPhone}}"
-        open-type="getPhoneNumber"
-        bindgetphonenumber="onGetPhoneNumberForPurchase"
-        data-tab="enterprise"
-        data-index="{{index}}"
-      >
-        <text class="button-text">{{item.buttonText || '申请咨询'}}</text>
-      </button>
-      <!-- 已有手机号时：普通按钮，直接触发咨询逻辑 -->
-      <button
-        class="purchase-button secondary"
-        wx:elif="{{hasPhone}}"
-        bindtap="handlePurchaseTap"
-        data-tab="enterprise"
-        data-index="{{index}}"
-      >
-        <text class="button-text">{{item.buttonText || '申请咨询'}}</text>
-      </button>
     </view>
-    <view wx:if="{{!loading && activeTab === 'enterprise' && enterpriseCategories.length === 0}}" class="empty-tip">
-      <text>暂无可用的企业版套餐</text>
-    </view>
-  </view>
 
-  <view class="safety-tips">
-    <view class="safety-item">
-      <text class="safety-icon">🔒</text>
-      <text class="safety-text">微信安全支付</text>
+    <!-- 个人版：按类目列表渲染 -->
+    <view wx:if="{{activeTab === 'personal'}}">
+      <view wx:for="{{personalCategories}}" wx:key="id" class="pricing-card {{index === 0 ? 'featured' : ''}}" style="margin: 24rpx;">
+        <view class="card-header">
+          <text class="plan-title">{{item.title}}</text>
+          <view class="price-section" wx:if="{{item.price !== undefined}}">
+            <text class="price-symbol">¥</text>
+            <text class="price-amount">{{item.price}}</text>
+            <text class="price-unit">{{item.priceUnit || '/次'}}</text>
+          </view>
+          <text class="plan-subtitle" wx:if="{{item.subtitle}}">{{item.subtitle}}</text>
+        </view>
+        <view class="features-list" wx:if="{{item.features && item.features.length}}">
+          <view class="feature-item" wx:for="{{item.features}}" wx:for-item="f" wx:key="*this">
+            <view class="check-icon">✓</view>
+            <text class="feature-text">{{f}}</text>
+          </view>
+        </view>
+        <button
+          class="purchase-button primary"
+          wx:if="{{item.actionType === 'buy' && !hasPhone}}"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onGetPhoneNumberForPurchase"
+          data-tab="personal"
+          data-index="{{index}}"
+        >
+          <text class="button-text">下一步</text>
+        </button>
+        <button
+          class="purchase-button primary"
+          wx:elif="{{item.actionType === 'buy' && hasPhone}}"
+          bindtap="handlePurchaseTap"
+          data-tab="personal"
+          data-index="{{index}}"
+        >
+          <text class="button-text">下一步</text>
+        </button>
+      </view>
+      <view wx:if="{{!loading && activeTab === 'personal' && personalCategories.length === 0}}" class="empty-tip">
+        <text>暂无可用的个人版套餐</text>
+      </view>
     </view>
-    <view class="safety-item">
-      <text class="safety-icon">✅</text>
-      <text class="safety-text">即时到账开通</text>
+
+    <!-- 企业版：按类目列表渲染 -->
+    <view wx:elif="{{activeTab === 'enterprise'}}">
+      <view wx:for="{{enterpriseCategories}}" wx:key="id" class="pricing-card {{index === 1 ? 'featured-blue' : ''}}" style="margin: 24rpx;">
+        <view class="card-header-flex">
+          <view class="header-left">
+            <text class="plan-title-sm">{{item.title}}</text>
+            <text class="plan-desc" wx:if="{{item.subtitle}}">{{item.subtitle}}</text>
+          </view>
+          <view class="header-right" wx:if="{{item.priceDisplay || item.price}}">
+            <text class="price-amount-small">{{item.priceDisplay || '¥' + item.price}}</text>
+            <text class="price-limit" wx:if="{{item.userLimit}}">{{item.userLimit}}</text>
+          </view>
+        </view>
+        <view class="features-list" wx:if="{{item.features && item.features.length}}">
+          <view class="feature-item" wx:for="{{item.features}}" wx:for-item="f" wx:key="*this">
+            <view class="check-icon blue">✓</view>
+            <text class="feature-text">{{f}}</text>
+          </view>
+        </view>
+        <button
+          class="purchase-button secondary"
+          wx:if="{{!hasPhone}}"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onGetPhoneNumberForPurchase"
+          data-tab="enterprise"
+          data-index="{{index}}"
+        >
+          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+        </button>
+        <button
+          class="purchase-button secondary"
+          wx:elif="{{hasPhone}}"
+          bindtap="handlePurchaseTap"
+          data-tab="enterprise"
+          data-index="{{index}}"
+        >
+          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+        </button>
+      </view>
+      <view wx:if="{{!loading && activeTab === 'enterprise' && enterpriseCategories.length === 0}}" class="empty-tip">
+        <text>暂无可用的企业版套餐</text>
+      </view>
     </view>
-    <view class="safety-item">
-      <text class="safety-icon">📞</text>
-      <text class="safety-text">7×24客服</text>
+
+    <view class="safety-tips">
+      <view class="safety-item">
+        <text class="safety-icon">🔒</text>
+        <text class="safety-text">流程在微信内完成</text>
+      </view>
+      <view class="safety-item">
+        <text class="safety-icon">✅</text>
+        <text class="safety-text">顾问跟进确认</text>
+      </view>
+      <view class="safety-item">
+        <text class="safety-icon">📞</text>
+        <text class="safety-text">支持咨询与售后</text>
+      </view>
     </view>
-  </view>
+  </block>
 </view>

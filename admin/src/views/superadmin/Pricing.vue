@@ -1,17 +1,26 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>全局定价</h2>
-        <p class="subtitle">配置全局定价策略，影响所有企业</p>
+        <p class="subtitle">
+          {{
+            enterpriseProcurementOnly
+              ? '维护企业向平台采购的测试单价、充值门槛及企业侧深度服务（个人版 C 端价格在后台仍由接口存储，此处不展示）'
+              : '配置全局定价策略，影响所有企业与个人版'
+          }}
+        </p>
       </div>
     </div>
 
     <div class="pricing-content">
+      <p v-if="embedded && enterpriseProcurementOnly" class="embed-enterprise-hint">
+        此处维护企业采购单价与深度服务；个人版 C 端定价不在此展示，仍由后端存储并在小程序对个人用户生效。
+      </p>
       <div class="custom-tabs-container">
         <div class="custom-tabs">
           <div
-            v-for="tab in tabs"
+            v-for="tab in visibleTabs"
             :key="tab.value"
             :class="['tab-item', { active: activeTab === tab.value }]"
             @click="activeTab = tab.value"
@@ -22,8 +31,8 @@
       </div>
 
       <div class="tab-content-card" v-loading="loading">
-        <!-- 个人版价格 -->
-        <div v-if="activeTab === 'personal'" class="tab-content">
+        <!-- 个人版价格（超管「订单和财务」入口不展示，数据仍从接口加载以便深度服务保存时不覆盖） -->
+        <div v-if="activeTab === 'personal' && !enterpriseProcurementOnly" class="tab-content">
           <div class="form-section">
             <div class="form-grid">
               <div class="form-item">
@@ -141,9 +150,9 @@
         <!-- 深度服务价格：个人/企业可配置类目列表（可视化列表编辑） -->
         <div v-if="activeTab === 'deep'" class="tab-content">
           <div class="form-section">
-            <div class="deep-columns">
+            <div class="deep-columns" :class="{ 'deep-columns-single': enterpriseProcurementOnly }">
               <!-- 个人版类目：列表展示 + 编辑/删除 -->
-              <div class="deep-column">
+              <div v-if="!enterpriseProcurementOnly" class="deep-column">
                 <div class="deep-column-header">
                   <h3>个人版深度服务类目</h3>
                   <el-button size="small" @click="openPersonalDialog()">新增类目</el-button>
@@ -216,7 +225,10 @@
             </div>
             <div class="info-box">
               <el-icon><InfoFilled /></el-icon>
-              <span>可通过上方列表自由新增/修改/下线个人版与企业版深度服务类目，保存后小程序开通会员页会自动同步。</span>
+              <span v-if="enterpriseProcurementOnly">
+                此处仅配置企业向平台采购的深度服务类目；保存后企业相关展示会同步。个人版深度类目仍由数据接口保留，不在本页编辑。
+              </span>
+              <span v-else>可通过上方列表自由新增/修改/下线个人版与企业版深度服务类目，保存后小程序开通会员页会自动同步。</span>
             </div>
             <div class="save-actions">
               <el-button type="primary" color="#ef4444" class="save-btn" @click="saveDeep">
@@ -229,7 +241,8 @@
     </div>
   </div>
 
-  <!-- 新增个人版类目弹框 -->
+  <!-- 新增个人版类目弹框（企业采购视图下整块不挂载） -->
+  <template v-if="!enterpriseProcurementOnly">
   <el-dialog v-model="personalDialogVisible" title="新增个人版深度服务类目" width="640px">
     <div class="deep-card-grid">
       <div class="deep-form-item hidden-field">
@@ -315,6 +328,7 @@
       </span>
     </template>
   </el-dialog>
+  </template>
 
   <!-- 新增企业版类目弹框 -->
   <el-dialog v-model="enterpriseDialogVisible" title="新增企业版深度服务类目" width="640px">
@@ -392,19 +406,38 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 
+const props = withDefaults(
+  defineProps<{ embedded?: boolean; enterpriseProcurementOnly?: boolean }>(),
+  { embedded: false, enterpriseProcurementOnly: false }
+)
+
 const activeTab = ref('personal')
 const loading = ref(false)
 
-const tabs = [
+const allTabs = [
   { label: '个人版价格', value: 'personal' },
   { label: '企业版价格', value: 'enterprise' },
   { label: '深度服务价格', value: 'deep' }
 ]
+
+const visibleTabs = computed(() =>
+  props.enterpriseProcurementOnly ? allTabs.filter((t) => t.value !== 'personal') : allTabs
+)
+
+watch(
+  visibleTabs,
+  (vt) => {
+    if (!vt.some((t) => t.value === activeTab.value)) {
+      activeTab.value = 'enterprise'
+    }
+  },
+  { immediate: true }
+)
 
 const personal = reactive({
   face: 9.9,
@@ -736,6 +769,9 @@ const saveDeep = async () => {
 
 // 组件挂载时加载数据
 onMounted(() => {
+  if (props.enterpriseProcurementOnly) {
+    activeTab.value = 'enterprise'
+  }
   loadPricing()
 })
 </script>
@@ -757,6 +793,13 @@ onMounted(() => {
       margin: 0;
     }
   }
+}
+
+.embed-enterprise-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #6b7280;
 }
 
 .pricing-content {
@@ -926,6 +969,10 @@ onMounted(() => {
   @media (max-width: 1024px) {
     grid-template-columns: 1fr;
   }
+
+  &.deep-columns-single {
+    grid-template-columns: 1fr;
+  }
 }
 
 .deep-column {
@@ -1068,5 +1115,9 @@ onMounted(() => {
 
 .w-full {
   width: 100%;
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

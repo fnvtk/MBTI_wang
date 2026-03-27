@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>企业管理</h2>
         <p class="subtitle">共{{ total }}家企业·活跃{{ activeCount }}家</p>
@@ -453,6 +453,8 @@ import { ref, reactive, onMounted, watch, nextTick } from 'vue'
 import { Plus, Refresh, Search, View, Edit, Delete } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const loading = ref(false)
 const total = ref(0)
@@ -1211,5 +1213,9 @@ watch([searchTerm, statusFilter], () => {
     color: #9ca3af;
     margin: 0;
   }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

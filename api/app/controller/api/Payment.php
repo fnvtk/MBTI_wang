@@ -5,6 +5,7 @@ use app\BaseController;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
+use app\common\service\FeishuLeadWebhookService;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -313,6 +314,8 @@ class Payment extends BaseController
                 return error('订单不存在', 404);
             }
 
+            $prevStatus = (string) ($order['status'] ?? '');
+
             // 仅允许从 pending → 其他状态，避免重复更新已完成订单
             if ($order['status'] !== 'pending' && $order['status'] !== 'paid') {
                 return success(null, '订单状态已更新，无需重复通知');
@@ -339,6 +342,12 @@ class Payment extends BaseController
 
             // 支付成功时：将关联该订单的测试结果标记为已付款，并记录当时付款金额（分）
             if ($status === 'success') {
+                if ($prevStatus === 'pending') {
+                    try {
+                        FeishuLeadWebhookService::onOrderPaid((int) $order['id'], (int) ($order['userId'] ?? 0));
+                    } catch (\Throwable $e) {
+                    }
+                }
                 $paidAmountFen = isset($order['amount']) ? (int) $order['amount'] : 0;
 
                 Db::name('test_results')
@@ -457,6 +466,11 @@ class Payment extends BaseController
                             } catch (\Exception $e) {
                                 // 佣金结算失败不影响主流程
                             }
+                        }
+
+                        try {
+                            FeishuLeadWebhookService::onOrderPaid((int) $localOrder['id'], (int) ($localOrder['userId'] ?? 0));
+                        } catch (\Throwable $e) {
                         }
                     }
                 }

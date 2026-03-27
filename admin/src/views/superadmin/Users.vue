@@ -1,9 +1,9 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
-        <h2>用户数据</h2>
-        <p class="subtitle">按企业用户池分类查看和管理用户数据</p>
+        <h2>用户总览</h2>
+        <p class="subtitle">按企业用户池分类查看和管理用户数据（首屏为各池卡片与汇总，与数据表联动）</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" size="small" @click="exportData">
@@ -654,6 +654,8 @@ import { ref, computed, onMounted } from 'vue'
 import { Download, Search, View, UserFilled, User, OfficeBuilding, DataLine } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const loading = ref(false)
 const overviewLoading = ref(false)
@@ -1957,5 +1959,9 @@ onMounted(() => {
   font-size: 12px;
   line-height: 1.4;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

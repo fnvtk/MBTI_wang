@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { request } from '@/utils/request'
+import {
+  migrateLegacyAuthStorage,
+  ADMIN_TOKEN_KEY,
+  ADMIN_ROLE_KEY,
+  ADMIN_USER_ID_KEY,
+  SUPERADMIN_TOKEN_KEY,
+  SUPERADMIN_ROLE_KEY,
+  SUPERADMIN_USER_ID_KEY,
+  clearAdminAuthKeys,
+  clearSuperadminAuthKeys
+} from '@/utils/authStorage'
 
 interface LoginResponse {
   code: number
@@ -18,31 +29,29 @@ interface LoginResponse {
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  // 管理员登录状态
   const adminLoggedIn = ref(false)
   const superAdminLoggedIn = ref(false)
   const currentUser = ref<any>(null)
 
-  // 初始化登录状态（自动执行）
   function initAuth() {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('authToken')
-      const userRole = localStorage.getItem('userRole')
-      
-      if (token && userRole) {
-        if (userRole === 'superadmin') {
-          superAdminLoggedIn.value = true
-        } else if (['admin', 'enterprise_admin'].includes(userRole)) {
-          adminLoggedIn.value = true
-        }
-      }
+    if (typeof window === 'undefined') return
+    migrateLegacyAuthStorage()
+
+    const adminToken = localStorage.getItem(ADMIN_TOKEN_KEY)
+    const adminRole = localStorage.getItem(ADMIN_ROLE_KEY)
+    if (adminToken && adminRole && ['admin', 'enterprise_admin'].includes(adminRole)) {
+      adminLoggedIn.value = true
+    }
+
+    const saToken = localStorage.getItem(SUPERADMIN_TOKEN_KEY)
+    const saRole = localStorage.getItem(SUPERADMIN_ROLE_KEY)
+    if (saToken && saRole === 'superadmin') {
+      superAdminLoggedIn.value = true
     }
   }
 
-  // 自动初始化
   initAuth()
 
-  // 管理员登录
   async function adminLogin(username: string, password: string): Promise<boolean> {
     try {
       const response = await request.post<LoginResponse>('/auth/admin/login', {
@@ -51,15 +60,14 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (response.code === 200 && response.data) {
-        // 存储Token和用户信息
-        localStorage.setItem('authToken', response.data.token)
-        localStorage.setItem('userRole', response.data.user.role)
-        localStorage.setItem('userId', String(response.data.user.id))
+        localStorage.setItem(ADMIN_TOKEN_KEY, response.data.token)
+        localStorage.setItem(ADMIN_ROLE_KEY, response.data.user.role)
+        localStorage.setItem(ADMIN_USER_ID_KEY, String(response.data.user.id))
         localStorage.setItem('adminLoggedIn', 'true')
-        
+
         currentUser.value = response.data.user
         adminLoggedIn.value = true
-        
+
         return true
       }
       return false
@@ -69,7 +77,6 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 超级管理员登录
   async function superAdminLogin(username: string, password: string): Promise<boolean> {
     try {
       const response = await request.post<LoginResponse>('/auth/superadmin/login', {
@@ -78,15 +85,14 @@ export const useAuthStore = defineStore('auth', () => {
       })
 
       if (response.code === 200 && response.data) {
-        // 存储Token和用户信息
-        localStorage.setItem('authToken', response.data.token)
-        localStorage.setItem('userRole', response.data.user.role)
-        localStorage.setItem('userId', String(response.data.user.id))
+        localStorage.setItem(SUPERADMIN_TOKEN_KEY, response.data.token)
+        localStorage.setItem(SUPERADMIN_ROLE_KEY, response.data.user.role)
+        localStorage.setItem(SUPERADMIN_USER_ID_KEY, String(response.data.user.id))
         localStorage.setItem('superAdminLoggedIn', 'true')
-        
+
         currentUser.value = response.data.user
         superAdminLoggedIn.value = true
-        
+
         return true
       }
       return false
@@ -96,39 +102,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  // 管理员登出
   async function adminLogout() {
     try {
       await request.post('/auth/logout')
     } catch (error) {
       console.error('退出登录失败:', error)
     } finally {
-      // 清除本地存储
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('userId')
-      localStorage.removeItem('adminLoggedIn')
-      localStorage.removeItem('superAdminLoggedIn')
-      
+      clearAdminAuthKeys()
       adminLoggedIn.value = false
       currentUser.value = null
     }
   }
 
-  // 超级管理员登出
   async function superAdminLogout() {
     try {
       await request.post('/auth/logout')
     } catch (error) {
       console.error('退出登录失败:', error)
     } finally {
-      // 清除本地存储
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userRole')
-      localStorage.removeItem('userId')
-      localStorage.removeItem('adminLoggedIn')
-      localStorage.removeItem('superAdminLoggedIn')
-      
+      clearSuperadminAuthKeys()
       superAdminLoggedIn.value = false
       currentUser.value = null
     }
@@ -145,4 +137,3 @@ export const useAuthStore = defineStore('auth', () => {
     superAdminLogout
   }
 })
-

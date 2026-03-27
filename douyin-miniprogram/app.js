@@ -28,8 +28,25 @@ App({
     this.getRuntimeConfig().then((cfg) => {
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
+        if (typeof cfg.reviewMode === 'boolean') {
+          this.globalData.reviewMode = cfg.reviewMode
+        }
       }
     }).catch(() => {})
+  },
+
+  onShow() {
+    try {
+      const { reportPageView } = require('./utils/analytics.js')
+      reportPageView()
+    } catch (e) {}
+  },
+
+  onHide() {
+    try {
+      const { flush } = require('./utils/analytics.js')
+      flush()
+    } catch (e) {}
   },
 
   loadStoredData() {

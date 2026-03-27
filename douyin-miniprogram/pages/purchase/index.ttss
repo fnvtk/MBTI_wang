@@ -119,6 +119,24 @@
   padding-bottom: 160rpx;
 }
 
+.deep-intro {
+  margin: 24rpx 24rpx 0;
+  padding: 24rpx 28rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
+}
+
+.deep-intro-text {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.65;
+}
+
+.deep-tabs.tabs-container {
+  margin-top: 20rpx;
+}
+
 /* 用户权益状态 */
 .status-card {
   display: flex;

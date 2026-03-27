@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -10,6 +11,7 @@ use think\facade\Request;
  */
 class Dashboard extends BaseController
 {
+    use ExtractsTestResults;
     /**
      * 获取统计数据
      * @return \think\response\Json
@@ -138,16 +140,112 @@ class Dashboard extends BaseController
                 }
             }
 
+            $topTestUsers = $this->buildTopTestUsers($enterpriseId, 10);
+
             return success([
                 'totalUsers' => $totalUsers,
                 'testsCompleted' => $testsCompleted,
                 'activeToday' => $activeToday,
                 'pendingReviews' => $pendingReviews,
                 'testTrends' => $trendData,
+                'topTestUsers' => $topTestUsers,
             ]);
         } catch (\Exception $e) {
             return error('获取统计数据失败：' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * 按测试完成次数排序，取前 N 名小程序用户（与列表页口径一致：test_results 按企业过滤）
+     */
+    private function buildTopTestUsers(?int $enterpriseId, int $limit = 10): array
+    {
+        $limit = min(max($limit, 1), 50);
+        $q = Db::name('test_results')->field('userId, COUNT(*) as cnt')->group('userId')->order('cnt', 'desc')->limit($limit);
+        if ($enterpriseId) {
+            $q->where('enterpriseId', $enterpriseId);
+        }
+        $rankRows = $q->select()->toArray();
+        if (empty($rankRows)) {
+            return [];
+        }
+        $uids = array_values(array_filter(array_map(static function ($r) {
+            return (int) ($r['userId'] ?? 0);
+        }, $rankRows)));
+        $countMap = [];
+        foreach ($rankRows as $r) {
+            $uid = (int) ($r['userId'] ?? 0);
+            if ($uid > 0) {
+                $countMap[$uid] = (int) ($r['cnt'] ?? 0);
+            }
+        }
+        if (empty($uids)) {
+            return [];
+        }
+
+        $users = Db::name('wechat_users')
+            ->whereIn('id', $uids)
+            ->field('id,nickname,phone,avatar,createdAt')
+            ->select()
+            ->toArray();
+        $userMap = [];
+        foreach ($users as $u) {
+            $userMap[(int) $u['id']] = $u;
+        }
+
+        $trQuery = Db::name('test_results')->whereIn('userId', $uids);
+        if ($enterpriseId) {
+            $trQuery->where('enterpriseId', $enterpriseId);
+        }
+        $testRows = $trQuery
+            ->field('userId, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->select()
+            ->toArray();
+
+        $testsByUser = [];
+        foreach ($testRows as $row) {
+            $uid = (int) ($row['userId'] ?? 0);
+            if ($uid <= 0) {
+                continue;
+            }
+            if (!isset($testsByUser[$uid])) {
+                $testsByUser[$uid] = [];
+            }
+            $raw = $row['resultData'] ?? '';
+            $testsByUser[$uid][] = [
+                'testType'  => $row['testType'] ?? '',
+                'result'    => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                'createdAt' => (int) ($row['createdAt'] ?? 0),
+            ];
+        }
+
+        $out = [];
+        foreach ($uids as $uid) {
+            $wu = $userMap[$uid] ?? null;
+            $tests = $testsByUser[$uid] ?? [];
+            $lastAt = 0;
+            foreach ($tests as $t) {
+                $lastAt = max($lastAt, (int) ($t['createdAt'] ?? 0));
+            }
+            $out[] = [
+                'id'            => $uid,
+                'username'      => $wu ? ($wu['nickname'] ?? ('用户' . $uid)) : ('用户' . $uid),
+                'nickname'      => $wu ? ($wu['nickname'] ?? '') : '',
+                'phone'         => $wu ? ($wu['phone'] ?? '') : '',
+                'avatar'        => $wu ? ($wu['avatar'] ?? '') : '',
+                'testCount'     => $countMap[$uid] ?? 0,
+                'lastTestAt'    => $lastAt > 0 ? $lastAt : null,
+                'mbtiType'      => $this->extractResultType($tests, 'mbti'),
+                'pdpType'       => $this->extractResultType($tests, 'pdp'),
+                'discType'      => $this->extractResultType($tests, 'disc'),
+                'faceMbtiType'  => $this->extractFaceSubType($tests, 'mbti'),
+                'faceDiscType'  => $this->extractFaceSubType($tests, 'disc'),
+                'facePdpType'   => $this->extractFaceSubType($tests, 'pdp'),
+            ];
+        }
+
+        return $out;
     }
 
     /**

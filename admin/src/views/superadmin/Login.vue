@@ -111,7 +111,7 @@ const handleLogin = async () => {
       
       if (success) {
         ElMessage.success('登录成功')
-        router.push('/superadmin/overview')
+        router.push('/superadmin/ops')
       } else {
         errorMessage.value = '用户名或密码错误'
       }

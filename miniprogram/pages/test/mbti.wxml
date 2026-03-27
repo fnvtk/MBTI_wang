@@ -29,20 +29,20 @@
       </view>
       </view>
     </view>
+    <view wx:if="{{currentIndex === total - 1}}" class="last-hint">
+      <text class="last-hint-text">最后一题：选择后约 0.3 秒自动跳转结果页；若未跳转，请点右下角「查看结果」。</text>
+    </view>
   </view>
 
   <view class="footer-buttons">
     <view class="nav-button secondary {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="prevQuestion">
       <text class="button-text">上一题</text>
     </view>
-    <view class="nav-button secondary {{currentIndex === total - 1 ? 'disabled' : ''}}" bindtap="nextQuestion">
+    <view wx:if="{{currentIndex < total - 1}}" class="nav-button secondary" bindtap="nextQuestion">
       <text class="button-text">跳过</text>
     </view>
-  </view>
-
-  <view class="submit-wrap" wx:if="{{answeredCount === total}}">
-    <view class="submit-button" bindtap="submitTest">
-      <text class="submit-text">{{isSubmitting ? '计算中...' : '完成测试，查看结果'}}</text>
+    <view wx:else class="nav-button primary {{isSubmitting ? 'disabled' : ''}}" bindtap="finishTest">
+      <text class="button-text button-text-on-primary">{{isSubmitting ? '正在生成…' : '查看结果'}}</text>
     </view>
   </view>
 </view>

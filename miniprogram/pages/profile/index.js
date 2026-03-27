@@ -258,10 +258,17 @@ Page({
   },
 
   goToIndex() { wx.switchTab({ url: '/pages/index/index' }) },
-  goToCamera() { wx.switchTab({ url: '/pages/index/camera' }) },
-  goToHistory() { wx.navigateTo({ url: '/pages/history/index' }) },
+  goToHistory() {
+    try { require('../../utils/analytics').track('tap_test_history', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/history/index' })
+  },
   goToUserProfile() { wx.navigateTo({ url: '/pages/user-profile/index' }) },
-  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
+  /** 深度服务统一入口（页内 Tab：个人 / 团队与企业） */
+  goToDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },

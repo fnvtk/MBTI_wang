@@ -12,6 +12,19 @@ use think\facade\Request;
 class AppUser extends BaseController
 {
     /**
+     * 名称包含「存客宝」的企业（取 id 最小的一条），用于合并个人侧无归属测试数据
+     */
+    private function resolveCunkbaoEnterpriseId(): ?int
+    {
+        try {
+            $row = Db::name('enterprises')->where('name', 'like', '%存客宝%')->order('id', 'asc')->find();
+            return $row ? (int) $row['id'] : null;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
      * 概览：用户统计、卡片、MBTI 分布
      * GET /api/v1/superadmin/app-users/overview
      */
@@ -51,11 +64,12 @@ class AppUser extends BaseController
             ]
         ];
 
+        $individualTotal = 0;
+        $individualActive = 0;
         try {
-            // 个人池：enterpriseId 为空的测试用户，按 userId 去重
             $individualIds = Db::name('test_results')
                 ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '');
+                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
                 })
                 ->distinct(true)
                 ->column('userId');
@@ -64,27 +78,17 @@ class AppUser extends BaseController
             $individualActiveIds = Db::name('test_results')
                 ->where('createdAt', '>=', $last30d)
                 ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '');
+                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
                 })
                 ->distinct(true)
                 ->column('userId');
             $individualActive = count(array_filter($individualActiveIds));
-            $userCards[] = [
-                'type' => 'individual',
-                'name' => '个人用户(无企业)',
-                'total' => $individualTotal,
-                'active' => $individualActive,
-                'tested' => $individualTotal
-            ];
         } catch (\Throwable $e) {
-            $userCards[] = [
-                'type' => 'individual',
-                'name' => '个人用户(无企业)',
-                'total' => 0,
-                'active' => 0,
-                'tested' => 0
-            ];
+            $individualTotal = 0;
+            $individualActive = 0;
         }
+
+        $cunkbaoId = $this->resolveCunkbaoEnterpriseId();
 
         $enterprises = Db::name('enterprises')->field('id,name')->select()->toArray();
         foreach ($enterprises as $e) {
@@ -106,6 +110,10 @@ class AppUser extends BaseController
                 $total = 0;
                 $active = 0;
             }
+            if ($cunkbaoId !== null && (int) $eid === $cunkbaoId) {
+                $total += $individualTotal;
+                $active += $individualActive;
+            }
             $userCards[] = [
                 'type' => 'enterprise',
                 'enterpriseId' => $eid,
@@ -113,6 +121,16 @@ class AppUser extends BaseController
                 'total' => $total,
                 'active' => $active,
                 'tested' => $total
+            ];
+        }
+
+        if ($cunkbaoId === null && ($individualTotal > 0 || $individualActive > 0)) {
+            $userCards[] = [
+                'type' => 'individual',
+                'name' => '个人用户(无企业)',
+                'total' => $individualTotal,
+                'active' => $individualActive,
+                'tested' => $individualTotal
             ];
         }
 
@@ -188,6 +206,12 @@ class AppUser extends BaseController
         $enterpriseId = Request::param('enterpriseId', '');
         $mbti = trim(Request::param('mbti', ''));
 
+        $cunkbaoEnterpriseId = $this->resolveCunkbaoEnterpriseId();
+        if ($pool === 'individual' && $cunkbaoEnterpriseId) {
+            $pool = 'enterprise';
+            $enterpriseId = (string) $cunkbaoEnterpriseId;
+        }
+
         $where = [];
         if ($keyword !== '') {
             $where[] = ['nickname|phone|city|province', 'like', '%' . $keyword . '%'];
@@ -196,15 +220,23 @@ class AppUser extends BaseController
         $wechatIds = null;
         if ($pool === 'individual' || ($pool === 'enterprise' && $enterpriseId !== '')) {
             try {
-                $trQuery = Db::name('test_results');
                 if ($pool === 'individual') {
-                    $trQuery->where(function ($q) {
-                        $q->whereNull('enterpriseId')->whereOr('enterpriseId', '');
+                    $trQuery = Db::name('test_results')->where(function ($q) {
+                        $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
                     });
+                    $wechatIds = $trQuery->distinct(true)->column('userId');
                 } else {
-                    $trQuery->where('enterpriseId', $enterpriseId);
+                    $eid = (int) $enterpriseId;
+                    if ($cunkbaoEnterpriseId !== null && $eid === $cunkbaoEnterpriseId) {
+                        $idsEnt = Db::name('test_results')->where('enterpriseId', $eid)->distinct(true)->column('userId');
+                        $idsOrphan = Db::name('test_results')->where(function ($q) {
+                            $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
+                        })->distinct(true)->column('userId');
+                        $wechatIds = array_values(array_unique(array_filter(array_merge($idsEnt, $idsOrphan))));
+                    } else {
+                        $wechatIds = Db::name('test_results')->where('enterpriseId', $eid)->distinct(true)->column('userId');
+                    }
                 }
-                $wechatIds = $trQuery->distinct(true)->column('userId');
                 $wechatIds = array_values(array_unique(array_filter($wechatIds)));
             } catch (\Throwable $e) {
                 $wechatIds = null;
@@ -298,9 +330,18 @@ class AppUser extends BaseController
             } catch (\Throwable $e) {
                 // test_results 可能无 enterpriseId 列
             }
+            $cunkbaoName = null;
+            if ($cunkbaoEnterpriseId) {
+                $cunkbaoName = (string) (Db::name('enterprises')->where('id', $cunkbaoEnterpriseId)->value('name') ?: '存客宝');
+            }
             foreach ($ids as $uid) {
                 if (!isset($userEnterprise[$uid])) {
-                    $userEnterprise[$uid] = '个人用户(无企业)';
+                    $tc = (int) ($testCounts[$uid] ?? 0);
+                    if ($cunkbaoName !== null && $tc > 0) {
+                        $userEnterprise[$uid] = $cunkbaoName;
+                    } else {
+                        $userEnterprise[$uid] = '个人用户(无企业)';
+                    }
                 }
             }
 

@@ -68,132 +68,75 @@
     <text class="chevron">›</text>
   </view>
 
-  <!-- 最新测试卡片（横向滚动） -->
-  <view class="section" wx:if="{{hasLogin && hasResults}}">
-    <view class="section-header">
-      <text class="section-title">最新测试</text>
-      <view class="section-link" bindtap="goToHistory">
-        <text class="section-link-text">查看全部</text>
-      </view>
-    </view>
-    <scroll-view scroll-x class="cards-scroll" enhanced show-scrollbar="{{false}}">
-      <view class="cards-row">
-        <!-- MBTI -->
-        <view class="result-card card-purple" wx:if="{{mbtiType}}" bindtap="viewMBTI">
-          <view class="card-deco"></view>
-          <view class="card-icon-wrap card-icon-purple">
-            <text class="card-icon">🧠</text>
-          </view>
-          <text class="card-label">MBTI性格</text>
-          <text class="card-value">{{mbtiType}}</text>
-          <text class="card-time">{{mbtiTime}}</text>
-        </view>
-        <!-- DISC -->
-        <view class="result-card card-blue" wx:if="{{discType}}" bindtap="viewDISC">
-          <view class="card-deco"></view>
-          <view class="card-icon-wrap card-icon-blue">
-            <text class="card-icon">📊</text>
-          </view>
-          <text class="card-label">DISC测评</text>
-          <text class="card-value">{{discType}}型</text>
-          <text class="card-time">{{discTime}}</text>
-        </view>
-        <!-- PDP -->
-        <view class="result-card card-orange" wx:if="{{pdpType}}" bindtap="viewPDP">
-          <view class="card-deco"></view>
-          <view class="card-icon-wrap card-icon-orange">
-            <text class="card-icon">🦁</text>
-          </view>
-          <text class="card-label">PDP行为</text>
-          <text class="card-value">{{pdpType}}</text>
-          <text class="card-time">{{pdpTime}}</text>
-        </view>
-        <!-- AI 面相（审核模式下隐藏） -->
-        <view class="result-card card-rose" wx:if="{{aiType && !reviewMode}}" bindtap="viewAI">
-          <view class="card-deco"></view>
-          <view class="card-icon-wrap card-icon-rose">
-            <text class="card-icon">👁️</text>
-          </view>
-          <text class="card-label">面相分析</text>
-          <text class="card-value">{{aiType}}</text>
-          <text class="card-time">{{aiTime}}</text>
+  <!-- 深度解析：四字标题下整合「最新测试 + 查看全部/历史」与深度服务入口（单面板） -->
+  <view class="section px-section" wx:if="{{hasLogin}}">
+    <text class="section-title depth-parse-title">深度解析</text>
+    <view class="depth-unified-card">
+      <view class="depth-unified-header">
+        <text class="depth-unified-subtitle">最新测试</text>
+        <view class="depth-header-link" bindtap="goToHistory">
+          <text class="depth-header-link-text">查看全部<text wx:if="{{testCount > 0}}"> · {{testCount}}条</text></text>
+          <text class="depth-header-chevron">›</text>
         </view>
       </view>
-    </scroll-view>
-  </view>
-
-  <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
-  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled}}">
-    <view class="promo-card" bindtap="goToPromo">
-      <view class="promo-header">
-        <view class="promo-title-wrap">
-          <text class="promo-icon">📈</text>
-          <text class="promo-title">{{promoCenterTitle}}</text>
-        </view>
+      <block wx:if="{{hasResults}}">
+        <scroll-view scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
+          <view class="cards-row cards-row--in-card">
+            <view class="result-card card-purple" wx:if="{{mbtiType}}" bindtap="viewMBTI">
+              <view class="card-deco"></view>
+              <view class="card-icon-wrap card-icon-purple">
+                <text class="card-icon">🧠</text>
+              </view>
+              <text class="card-label">MBTI性格</text>
+              <text class="card-value">{{mbtiType}}</text>
+              <text class="card-time">{{mbtiTime}}</text>
+            </view>
+            <view class="result-card card-blue" wx:if="{{discType}}" bindtap="viewDISC">
+              <view class="card-deco"></view>
+              <view class="card-icon-wrap card-icon-blue">
+                <text class="card-icon">📊</text>
+              </view>
+              <text class="card-label">DISC测评</text>
+              <text class="card-value">{{discType}}型</text>
+              <text class="card-time">{{discTime}}</text>
+            </view>
+            <view class="result-card card-orange" wx:if="{{pdpType}}" bindtap="viewPDP">
+              <view class="card-deco"></view>
+              <view class="card-icon-wrap card-icon-orange">
+                <text class="card-icon">🦁</text>
+              </view>
+              <text class="card-label">PDP行为</text>
+              <text class="card-value">{{pdpType}}</text>
+              <text class="card-time">{{pdpTime}}</text>
+            </view>
+            <view class="result-card card-rose" wx:if="{{aiType && !reviewMode}}" bindtap="viewAI">
+              <view class="card-deco"></view>
+              <view class="card-icon-wrap card-icon-rose">
+                <text class="card-icon">👁️</text>
+              </view>
+              <text class="card-label">面相分析</text>
+              <text class="card-value">{{aiType}}</text>
+              <text class="card-time">{{aiTime}}</text>
+            </view>
+          </view>
+        </scroll-view>
+      </block>
+      <view wx:else class="depth-empty-hint">
+        <text>完成任一测评后，此处展示最近一次结果；右上角可查看全部历史。</text>
       </view>
-      <view class="promo-stats">
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">邀请好友</text>
-          <text class="promo-stat-value">{{promoTotalInvite}}</text>
-        </view>
-        <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">累计收益</text>
-          <text class="promo-stat-value">¥{{promoTotalEarned}}</text>
-        </view>
-        <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">可提现</text>
-          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
-        </view>
-      </view>
-    </view>
-  </view>
-
-  <!-- 服务菜单 -->
-  <view class="section px-section">
-    <text class="section-title">深度服务</text>
-    <view class="menu-card">
-      <!-- 专业报告：跳到个人版开通页面 -->
-      <view class="menu-item" bindtap="goToPurchasePersonal">
-        <view class="menu-icon-wrap menu-icon-red">
-          <text class="menu-icon">📄</text>
+      <view class="depth-inner-divider"></view>
+      <view class="menu-item menu-item--flat" bindtap="goToDeepService">
+        <view class="menu-icon-wrap menu-icon-purple">
+          <text class="menu-icon">✨</text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">专业报告</text>
-          <text class="menu-sub">解锁完整的深度性格解析</text>
+          <text class="menu-title">深度解读与方案</text>
+          <text class="menu-sub">个人报告与团队／企业服务，进入后按需选择</text>
         </view>
         <text class="menu-chevron">›</text>
       </view>
-      <view class="menu-divider"></view>
-
-      <!-- 企业版服务：跳到企业版开通页面 -->
-      <view class="menu-item" bindtap="goToPurchaseEnterprise">
-        <view class="menu-icon-wrap menu-icon-indigo">
-          <text class="menu-icon">🏢</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">企业版服务</text>
-          <text class="menu-sub">团队测评与人才管理方案</text>
-        </view>
-        <text class="menu-chevron">›</text>
-      </view>
-      <view class="menu-divider"></view>
-
-      <!-- 测试历史：仍然进入历史记录页面 -->
-      <view class="menu-item" bindtap="goToHistory">
-        <view class="menu-icon-wrap menu-icon-amber">
-          <text class="menu-icon">🕒</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">测试历史</text>
-          <text class="menu-sub">{{testCount > 0 ? testCount + '条记录' : '查看过往所有测试记录'}}</text>
-        </view>
-        <text class="menu-chevron">›</text>
-      </view>
-      <view class="menu-divider" wx:if="{{hasEnterprise}}"></view>
-      <!-- 我的简历：仅绑定企业的用户可见，展示当前企业下的简历并可设默认 -->
-      <view class="menu-item" wx:if="{{hasEnterprise}}" bindtap="goToMyResume">
+      <view class="menu-divider menu-divider--in-card" wx:if="{{hasEnterprise}}"></view>
+      <view class="menu-item menu-item--flat" wx:if="{{hasEnterprise}}" bindtap="goToMyResume">
         <view class="menu-icon-wrap menu-icon-indigo">
           <text class="menu-icon">📋</text>
         </view>
@@ -206,7 +149,15 @@
     </view>
   </view>
 
-
+  <!-- 推广入口：置底弱化，避免与主服务抢注意力（开关与标题仍来自管理端） -->
+  <view class="promo-section-subtle" wx:if="{{hasLogin && promoDistributionEnabled}}">
+    <view class="promo-row-subtle" bindtap="goToPromo">
+      <text class="promo-row-label">{{promoCenterTitle}}</text>
+      <text class="promo-row-meta">邀请{{promoTotalInvite}} · 可提¥{{promoWithdrawable}}</text>
+      <text class="promo-row-chevron">›</text>
+    </view>
+  </view>
 
   <view class="bottom-safe"></view>
+  <custom-tab-bar />
 </view>

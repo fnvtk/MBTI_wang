@@ -3,6 +3,7 @@ namespace app\controller\superadmin;
 
 use app\BaseController;
 use app\model\Enterprise as EnterpriseModel;
+use app\model\SystemConfig as SystemConfigModel;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -166,6 +167,119 @@ class Enterprise extends BaseController
                 ->count();
         } else {
             $data['testUsage'] = 0;
+        }
+
+        // —— 小程序侧用户（wechat_users.enterpriseId）——
+        $wechatIds = [];
+        try {
+            $wechatIds = Db::name('wechat_users')->where('enterpriseId', $id)->column('id');
+            $wechatIds = array_values(array_filter($wechatIds));
+        } catch (\Throwable $e) {
+            $wechatIds = [];
+        }
+        $data['wechatUserCount'] = count($wechatIds);
+        $data['wechatUsers'] = [];
+        if (!empty($wechatIds)) {
+            try {
+                $data['wechatUsers'] = Db::name('wechat_users')
+                    ->where('id', 'in', $wechatIds)
+                    ->field('id,openid,nickname,phone,avatar,status,lastLoginAt,createdAt')
+                    ->order('createdAt', 'desc')
+                    ->limit(120)
+                    ->select()
+                    ->toArray();
+            } catch (\Throwable $e) {
+                $data['wechatUsers'] = [];
+            }
+        }
+
+        // 该企业下、带 enterpriseId 的小程序测试记录
+        $data['miniprogramTestResults'] = [];
+        try {
+            $data['miniprogramTestResults'] = Db::name('test_results')
+                ->alias('tr')
+                ->leftJoin('wechat_users w', 'tr.userId = w.id')
+                ->where('tr.enterpriseId', $id)
+                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,w.nickname as wechatNickname')
+                ->order('tr.createdAt', 'desc')
+                ->limit(60)
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $data['miniprogramTestResults'] = [];
+        }
+
+        // 订单与消耗（金额分）
+        $paidStatuses = ['paid', 'completed'];
+        try {
+            $data['orderStats'] = [
+                'totalCount'    => (int) Db::name('orders')->where('enterpriseId', $id)->count(),
+                'paidCount'     => (int) Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->count(),
+                'paidAmountFen' => (int) (Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->sum('amount') ?? 0),
+            ];
+            $data['recentOrders'] = Db::name('orders')
+                ->where('enterpriseId', $id)
+                ->order('createdAt', 'desc')
+                ->limit(25)
+                ->field('id,orderNo,status,amount,productType,userId,createdAt')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $data['orderStats'] = [
+                'totalCount'    => 0,
+                'paidCount'     => 0,
+                'paidAmountFen' => 0,
+            ];
+            $data['recentOrders'] = [];
+        }
+
+        // 埋点：近 30 天，归属该企业的小程序用户
+        $data['analyticsStats'] = [
+            'eventTotal'     => 0,
+            'pageViewCount'  => 0,
+            'byEvent'        => [],
+            'hint'           => null,
+            'windowDays'     => 30,
+        ];
+        if (empty($wechatIds)) {
+            $data['analyticsStats']['hint'] = '暂无 enterpriseId 归属该企业的微信小程序用户，无法按企业聚合埋点';
+        } else {
+            try {
+                $since = date('Y-m-d H:i:s', time() - 30 * 86400);
+                $data['analyticsStats']['eventTotal'] = (int) Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->count();
+                $data['analyticsStats']['pageViewCount'] = (int) Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->where('eventName', 'page_view')
+                    ->count();
+                $byEvent = Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->field('eventName, COUNT(*) AS cnt')
+                    ->group('eventName')
+                    ->order('cnt', 'desc')
+                    ->limit(20)
+                    ->select()
+                    ->toArray();
+                $data['analyticsStats']['byEvent'] = $byEvent ?: [];
+            } catch (\Throwable $e) {
+                $data['analyticsStats']['hint'] = '埋点表未就绪或查询失败（请确认已建 analytics_events 表）';
+            }
+        }
+
+        // 全局通知策略（超管在系统设置中配置，影响余额类提醒等）
+        $data['notificationPolicy'] = null;
+        try {
+            $nc = SystemConfigModel::where('key', 'notification')->where('enterprise_id', 0)->find();
+            if ($nc) {
+                $val = $nc->getAttr('value');
+                $data['notificationPolicy'] = is_array($val) ? $val : null;
+            }
+        } catch (\Throwable $e) {
+            $data['notificationPolicy'] = null;
         }
 
         return success($data);

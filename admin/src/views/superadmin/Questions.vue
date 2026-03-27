@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>题库管理</h2>
         <p class="subtitle">管理全局题库，包括 MBTI、DISC、PDP 三套测试题库</p>
@@ -221,6 +221,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Cpu, Aim, MagicStick, Upload, Download, CircleCheck, Search, View, InfoFilled, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const search = ref('')
 const fileInput = ref<HTMLInputElement>()
@@ -1112,5 +1114,9 @@ const deleteQuestion = async (q: any) => {
   .stats-grid, .res-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

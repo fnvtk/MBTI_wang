@@ -22,7 +22,7 @@ Page({
   onLoad(options) {
     const tab = (options && options.tab === 'enterprise') ? 'enterprise' : 'personal'
     this.setData({ activeTab: tab })
-    tt.setNavigationBarTitle({ title: tab === 'enterprise' ? '开通企业版' : '开通个人版' })
+    tt.setNavigationBarTitle({ title: '深度服务' })
     this.loadDeepPricing()
   },
 
@@ -72,7 +72,9 @@ Page({
 
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab
+    if (tab !== 'personal' && tab !== 'enterprise') return
     this.setData({ activeTab: tab })
+    tt.setNavigationBarTitle({ title: '深度服务' })
   },
 
   // 无需再次授权时，直接点击按钮执行购买/咨询
@@ -181,6 +183,8 @@ Page({
       }
     })
   },
+
+  catchTap() {},
 
   closeSuccessModal() {
     this.setData({ 'successModal.visible': false })

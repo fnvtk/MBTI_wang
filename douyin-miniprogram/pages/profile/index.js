@@ -258,10 +258,16 @@ Page({
   },
 
   goToIndex() { tt.switchTab({ url: '/pages/index/index' }) },
-  goToCamera() { tt.switchTab({ url: '/pages/index/camera' }) },
-  goToHistory() { tt.navigateTo({ url: '/pages/history/index' }) },
+  goToHistory() {
+    try { require('../../utils/analytics').track('tap_test_history', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/history/index' })
+  },
   goToUserProfile() { tt.navigateTo({ url: '/pages/user-profile/index' }) },
-  goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
+  goToDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/purchase/index' })
+  },
+  goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { tt.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { tt.navigateTo({ url: '/pages/enterprise/index' }) },

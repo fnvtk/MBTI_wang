@@ -2,8 +2,8 @@
   <div class="page-container">
     <div class="page-header">
       <div class="header-left">
-        <h2>分销管理</h2>
-        <p class="subtitle">管理分销商、佣金和分销设置</p>
+        <h2>分销推广</h2>
+        <p class="subtitle">分销商、佣金结算、提现审核与推广设置</p>
       </div>
       <div class="header-actions">
         <el-button @click="refresh" class="refresh-btn">

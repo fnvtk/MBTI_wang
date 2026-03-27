@@ -273,11 +273,8 @@
   font-weight: 600;
 }
 
-/* 确保底部导航显示 */
 custom-tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
+  display: block;
+  height: 0;
+  overflow: visible;
 }

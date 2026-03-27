@@ -63,6 +63,8 @@ Page({
     setTimeout(() => {
       if (this.data.currentIndex < this.data.total - 1) {
         this.nextQuestion()
+      } else {
+        this.submitTest()
       }
     }, 300)
   },
@@ -93,6 +95,10 @@ Page({
 
   submitTest() {
     if (this.data.isSubmitting) return
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
     this.setData({ isSubmitting: true })
 
     const scores = { D: 0, I: 0, S: 0, C: 0 }

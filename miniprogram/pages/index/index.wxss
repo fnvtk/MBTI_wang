@@ -9,7 +9,8 @@
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
-  padding-bottom: calc(100rpx + env(safe-area-inset-bottom) + 40rpx);
+  /* 底栏 + 中间浮钮留白，避免与主按钮叠在一起 */
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom) + 48rpx);
 }
 
 /* 背景装饰圆形（与企业版一致） */
@@ -295,11 +296,9 @@
   line-height: 1.4;
 }
 
-/* 确保底部导航显示 */
+/* 自定义 tab 由内层 .tab-bar fixed，避免与组件双重 fixed 导致错位 */
 custom-tab-bar {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  z-index: 9999;
+  display: block;
+  height: 0;
+  overflow: visible;
 }

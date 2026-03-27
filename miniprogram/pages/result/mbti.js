@@ -1,7 +1,7 @@
 // pages/result/mbti.js - MBTI结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -46,7 +46,6 @@ Page({
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
     this.setData({ hasPhone: hasPhone() })
   },
 
@@ -159,7 +158,6 @@ Page({
 
   // 付费解锁按钮：就地触发微信手机号授权，然后调用 unlockFullReport
   onGetPhoneNumberForMbtiPay(e) {
-    if (!ensureProfileCompleteAndRedirect()) return
     const { code, errMsg } = e.detail || {}
     if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
       if (!hasPhone()) {

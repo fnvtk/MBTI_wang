@@ -21,21 +21,6 @@
         <div class="header-right">
           <el-button
             text
-            class="nav-link super-admin"
-            @click="router.push('/superadmin')"
-          >
-            超管端
-          </el-button>
-          <el-button
-            text
-            class="nav-link"
-            @click="router.push('/')"
-          >
-            <el-icon><HomeFilled /></el-icon>
-            <span>前台</span>
-          </el-button>
-          <el-button
-            text
             class="nav-link logout"
             @click="handleLogout"
           >
@@ -86,16 +71,12 @@ import {
   Menu,
   Close,
   Lock,
-  HomeFilled,
   SwitchButton,
   DataLine,
   User,
   ShoppingCart,
   Share,
-  Document,
-  Setting,
-  PriceTag,
-  WalletFilled
+  Setting
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -105,17 +86,23 @@ const authStore = useAuthStore()
 const sidebarOpen = ref(false)
 
 const navItems = [
-  { path: '/admin/dashboard', icon: DataLine, label: '数据概览' },
-  { path: '/admin/users', icon: User, label: '用户管理' },
-  { path: '/admin/orders', icon: ShoppingCart, label: '订单管理' },
-  { path: '/admin/distribution', icon: Share, label: '分销管理' },
-  { path: '/admin/questions', icon: Document, label: '题库管理' },
-  { path: '/admin/pricing', icon: PriceTag, label: '价格设置' },
-  { path: '/admin/finance', icon: WalletFilled, label: '企业余额' },
+  { path: '/admin/dashboard', icon: DataLine, label: '概览' },
+  { path: '/admin/users', icon: User, label: '用户运营' },
+  { path: '/admin/orders', icon: ShoppingCart, label: '订单运营' },
+  { path: '/admin/distribution', icon: Share, label: '分销推广' },
   { path: '/admin/settings', icon: Setting, label: '系统设置' },
 ]
 
 const isActive = (path: string) => {
+  if (path === '/admin/settings') {
+    return route.path === '/admin/settings'
+  }
+  if (path === '/admin/users') {
+    return route.path === '/admin/users'
+  }
+  if (path === '/admin/orders') {
+    return route.path === '/admin/orders'
+  }
   return route.path === path
 }
 
@@ -224,12 +211,6 @@ const handleLogout = async () => {
       &:hover {
         background-color: transparent;
         color: #111827;
-      }
-
-      &.super-admin {
-        color: #7c3aed;
-        font-weight: 500;
-        padding-right: 14px;
       }
 
       &.logout {

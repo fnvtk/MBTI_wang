@@ -1,0 +1,343 @@
+{
+  "config": {
+    "configFile": "/Users/karuo/Documents/开发/3、自营项目/MBTI/playwright.config.ts",
+    "rootDir": "/Users/karuo/Documents/开发/3、自营项目/MBTI",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/karuo/Documents/开发/3、自营项目/MBTI/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/karuo/Documents/开发/3、自营项目/MBTI",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "runAgents": "none",
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.58.2",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "test-superadmin-simple.spec.ts",
+      "file": "test-superadmin-simple.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "超管 AI 配置页面测试（简化版）",
+          "file": "test-superadmin-simple.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "完整流程测试",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 120000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 12141,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "\n========== 测试开始: 2026-02-10T07:56:22.337Z ==========\n\n"
+                        },
+                        {
+                          "text": "步骤 1: 导航到超管登录页面...\n"
+                        },
+                        {
+                          "text": "  响应状态: 200\n"
+                        },
+                        {
+                          "text": "  当前 URL: http://localhost:3002/superadmin/login\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [error] Warning: Text content did not match. Server: \"%s\" Client: \"%s\"%s \nhtml {\n  font-family: &#x27;__GeistSans_ac79ff&#x27;, &#x27;__GeistSans_Fallback_ac79ff&#x27;;\n  --font-sans: __variable_ac79ff;\n  --font-mono: __variable_8a4d12;\n}\n         \nhtml {\n  font-family: '__GeistSans_ac79ff', '__GeistSans_Fallback_ac79ff';\n  --font-sans: __variable_ac79ff;\n  --font-mono: __variable_8a4d12;\n}\n         \n    at style\n    at head\n    at html\n    at RootLayout (Server)\n    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/redirect-boundary.js:74:9)\n    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/redirect-boundary.js:82:11)\n    at NotFoundErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/not-found-boundary.js:76:9)\n    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/not-found-boundary.js:84:11)\n    at DevRootNotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/dev-root-not-found-boundary.js:33:11)\n    at ReactDevOverlay (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/react-dev-overlay/app/ReactDevOverlay.js:87:9)\n    at HotReload (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:321:11)\n    at Router (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/app-router.js:207:11)\n    at ErrorBoundaryHandler (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/error-boundary.js:113:9)\n    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/error-boundary.js:160:11)\n    at AppRouter (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/app-router.js:585:13)\n    at ServerRoot (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/app-index.js:112:27)\n    at Root (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/app-index.js:117:11)\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [error] Warning: An error occurred during hydration. The server HTML was replaced with client content in <%s>. #document\n"
+                        },
+                        {
+                          "text": "  ⚠️  页面错误: Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error\n"
+                        },
+                        {
+                          "text": "  ⚠️  页面错误: Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error\n"
+                        },
+                        {
+                          "text": "  ⚠️  页面错误: Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error\n"
+                        },
+                        {
+                          "text": "  ⚠️  页面错误: Error: There was an error while hydrating. Because the error happened outside of a Suspense boundary, the entire root will switch to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error\n"
+                        },
+                        {
+                          "text": "✅ 登录页面初始截图已保存\n"
+                        },
+                        {
+                          "text": "\n步骤 2-3: 查找登录表单元素...\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  ✅ 找到输入框元素\n"
+                        },
+                        {
+                          "text": "  ✅ 使用选择器找到用户名输入框: input[type=\"text\"]\n"
+                        },
+                        {
+                          "text": "  ✅ 使用选择器找到密码输入框: input[type=\"password\"]\n"
+                        },
+                        {
+                          "text": "  ✅ 用户名已输入: admin\n"
+                        },
+                        {
+                          "text": "  ✅ 密码已输入: k123456\n"
+                        },
+                        {
+                          "text": "\n步骤 4: 查找并点击登录按钮...\n"
+                        },
+                        {
+                          "text": "  ✅ 使用选择器找到登录按钮: button[type=\"submit\"]\n"
+                        },
+                        {
+                          "text": "  ✅ 登录按钮已点击\n"
+                        },
+                        {
+                          "text": "\n步骤 5: 等待跳转到超管首页...\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 139ms\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 163ms\n"
+                        },
+                        {
+                          "text": "  ⚠️  请求失败: http://localhost:3002/superadmin?_rsc=hslbz - net::ERR_ABORTED\n"
+                        },
+                        {
+                          "text": "  ✅ 已跳转: http://localhost:3002/superadmin\n"
+                        },
+                        {
+                          "text": "\n步骤 6: 查找 AI 服务配置导航...\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 115ms\n"
+                        },
+                        {
+                          "text": "  ⚠️  请求失败: http://localhost:3002/superadmin?_rsc=1uavj - net::ERR_ABORTED\n"
+                        },
+                        {
+                          "text": "  ✅ 使用选择器找到 AI 配置链接: button:has-text(\"AI 服务配置\")\n"
+                        },
+                        {
+                          "text": "  ✅ AI 服务配置导航已点击\n"
+                        },
+                        {
+                          "text": "\n步骤 7: 等待 AI 配置页面加载...\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 342ms\n"
+                        },
+                        {
+                          "text": "  ⚠️  请求失败: http://localhost:3002/superadmin/ai-config?_rsc=1ur82 - net::ERR_ABORTED\n"
+                        },
+                        {
+                          "text": "  ✅ 已到达 AI 配置页面: http://localhost:3002/superadmin/ai-config\n"
+                        },
+                        {
+                          "text": "  ⚠️  请求失败: http://localhost:3002/superadmin/ai-config?_rsc=161kx - net::ERR_ABORTED\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 129ms\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] done in 386ms\n"
+                        },
+                        {
+                          "text": "  ⚠️  请求失败: http://localhost:3002/superadmin/ai-config?_rsc=1lze6 - net::ERR_ABORTED\n"
+                        },
+                        {
+                          "text": "\n步骤 8: 截图记录页面状态...\n"
+                        },
+                        {
+                          "text": "  ✅ 完整页面截图已保存\n"
+                        },
+                        {
+                          "text": "\n步骤 9-11: 验证页面元素...\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: OpenAI\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: Anthropic\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: DeepSeek\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: Moonshot\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: Groq\n"
+                        },
+                        {
+                          "text": "  浏览器控制台: [log] [Fast Refresh] rebuilding\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: Coze\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: 通义千问\n"
+                        },
+                        {
+                          "text": "  ✅ 找到服务商: 智谱\n"
+                        },
+                        {
+                          "text": "  查询余额按钮: ✅ 找到\n"
+                        },
+                        {
+                          "text": "  ✅ 找到统计卡片: 服务商总数\n"
+                        },
+                        {
+                          "text": "  ✅ 找到统计卡片: 已启用\n"
+                        },
+                        {
+                          "text": "  ✅ 找到统计卡片: 已配置密钥\n"
+                        },
+                        {
+                          "text": "  ✅ 找到统计卡片: 余额告警\n"
+                        },
+                        {
+                          "text": "\n✅ 测试报告已保存: /Users/karuo/Documents/开发/3、自营项目/MBTI/test-screenshots/test-report.json\n"
+                        },
+                        {
+                          "text": "\n========== 测试总结 ==========\n"
+                        },
+                        {
+                          "text": "✅ 登录成功: 是\n"
+                        },
+                        {
+                          "text": "✅ AI 配置页面加载: 是\n"
+                        },
+                        {
+                          "text": "📊 AI 服务商显示: 8/8\n"
+                        },
+                        {
+                          "text": "🔘 查询余额按钮: 是\n"
+                        },
+                        {
+                          "text": "📈 统计卡片显示: 4/4\n"
+                        },
+                        {
+                          "text": "⚠️  页面错误: 4\n"
+                        },
+                        {
+                          "text": "📸 截图已保存到: /Users/karuo/Documents/开发/3、自营项目/MBTI/test-screenshots\n"
+                        },
+                        {
+                          "text": "==============================\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-02-10T07:56:21.389Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "b7df260085ed4d2bcceb-dc51e2a1537ec5e1431f",
+              "file": "test-superadmin-simple.spec.ts",
+              "line": 10,
+              "column": 7
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-02-10T07:56:20.179Z",
+    "duration": 14225.721,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

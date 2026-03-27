@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container" v-loading="loading">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }" v-loading="loading">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>价格设置</h2>
         <p class="subtitle">分别配置个人版和企业版的测试价格</p>
@@ -98,6 +98,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const tabs = [
   { label: '个人版价格', value: 'personal' },
@@ -359,5 +361,9 @@ onMounted(() => {
   .tab-content-card {
     padding: 24px;
   }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

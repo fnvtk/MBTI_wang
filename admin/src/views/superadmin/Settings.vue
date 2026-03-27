@@ -4,7 +4,9 @@
     <div class="page-header">
       <div>
         <h2>系统设置</h2>
-        <p class="subtitle">管理系统配置、API密钥和管理员账户</p>
+        <p class="subtitle">
+          审核与站点、题库、数据库及超管账户等平台级配置（全局定价在「订单和财务」）。此处变更会间接影响各企业管理后台行为。
+        </p>
       </div>
     </div>
 
@@ -20,13 +22,13 @@
     </el-alert>
 
     <div class="settings-content">
-      <div class="custom-tabs-container">
-        <div class="custom-tabs">
+      <div class="custom-tabs-container tabs-scroll">
+        <div class="custom-tabs tabs-many">
           <div
             v-for="tab in tabs"
             :key="tab.value"
             :class="['tab-item', { active: activeTab === tab.value }]"
-            @click="activeTab = tab.value"
+            @click="selectTab(tab.value)"
           >
             <el-icon class="tab-icon"><component :is="tab.icon" /></el-icon>
             {{ tab.label }}
@@ -34,7 +36,10 @@
         </div>
       </div>
 
-      <div class="tab-content-card">
+      <div
+        class="tab-content-card"
+        :class="{ 'flat-embed': isFlatEmbed }"
+      >
         <!-- 审核模式 -->
         <div v-if="activeTab === 'review'" class="tab-content">
           <el-card shadow="never" class="settings-card">
@@ -464,29 +469,105 @@
           </div>
         </el-card>
         </div>
+
+        <div v-if="activeTab === 'questions'" class="embed-wrap">
+          <Questions embedded />
+        </div>
+        <div v-if="activeTab === 'database'" class="embed-wrap">
+          <Database embedded />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { Setting, Bell, Lock, Document, ChatDotRound, Postcard } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  Setting,
+  Bell,
+  Lock,
+  Document,
+  ChatDotRound,
+  Postcard,
+  DataLine,
+  Reading
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import PosterEditor from './PosterEditor.vue'
+import Questions from './Questions.vue'
+import Database from './Database.vue'
 
-const activeTab = ref('review')
+const TAB_IDS = [
+  'review',
+  'system',
+  'notification',
+  'prompts',
+  'poster',
+  'security',
+  'questions',
+  'database'
+] as const
+type TabId = (typeof TAB_IDS)[number]
+
+function isTabId(s: string): s is TabId {
+  return (TAB_IDS as readonly string[]).includes(s)
+}
+
+const route = useRoute()
+const router = useRouter()
+
+const activeTab = ref<TabId>('review')
 const saveSuccess = ref<string | null>(null)
 
-const tabs = [
+const tabs: { label: string; value: TabId; icon: any }[] = [
   { label: '审核模式', value: 'review', icon: Document },
   { label: '系统配置', value: 'system', icon: Setting },
   { label: '通知设置', value: 'notification', icon: Bell },
   { label: '提示词配置', value: 'prompts', icon: ChatDotRound },
   { label: '海报配置', value: 'poster', icon: Postcard },
-  { label: '账户安全', value: 'security', icon: Lock }
+  { label: '账户安全', value: 'security', icon: Lock },
+  { label: '题库管理', value: 'questions', icon: Reading },
+  { label: '数据库', value: 'database', icon: DataLine }
 ]
+
+const isFlatEmbed = computed(
+  () => activeTab.value === 'questions' || activeTab.value === 'database'
+)
+
+const applyRouteTab = () => {
+  const t = route.query.tab
+  if (t === 'pricing') {
+    router.replace({ path: '/superadmin/commerce', query: { tab: 'pricing' } })
+    return
+  }
+  if (typeof t === 'string' && isTabId(t)) {
+    activeTab.value = t
+  } else {
+    activeTab.value = 'review'
+  }
+}
+
+const selectTab = (tab: TabId) => {
+  activeTab.value = tab
+  const q: Record<string, string> = {}
+  Object.entries(route.query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && k !== 'tab') {
+      q[k] = Array.isArray(v) ? String(v[0]) : String(v)
+    }
+  })
+  if (tab !== 'review') {
+    q.tab = tab
+  }
+  router.replace({ path: '/superadmin/settings', query: Object.keys(q).length ? q : {} })
+}
+
+watch(
+  () => route.query.tab,
+  () => applyRouteTab()
+)
 
 // 审核模式
 const reviewMode = reactive({
@@ -603,6 +684,7 @@ async function loadEnterpriseOptions() {
 }
 
 onMounted(() => {
+  applyRouteTab()
   loadSettings()
   loadEnterpriseOptions()
 })
@@ -739,10 +821,22 @@ const handleSave = async (section: string) => {
   margin-bottom: 20px;
   width: 100%;
 
+  &.tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .custom-tabs {
     display: flex;
     gap: 4px;
     width: 100%;
+    min-width: min-content;
+
+    &.tabs-many .tab-item {
+      flex: 0 0 auto;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
 
     .tab-item {
       flex: 1;
@@ -783,6 +877,17 @@ const handleSave = async (section: string) => {
   border: 1px solid #f3f4f6;
   padding: 32px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  &.flat-embed {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+}
+
+.embed-wrap {
+  width: 100%;
 }
 
 .settings-card {

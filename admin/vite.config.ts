@@ -38,15 +38,12 @@ export default defineConfig({
     strictPort: false, // 如果端口被占用，自动尝试下一个可用端口
     proxy: {
       '/api': {
-        // 如果 VITE_API_BASE_URL 是完整URL，则不使用代理
-        // 否则代理到测试服务器
-        // 注意：在vite.config.ts中无法直接访问import.meta.env
-        // 这里使用默认代理配置，实际请求会根据VITE_API_BASE_URL决定
-        target: 'http://test.mbti.com', // 本地开发代理到测试环境
+        // 与 .env.development 配合：VITE_API_BASE_URL 留空时，浏览器请求 /api/* 由这里转发到本机 ThinkPHP
+        target: process.env.VITE_DEV_API_PROXY ?? 'http://127.0.0.1:8787',
         changeOrigin: true,
-        rewrite: (path) => path, // 保持路径不变
-      }
-    }
+        rewrite: (path) => path,
+      },
+    },
   }
 })
 
