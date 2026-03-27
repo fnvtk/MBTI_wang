@@ -154,12 +154,29 @@ Page({
   },
 
   onSave() {
-    const { nickname, birthday, gender, userInfo } = this.data
+    const { nickname, avatar, phone, birthday, gender, userInfo } = this.data
+    const nick = (nickname || '').trim()
+    const av = (avatar || '').trim()
+    const ph = (phone || '').trim()
+
+    if (!av) {
+      wx.showToast({ title: '请上传头像', icon: 'none' })
+      return
+    }
+    if (!nick) {
+      wx.showToast({ title: '请填写昵称', icon: 'none' })
+      return
+    }
+    if (!ph) {
+      wx.showToast({ title: '请授权绑定手机号', icon: 'none' })
+      return
+    }
+
     const profile = {}
     const origNickname = (userInfo?.nickname || userInfo?.nickName || '').trim()
     const origBirthday = userInfo?.birthday || ''
     const origGender = (userInfo?.gender !== undefined && userInfo?.gender !== null) ? Number(userInfo.gender) : 0
-    if (nickname !== origNickname) profile.nickname = nickname
+    if (nick !== origNickname) profile.nickname = nick
     if (birthday !== origBirthday) profile.birthday = birthday
     if (gender !== origGender) profile.gender = gender
     if (Object.keys(profile).length === 0) {

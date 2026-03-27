@@ -128,30 +128,58 @@ Page({
     const fullUrl = url.startsWith('http') ? url : ((app.globalData && app.globalData.apiBase) || '').replace(/\/$/, '') + url
     const ext = (fileName.split('.').pop() || '').toLowerCase()
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp']
-    const isImage = imageExts.indexOf(ext) !== -1
 
+    if (imageExts.indexOf(ext) !== -1) {
+      wx.previewImage({ current: fullUrl, urls: [fullUrl] })
+      return
+    }
+
+    const docTypes = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf']
+    const fileType = docTypes.indexOf(ext) !== -1 ? ext : 'pdf'
+
+    wx.showLoading({ title: '正在打开...', mask: true })
     wx.downloadFile({
       url: fullUrl,
       success: (res) => {
+        wx.hideLoading()
         if (res.statusCode !== 200 || !res.tempFilePath) {
-          wx.showToast({ title: '打开失败', icon: 'none' })
+          wx.showToast({ title: '下载失败', icon: 'none' })
           return
         }
-        const filePath = res.tempFilePath
-        if (isImage) {
-          wx.previewImage({ current: filePath, urls: [filePath] })
-        } else {
-          const docTypes = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'pdf']
-          const fileType = docTypes.indexOf(ext) !== -1 ? ext : 'pdf'
-          wx.openDocument({
-            filePath,
-            fileType,
-            showMenu: true,
-            fail: () => wx.showToast({ title: '该格式暂不支持预览', icon: 'none' })
-          })
-        }
+        // 将临时文件复制为带正确扩展名的文件，实体机 openDocument 需要扩展名识别格式
+        const fs = wx.getFileSystemManager()
+        const dest = `${wx.env.USER_DATA_PATH}/resume_preview.${fileType}`
+        try { fs.unlinkSync(dest) } catch (_) {}
+        fs.copyFile({
+          srcPath: res.tempFilePath,
+          destPath: dest,
+          success: () => {
+            wx.openDocument({
+              filePath: dest,
+              fileType,
+              showMenu: true,
+              fail: (err) => {
+                console.error('openDocument fail:', err)
+                wx.showToast({ title: '该格式暂不支持预览', icon: 'none' })
+              }
+            })
+          },
+          fail: () => {
+            // 复制失败时直接用临时文件打开
+            wx.openDocument({
+              filePath: res.tempFilePath,
+              fileType,
+              showMenu: true,
+              fail: () => wx.showToast({ title: '打开失败', icon: 'none' })
+            })
+          }
+        })
       },
-      fail: () => wx.showToast({ title: '打开失败', icon: 'none' })
+      fail: (err) => {
+        wx.hideLoading()
+        console.error('downloadFile fail:', err)
+        wx.showToast({ title: '下载失败，请重试', icon: 'none' })
+      }
     })
   },
 

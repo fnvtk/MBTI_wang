@@ -19,6 +19,7 @@
     "pages/profile/index",
     "pages/user-profile/index",
     "pages/history/index",
+    "pages/order/index",
     "pages/phone-auth/index",
     "pages/promo/index",
     "pages/promo/poster",

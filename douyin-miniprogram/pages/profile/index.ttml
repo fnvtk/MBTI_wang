@@ -191,6 +191,17 @@
         </view>
         <text class="menu-chevron">›</text>
       </view>
+      <view class="menu-divider"></view>
+      <view class="menu-item" bindtap="goToOrders">
+        <view class="menu-icon-wrap menu-icon-emerald">
+          <text class="menu-icon">🧾</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">我的订单</text>
+          <text class="menu-sub">支付记录与订单状态</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
       <view class="menu-divider" tt:if="{{hasEnterprise}}"></view>
       <!-- 我的简历：仅绑定企业的用户可见，展示当前企业下的简历并可设默认 -->
       <view class="menu-item" tt:if="{{hasEnterprise}}" bindtap="goToMyResume">

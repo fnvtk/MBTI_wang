@@ -260,6 +260,13 @@ Page({
   goToIndex() { tt.switchTab({ url: '/pages/index/index' }) },
   goToCamera() { tt.switchTab({ url: '/pages/index/camera' }) },
   goToHistory() { tt.navigateTo({ url: '/pages/history/index' }) },
+  goToOrders() {
+    if (!this.data.hasLogin) {
+      tt.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    tt.navigateTo({ url: '/pages/order/index' })
+  },
   goToUserProfile() { tt.navigateTo({ url: '/pages/user-profile/index' }) },
   goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchasePersonal() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },

@@ -28,6 +28,10 @@ Page({
 
   onUnload() {
     if (this.timer) clearInterval(this.timer)
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
   },
 
   startTimer() {
@@ -54,22 +58,34 @@ Page({
 
   selectAnswer(e) {
     const value = e.currentTarget.dataset.value
-    const questionId = this.data.currentQuestion.id
-    let answers = { ...this.data.answers }
+    const q = this.data.currentQuestion
+    if (value === undefined || value === null || !q || q.id === undefined) return
+
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
+
+    const questionId = q.id
+    const answers = { ...this.data.answers }
     answers[questionId] = value
-    
+
     this.setData({
       selectedAnswer: value,
       answers: answers,
       answeredCount: Object.keys(answers).length,
       progress: (Object.keys(answers).length / this.data.total) * 100
-    })
-
-    setTimeout(() => {
-      if (this.data.currentIndex < this.data.total - 1) {
-        this.nextQuestion()
+    }, () => {
+      if (this._advanceTimer) {
+        clearTimeout(this._advanceTimer)
       }
-    }, 300)
+      this._advanceTimer = setTimeout(() => {
+        this._advanceTimer = null
+        if (this.data.currentIndex < this.data.total - 1) {
+          this.nextQuestion()
+        }
+      }, 300)
+    })
   },
 
   prevQuestion() {
