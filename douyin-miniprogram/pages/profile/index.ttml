@@ -178,7 +178,7 @@
   </view>
 
   <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
-  <view class="section px-section" tt:if="{{hasLogin && promoDistributionEnabled}}">
+  <view class="section px-section" tt:if="{{hasLogin && promoDistributionEnabled && !reviewMode}}">
     <view class="promo-card" bindtap="goToPromo">
       <view class="promo-header">
         <view class="promo-title-wrap">

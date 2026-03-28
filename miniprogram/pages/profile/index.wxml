@@ -178,12 +178,31 @@
     </view>
   </view>
 
-  <!-- 推广入口：置底弱化，避免与主服务抢注意力（开关与标题仍来自管理端） -->
-  <view class="promo-section-subtle" wx:if="{{hasLogin && promoDistributionEnabled}}">
-    <view class="promo-row-subtle" bindtap="goToPromo">
-      <text class="promo-row-label">{{promoCenterTitle}}</text>
-      <text class="promo-row-meta">邀请{{promoTotalInvite}} · 可提¥{{promoWithdrawable}}</text>
-      <text class="promo-row-chevron">›</text>
+  <!-- 推广中心（与管理端开关、标题配置一致；卡片样式与其他区块统一） -->
+  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled && !reviewMode}}">
+    <view class="promo-card" bindtap="goToPromo">
+      <view class="promo-header">
+        <view class="promo-title-wrap">
+          <text class="promo-icon">📈</text>
+          <text class="promo-title">{{promoCenterTitle}}</text>
+        </view>
+      </view>
+      <view class="promo-stats">
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">邀请好友</text>
+          <text class="promo-stat-value">{{promoTotalInvite}}</text>
+        </view>
+        <view class="promo-stat-divider"></view>
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">累计收益</text>
+          <text class="promo-stat-value">¥{{promoTotalEarned}}</text>
+        </view>
+        <view class="promo-stat-divider"></view>
+        <view class="promo-stat-item">
+          <text class="promo-stat-label">可提现</text>
+          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
+        </view>
+      </view>
     </view>
   </view>
 

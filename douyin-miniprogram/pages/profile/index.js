@@ -47,15 +47,16 @@ Page({
     this.runLoginThenLoad()
   },
   onShow() {
-    // 同步审核模式
-    this.setData({ reviewMode: !!app.globalData.reviewMode })
+    const gd = app.globalData
+    this.setData({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
     }
     
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 2 })
+      const audit = !!(gd.reviewMode || gd.maintenanceMode)
+      this.getTabBar().setData({ selected: 2, reviewMode: audit })
     }
   },
 
@@ -142,9 +143,8 @@ Page({
 
   /** 从 /api/test/recent 拉取各类型最新记录 */
   _loadRecentFromAPI() {
-    const scope = app.globalData.appScope || 'personal'
     request({
-      url: `/api/test/recent?scope=${scope}`,
+      url: '/api/test/recent?scope=all',
       method: 'GET',
       success: (res) => {
         // res 是 wx.request 原始响应：{ statusCode, data: { code, data, message } }

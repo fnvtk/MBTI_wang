@@ -167,7 +167,7 @@ class AppUser extends BaseController
 
     /**
      * 测试用户列表：分页、关键词、池筛选、MBTI 筛选
-     * GET /api/v1/superadmin/app-users?page=1&pageSize=20&keyword=&pool=all|individual|enterprise&enterpriseId=&mbti=&includeZeroTests=
+     * GET /api/v1/superadmin/app-users?page=1&pageSize=20&keyword=&pool=all|individual|enterprise&enterpriseId=&mbti=
      */
     public function index()
     {
@@ -215,18 +215,6 @@ class AppUser extends BaseController
             $baseQuery->where('enterpriseId', (int) $enterpriseId);
         }
 
-        // 默认不展示「从未有过测试记录」的用户；?includeZeroTests=1 可显示全部（排查用）
-        $includeZeroTests = Request::param('includeZeroTests', '');
-        $showUntested = ($includeZeroTests === '1' || $includeZeroTests === 'true' || $includeZeroTests === true);
-        if (!$showUntested) {
-            $testedUserIds = Db::name('test_results')->distinct(true)->column('userId');
-            $testedUserIds = array_values(array_unique(array_filter(array_map('intval', $testedUserIds))));
-            if (empty($testedUserIds)) {
-                return paginate_response([], 0, $page, $pageSize);
-            }
-            $baseQuery->whereIn('id', $testedUserIds);
-        }
-
         // MBTI 筛选：保留旧逻辑，从 test_results 取有 mbti 测试的用户
         if ($mbti !== '') {
             $mbtiUserIds = Db::name('test_results')->where('testType', 'mbti')->distinct(true)->column('userId');
@@ -240,10 +228,7 @@ class AppUser extends BaseController
 
         $total = $baseQuery->count();
         $list = (clone $baseQuery)
-            ->field([
-                'id', 'openid', 'nickname', 'avatar', 'phone', 'gender',
-                'country', 'province', 'city', 'status', 'lastLoginAt', 'createdAt',
-            ])
+            ->field('id,openid,nickname,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
             ->order('createdAt', 'desc')
             ->page($page, $pageSize)
             ->select()
@@ -319,9 +304,6 @@ class AppUser extends BaseController
 
         foreach ($list as &$row) {
             $id = $row['id'];
-            $av = $row['avatar'] ?? '';
-            $row['avatar'] = is_scalar($av) ? trim((string) $av) : '';
-            $row['avatarUrl'] = $row['avatar'];
             $testsForUser = $testTypes[$id] ?? [];
             $row['username'] = $row['nickname'] ?? ('用户' . $id);
             $row['testCount'] = (int) ($testCounts[$id] ?? 0);
@@ -342,7 +324,6 @@ class AppUser extends BaseController
             $row['totalPaidAmount'] = $totalPaidFen;
             $row['totalPaidAmountYuan'] = $totalPaidFen > 0 ? round($totalPaidFen / 100, 2) : 0;
         }
-        unset($row);
 
         return paginate_response($list, $total, $page, $pageSize);
     }

@@ -24,20 +24,24 @@ Page({
     
     const userInfo = getApp().globalData.userInfo || tt.getStorageSync('userInfo') || {}
     const gd = getApp().globalData
+    const rm0 = !!(gd.reviewMode || gd.maintenanceMode)
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
-      siteTitle: gd.reviewMode ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: gd.reviewMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
-      aiAnalysisText: gd.reviewMode ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
-      reviewMode: !!gd.reviewMode
+      siteTitle: rm0 ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
+      startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+      aiAnalysisText: rm0 ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
+      reviewMode: rm0
     })
     // 预加载站点名称与文案配置
     app.getRuntimeConfig().then((cfg) => {
       if (cfg) {
-        const rm = !!cfg.reviewMode
+        const rm = !!(cfg.reviewMode || cfg.maintenanceMode)
         getApp().globalData.reviewMode = rm
+        if (cfg.maintenanceMode !== undefined) {
+          getApp().globalData.maintenanceMode = !!cfg.maintenanceMode
+        }
         if (cfg.siteTitle) {
           getApp().globalData.siteTitle = cfg.siteTitle
           this.setData({ siteTitle: rm ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
@@ -50,6 +54,10 @@ Page({
           })
         }
         this.setData({ reviewMode: rm })
+        try {
+          const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+        } catch (e) {}
       }
     }).catch(() => {})
     // ── 解析入参（兼容扫码 scene / 分享链接 options）──
@@ -96,12 +104,12 @@ Page({
       getApp().globalData.appScope = 'personal'
       getApp().globalData.enterpriseIdFromScene = null
     } catch (e) {}
-    const gd = getApp().globalData
-    const rm = !!gd.reviewMode
+    const g = getApp().globalData
+    const rm = !!(g.reviewMode || g.maintenanceMode)
     this.setData({
-      siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
-      aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
+      siteTitle: rm ? (g.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (g.siteTitle || '神仙团队性格测试'),
+      startButtonText: rm ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '拍摄'),
+      aiAnalysisText: rm ? '分析' : ((g.textConfig && g.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm
     })
     const userInfo = getApp().globalData.userInfo || tt.getStorageSync('userInfo') || {}
@@ -124,9 +132,13 @@ Page({
     }
   },
 
-  // 与底栏中间一致：始终进入拍摄 Tab（审核态在 camera 页内展示问卷引导）
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
+    const gd = getApp().globalData
+    if (gd.reviewMode || gd.maintenanceMode) {
+      tt.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
     tt.switchTab({ url: '/pages/index/camera' })
   },
 

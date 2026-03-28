@@ -61,7 +61,7 @@ Page({
     const statusBarHeightRpx = (statusBarHeight * 750) / screenWidth
     const navbarHeightRpx = statusBarHeightRpx + 88
     const gd = app.globalData
-    const maintenanceMode = !!(gd.maintenanceMode)
+    const maintenanceMode = !!(gd.reviewMode || gd.maintenanceMode)
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
@@ -87,8 +87,11 @@ Page({
               app.globalData.siteTitle = cfg.siteTitle
               this.setData({ siteTitle: cfg.siteTitle })
             }
-            const maintenanceMode = !!(cfg.maintenanceMode)
-            if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = maintenanceMode
+            const maintenanceMode = !!(cfg.maintenanceMode || cfg.reviewMode)
+            if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
+            if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
+              app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
+            }
             this.setData({
               startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
               aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
@@ -112,8 +115,11 @@ Page({
             this.setData({ siteTitle: cfg.siteTitle })
           }
           if (cfg.textConfig) app.globalData.textConfig = cfg.textConfig
-          const maintenanceMode = !!(cfg && cfg.maintenanceMode)
-          if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = maintenanceMode
+          const maintenanceMode = !!(cfg && (cfg.maintenanceMode || cfg.reviewMode))
+          if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
+          if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
+            app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
+          }
           this.setData({
             startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
             aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
@@ -151,11 +157,13 @@ Page({
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       const tabBar = this.getTabBar()
-      tabBar.setData({ selected: 0, maintenanceMode: !!getApp().globalData.maintenanceMode })
+      const gd = getApp().globalData || {}
+      const audit = !!(gd.reviewMode || gd.maintenanceMode)
+      tabBar.setData({ selected: 0, reviewMode: audit })
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
-    const maintenanceMode = !!(gd.maintenanceMode)
+    const maintenanceMode = !!(gd.reviewMode || gd.maintenanceMode)
     this.setData({
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
       startButtonEnterprise: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
