@@ -25,6 +25,13 @@
   box-sizing: border-box;
 }
 
+/* 审核模式仅「首页」「我的」两栏时，左右均匀留白 */
+.tab-bar-inner--audit {
+  justify-content: space-between;
+  padding-left: 56rpx;
+  padding-right: 56rpx;
+}
+
 .tab-item {
   flex: 1;
   min-width: 0;

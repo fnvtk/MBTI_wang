@@ -2,6 +2,10 @@
 const app = getApp()
 const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
+function _auditFlag() {
+  return !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
+}
+
 Page({
   data: {
     photos: [],
@@ -15,33 +19,37 @@ Page({
   },
 
   onLoad() {
-    this.setData({ reviewMode: !!app.globalData.reviewMode })
+    this.setData({ reviewMode: _auditFlag() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
       this.setData({ aiAnalysisText: tc.aiAnalysisText })
     }
     app.getRuntimeConfig().then((cfg) => {
       if (cfg) {
-        if (typeof cfg.reviewMode === 'boolean') {
-          app.globalData.reviewMode = cfg.reviewMode
-        }
+        if (cfg.reviewMode !== undefined) app.globalData.reviewMode = !!cfg.reviewMode
+        else if (cfg.maintenanceMode !== undefined) app.globalData.reviewMode = !!cfg.maintenanceMode
+        if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
         if (cfg.textConfig) {
           app.globalData.textConfig = cfg.textConfig
           this.setData({
             aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析',
-            reviewMode: !!app.globalData.reviewMode
+            reviewMode: _auditFlag()
           })
+          try {
+            const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
+            if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+          } catch (e) {}
           return
         }
       }
-      this.setData({ reviewMode: !!app.globalData.reviewMode })
+      this.setData({ reviewMode: _auditFlag() })
     }).catch(() => {
-      this.setData({ reviewMode: !!app.globalData.reviewMode })
+      this.setData({ reviewMode: _auditFlag() })
     })
   },
 
   onReady() {
-    if (!app.globalData.reviewMode) {
+    if (!_auditFlag()) {
       this.initCameraContext()
     }
   },
@@ -62,11 +70,11 @@ Page({
   },
 
   onShow() {
-    const rm = !!app.globalData.reviewMode
+    const rm = _auditFlag()
     this.setData({ reviewMode: rm })
 
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 })
+      this.getTabBar().setData({ selected: 1, reviewMode: rm })
     }
 
     if (rm) {

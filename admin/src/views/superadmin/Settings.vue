@@ -53,12 +53,12 @@
               </div>
             </template>
             <div class="card-content">
-              <div class="review-mode-alert" :class="{ active: reviewMode.enabled }">
+              <div class="review-mode-alert" :class="{ active: systemConfig.maintenanceMode }">
                 <div class="review-mode-status">
-                  <span class="review-dot" :class="{ on: reviewMode.enabled }"></span>
-                  <span class="review-status-text">{{ reviewMode.enabled ? '审核模式已开启' : '审核模式已关闭' }}</span>
+                  <span class="review-dot" :class="{ on: systemConfig.maintenanceMode }"></span>
+                  <span class="review-status-text">{{ systemConfig.maintenanceMode ? '审核模式已开启' : '审核模式已关闭' }}</span>
                 </div>
-                <p class="review-mode-desc">{{ reviewMode.enabled ? '当前小程序处于审核状态，AI面相分析功能已隐藏' : '当前小程序正常运行，所有功能可用' }}</p>
+                <p class="review-mode-desc">{{ systemConfig.maintenanceMode ? '当前小程序处于审核状态，AI面相分析功能已隐藏' : '当前小程序正常运行，所有功能可用' }}</p>
               </div>
 
               <div class="switch-section">
@@ -68,7 +68,7 @@
                     <p class="switch-desc">开启后小程序将执行以下变更：</p>
                   </div>
                   <el-switch
-                    v-model="reviewMode.enabled"
+                    v-model="systemConfig.maintenanceMode"
                     active-color="#ef4444"
                     inactive-color="#d1d5db"
                   />
@@ -116,12 +116,12 @@
 
               <el-button
                 type="primary"
-                :color="reviewMode.enabled ? '#ef4444' : '#6366f1'"
+                :color="systemConfig.maintenanceMode ? '#ef4444' : '#6366f1'"
                 class="save-button"
                 @click="handleSave('review')"
               >
                 <el-icon class="mr-1"><Document /></el-icon>
-                {{ reviewMode.enabled ? '保存并开启审核模式' : '保存并关闭审核模式' }}
+                {{ systemConfig.maintenanceMode ? '保存并开启审核模式' : '保存并关闭审核模式' }}
               </el-button>
             </div>
           </el-card>
@@ -560,11 +560,6 @@ watch(
   () => applyRouteTab()
 )
 
-// 审核模式
-const reviewMode = reactive({
-  enabled: false
-})
-
 // 系统配置
 const systemConfig = reactive({
   siteName: '神仙团队AI性格测试',
@@ -616,13 +611,10 @@ const loadSettings = async () => {
     const response: any = await request.get('/superadmin/settings')
     
     if (response.code === 200 && response.data) {
-      // 加载审核模式
-      if (response.data.reviewMode) {
-        Object.assign(reviewMode, response.data.reviewMode)
-      }
-      // 加载系统配置
+      // 系统配置（含 maintenanceMode：审核模式唯一存储字段）
       if (response.data.system) {
         Object.assign(systemConfig, response.data.system)
+        systemConfig.maintenanceMode = !!systemConfig.maintenanceMode
         const de = response.data.system.defaultEnterpriseId
         systemConfig.defaultEnterpriseId =
           de != null && de !== '' && Number(de) > 0 ? Number(de) : null
@@ -687,11 +679,11 @@ const handleSave = async (section: string) => {
     
     switch (section) {
       case 'review':
-        response = await request.put('/superadmin/settings/review-mode', {
-          enabled: reviewMode.enabled
+        response = await request.put('/superadmin/settings/system', {
+          maintenanceMode: !!systemConfig.maintenanceMode
         })
         if (response.code === 200) {
-          ElMessage.success(reviewMode.enabled ? '审核模式已开启，小程序将隐藏AI功能' : '审核模式已关闭，AI功能已恢复')
+          ElMessage.success(systemConfig.maintenanceMode ? '审核模式已开启，小程序将隐藏AI功能' : '审核模式已关闭，AI功能已恢复')
           saveSuccess.value = section
           setTimeout(() => { saveSuccess.value = null }, 3000)
         }

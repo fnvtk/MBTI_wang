@@ -51,17 +51,42 @@ class Settings extends BaseController
                 }
             }
 
+            $systemDefault = [
+                'siteName' => '神仙团队AI性格测试',
+                'siteDescription' => '专业的AI性格测试平台',
+                'miniprogramName' => '神仙团队AI性格测试',
+                'maintenanceMode' => false,
+                'maxTestsPerDay' => 100,
+                'trialTestCount' => 10,
+                'defaultEnterpriseId' => null,
+            ];
+            $systemOut = $systemDefault;
+            if ($systemConfig && !empty($systemConfig->value)) {
+                $raw = $systemConfig->value;
+                $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+                if (is_array($decoded)) {
+                    $systemOut = array_merge($systemDefault, $decoded);
+                }
+            }
+            // 审核模式唯一口径：system.maintenanceMode（布尔）。兼容旧版 review_mode.enabled
+            $maint = false;
+            if (isset($systemOut['maintenanceMode'])) {
+                $maint = (bool) $systemOut['maintenanceMode'];
+            }
+            if (!$maint && $reviewModeConfig && !empty($reviewModeConfig->value)) {
+                $rv = $reviewModeConfig->value;
+                if (is_string($rv)) {
+                    $rv = json_decode($rv, true);
+                }
+                if (is_array($rv) && !empty($rv['enabled'])) {
+                    $maint = true;
+                }
+            }
+            $systemOut['maintenanceMode'] = $maint;
+
             return success([
-                'system' => $systemConfig ? $systemConfig->value : [
-                    'siteName' => '神仙团队AI性格测试',
-                    'siteDescription' => '专业的AI性格测试平台',
-                    'miniprogramName' => '神仙团队AI性格测试',
-                    'maintenanceMode' => false,
-                    'maxTestsPerDay' => 100,
-                    'trialTestCount' => 10,
-                    'defaultEnterpriseId' => null,
-                ],
-                'reviewMode' => $reviewModeConfig && !empty($reviewModeConfig->value) ? $reviewModeConfig->value : ['enabled' => false],
+                'system' => $systemOut,
+                'reviewMode' => ['enabled' => $maint],
                 'notification' => $notificationConfig ? $notificationConfig->value : [
                     'emailNotification' => true,
                     'lowBalanceAlert' => true,
@@ -110,6 +135,9 @@ class Settings extends BaseController
         // 兼容 fallback：JSON 解析失败时尝试 Request::only
         if (empty($data)) {
             $data = Request::only($allowedKeys);
+        }
+        if (array_key_exists('maintenanceMode', $data)) {
+            $data['maintenanceMode'] = filter_var($data['maintenanceMode'], FILTER_VALIDATE_BOOLEAN);
         }
         // 默认企业：0 或空视为不启用
         if (array_key_exists('defaultEnterpriseId', $data)) {
@@ -452,9 +480,8 @@ class Settings extends BaseController
     }
 
     /**
-     * 更新审核模式配置
-     * PUT body: { "enabled": true/false }
-     * 开启后小程序隐藏AI面相分析功能，仅展示问卷测试，用于通过微信审核
+     * 更新审核模式：仅写入 system 顶层 maintenanceMode（true/false），与 runtime 一致。
+     * PUT body: { "enabled": true } 或 { "maintenanceMode": true }（二者等价，任一即可）
      */
     public function updateReviewMode()
     {
@@ -467,19 +494,34 @@ class Settings extends BaseController
         if (!is_array($input)) {
             $input = Request::param();
         }
-        $enabled = !empty($input['enabled']);
+        $on = false;
+        if (array_key_exists('maintenanceMode', $input)) {
+            $on = !empty($input['maintenanceMode']);
+        } elseif (array_key_exists('enabled', $input)) {
+            $on = !empty($input['enabled']);
+        }
 
         try {
-            $config = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
+            $config = SystemConfigModel::where('key', 'system')->where('enterprise_id', 0)->find();
             if (!$config) {
                 $config = new SystemConfigModel();
-                $config->key = 'review_mode';
+                $config->key = 'system';
                 $config->enterprise_id = 0;
-                $config->description = '审核模式：开启后隐藏AI功能以通过微信审核';
+                $config->description = '系统基础配置';
             }
-            $config->value = ['enabled' => $enabled];
+            $oldVal = $config->value;
+            $oldArr = is_array($oldVal) ? $oldVal : (is_string($oldVal) ? (json_decode($oldVal, true) ?: []) : []);
+            if (!is_array($oldArr)) {
+                $oldArr = [];
+            }
+            $oldArr['maintenanceMode'] = (bool) $on;
+            $config->value = $oldArr;
             $config->save();
-            return success($config->value, '审核模式已' . ($enabled ? '开启' : '关闭'));
+
+            return success([
+                'maintenanceMode' => (bool) $on,
+                'enabled'         => (bool) $on,
+            ], '审核模式已' . ($on ? '开启' : '关闭'));
         } catch (\Exception $e) {
             return error('保存失败：' . $e->getMessage(), 500);
         }

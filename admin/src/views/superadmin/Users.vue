@@ -102,16 +102,19 @@
         <el-table-column label="用户信息" min-width="220">
           <template #default="{ row }">
             <div class="user-info-cell">
-              <el-avatar
-                :size="36"
-                shape="circle"
-                :src="displayAvatar(row) || undefined"
-                fit="cover"
-                class="user-avatar user-el-avatar"
-                :style="!displayAvatar(row) ? { backgroundColor: avatarBgColor(row) } : {}"
+              <img
+                v-if="row.avatar"
+                :src="row.avatar"
+                class="user-avatar user-avatar-img"
+                referrerpolicy="no-referrer"
+              />
+              <div
+                v-else
+                class="user-avatar user-avatar-letter"
+                :style="{ backgroundColor: avatarBgColor(row) }"
               >
-                <span class="user-avatar-letter-fallback">{{ avatarLetter(row) }}</span>
-              </el-avatar>
+                {{ avatarLetter(row) }}
+              </div>
               <div class="user-details">
                 <div class="username">{{ row.username || '未设置昵称' }}</div>
                 <div class="openid-line">{{ row.openid || '—' }}</div>
@@ -838,12 +841,6 @@ function formatPhone(phone: string) {
   return phone
 }
 
-/** 列表头像 URL（兼容 avatar / avatarUrl，避免字段名或空白异常导致整列不显示） */
-function displayAvatar(row: Record<string, any>) {
-  const a = row?.avatar ?? row?.avatarUrl ?? ''
-  return typeof a === 'string' ? a.trim() : ''
-}
-
 /** 文字头像：根据昵称取首字 */
 function avatarLetter(row: { username?: string; nickname?: string }) {
   const name = (row?.username || row?.nickname || '?').trim()
@@ -1491,16 +1488,6 @@ onMounted(() => {
     }
 
     .user-avatar-letter {
-      color: #fff;
-    }
-
-    .user-el-avatar {
-      flex-shrink: 0;
-      font-size: 16px;
-      font-weight: 600;
-    }
-
-    .user-avatar-letter-fallback {
       color: #fff;
     }
 

@@ -158,6 +158,9 @@ class AppConfig extends BaseController
             }
         }
 
+        // 与 maintenanceMode 同源：小程序旧逻辑读 reviewMode
+        $reviewMode = $maintenanceMode;
+
         return success([
             'pricingType' => $pricingType,
             'pricing' => $pricing,
@@ -169,6 +172,7 @@ class AppConfig extends BaseController
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
             'maintenanceMode' => $maintenanceMode,
+            'reviewMode' => $reviewMode,
             'defaultEnterpriseId' => $defaultEnterpriseId,
         ]);
     }

@@ -35,16 +35,7 @@
         <el-table-column label="用户信息" min-width="180">
           <template #default="{ row }">
             <div class="user-info-cell">
-              <el-avatar
-                :size="36"
-                shape="circle"
-                :src="displayAvatar(row) || undefined"
-                fit="cover"
-                class="user-avatar user-el-avatar"
-                :style="!displayAvatar(row) ? { backgroundColor: avatarBgColor(row) } : {}"
-              >
-                <span class="user-avatar-letter-fallback">{{ avatarLetter(row) }}</span>
-              </el-avatar>
+              <div class="user-avatar">{{ (row.username || '?')[0] }}</div>
               <div class="user-details">
                 <div class="username">{{ row.username || '未设置昵称' }}</div>
                 <div class="openid-line">{{ row.openid || '—' }}</div>
@@ -694,24 +685,6 @@ async function loadUsers() {
   }
 }
 
-function displayAvatar(row: Record<string, any>) {
-  const a = row?.avatar ?? row?.avatarUrl ?? ''
-  return typeof a === 'string' ? a.trim() : ''
-}
-
-function avatarLetter(row: { username?: string; nickname?: string }) {
-  const name = (row?.username || row?.nickname || '?').trim()
-  return (name.charAt(0) || '?').toUpperCase()
-}
-
-const AVATAR_PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9', '#3b82f6', '#eab308']
-function avatarBgColor(row: { username?: string; nickname?: string }) {
-  const name = (row?.username || row?.nickname || '?').trim()
-  let hash = 0
-  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
-}
-
 function formatPhone(phone: string) {
   if (!phone) return '-'
   if (phone.length === 11) return phone.substring(0, 3) + '****' + phone.substring(7)
@@ -1095,14 +1068,18 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
 
-    .user-avatar.user-el-avatar {
-      flex-shrink: 0;
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background-color: #7c3aed;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 16px;
       font-weight: 600;
-    }
-
-    .user-avatar-letter-fallback {
-      color: #fff;
+      flex-shrink: 0;
     }
 
     .user-details {

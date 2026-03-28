@@ -14,12 +14,7 @@
       <template v-if="user">
         <aside class="ud-sidebar">
           <div class="ud-profile-avatar">
-            <img
-              v-if="detailAvatarUrl"
-              :src="detailAvatarUrl"
-              class="ud-profile-avatar__img"
-              referrerpolicy="no-referrer"
-            />
+            <img v-if="user.avatar" :src="user.avatar" class="ud-profile-avatar__img" referrerpolicy="no-referrer" />
             <div v-else class="ud-profile-avatar__letter">{{ avatarLetter }}</div>
             <div class="ud-profile-name">{{ user.username || '未命名用户' }}</div>
           </div>
@@ -265,13 +260,6 @@ watch(
 const avatarLetter = computed(() => {
   const n = (props.user?.username || props.user?.nickname || '?').trim()
   return (n.charAt(0) || '?').toUpperCase()
-})
-
-const detailAvatarUrl = computed(() => {
-  const u = props.user as Record<string, any> | null | undefined
-  if (!u) return ''
-  const a = u.avatar ?? u.avatarUrl ?? ''
-  return typeof a === 'string' ? a.trim() : ''
 })
 
 const rawTests = computed(() => (props.user?.testList || []) as any[])

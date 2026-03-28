@@ -48,15 +48,17 @@ Page({
     this.runLoginThenLoad()
   },
   onShow() {
-    // 同步审核模式
-    this.setData({ reviewMode: !!app.globalData.reviewMode })
+    // 同步审核模式（与 runtime maintenanceMode / reviewMode 一致）
+    const gd = app.globalData
+    this.setData({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
     }
     
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 2 })
+      const audit = !!(gd.reviewMode || gd.maintenanceMode)
+      this.getTabBar().setData({ selected: 2, reviewMode: audit })
     }
   },
 
@@ -143,9 +145,10 @@ Page({
 
   /** 从 /api/test/recent 拉取各类型最新记录 */
   _loadRecentFromAPI() {
-    const scope = app.globalData.appScope || 'personal'
+    // 固定 scope=all：与 appScope 无关。个人/企业 scope 会按 enterpriseId 过滤，若提交时写过
+    // enterpriseId 而此处仍用 personal，会导致库里有记录却显示「未测评」。
     request({
-      url: `/api/test/recent?scope=${scope}`,
+      url: '/api/test/recent?scope=all',
       method: 'GET',
       success: (res) => {
         // res 是 wx.request 原始响应：{ statusCode, data: { code, data, message } }

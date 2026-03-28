@@ -47,8 +47,8 @@ App({
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
-    //apiBase: 'https://mbtiapi.quwanzhi.com',
-    apiBase: 'http://mbti.com',
+    apiBase: 'https://mbtiapi.quwanzhi.com',
+    //apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数
@@ -401,8 +401,10 @@ App({
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
             if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
-            if (typeof data.reviewMode === 'boolean') {
-              this.globalData.reviewMode = data.reviewMode
+            if (data.reviewMode !== undefined) {
+              this.globalData.reviewMode = !!data.reviewMode
+            } else if (data.maintenanceMode !== undefined) {
+              this.globalData.reviewMode = !!data.maintenanceMode
             }
             if (data.defaultEnterpriseId != null && Number(data.defaultEnterpriseId) > 0) {
               this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)

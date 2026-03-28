@@ -139,12 +139,14 @@ Page({
   },
 
   onShow() {
+    const gtab = getApp().globalData || {}
+    const auditTb = !!(gtab.reviewMode || gtab.maintenanceMode)
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0 })
+      this.getTabBar().setData({ selected: 0, reviewMode: auditTb })
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
-    const rm = !!gd.reviewMode
+    const rm = !!(gd.reviewMode || gd.maintenanceMode)
     this.setData({
       siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
       startButtonEnterprise: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),

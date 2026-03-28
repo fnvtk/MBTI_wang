@@ -1,7 +1,7 @@
 <!-- 自定义 tabBar：与微信端一致，中间固定「拍摄」 -->
 <view class="tab-bar">
   <view class="tab-bar-line"></view>
-  <view class="tab-bar-inner">
+  <view class="tab-bar-inner {{reviewMode ? 'tab-bar-inner--audit' : ''}}">
     <view
       class="tab-item {{selected === 0 ? 'active' : ''}}"
       data-index="0"
@@ -12,7 +12,7 @@
       <text class="tab-text">首页</text>
     </view>
 
-    <view class="tab-slot-middle">
+    <view class="tab-slot-middle" tt:if="{{!reviewMode}}">
       <view
         class="middle-fab {{selected === 1 ? 'active' : ''}}"
         data-index="1"

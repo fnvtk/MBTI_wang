@@ -493,39 +493,75 @@ custom-tab-bar {
   color: #D1D5DB;
 }
 
-/* ===== 推广入口（弱化：置底、小字、低对比） ===== */
-.promo-section-subtle {
-  margin-top: 12rpx;
-  padding: 0 32rpx 8rpx;
+/* ===== 推广中心（白底圆角卡片，与深度解析整块风格一致） ===== */
+.promo-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 36rpx 32rpx 40rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
+  border: 1rpx solid rgba(0, 0, 0, 0.04);
 }
 
-.promo-row-subtle {
+.promo-card:active {
+  opacity: 0.92;
+}
+
+.promo-header {
   display: flex;
   align-items: center;
-  padding: 16rpx 8rpx 20rpx;
-  border-top: 1rpx solid rgba(0, 0, 0, 0.06);
+  margin-bottom: 32rpx;
 }
 
-.promo-row-label {
-  font-size: 24rpx;
-  font-weight: 500;
-  color: #9CA3AF;
-  letter-spacing: 0.5rpx;
+.promo-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
 }
 
-.promo-row-meta {
+.promo-icon {
+  font-size: 32rpx;
+}
+
+.promo-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.promo-stats {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.promo-stat-item {
   flex: 1;
-  text-align: right;
-  font-size: 22rpx;
-  color: #D1D5DB;
-  margin-right: 4rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.promo-stat-label {
+  font-size: 24rpx;
+  color: #9CA3AF;
+}
+
+.promo-stat-value {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111827;
   font-variant-numeric: tabular-nums;
 }
 
-.promo-row-chevron {
-  font-size: 26rpx;
-  color: #E5E7EB;
-  font-weight: 300;
+.promo-stat-divider {
+  width: 1rpx;
+  height: 60rpx;
+  background: #F3F4F6;
+}
+
+.promo-highlight {
+  color: #F43F5E;
 }
 
 /* ===== 服务菜单 ===== */

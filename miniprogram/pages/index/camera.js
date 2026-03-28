@@ -14,35 +14,43 @@ Page({
     reviewMode: true
   },
 
+  _audit() {
+    return !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
+  },
+
   onLoad() {
-    this.setData({ reviewMode: !!app.globalData.reviewMode })
+    this.setData({ reviewMode: this._audit() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
       this.setData({ aiAnalysisText: tc.aiAnalysisText })
     }
     app.getRuntimeConfig().then((cfg) => {
       if (cfg) {
-        if (typeof cfg.reviewMode === 'boolean') {
-          app.globalData.reviewMode = cfg.reviewMode
-        }
+        if (cfg.reviewMode !== undefined) app.globalData.reviewMode = !!cfg.reviewMode
+        else if (cfg.maintenanceMode !== undefined) app.globalData.reviewMode = !!cfg.maintenanceMode
+        if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
         if (cfg.textConfig) {
           app.globalData.textConfig = cfg.textConfig
           this.setData({
             aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析',
-            reviewMode: !!app.globalData.reviewMode
+            reviewMode: this._audit()
           })
+          try {
+            const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
+            if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+          } catch (e) {}
           return
         }
       }
-      this.setData({ reviewMode: !!app.globalData.reviewMode })
+      this.setData({ reviewMode: this._audit() })
     }).catch(() => {
-      this.setData({ reviewMode: !!app.globalData.reviewMode })
+      this.setData({ reviewMode: this._audit() })
     })
   },
 
   /** 非审核模式且相机在页上时再创建上下文 */
   onReady() {
-    if (!app.globalData.reviewMode) {
+    if (!this._audit()) {
       this.initCameraContext()
     }
   },
@@ -63,11 +71,11 @@ Page({
   },
 
   onShow() {
-    const rm = !!app.globalData.reviewMode
+    const rm = this._audit()
     this.setData({ reviewMode: rm })
 
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 })
+      this.getTabBar().setData({ selected: 1, reviewMode: rm })
     }
 
     // 审核模式：只展示本页引导，不再强跳 navigateTo（失败时曾导致白屏且无拍摄区）

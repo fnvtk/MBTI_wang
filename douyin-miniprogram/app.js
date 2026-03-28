@@ -41,7 +41,8 @@ App({
     discResult: null,
     pdpResult: null,
     aiResult: null,
-    reviewMode: true
+    maintenanceMode: undefined,
+    reviewMode: undefined
   },
 
   onLaunch(launchOptions) {
@@ -57,8 +58,11 @@ App({
     this.getRuntimeConfig().then((cfg) => {
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
-        if (typeof cfg.reviewMode === 'boolean') {
-          this.globalData.reviewMode = cfg.reviewMode
+        if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
+        if (cfg.reviewMode !== undefined) {
+          this.globalData.reviewMode = !!cfg.reviewMode
+        } else if (cfg.maintenanceMode !== undefined) {
+          this.globalData.reviewMode = !!cfg.maintenanceMode
         }
       }
     }).catch(() => {})
@@ -352,6 +356,12 @@ App({
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
             if (data.textConfig) this.globalData.textConfig = data.textConfig
+            if (data.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!data.maintenanceMode
+            if (data.reviewMode !== undefined) {
+              this.globalData.reviewMode = !!data.reviewMode
+            } else if (data.maintenanceMode !== undefined) {
+              this.globalData.reviewMode = !!data.maintenanceMode
+            }
             resolve(data)
           } else {
             reject(new Error(res.data && res.data.message ? res.data.message : '获取配置失败'))
