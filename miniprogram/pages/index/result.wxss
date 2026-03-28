@@ -323,15 +323,77 @@
   top: 0;
   bottom: 0;
   pointer-events: none;
-  /* 高透明白雾，避免大块灰底发闷 */
+  /* 约前 50% 区域保持清晰预览，以下渐强变白 */
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.22) 10%,
-    rgba(255, 255, 255, 0.48) 28%,
-    rgba(255, 255, 255, 0.72) 48%,
-    rgba(255, 255, 255, 0.88) 100%
+    rgba(255, 255, 255, 0) 50%,
+    rgba(255, 255, 255, 0.2) 52%,
+    rgba(255, 255, 255, 0.55) 68%,
+    rgba(255, 255, 255, 0.82) 88%,
+    rgba(255, 255, 255, 0.92) 100%
   );
+}
+
+/* 支付成功后：手机号 / 资料引导条 */
+.post-pay-guide {
+  margin: 16rpx 24rpx 0;
+  padding: 24rpx 28rpx;
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-radius: 20rpx;
+  border: 1rpx solid rgba(16, 185, 129, 0.35);
+}
+
+.post-pay-guide-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #065f46;
+  margin-bottom: 8rpx;
+}
+
+.post-pay-guide-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #047857;
+  line-height: 1.45;
+  margin-bottom: 20rpx;
+}
+
+.post-pay-guide-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.post-pay-guide-btn.phone {
+  margin: 0;
+  padding: 0 36rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  border-radius: 36rpx;
+  border: none;
+}
+
+.post-pay-guide-btn.phone::after {
+  border: none;
+}
+
+.post-pay-guide-btn.profile {
+  padding: 0 36rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #065f46;
+  background: #fff;
+  border-radius: 36rpx;
+  border: 2rpx solid #10b981;
+  text-align: center;
 }
 
 .report-gate-panel {
@@ -362,23 +424,102 @@
   max-width: 640rpx;
   margin: 28rpx auto 0;
   box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  padding: 28rpx 24rpx !important;
+}
+
+.paywall-btn-inline .paywall-btn-price {
+  display: block;
+  width: 100%;
+  text-align: center;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  line-height: 1.45;
+  font-weight: 400;
+}
+
+/* 主按钮单行：仅金额 +「元解锁」 */
+.paywall-btn--compact {
+  flex-direction: row !important;
+  justify-content: center !important;
+  padding: 32rpx 40rpx !important;
+}
+
+.paywall-btn--compact .paywall-btn-main {
+  font-size: 34rpx;
+  letter-spacing: 2rpx;
 }
 
 .report-gate-panel .paywall-btn-inline::after {
   border: none;
 }
 
+/* 未解锁：三大场景标题预览 */
+.scene-teaser-bundle {
+  text-align: left;
+  padding-bottom: 28rpx !important;
+}
+
+.scene-bundle-hint {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin-bottom: 20rpx;
+}
+
+.scene-teaser-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f1f5f9;
+}
+
+.scene-teaser-item--last {
+  border-bottom: none;
+  padding-bottom: 8rpx;
+}
+
+.scene-teaser-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 16rpx;
+}
+
+.scene-teaser-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+}
+
+.scene-teaser-line {
+  height: 14rpx;
+  border-radius: 8rpx;
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 100%);
+  width: 100%;
+}
+
+.scene-teaser-line--short {
+  width: 62%;
+}
+
+.scene-detail-card {
+  border-left: 6rpx solid #e63946;
+  padding-left: 28rpx !important;
+}
+
 /* 未解锁：限制概述与盖洛普可见行数 */
 .report-gate-teaser--locked .card-text {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 5;
+  -webkit-line-clamp: 8;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .report-gate-teaser--locked .gallup-list {
-  max-height: 96rpx;
+  max-height: 140rpx;
   overflow: hidden;
   position: relative;
 }
@@ -426,6 +567,48 @@
 /* ========== 性格类型卡片 ========== */
 .personality-card {
   text-align: center;
+}
+
+.personality-card-sub {
+  display: block;
+  font-size: 22rpx;
+  color: #94a3b8;
+  margin: -8rpx 0 24rpx;
+  letter-spacing: 1rpx;
+}
+
+.type-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12rpx;
+  margin: 12rpx 0 8rpx;
+}
+
+.type-chip {
+  font-size: 22rpx;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1rpx solid #e2e8f0;
+  padding: 8rpx 20rpx;
+  border-radius: 999rpx;
+}
+
+.type-chip--disc {
+  color: #2563eb;
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.type-emoji {
+  display: block;
+  font-size: 36rpx;
+  margin-bottom: 4rpx;
+}
+
+.type-emoji--disc {
+  opacity: 0.35;
+  font-size: 28rpx;
 }
 
 .personality-type {

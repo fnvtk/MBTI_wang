@@ -14,6 +14,7 @@ Page({
     discType: '',
     pdpType: '',
     aiType: '',
+    gallupPreview: '',
     mbtiTime: '',
     discTime: '',
     pdpTime: '',
@@ -158,6 +159,7 @@ Page({
         // DISC resultText 后端已含「型」，type badge 只显示字母，去掉「型」
         const discType = r.disc ? r.disc.resultText.replace(/型$/, '') : ''
 
+        const gallupPreview = (r.ai && r.ai.gallupPreview) ? String(r.ai.gallupPreview) : ''
         this.setData({
           testCount:    totalCount,
           hasResults:   !!(r.mbti || r.disc || r.pdp || r.ai),
@@ -165,6 +167,7 @@ Page({
           discType,
           pdpType:      r.pdp  ? r.pdp.resultText  : '',
           aiType:       r.ai   ? r.ai.resultText   : '',
+          gallupPreview,
           mbtiTime:     r.mbti ? r.mbti.testTime : '',
           discTime:     r.disc ? r.disc.testTime : '',
           pdpTime:      r.pdp  ? r.pdp.testTime  : '',
@@ -209,6 +212,11 @@ Page({
     const pdpResult  = tt.getStorageSync('pdpResult')
     const aiResult   = tt.getStorageSync('aiResult')
 
+    let gallupPreview = ''
+    if (aiResult && Array.isArray(aiResult.gallupTop3) && aiResult.gallupTop3.length) {
+      gallupPreview = aiResult.gallupTop3.slice(0, 3).map(String).join('、')
+    }
+
     let testCount = 0
     if (mbtiResult) testCount++
     if (discResult) testCount++
@@ -228,7 +236,8 @@ Page({
       mbtiType: mbtiResult ? getTypeOnly(mbtiResult, 'mbti') : '',
       discType: discResult ? getTypeOnly(discResult, 'disc') : '',
       pdpType:  pdpResult  ? getTypeOnly(pdpResult,  'pdp')  : '',
-      aiType:   aiResult   ? (aiResult.mbtiType || aiResult.type || '') : '',
+      aiType:   aiResult   ? (aiResult.mbti || aiResult.mbtiType || aiResult.type || '') : '',
+      gallupPreview,
       mbtiTime: _fmt(mbtiResult && (mbtiResult.createdAt || mbtiResult.timestamp || mbtiResult.testTime)),
       discTime: _fmt(discResult && (discResult.createdAt || discResult.timestamp || discResult.testTime)),
       pdpTime:  _fmt(pdpResult  && (pdpResult.createdAt  || pdpResult.timestamp  || pdpResult.testTime)),
@@ -258,17 +267,24 @@ Page({
   },
 
   goToIndex() { tt.switchTab({ url: '/pages/index/index' }) },
-  goToCamera() { tt.switchTab({ url: '/pages/index/camera' }) },
-  goToHistory() { tt.navigateTo({ url: '/pages/history/index' }) },
+  goToHistory() {
+    try { require('../../utils/analytics').track('tap_test_history', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/history/index' })
+  },
+  goToUserProfile() { tt.navigateTo({ url: '/pages/user-profile/index' }) },
+  goToDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/purchase/index' })
+  },
   goToOrders() {
     if (!this.data.hasLogin) {
       tt.showToast({ title: '请先登录', icon: 'none' })
       return
     }
+    try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
     tt.navigateTo({ url: '/pages/order/index' })
   },
-  goToUserProfile() { tt.navigateTo({ url: '/pages/user-profile/index' }) },
-  goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
+  goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { tt.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { tt.navigateTo({ url: '/pages/enterprise/index' }) },
@@ -282,19 +298,32 @@ Page({
   },
   viewMBTI() {
     const id = this.data.mbtiResultId
-    tt.navigateTo({ url: id ? `/pages/result/mbti?id=${id}&type=mbti` : '/pages/result/mbti' })
+    if (id) tt.navigateTo({ url: `/pages/result/mbti?id=${id}&type=mbti` })
+    else tt.navigateTo({ url: '/pages/test/mbti' })
   },
   viewDISC() {
     const id = this.data.discResultId
-    tt.navigateTo({ url: id ? `/pages/result/disc?id=${id}&type=disc` : '/pages/result/disc' })
+    if (id) tt.navigateTo({ url: `/pages/result/disc?id=${id}&type=disc` })
+    else tt.navigateTo({ url: '/pages/test/disc' })
   },
   viewPDP() {
     const id = this.data.pdpResultId
-    tt.navigateTo({ url: id ? `/pages/result/pdp?id=${id}&type=pdp` : '/pages/result/pdp' })
+    if (id) tt.navigateTo({ url: `/pages/result/pdp?id=${id}&type=pdp` })
+    else tt.navigateTo({ url: '/pages/test/pdp' })
+  },
+  viewGallup() {
+    const id = this.data.aiResultId
+    if (id) tt.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
+    else tt.switchTab({ url: '/pages/index/camera' })
   },
   viewAI() {
     const id = this.data.aiResultId
-    tt.navigateTo({ url: id ? `/pages/index/result?id=${id}&type=ai` : '/pages/index/result' })
+    if (id) tt.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
+    else tt.switchTab({ url: '/pages/index/camera' })
+  },
+  goToTestSelect() {
+    try { require('../../utils/analytics').track('tap_test_select_from_profile', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/test-select/index' })
   },
 
   logout() {

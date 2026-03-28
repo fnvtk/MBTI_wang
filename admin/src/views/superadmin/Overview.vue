@@ -4,7 +4,7 @@
     <div class="overview-section">
       <div class="section-header">
         <h2 class="section-title">数据概览</h2>
-        <p class="section-subtitle">超管端全局数据一览</p>
+        <p class="section-subtitle">对照「普通管理后台」经营结果的平台级指标（非企业日常操作入口）</p>
       </div>
 
       <div class="stats-grid">
@@ -417,8 +417,8 @@ const handleAction = (action: string) => {
     'create-enterprise': '/superadmin/enterprises',
     'enterprise-management': '/superadmin/enterprises',
     'finance': '/superadmin/finance',
-    'pricing': '/superadmin/pricing',
-    'users': '/superadmin/users',
+    'pricing': '/superadmin/commerce?tab=pricing',
+    'users': '/superadmin/enterprises?tab=users',
     'settings': '/superadmin/settings'
   }
   if (routes[action]) {

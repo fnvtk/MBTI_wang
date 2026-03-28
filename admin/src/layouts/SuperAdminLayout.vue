@@ -19,19 +19,11 @@
         </div>
 
         <div class="header-right">
-          <el-button
-            text
-            class="nav-link"
-            @click="router.push('/admin/dashboard')"
-          >
-            <el-icon><HomeFilled /></el-icon>
-            <span>管理台</span>
+          <el-button text class="nav-link admin-entry" @click="goAdminConsole">
+            <el-icon><Monitor /></el-icon>
+            <span>管理后台</span>
           </el-button>
-          <el-button
-            text
-            class="nav-link logout"
-            @click="handleLogout"
-          >
+          <el-button text class="nav-link logout" @click="handleLogout">
             <el-icon><SwitchButton /></el-icon>
             <span>退出</span>
           </el-button>
@@ -42,30 +34,55 @@
     <!-- 侧边栏 -->
     <aside :class="['layout-sidebar', { 'sidebar-open': sidebarOpen }]">
       <nav class="sidebar-nav">
-        <el-button
-          v-for="item in navItems"
-          :key="item.path"
-          :class="['nav-item', { active: isActive(item.path) }]"
-          text
-          @click="navigateTo(item.path)"
-        >
-          <el-icon class="nav-icon">
-            <component :is="item.icon" />
-          </el-icon>
-          <span class="nav-label">{{ item.label }}</span>
-        </el-button>
+        <div class="nav-main">
+          <el-button
+            v-for="item in navMainItems"
+            :key="item.path"
+            :class="['nav-item', { active: isActive(item.path) }]"
+            text
+            @click="navigateTo(item.path)"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <span class="nav-label">{{ item.label }}</span>
+          </el-button>
+        </div>
+
+        <div class="nav-footer-block">
+          <el-button
+            v-for="item in navFooterItems"
+            :key="item.path"
+            :class="['nav-item', { active: isActive(item.path) }]"
+            text
+            @click="navigateTo(item.path)"
+          >
+            <el-icon class="nav-icon">
+              <component :is="item.icon" />
+            </el-icon>
+            <span class="nav-label">{{ item.label }}</span>
+          </el-button>
+        </div>
       </nav>
     </aside>
 
     <!-- 遮罩层（移动端） -->
-    <div
-      v-if="sidebarOpen"
-      class="sidebar-overlay"
-      @click="toggleSidebar"
-    />
+    <div v-if="sidebarOpen" class="sidebar-overlay" @click="toggleSidebar" />
 
     <!-- 主内容区 -->
     <main class="layout-main">
+      <div class="mission-strip">
+        <div class="mission-inner">
+          <span class="mission-text">
+            <strong>核心职责</strong>：配置与监督各企业使用的
+            <strong>普通管理后台</strong>
+            （用户运营、订单、分销等由企业管理员在日常后台完成）。
+          </span>
+          <el-button type="danger" size="small" plain @click="goAdminConsole">
+            进入管理后台
+          </el-button>
+        </div>
+      </div>
       <router-view />
     </main>
   </div>
@@ -79,17 +96,14 @@ import {
   Menu,
   Close,
   Lock,
-  HomeFilled,
   SwitchButton,
   TrendCharts,
-  OfficeBuilding,
-  User,
-  Document,
+  ShoppingCart,
   Cpu,
-  Money,
-  DataLine,
   Setting,
-  Share
+  OfficeBuilding,
+  Share,
+  Monitor
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -98,21 +112,25 @@ const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
 
-const navItems = [
-  { path: '/superadmin/overview', icon: TrendCharts, label: '概览' },
+const navMainItems: { path: string; icon: typeof TrendCharts; label: string }[] = [
+  { path: '/superadmin/ops', icon: TrendCharts, label: '总览' },
   { path: '/superadmin/enterprises', icon: OfficeBuilding, label: '企业管理' },
-  { path: '/superadmin/users', icon: User, label: '用户总览' },
-  { path: '/superadmin/questions', icon: Document, label: '题库管理' },
-  { path: '/superadmin/ai-config', icon: Cpu, label: 'AI 服务配置' },
-  { path: '/superadmin/pricing', icon: Money, label: '全局定价' },
+  { path: '/superadmin/commerce', icon: ShoppingCart, label: '订单和财务' },
   { path: '/superadmin/distribution', icon: Share, label: '分销管理' },
-  { path: '/superadmin/finance', icon: Money, label: '财务数据' },
-  { path: '/superadmin/database', icon: DataLine, label: '数据库管理' },
-  { path: '/superadmin/settings', icon: Setting, label: '系统设置' },
+  { path: '/superadmin/ai-config', icon: Cpu, label: '智能算力' }
+]
+
+const navFooterItems: { path: string; icon: typeof Setting; label: string }[] = [
+  { path: '/superadmin/settings', icon: Setting, label: '系统设置' }
 ]
 
 const isActive = (path: string) => {
-  return route.path === path
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+const goAdminConsole = () => {
+  const url = router.resolve({ path: '/admin/dashboard' }).href
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
 
 const toggleSidebar = () => {
@@ -121,7 +139,6 @@ const toggleSidebar = () => {
 
 const navigateTo = (path: string) => {
   router.push(path)
-  // 移动端导航后关闭侧边栏
   if (window.innerWidth < 1024) {
     sidebarOpen.value = false
   }
@@ -133,7 +150,6 @@ const handleLogout = async () => {
     router.push('/superadmin/login')
   } catch (error) {
     console.error('退出登录失败:', error)
-    // 即使API调用失败，也清除本地状态并跳转
     router.push('/superadmin/login')
   }
 }
@@ -206,12 +222,12 @@ const handleLogout = async () => {
   .header-right {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 4px;
 
     .nav-link {
       font-size: 13px;
       color: #6b7280;
-      padding: 4px 8px;
+      padding: 4px 10px;
       display: flex;
       align-items: center;
       gap: 4px;
@@ -220,6 +236,11 @@ const handleLogout = async () => {
       &:hover {
         background-color: transparent;
         color: #111827;
+      }
+
+      &.admin-entry {
+        color: #b91c1c;
+        font-weight: 600;
       }
 
       &.logout {
@@ -254,54 +275,65 @@ const handleLogout = async () => {
   }
 
   .sidebar-nav {
-    padding: 16px 0;
+    padding: 12px 0 20px;
     display: flex;
     flex-direction: column;
+    min-height: calc(100vh - 64px - 32px);
+  }
 
-    .nav-item {
-      width: 100%;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-start;
-      gap: 12px;
-      padding: 0 24px;
-      border-radius: 0;
-      font-size: 14px;
-      color: #4b5563;
-      transition: all 0.2s;
-      position: relative;
-      margin-left: 0!important;
+  .nav-main {
+    flex: 1;
+  }
 
-      &:hover {
-        background-color: #f9fafb;
-        color: #111827;
+  .nav-footer-block {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+    margin-top: 8px;
+  }
+
+  .nav-item {
+    width: 100%;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 0 24px;
+    border-radius: 0;
+    font-size: 14px;
+    color: #4b5563;
+    transition: all 0.2s;
+    position: relative;
+    margin-left: 0 !important;
+
+    &:hover {
+      background-color: #f9fafb;
+      color: #111827;
+    }
+
+    &.active {
+      background-color: #fef2f2;
+      color: #ef4444;
+      font-weight: 600;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background-color: #ef4444;
       }
+    }
 
-      &.active {
-        background-color: #fef2f2;
-        color: #ef4444;
-        font-weight: 600;
+    .nav-icon {
+      font-size: 18px;
+    }
 
-        &::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 4px;
-          background-color: #ef4444;
-        }
-      }
-
-      .nav-icon {
-        font-size: 18px;
-      }
-
-      .nav-label {
-        flex: 1;
-        text-align: left;
-      }
+    .nav-label {
+      flex: 1;
+      text-align: left;
     }
   }
 }
@@ -326,5 +358,30 @@ const handleLogout = async () => {
     padding-left: 240px;
   }
 }
-</style>
 
+.mission-strip {
+  background: linear-gradient(90deg, #fef2f2 0%, #fff7ed 100%);
+  border-bottom: 1px solid #fecaca;
+}
+
+.mission-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 10px 24px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.mission-text {
+  font-size: 13px;
+  color: #44403c;
+  line-height: 1.5;
+
+  strong {
+    color: #991b1b;
+  }
+}
+</style>

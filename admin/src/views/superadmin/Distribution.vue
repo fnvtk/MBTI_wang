@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>分销管理</h2>
         <p class="subtitle">全平台分销商、佣金、提现审核与分销设置</p>
@@ -287,6 +287,8 @@ import { ref, reactive, watch, onMounted } from 'vue'
 import { Refresh, User, Money, Clock } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const activeTab = ref('overview')
 const loading = ref(false)
@@ -690,5 +692,9 @@ onMounted(() => { loadOverview() })
 @media (max-width: 1200px) {
   .overview-section .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .overview-section .two-cols { grid-template-columns: 1fr; }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
 }
 </style>

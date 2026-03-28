@@ -14,6 +14,8 @@ Page({
     discType: '',
     pdpType: '',
     aiType: '',
+    /** 面相记录中的盖洛普前三摘要（/api/test/recent 或本地 aiResult） */
+    gallupPreview: '',
     mbtiTime: '',
     discTime: '',
     pdpTime: '',
@@ -158,6 +160,7 @@ Page({
         // DISC resultText 后端已含「型」，type badge 只显示字母，去掉「型」
         const discType = r.disc ? r.disc.resultText.replace(/型$/, '') : ''
 
+        const gallupPreview = (r.ai && r.ai.gallupPreview) ? String(r.ai.gallupPreview) : ''
         this.setData({
           testCount:    totalCount,
           hasResults:   !!(r.mbti || r.disc || r.pdp || r.ai),
@@ -165,6 +168,7 @@ Page({
           discType,
           pdpType:      r.pdp  ? r.pdp.resultText  : '',
           aiType:       r.ai   ? r.ai.resultText   : '',
+          gallupPreview,
           mbtiTime:     r.mbti ? r.mbti.testTime : '',
           discTime:     r.disc ? r.disc.testTime : '',
           pdpTime:      r.pdp  ? r.pdp.testTime  : '',
@@ -209,6 +213,11 @@ Page({
     const pdpResult  = wx.getStorageSync('pdpResult')
     const aiResult   = wx.getStorageSync('aiResult')
 
+    let gallupPreview = ''
+    if (aiResult && Array.isArray(aiResult.gallupTop3) && aiResult.gallupTop3.length) {
+      gallupPreview = aiResult.gallupTop3.slice(0, 3).map(String).join('、')
+    }
+
     let testCount = 0
     if (mbtiResult) testCount++
     if (discResult) testCount++
@@ -228,7 +237,8 @@ Page({
       mbtiType: mbtiResult ? getTypeOnly(mbtiResult, 'mbti') : '',
       discType: discResult ? getTypeOnly(discResult, 'disc') : '',
       pdpType:  pdpResult  ? getTypeOnly(pdpResult,  'pdp')  : '',
-      aiType:   aiResult   ? (aiResult.mbtiType || aiResult.type || '') : '',
+      aiType:   aiResult   ? (aiResult.mbti || aiResult.mbtiType || aiResult.type || '') : '',
+      gallupPreview,
       mbtiTime: _fmt(mbtiResult && (mbtiResult.createdAt || mbtiResult.timestamp || mbtiResult.testTime)),
       discTime: _fmt(discResult && (discResult.createdAt || discResult.timestamp || discResult.testTime)),
       pdpTime:  _fmt(pdpResult  && (pdpResult.createdAt  || pdpResult.timestamp  || pdpResult.testTime)),
@@ -258,17 +268,25 @@ Page({
   },
 
   goToIndex() { wx.switchTab({ url: '/pages/index/index' }) },
-  goToCamera() { wx.switchTab({ url: '/pages/index/camera' }) },
-  goToHistory() { wx.navigateTo({ url: '/pages/history/index' }) },
+  goToHistory() {
+    try { require('../../utils/analytics').track('tap_test_history', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/history/index' })
+  },
+  goToUserProfile() { wx.navigateTo({ url: '/pages/user-profile/index' }) },
+  /** 深度服务统一入口（页内 Tab：个人 / 团队与企业） */
+  goToDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
   goToOrders() {
     if (!this.data.hasLogin) {
       wx.showToast({ title: '请先登录', icon: 'none' })
       return
     }
+    try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/order/index' })
   },
-  goToUserProfile() { wx.navigateTo({ url: '/pages/user-profile/index' }) },
-  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
+  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },
@@ -288,19 +306,34 @@ Page({
   },
   viewMBTI() {
     const id = this.data.mbtiResultId
-    wx.navigateTo({ url: id ? `/pages/result/mbti?id=${id}&type=mbti` : '/pages/result/mbti' })
+    if (id) wx.navigateTo({ url: `/pages/result/mbti?id=${id}&type=mbti` })
+    else wx.navigateTo({ url: '/pages/test/mbti' })
   },
   viewDISC() {
     const id = this.data.discResultId
-    wx.navigateTo({ url: id ? `/pages/result/disc?id=${id}&type=disc` : '/pages/result/disc' })
+    if (id) wx.navigateTo({ url: `/pages/result/disc?id=${id}&type=disc` })
+    else wx.navigateTo({ url: '/pages/test/disc' })
   },
   viewPDP() {
     const id = this.data.pdpResultId
-    wx.navigateTo({ url: id ? `/pages/result/pdp?id=${id}&type=pdp` : '/pages/result/pdp' })
+    if (id) wx.navigateTo({ url: `/pages/result/pdp?id=${id}&type=pdp` })
+    else wx.navigateTo({ url: '/pages/test/pdp' })
+  },
+  /** 盖洛普随面相报告：有记录看报告，否则去拍摄 */
+  viewGallup() {
+    const id = this.data.aiResultId
+    if (id) wx.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
+    else wx.switchTab({ url: '/pages/index/camera' })
   },
   viewAI() {
     const id = this.data.aiResultId
-    wx.navigateTo({ url: id ? `/pages/index/result?id=${id}&type=ai` : '/pages/index/result' })
+    if (id) wx.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
+    else wx.switchTab({ url: '/pages/index/camera' })
+  },
+  /** 详细性格测试：MBTI / PDP / DISC 选择页 */
+  goToTestSelect() {
+    try { require('../../utils/analytics').track('tap_test_select_from_profile', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   logout() {

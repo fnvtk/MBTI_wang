@@ -17,20 +17,23 @@
 
 .tab-bar-inner {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-  height: 100rpx;
-  padding: 0 20rpx 8rpx;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 120rpx;
+  padding: 12rpx 12rpx 10rpx;
   position: relative;
+  box-sizing: border-box;
 }
 
 .tab-item {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 8rpx;
+  justify-content: center;
+  padding-bottom: 0;
+  z-index: 1;
 }
 
 .tab-icon {
@@ -48,57 +51,66 @@
   color: #7c3aed;
 }
 
-/* 中间项：浮起彩色圆钮 + 相机图标 */
-.tab-item-center {
+/* 中间列：独立层叠上下文，浮钮不盖住左右 tab */
+.tab-slot-middle {
+  flex: 1;
+  min-width: 0;
   position: relative;
+  z-index: 4;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  margin-top: -56rpx;
-  padding-bottom: 8rpx;
+  justify-content: center;
+  padding-bottom: 0;
+}
+
+/* 浮钮：整体上移，更突出圆形快门、减少与底栏顶边重叠感 */
+.middle-fab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  transform: translateY(-26rpx);
+  margin-bottom: -10rpx;
 }
 
 .center-circle {
-  width: 96rpx;
-  height: 96rpx;
-  min-width: 96rpx;
-  min-height: 96rpx;
+  width: 84rpx;
+  height: 84rpx;
+  min-width: 84rpx;
+  min-height: 84rpx;
   border-radius: 50%;
   background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4rpx;
+  margin-bottom: 6rpx;
   box-shadow: 0 4rpx 20rpx rgba(124, 58, 237, 0.4);
   border: 4rpx solid #ffffff;
   flex-shrink: 0;
   overflow: hidden;
 }
 
-.tab-item-center.active .center-circle {
+.middle-fab.active .center-circle {
   background: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
   box-shadow: 0 4rpx 20rpx rgba(124, 58, 237, 0.6);
 }
 
 .center-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 40rpx;
+  height: 40rpx;
 }
 
-/* 占位：与「首页」「我的」文字等高，保证中间圆钮与两侧图标对齐 */
-.center-text-placeholder {
-  height: 24rpx;
-  width: 1rpx;
-  visibility: hidden;
+.tab-text-fab {
+  font-size: 18rpx;
+  color: #999999;
+  line-height: 1.25;
+  text-align: center;
+  max-width: 168rpx;
 }
 
-.tab-item-center .center-text {
+.middle-fab.active .tab-text-fab {
   color: #7c3aed;
-  font-size: 20rpx;
   font-weight: 600;
-}
-
-.tab-item-center.active .center-text {
-  color: #6d28d9;
 }

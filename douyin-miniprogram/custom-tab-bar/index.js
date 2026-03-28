@@ -2,33 +2,23 @@
 Component({
   data: {
     selected: 0,
-    reviewMode: false,
     list: [
       { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
-      { pagePath: '/pages/index/camera', text: '查看报告', textKey: 'camera', icon: 'camera' },
+      { pagePath: '/pages/index/camera', text: '拍摄', textKey: 'camera', icon: 'camera' },
       { pagePath: '/pages/profile/index', text: '我的', textKey: 'profile', icon: 'user' }
     ]
   },
   lifetimes: {
     attached() {
       this.updateSelected()
-      this.checkReviewMode()
     }
   },
   pageLifetimes: {
     show() {
       this.updateSelected()
-      this.checkReviewMode()
     }
   },
   methods: {
-    checkReviewMode() {
-      try {
-        const app = getApp()
-        const rm = !!(app && app.globalData && app.globalData.reviewMode)
-        this.setData({ reviewMode: rm })
-      } catch (e) {}
-    },
     updateSelected() {
       try {
         const pages = getCurrentPages()
@@ -64,13 +54,6 @@ Component({
             return
           }
         } catch (e) {}
-      }
-
-      // 审核模式：中间按钮跳转到测试选择页而非相机
-      if (index === 1 && this.data.reviewMode) {
-        tt.navigateTo({ url: '/pages/test-select/index' })
-        this.setData({ selected: index })
-        return
       }
 
       tt.switchTab({ url })

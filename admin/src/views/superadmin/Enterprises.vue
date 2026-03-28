@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>企业管理</h2>
         <p class="subtitle">共{{ total }}家企业·活跃{{ activeCount }}家</p>
@@ -30,14 +30,25 @@
           </template>
         </el-input>
 
-        <div class="filter-group">
-          <div
-            v-for="item in statusOptions"
-            :key="item.value"
-            :class="['filter-item', { active: statusFilter === item.value }]"
-            @click="statusFilter = item.value; handleStatusFilter()"
-          >
-            {{ item.label }}
+        <div class="toolbar-right">
+          <div class="filter-group">
+            <div
+              v-for="item in statusOptions"
+              :key="item.value"
+              :class="['filter-item', { active: statusFilter === item.value }]"
+              @click="statusFilter = item.value; handleStatusFilter()"
+            >
+              {{ item.label }}
+            </div>
+          </div>
+          <!-- 嵌入「企业管理」页签时不展示顶部 page-header，操作入口放到工具栏 -->
+          <div v-if="embedded" class="toolbar-embedded-actions">
+            <el-button variant="outline" @click="handleRefresh">
+              <el-icon class="mr-1"><Refresh /></el-icon>刷新
+            </el-button>
+            <el-button type="primary" color="#3b82f6" @click="showCreateDialog = true">
+              <el-icon class="mr-1"><Plus /></el-icon>新建企业
+            </el-button>
           </div>
         </div>
       </div>
@@ -124,8 +135,7 @@
     <!-- 创建企业对话框 -->
     <el-dialog
       v-model="showCreateDialog"
-      title="创建新企业"
-      width="440px"
+      width="680px"
       class="custom-dialog"
       :show-close="true"
       align-center
@@ -133,85 +143,91 @@
       <template #header>
         <div class="dialog-header">
           <h3 class="dialog-title">创建新企业</h3>
-          <p class="dialog-subtitle">添加新企业到系统，设置基本信息和配置</p>
+          <p class="dialog-subtitle">设置企业基本信息、管理员账号及联系方式</p>
         </div>
       </template>
 
-      <el-form :model="newEnterprise" label-position="top" class="custom-form">
-        <el-form-item label="企业名称" required>
-          <el-input v-model="newEnterprise.name" placeholder="请输入企业名称" />
-        </el-form-item>
-        
-        <el-form-item label="企业代码">
-          <el-input v-model="newEnterprise.code" placeholder="请输入企业代码（可选）" />
-        </el-form-item>
+      <el-form :model="newEnterprise" label-position="top" class="custom-form optimized-form">
+        <el-row :gutter="24">
+          <!-- 左侧：账号与基础信息 -->
+          <el-col :span="12">
+            <div class="form-section-title">基础与账号</div>
+            <el-form-item label="企业名称" required>
+              <el-input v-model="newEnterprise.name" placeholder="请输入企业名称" />
+            </el-form-item>
+            
+            <el-form-item label="企业代码">
+              <el-input v-model="newEnterprise.code" placeholder="建议输入简写或拼音" />
+            </el-form-item>
 
-        <el-divider content-position="left">企业管理员账号</el-divider>
+            <el-form-item label="管理员用户名" required>
+              <el-input v-model="newEnterprise.adminUsername" placeholder="登录后台使用" />
+            </el-form-item>
 
-        <el-form-item label="管理员用户名" required>
-          <el-input v-model="newEnterprise.adminUsername" placeholder="请输入管理员用户名" />
-        </el-form-item>
+            <el-form-item label="管理员密码" required>
+              <el-input 
+                v-model="newEnterprise.adminPassword" 
+                type="password" 
+                placeholder="请输入密码"
+                show-password
+              />
+            </el-form-item>
 
-        <el-form-item label="管理员密码" required>
-          <el-input 
-            v-model="newEnterprise.adminPassword" 
-            type="password" 
-            placeholder="请输入管理员密码"
-            show-password
-          />
-        </el-form-item>
+            <el-form-item label="确认密码" required>
+              <el-input 
+                v-model="newEnterprise.adminPasswordConfirm" 
+                type="password" 
+                placeholder="请再次输入"
+                show-password
+              />
+            </el-form-item>
+          </el-col>
 
-        <el-form-item label="确认密码" required>
-          <el-input 
-            v-model="newEnterprise.adminPasswordConfirm" 
-            type="password" 
-            placeholder="请再次输入密码"
-            show-password
-          />
-        </el-form-item>
+          <!-- 右侧：联系信息与状态 -->
+          <el-col :span="12">
+            <div class="form-section-title">联系信息与状态</div>
+            <el-form-item label="联系人姓名">
+              <el-input v-model="newEnterprise.contactName" placeholder="姓名" />
+            </el-form-item>
 
-        <el-divider content-position="left">企业信息</el-divider>
+            <el-form-item label="联系人电话">
+              <el-input v-model="newEnterprise.contactPhone" placeholder="手机或座机" />
+            </el-form-item>
 
-        <el-form-item label="联系人姓名">
-          <el-input v-model="newEnterprise.contactName" placeholder="请输入联系人姓名" />
-        </el-form-item>
+            <el-form-item label="联系人邮箱">
+              <el-input v-model="newEnterprise.contactEmail" placeholder="example@mail.com" />
+            </el-form-item>
 
-        <el-form-item label="联系人电话">
-          <el-input v-model="newEnterprise.contactPhone" placeholder="请输入联系人电话" />
-        </el-form-item>
+            <el-form-item label="企业状态">
+              <el-select v-model="newEnterprise.status" class="w-full" placeholder="请选择状态">
+                <el-option label="运营中" value="operating" />
+                <el-option label="试用" value="trial" />
+                <el-option label="已停用" value="disabled" />
+              </el-select>
+            </el-form-item>
 
-        <el-form-item label="联系人邮箱">
-          <el-input v-model="newEnterprise.contactEmail" placeholder="请输入联系人邮箱" />
-        </el-form-item>
-
-        <el-form-item label="状态">
-          <el-select v-model="newEnterprise.status" class="w-full" placeholder="请选择状态">
-            <el-option label="运营中" value="operating" />
-            <el-option label="试用" value="trial" />
-            <el-option label="已停用" value="disabled" />
-          </el-select>
-        </el-form-item>
-
-        <el-form-item 
-          label="试用到期时间" 
-          v-if="newEnterprise.status === 'trial'"
-          required
-        >
-          <el-date-picker
-            v-model="newEnterprise.trialExpireAt"
-            type="datetime"
-            placeholder="请选择试用到期时间"
-            format="YYYY-MM-DD HH:mm:ss"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            class="w-full"
-          />
-        </el-form-item>
+            <el-form-item 
+              label="试用到期时间" 
+              v-if="newEnterprise.status === 'trial'"
+              required
+            >
+              <el-date-picker
+                v-model="newEnterprise.trialExpireAt"
+                type="datetime"
+                placeholder="选择时间"
+                format="YYYY-MM-DD HH:mm"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                class="w-full"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
 
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="showCreateDialog = false" class="cancel-btn">取消</el-button>
-          <el-button type="primary" color="#ef4444" @click="handleCreateEnterprise" class="submit-btn">
+          <el-button type="primary" color="#ef4444" @click="handleCreateEnterprise" class="submit-btn" :loading="creating">
             立即创建
           </el-button>
         </div>
@@ -294,8 +310,9 @@
     <el-dialog
       v-model="showViewDialog"
       title="企业详情"
-      width="800px"
-      class="custom-dialog"
+      width="min(1180px, 96vw)"
+      class="custom-dialog detail-dialog enterprise-detail-dialog"
+      top="3vh"
       :show-close="true"
       align-center
     >
@@ -307,135 +324,333 @@
       </template>
 
       <div v-loading="viewLoading" class="enterprise-detail-content">
-        <div v-if="viewEnterpriseData" class="detail-sections">
-          <!-- 基本信息 -->
-          <div class="detail-section">
-            <h4 class="section-title">基本信息</h4>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="info-label">企业名称：</span>
-                <span class="info-value">{{ viewEnterpriseData.name }}</span>
+        <div v-if="viewEnterpriseData" class="ud-wrap">
+          <!-- 左侧：企业概览（与用户详情弹窗 ud-side 一致） -->
+          <aside class="ud-side">
+            <div class="ud-avatar-block">
+              <div class="ud-avatar-letter">{{ enterpriseAvatarLetter }}</div>
+              <div class="ud-name">{{ viewEnterpriseData.name || '未命名企业' }}</div>
+            </div>
+            <div class="ud-meta">
+              <div class="ud-meta-row">
+                <el-icon><Key /></el-icon>
+                <span>ID {{ viewDetailEnterpriseId ?? '-' }}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">企业代码：</span>
-                <span class="info-value">{{ viewEnterpriseData.code || '-' }}</span>
+              <div class="ud-meta-row" v-if="viewEnterpriseData.contactName">
+                <el-icon><Postcard /></el-icon>
+                <span>{{ viewEnterpriseData.contactName }}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">联系人：</span>
-                <span class="info-value">{{ viewEnterpriseData.contactName || '-' }}</span>
+              <div class="ud-meta-row" v-if="viewEnterpriseData.contactPhone">
+                <el-icon><Phone /></el-icon>
+                <span>{{ viewEnterpriseData.contactPhone }}</span>
               </div>
-              <div class="info-item">
-                <span class="info-label">联系电话：</span>
-                <span class="info-value">{{ viewEnterpriseData.contactPhone || '-' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">联系邮箱：</span>
-                <span class="info-value">{{ viewEnterpriseData.contactEmail || '-' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">账户余额：</span>
-                <span class="info-value">¥{{ (viewEnterpriseData.balance || 0).toLocaleString() }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">状态：</span>
-                <el-tag 
-                  :type="viewEnterpriseData.status === 'operating' ? 'success' : viewEnterpriseData.status === 'trial' ? 'warning' : 'info'" 
-                  size="small"
-                >
-                  {{ getStatusLabel(viewEnterpriseData.status) }}
-                </el-tag>
-              </div>
-              <div class="info-item" v-if="viewEnterpriseData.status === 'trial' && viewEnterpriseData.trialExpireAt">
-                <span class="info-label">试用到期时间：</span>
-                <span class="info-value">{{ new Date(viewEnterpriseData.trialExpireAt * 1000).toLocaleString() }}</span>
+              <div class="ud-meta-row">
+                <el-icon><Calendar /></el-icon>
+                <span>{{ formatDetailTime(viewEnterpriseData.createdAt) }}</span>
               </div>
             </div>
-          </div>
+            <div class="ud-stat-icons">
+              <el-tooltip content="小程序用户" placement="top">
+                <div class="ud-stat-ic">
+                  <el-icon><User /></el-icon>{{ viewEnterpriseData.wechatUsersTotal ?? viewEnterpriseData.wechatUserCount ?? 0 }}
+                </div>
+              </el-tooltip>
+              <el-tooltip content="测试记录" placement="top">
+                <div class="ud-stat-ic">
+                  <el-icon><TrendCharts /></el-icon>{{ viewEnterpriseData.miniprogramTestResultsTotal ?? 0 }}
+                </div>
+              </el-tooltip>
+              <el-tooltip content="订单数" placement="top">
+                <div class="ud-stat-ic">
+                  <el-icon><Document /></el-icon>{{ viewEnterpriseData.orderStats?.totalCount ?? 0 }}
+                </div>
+              </el-tooltip>
+              <el-tooltip content="账户余额（元）" placement="top">
+                <div class="ud-stat-ic ud-stat-ic--money">
+                  <el-icon><Wallet /></el-icon>{{ (viewEnterpriseData.balance || 0).toLocaleString() }}
+                </div>
+              </el-tooltip>
+            </div>
+            <div class="ud-tags" v-if="enterpriseDimensionTags.length">
+              <div class="ud-tags-title">维度标签</div>
+              <el-tag
+                v-for="t in enterpriseDimensionTags"
+                :key="t"
+                size="small"
+                class="ud-tag"
+                effect="plain"
+                type="primary"
+              >{{ t }}</el-tag>
+            </div>
+          </aside>
 
-          <!-- 管理员账号 -->
-          <div class="detail-section">
-            <h4 class="section-title">管理员账号 ({{ viewEnterpriseData.adminAccounts?.length || 0 }})</h4>
-            <el-table :data="viewEnterpriseData.adminAccounts || []" style="width: 100%" size="small" v-if="viewEnterpriseData.adminAccounts && viewEnterpriseData.adminAccounts.length > 0">
-              <el-table-column prop="username" label="用户名" />
-              <el-table-column prop="email" label="邮箱" />
-              <el-table-column prop="phone" label="电话" />
-              <el-table-column prop="role" label="角色">
-                <template #default="{ row }">
-                  <el-tag size="small">{{ row.role === 'enterprise_admin' ? '企业管理员' : row.role }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column prop="status" label="状态">
-                <template #default="{ row }">
-                  <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                    {{ row.status === 1 ? '启用' : '禁用' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-            <div v-else class="empty-placeholder-small">
-              <el-icon class="empty-icon"><User /></el-icon>
-              <p class="empty-text">暂无管理员账户</p>
-            </div>
-          </div>
+          <!-- 右侧：详细页签（与用户详情 ud-main / ud-tabs 一致） -->
+          <main class="ud-main">
+            <el-tabs v-model="enterpriseDetailTab" class="ud-tabs">
+              <!-- 经营概览：对齐用户详情「分析结果」版式（三卡 + 双栏卡片） -->
+              <el-tab-pane label="经营概览" name="overview">
+                <div class="ud-scroll ed-overview-scroll">
+                  <div class="ud-radar-row">
+                    <div class="ud-radar-cell ed-kpi-cell">
+                      <div class="ud-radar-title"><el-icon><User /></el-icon> 小程序用户</div>
+                      <div class="ed-kpi-value">{{ viewEnterpriseData.wechatUsersTotal ?? viewEnterpriseData.wechatUserCount ?? 0 }}</div>
+                      <div class="ed-kpi-sub">登记用户数</div>
+                    </div>
+                    <div class="ud-radar-cell ed-kpi-cell">
+                      <div class="ud-radar-title"><el-icon><TrendCharts /></el-icon> 测试记录</div>
+                      <div class="ed-kpi-value">{{ viewEnterpriseData.miniprogramTestResultsTotal ?? 0 }}</div>
+                      <div class="ed-kpi-sub">小程序测评条数</div>
+                    </div>
+                    <div class="ud-radar-cell ed-kpi-cell">
+                      <div class="ud-radar-title"><el-icon><Document /></el-icon> 订单</div>
+                      <div class="ed-kpi-value">{{ viewEnterpriseData.orderStats?.totalCount ?? 0 }}</div>
+                      <div class="ed-kpi-sub">累计订单</div>
+                    </div>
+                  </div>
 
-          <!-- 用户列表 -->
-          <div class="detail-section">
-            <h4 class="section-title">用户列表 ({{ viewEnterpriseUsers.length }})</h4>
-            <el-table :data="viewEnterpriseUsers" style="width: 100%" size="small" max-height="200" v-if="viewEnterpriseUsers.length > 0">
-              <el-table-column prop="username" label="用户名" />
-              <el-table-column prop="email" label="邮箱" />
-              <el-table-column prop="phone" label="电话" />
-              <el-table-column prop="mbtiType" label="MBTI类型" />
-              <el-table-column prop="status" label="状态">
-                <template #default="{ row }">
-                  <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
-                    {{ row.status === 1 ? '启用' : '禁用' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
-            <div v-else class="empty-placeholder-small">
-              <el-icon class="empty-icon"><User /></el-icon>
-              <p class="empty-text">暂无用户数据</p>
-            </div>
-          </div>
+                  <div class="ud-row2">
+                    <div class="ud-card">
+                      <div class="ud-card-h"><el-icon><Document /></el-icon> 订单与收入</div>
+                      <template v-if="(viewEnterpriseData.orderStats?.totalCount ?? 0) > 0">
+                        <div class="ud-roles">
+                          <div class="ud-role">
+                            <span class="ud-role-n">已支付</span>
+                            <el-progress :percentage="orderPaidProgressPct" :stroke-width="6" :show-text="false" color="#7c3aed" />
+                            <span class="ud-role-p">{{ viewEnterpriseData.orderStats?.paidCount ?? 0 }}</span>
+                          </div>
+                        </div>
+                        <div class="ed-order-sum">
+                          已支付金额
+                          <strong>¥{{ fenToYuan(viewEnterpriseData.orderStats?.paidAmountFen) }}</strong>
+                        </div>
+                      </template>
+                      <div v-else class="ud-muted">暂无订单数据</div>
+                    </div>
+                    <div class="ud-card ud-grow">
+                      <div class="ud-card-h"><el-icon><DataAnalysis /></el-icon> 近30天埋点</div>
+                      <div class="ud-roles">
+                        <div class="ud-role">
+                          <span class="ud-role-n">事件</span>
+                          <el-progress :percentage="analyticsEventProgressPct" :stroke-width="6" :show-text="false" color="#7c3aed" />
+                          <span class="ud-role-p">{{ viewEnterpriseData.analyticsStats?.eventTotal ?? 0 }}</span>
+                        </div>
+                        <div class="ud-role">
+                          <span class="ud-role-n">page_view</span>
+                          <el-progress :percentage="analyticsPvProgressPct" :stroke-width="6" :show-text="false" color="#a855f7" />
+                          <span class="ud-role-p">{{ viewEnterpriseData.analyticsStats?.pageViewCount ?? 0 }}</span>
+                        </div>
+                      </div>
+                      <p v-if="viewEnterpriseData.analyticsStats?.hint" class="stats-hint ed-stats-hint">{{ viewEnterpriseData.analyticsStats.hint }}</p>
+                    </div>
+                  </div>
 
-          <!-- 测试记录 -->
-          <div class="detail-section">
-            <h4 class="section-title">测试记录 ({{ viewEnterpriseTests.length }})</h4>
-            <el-table :data="viewEnterpriseTests" style="width: 100%" size="small" max-height="200" v-if="viewEnterpriseTests.length > 0">
-              <el-table-column prop="testType" label="测试类型" />
-              <el-table-column prop="username" label="用户" />
-              <el-table-column prop="createdAt" label="测试时间">
-                <template #default="{ row }">
-                  {{ row.createdAt ? new Date(row.createdAt * 1000).toLocaleString() : '-' }}
-                </template>
-              </el-table-column>
-            </el-table>
-            <div v-else class="empty-placeholder-small">
-              <el-icon class="empty-icon"><TrendCharts /></el-icon>
-              <p class="empty-text">暂无测试数据</p>
-            </div>
-          </div>
+                  <div v-if="(viewEnterpriseData.adminAccounts?.length ?? 0) > 0" class="ud-card ed-admin-summary">
+                    <div class="ud-card-h"><el-icon><User /></el-icon> 管理员</div>
+                    <div class="ed-admin-chips">
+                      <el-tag v-for="a in (viewEnterpriseData.adminAccounts || []).slice(0, 6)" :key="a.id" size="small" type="info" effect="plain">
+                        {{ a.username }}
+                      </el-tag>
+                      <span v-if="(viewEnterpriseData.adminAccounts?.length ?? 0) > 6" class="ud-muted">…共 {{ viewEnterpriseData.adminAccounts?.length }} 人</span>
+                    </div>
+                  </div>
+                </div>
+              </el-tab-pane>
 
-          <!-- 统计数据 -->
-          <div class="detail-section">
-            <h4 class="section-title">统计数据</h4>
-            <div class="stats-grid">
-              <div class="stat-item">
-                <span class="stat-label">用户总数：</span>
-                <span class="stat-value">{{ viewEnterpriseData.userCount || 0 }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">测试总量：</span>
-                <span class="stat-value">{{ viewEnterpriseData.testUsage || 0 }}</span>
-              </div>
-              <div class="stat-item">
-                <span class="stat-label">管理员数：</span>
-                <span class="stat-value">{{ viewEnterpriseData.adminAccounts?.length || 0 }}</span>
-              </div>
-            </div>
-          </div>
+              <!-- 用户列表 -->
+              <el-tab-pane label="小程序用户">
+                <div class="tab-content">
+                  <el-table
+                    :data="viewEnterpriseUsers"
+                    style="width: 100%"
+                    size="small"
+                    v-if="(viewEnterpriseData.wechatUsersTotal ?? viewEnterpriseData.wechatUserCount ?? 0) > 0"
+                  >
+                    <el-table-column prop="id" label="ID" width="64" />
+                    <el-table-column label="昵称" min-width="100">
+                      <template #default="{ row }">
+                        <span>{{ row.nickname || row.username || '-' }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="phone" label="手机" width="110" />
+                    <el-table-column label="注册时间" width="140">
+                      <template #default="{ row }">
+                        {{ formatDetailTime(row.createdAt) }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="status" label="状态" width="60">
+                      <template #default="{ row }">
+                        <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+                          {{ row.status === 1 ? '开' : '关' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-pagination
+                    v-if="(viewEnterpriseData.wechatUsersTotal ?? viewEnterpriseData.wechatUserCount ?? 0) > 0"
+                    class="detail-pagination"
+                    v-model:current-page="detailWechatPage"
+                    v-model:page-size="detailWechatPageSize"
+                    :total="viewEnterpriseData.wechatUsersTotal ?? viewEnterpriseData.wechatUserCount ?? 0"
+                    :page-sizes="[10, 20, 50]"
+                    layout="total, prev, pager, next"
+                    small
+                    @current-change="fetchEnterpriseDetail"
+                    @size-change="onDetailWechatSizeChange"
+                  />
+                  <div v-else class="empty-placeholder-small">
+                    <el-icon class="empty-icon"><User /></el-icon>
+                    <p class="empty-text">暂无用户数据</p>
+                  </div>
+                </div>
+              </el-tab-pane>
+
+              <!-- 测试记录 -->
+              <el-tab-pane label="测试记录">
+                <div class="tab-content">
+                  <el-table
+                    :data="viewEnterpriseTests"
+                    style="width: 100%"
+                    size="small"
+                    v-if="(viewEnterpriseData.miniprogramTestResultsTotal ?? 0) > 0"
+                  >
+                    <el-table-column prop="testType" label="类型" width="70" />
+                    <el-table-column label="测试结果" min-width="150" show-overflow-tooltip>
+                      <template #default="{ row }">
+                        {{ row.resultSummary || '—' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="用户" min-width="100" show-overflow-tooltip>
+                      <template #default="{ row }">
+                        {{ row.wechatNickname || row.username || '—' }}
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="测试时间" width="140">
+                      <template #default="{ row }">
+                        {{ formatDetailTime(row.createdAt) }}
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <el-pagination
+                    v-if="(viewEnterpriseData.miniprogramTestResultsTotal ?? 0) > 0"
+                    class="detail-pagination"
+                    v-model:current-page="detailTestPage"
+                    v-model:page-size="detailTestPageSize"
+                    :total="viewEnterpriseData.miniprogramTestResultsTotal ?? 0"
+                    :page-sizes="[10, 20, 50]"
+                    layout="total, prev, pager, next"
+                    small
+                    @current-change="fetchEnterpriseDetail"
+                    @size-change="onDetailTestSizeChange"
+                  />
+                  <div v-else class="empty-placeholder-small">
+                    <el-icon class="empty-icon"><TrendCharts /></el-icon>
+                    <p class="empty-text">暂无测试数据</p>
+                  </div>
+                </div>
+              </el-tab-pane>
+
+              <!-- 订单统计 -->
+              <el-tab-pane label="订单与统计">
+                <div class="tab-content">
+                  <div class="stats-cards">
+                    <div class="stats-mini-card">
+                      <div class="card-label">订单总数</div>
+                      <div class="card-value">{{ viewEnterpriseData.orderStats?.totalCount ?? 0 }}</div>
+                    </div>
+                    <div class="stats-mini-card">
+                      <div class="card-label">已支付</div>
+                      <div class="card-value text-success">{{ viewEnterpriseData.orderStats?.paidCount ?? 0 }}</div>
+                    </div>
+                    <div class="stats-mini-card">
+                      <div class="card-label">总金额</div>
+                      <div class="card-value">¥{{ fenToYuan(viewEnterpriseData.orderStats?.paidAmountFen) }}</div>
+                    </div>
+                  </div>
+
+                  <div v-if="(viewEnterpriseData.recentOrdersTotal ?? 0) > 0" class="recent-orders-block">
+                    <h5 class="subsection-title">最近订单</h5>
+                    <el-table :data="viewEnterpriseData.recentOrders" size="small" style="width: 100%">
+                      <el-table-column prop="orderNo" label="订单号" min-width="150" show-overflow-tooltip />
+                      <el-table-column label="状态" width="70">
+                        <template #default="{ row }">
+                          <el-tag size="small" :type="row.status === 'paid' ? 'success' : 'info'">
+                            {{ orderStatusLabel(row.status) }}
+                          </el-tag>
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="金额" width="70" align="right">
+                        <template #default="{ row }">
+                          ¥{{ fenToYuan(row.amount) }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column label="日期" width="140">
+                        <template #default="{ row }">
+                          {{ formatDetailTime(row.createdAt) }}
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                    <el-pagination
+                      class="detail-pagination"
+                      v-model:current-page="detailOrderPage"
+                      v-model:page-size="detailOrderPageSize"
+                      :total="viewEnterpriseData.recentOrdersTotal ?? 0"
+                      layout="total, prev, pager, next"
+                      small
+                      @current-change="fetchEnterpriseDetail"
+                      @size-change="onDetailOrderSizeChange"
+                    />
+                  </div>
+                </div>
+              </el-tab-pane>
+
+              <!-- 埋点数据 -->
+              <el-tab-pane label="埋点分析">
+                <div class="tab-content">
+                  <div class="analytics-header">
+                    <div class="analytics-main-stat">
+                      <span class="label">30天事件总数</span>
+                      <span class="value">{{ viewEnterpriseData.analyticsStats?.eventTotal ?? 0 }}</span>
+                    </div>
+                    <div class="analytics-main-stat">
+                      <span class="label">页面曝光 (PV)</span>
+                      <span class="value">{{ viewEnterpriseData.analyticsStats?.pageViewCount ?? 0 }}</span>
+                    </div>
+                  </div>
+                  <p v-if="viewEnterpriseData.analyticsStats?.hint" class="stats-hint">{{ viewEnterpriseData.analyticsStats.hint }}</p>
+                  
+                  <div v-if="viewEnterpriseData.analyticsStats?.byEvent?.length" class="event-dist">
+                    <h5 class="subsection-title">事件分布</h5>
+                    <el-table :data="viewEnterpriseData.analyticsStats.byEvent" size="small" style="width: 100%" max-height="300">
+                      <el-table-column prop="eventName" label="事件名" min-width="160" />
+                      <el-table-column prop="cnt" label="次数" width="80" align="right" />
+                    </el-table>
+                  </div>
+                </div>
+              </el-tab-pane>
+
+              <!-- 管理员账号 -->
+              <el-tab-pane label="管理员">
+                <div class="tab-content">
+                  <el-table :data="viewEnterpriseData.adminAccounts || []" style="width: 100%" size="small" v-if="viewEnterpriseData.adminAccounts?.length">
+                    <el-table-column prop="username" label="用户名" />
+                    <el-table-column prop="email" label="邮箱" min-width="120" show-overflow-tooltip />
+                    <el-table-column prop="phone" label="电话" width="110" />
+                    <el-table-column prop="status" label="状态" width="60">
+                      <template #default="{ row }">
+                        <el-tag :type="row.status === 1 ? 'success' : 'danger'" size="small">
+                          {{ row.status === 1 ? '开' : '关' }}
+                        </el-tag>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                  <div v-else class="empty-placeholder-small">
+                    <el-icon class="empty-icon"><User /></el-icon>
+                    <p class="empty-text">暂无管理员账户</p>
+                  </div>
+                </div>
+              </el-tab-pane>
+            </el-tabs>
+          </main>
         </div>
       </div>
 
@@ -449,10 +664,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, nextTick } from 'vue'
-import { Plus, Refresh, Search, View, Edit, Delete } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, watch, nextTick } from 'vue'
+import {
+  Plus,
+  Refresh,
+  Search,
+  View,
+  Edit,
+  Delete,
+  User,
+  TrendCharts,
+  Key,
+  Phone,
+  Calendar,
+  DataAnalysis,
+  Document,
+  Wallet,
+  Postcard
+} from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const loading = ref(false)
 const total = ref(0)
@@ -470,6 +703,68 @@ const viewEnterpriseData = ref<any>(null)
 const viewEnterpriseUsers = ref<any[]>([])
 const viewEnterpriseTests = ref<any[]>([])
 const viewLoading = ref(false)
+/** 详情弹窗当前企业 ID，翻页时复用 */
+const viewDetailEnterpriseId = ref<number | null>(null)
+const detailWechatPage = ref(1)
+const detailWechatPageSize = ref(10)
+const detailTestPage = ref(1)
+const detailTestPageSize = ref(10)
+const detailOrderPage = ref(1)
+const detailOrderPageSize = ref(10)
+/** 企业详情弹窗当前 Tab（对齐用户详情：先总览再明细） */
+const enterpriseDetailTab = ref('overview')
+const creating = ref(false)
+
+/** 企业侧栏头像首字 */
+const enterpriseAvatarLetter = computed(() => {
+  const n = viewEnterpriseData.value?.name
+  if (!n || typeof n !== 'string') return '?'
+  const t = n.trim()
+  return t ? t[0].toUpperCase() : '?'
+})
+
+/** 侧栏「维度标签」（与用户详情 ud-tags 同级展示习惯） */
+const enterpriseDimensionTags = computed(() => {
+  const d = viewEnterpriseData.value
+  if (!d) return []
+  const tags: string[] = []
+  tags.push(`状态·${getStatusLabel(d.status)}`)
+  if (d.code) tags.push(`代码·${d.code}`)
+  tags.push(`后台账号·${d.userCount ?? 0}人`)
+  if (d.contactEmail) tags.push('已登记邮箱')
+  const bal = Number(d.balance)
+  if (Number.isFinite(bal) && bal > 0) tags.push('余额>0')
+  if (d.status === 'trial') tags.push('试用企业')
+  return tags
+})
+
+/** 订单已支付占比（用于进度条） */
+const orderPaidProgressPct = computed(() => {
+  const o = viewEnterpriseData.value?.orderStats
+  if (!o) return 0
+  const t = Number(o.totalCount) || 0
+  if (t <= 0) return 0
+  return Math.min(100, Math.round(((Number(o.paidCount) || 0) / t) * 100))
+})
+
+/** 埋点两项进度条刻度（取较大者为 100%） */
+const analyticsProgressBase = computed(() => {
+  const a = viewEnterpriseData.value?.analyticsStats
+  if (!a) return 1
+  return Math.max(Number(a.eventTotal) || 0, Number(a.pageViewCount) || 0, 1)
+})
+
+const analyticsEventProgressPct = computed(() => {
+  const a = viewEnterpriseData.value?.analyticsStats
+  const n = Number(a?.eventTotal) || 0
+  return Math.min(100, Math.round((n / analyticsProgressBase.value) * 100))
+})
+
+const analyticsPvProgressPct = computed(() => {
+  const a = viewEnterpriseData.value?.analyticsStats
+  const n = Number(a?.pageViewCount) || 0
+  return Math.min(100, Math.round((n / analyticsProgressBase.value) * 100))
+})
 
 const statusOptions = [
   { label: '全部', value: '' },
@@ -510,6 +805,33 @@ const getStatusLabel = (status: string) => {
     'disabled': '已停用'
   }
   return statusMap[status] || '未知'
+}
+
+/** 详情弹窗：后端多为 Unix 秒 */
+function formatDetailTime(val: unknown): string {
+  if (val == null || val === '') return '-'
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    return new Date(val * 1000).toLocaleString()
+  }
+  const d = new Date(String(val))
+  return Number.isNaN(d.getTime()) ? '-' : d.toLocaleString()
+}
+
+function fenToYuan(fen: unknown): string {
+  const n = Number(fen)
+  if (!Number.isFinite(n)) return '0.00'
+  return (n / 100).toFixed(2)
+}
+
+function orderStatusLabel(status: string): string {
+  const map: Record<string, string> = {
+    paid: '已支付',
+    pending: '待支付',
+    cancelled: '已取消',
+    failed: '失败',
+    closed: '已关闭'
+  }
+  return map[status] || status || '-'
 }
 
 // 加载企业列表
@@ -593,6 +915,7 @@ const handleCreateEnterprise = async () => {
     return
   }
   
+  creating.value = true
   try {
     const response = await request.post('/enterprises', {
       name: newEnterprise.name,
@@ -625,19 +948,34 @@ const handleCreateEnterprise = async () => {
   } catch (error: any) {
     console.error('创建企业失败:', error)
     ElMessage.error(error.message || '创建企业失败')
+  } finally {
+    creating.value = false
   }
 }
 
-// 查看详情
-const handleView = async (row: any) => {
+/** 拉取企业详情（支持小程序用户 / 测试记录 / 最近订单分页参数） */
+const fetchEnterpriseDetail = async () => {
+  const id = viewDetailEnterpriseId.value
+  if (id == null) return
   viewLoading.value = true
   try {
-    const response = await request.get(`/enterprises/${row.id}/detail`)
+    const response = await request.get(`/enterprises/${id}/detail`, {
+      params: {
+        wechatPage: detailWechatPage.value,
+        wechatPageSize: detailWechatPageSize.value,
+        testPage: detailTestPage.value,
+        testPageSize: detailTestPageSize.value,
+        orderPage: detailOrderPage.value,
+        orderPageSize: detailOrderPageSize.value
+      }
+    })
     if (response.code === 200 && response.data) {
-      viewEnterpriseData.value = response.data
-      viewEnterpriseUsers.value = response.data.users || []
-      viewEnterpriseTests.value = response.data.testResults || []
-      showViewDialog.value = true
+      const data = response.data
+      viewEnterpriseData.value = data
+      viewEnterpriseUsers.value = Array.isArray(data.wechatUsers) ? data.wechatUsers : data.users || []
+      viewEnterpriseTests.value = Array.isArray(data.miniprogramTestResults)
+        ? data.miniprogramTestResults
+        : data.testResults || []
     }
   } catch (error: any) {
     console.error('获取企业详情失败:', error)
@@ -645,6 +983,38 @@ const handleView = async (row: any) => {
   } finally {
     viewLoading.value = false
   }
+}
+
+// 查看详情
+const handleView = async (row: any) => {
+  viewDetailEnterpriseId.value = row.id
+  detailWechatPage.value = 1
+  detailTestPage.value = 1
+  detailOrderPage.value = 1
+  enterpriseDetailTab.value = 'overview'
+  viewEnterpriseData.value = null
+  viewEnterpriseUsers.value = []
+  viewEnterpriseTests.value = []
+  await fetchEnterpriseDetail()
+  if (viewEnterpriseData.value) {
+    showViewDialog.value = true
+  }
+}
+
+const onDetailWechatSizeChange = (size: number) => {
+  detailWechatPageSize.value = size
+  detailWechatPage.value = 1
+  fetchEnterpriseDetail()
+}
+const onDetailTestSizeChange = (size: number) => {
+  detailTestPageSize.value = size
+  detailTestPage.value = 1
+  fetchEnterpriseDetail()
+}
+const onDetailOrderSizeChange = (size: number) => {
+  detailOrderPageSize.value = size
+  detailOrderPage.value = 1
+  fetchEnterpriseDetail()
 }
 
 // 编辑企业
@@ -855,6 +1225,21 @@ watch([searchTerm, statusFilter], () => {
     }
   }
 
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .toolbar-embedded-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
   .filter-group {
     display: flex;
     background-color: #f3f4f6;
@@ -1000,6 +1385,19 @@ watch([searchTerm, statusFilter], () => {
   }
 }
 
+.detail-dialog {
+  :deep(.el-dialog__body) {
+    padding: 0;
+  }
+}
+
+.enterprise-detail-dialog {
+  :deep(.el-dialog__body) {
+    max-height: 86vh;
+    overflow: hidden;
+  }
+}
+
 .dialog-header {
   .dialog-title {
     font-size: 20px;
@@ -1014,6 +1412,31 @@ watch([searchTerm, statusFilter], () => {
     color: #6b7280;
     margin: 0;
     line-height: 1.5;
+  }
+}
+
+.optimized-form {
+  padding: 0 4px;
+}
+
+.form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background-color: #ef4444;
+    border-radius: 2px;
+    margin-right: 8px;
   }
 }
 
@@ -1109,25 +1532,395 @@ watch([searchTerm, statusFilter], () => {
   width: 100%;
 }
 
-/* 企业详情对话框样式 */
+/* 企业详情：与用户详情 UserDetailDialog 相同的 ud-wrap / ud-side / ud-main 布局 */
 .enterprise-detail-content {
-  max-height: 70vh;
-  overflow-y: auto;
+  max-height: 86vh;
+  padding: 8px 4px 4px;
+  overflow: hidden;
 }
 
-.detail-sections {
+.ud-wrap {
+  display: flex;
+  gap: 14px;
+  align-items: stretch;
+  min-height: 200px;
+  max-height: min(620px, 78vh);
+}
+
+/* 左侧侧栏（与用户详情 UserDetailDialog 同款） */
+.ud-side {
+  width: 200px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #faf5ff 0%, #fff 40%);
+  border: 1px solid #ede9fe;
+  border-radius: 10px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
 }
 
-.detail-section {
-  border-bottom: 1px solid #f3f4f6;
-  padding-bottom: 16px;
-  
-  &:last-child {
-    border-bottom: none;
+.ud-avatar-block {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.ud-avatar-letter {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ud-name {
+  margin-top: 6px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #111827;
+  line-height: 1.3;
+  word-break: break-all;
+}
+
+.ud-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #4b5563;
+  margin-bottom: 6px;
+
+  .el-icon {
+    color: #a855f7;
+    flex-shrink: 0;
   }
+}
+
+.ud-stat-icons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ud-stat-ic {
+  background: #fff;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #f3e8ff;
+  min-width: 0;
+
+  .el-icon {
+    color: #7c3aed;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+.ud-stat-ic--money {
+  font-variant-numeric: tabular-nums;
+}
+
+.ud-tags {
+  margin-top: 12px;
+}
+
+.ud-tags-title {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-bottom: 6px;
+}
+
+.ud-tag {
+  margin: 0 4px 4px 0;
+}
+
+/* 右侧「经营概览」滚动区（对齐 ud-scroll） */
+.ud-scroll {
+  max-height: calc(78vh - 120px);
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ed-overview-scroll {
+  padding-bottom: 8px;
+}
+
+.ud-radar-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ud-radar-cell {
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 6px 4px 4px;
+  text-align: center;
+}
+
+.ed-kpi-cell {
+  padding-bottom: 8px;
+}
+
+.ud-radar-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 4px;
+
+  .el-icon {
+    color: #7c3aed;
+  }
+}
+
+.ed-kpi-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.ed-kpi-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+.ud-row2 {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ud-card {
+  background: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+  padding: 8px 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ud-grow {
+  flex: 1.2;
+}
+
+.ud-card-h {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8px;
+
+  .el-icon {
+    color: #7c3aed;
+  }
+}
+
+.ud-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ud-role {
+  display: grid;
+  grid-template-columns: 72px 1fr 36px;
+  gap: 8px;
+  align-items: center;
+  font-size: 11px;
+}
+
+.ud-role-n {
+  color: #4b5563;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ud-role-p {
+  text-align: right;
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.ud-muted {
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 8px 0;
+}
+
+.ed-order-sum {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+
+  strong {
+    color: #111827;
+    font-size: 13px;
+  }
+}
+
+.ed-stats-hint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.ed-admin-summary {
+  margin-top: 10px;
+}
+
+.ed-admin-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.stats-hint {
+  margin: 12px 0 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+/* 右侧主区（对齐 UserDetailDialog .ud-main） */
+.ud-main {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+
+.ud-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+
+  :deep(.el-tabs__header) {
+    margin: 0;
+    padding: 12px 14px 0;
+  }
+
+  :deep(.el-tabs__active-bar) {
+    background-color: #7c3aed;
+    height: 2px;
+  }
+
+  :deep(.el-tabs__item) {
+    font-size: 13px;
+  }
+
+  :deep(.el-tabs__item.is-active) {
+    color: #7c3aed;
+    font-weight: 600;
+  }
+
+  :deep(.el-tabs__item:hover) {
+    color: #9333ea;
+  }
+
+  :deep(.el-tabs__content) {
+    flex: 1;
+    overflow: hidden;
+    padding: 0 14px 12px;
+  }
+
+  :deep(.el-tab-pane) {
+    height: 100%;
+    overflow-y: auto;
+  }
+}
+
+.tab-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.stats-mini-card {
+  padding: 16px;
+  background-color: #fff;
+  border: 1px solid #f3f4f6;
+  border-radius: 12px;
+  text-align: center;
+}
+
+.card-label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 8px;
+}
+
+.card-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.text-primary { color: #ef4444; }
+.text-success { color: #10b981; }
+
+.analytics-header {
+  display: flex;
+  gap: 32px;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 12px;
+  border: 1px solid #f3f4f6;
+}
+
+.analytics-main-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.analytics-main-stat .label {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.analytics-main-stat .value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.detail-pagination {
+  margin-top: 16px;
+  justify-content: center;
 }
 
 .section-title {
@@ -1137,59 +1930,11 @@ watch([searchTerm, statusFilter], () => {
   margin: 0 0 12px 0;
 }
 
-.info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px 24px;
-}
-
-.info-item {
-  display: flex;
-  align-items: center;
-}
-
-.info-label {
-  font-weight: 500;
-  color: #6b7280;
-  margin-right: 8px;
-  min-width: 80px;
-}
-
-.info-value {
-  color: #111827;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  padding: 12px;
-  background: #f9fafb;
-  border-radius: 8px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.stat-value {
-  font-size: 20px;
-  font-weight: 600;
-  color: #111827;
-}
-
-.empty-data {
-  padding: 20px;
-  text-align: center;
-  color: #9ca3af;
+.subsection-title {
   font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 10px;
 }
 
 .empty-placeholder-small {
@@ -1210,6 +1955,23 @@ watch([searchTerm, statusFilter], () => {
     font-size: 13px;
     color: #9ca3af;
     margin: 0;
+  }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
+}
+
+@media (max-width: 900px) {
+  .ud-wrap {
+    flex-direction: column;
+    max-height: none;
+  }
+  .ud-side {
+    width: 100%;
+  }
+  .ud-radar-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

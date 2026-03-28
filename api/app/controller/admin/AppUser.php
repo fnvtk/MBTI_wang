@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -11,6 +12,7 @@ use think\facade\Request;
  */
 class AppUser extends BaseController
 {
+    use ExtractsTestResults;
     /**
      * 测试用户列表：分页、关键词搜索
      * GET /api/v1/admin/app-users?page=1&pageSize=20&keyword=
@@ -76,9 +78,28 @@ class AppUser extends BaseController
             $baseQuery->where($where);
         }
 
+        // 默认不展示「从未有过测试记录」的用户（企业后台按本企业 test_results 判定）；?includeZeroTests=1 显示全部
+        $includeZeroTests = Request::param('includeZeroTests', '');
+        $showUntested = ($includeZeroTests === '1' || $includeZeroTests === 'true' || $includeZeroTests === true);
+        if (!$showUntested) {
+            $trQ = Db::name('test_results');
+            if ($enterpriseId) {
+                $trQ->where('enterpriseId', (int) $enterpriseId);
+            }
+            $testedUserIds = $trQ->distinct(true)->column('userId');
+            $testedUserIds = array_values(array_unique(array_filter(array_map('intval', $testedUserIds))));
+            if (empty($testedUserIds)) {
+                return paginate_response([], 0, $page, $pageSize);
+            }
+            $baseQuery->whereIn('id', $testedUserIds);
+        }
+
         $total = (int) $baseQuery->count();
         $list = (clone $baseQuery)
-            ->field('id,nickname,openid,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
+            ->field([
+                'id', 'nickname', 'openid', 'avatar', 'phone', 'gender',
+                'country', 'province', 'city', 'status', 'lastLoginAt', 'createdAt',
+            ])
             ->order('createdAt', 'desc')
             ->page($page, $pageSize)
             ->select()
@@ -153,6 +174,9 @@ class AppUser extends BaseController
 
         foreach ($list as &$row) {
             $id = $row['id'];
+            $av = $row['avatar'] ?? '';
+            $row['avatar'] = is_scalar($av) ? trim((string) $av) : '';
+            $row['avatarUrl'] = $row['avatar'];
             $testsForUser = $testTypes[$id] ?? [];
             $row['username'] = $row['nickname'] ?? ('用户' . $id);
             $row['testCount'] = (int) ($testCounts[$id] ?? 0);
@@ -170,6 +194,7 @@ class AppUser extends BaseController
             $row['paidOrders'] = $pay ? (int) ($pay['paidOrders'] ?? 0) : 0;
             $row['totalPaidAmount'] = $pay ? (int) ($pay['totalPaidAmount'] ?? 0) : 0;
         }
+        unset($row);
 
         return paginate_response($list, $total, $page, $pageSize);
     }
@@ -255,104 +280,5 @@ class AppUser extends BaseController
         $data['facePdpType'] = $this->extractFaceSubType($tests, 'pdp');
 
         return success($data);
-    }
-
-    /**
-     * 从测试记录中取出某类型的最近结果（result 可能是 JSON 字符串，取 type 或 result 字段）
-     */
-    private function extractResultType(array $tests, string $type): string
-    {
-        $targetType = strtolower($type);
-        foreach ($tests as $t) {
-            if (strtolower($t['testType'] ?? '') !== $targetType) {
-                continue;
-            }
-            $result = $t['result'] ?? '';
-            if (!is_string($result)) {
-                continue;
-            }
-            $dec = json_decode($result, true);
-            if (!is_array($dec)) {
-                return $targetType === 'face' ? '人脸分析' : trim($result);
-            }
-
-            if ($targetType === 'face') {
-                return '人脸分析';
-            }
-
-            if ($targetType === 'mbti') {
-                return (string) ($dec['mbtiType'] ?? $dec['type'] ?? $dec['result'] ?? '');
-            }
-
-            if ($targetType === 'disc') {
-                $desc = $dec['description']['type'] ?? null;
-                if (is_string($desc) && $desc !== '') {
-                    return $desc;
-                }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
-                }
-                return (string) ($dec['disc'] ?? '');
-            }
-
-            if ($targetType === 'pdp') {
-                $desc = $dec['description']['type'] ?? null;
-                if (is_string($desc) && $desc !== '') {
-                    return $desc;
-                }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
-                }
-                return (string) ($dec['pdp'] ?? '');
-            }
-
-            return (string) ($dec['type'] ?? $dec['result'] ?? '');
-        }
-        return '';
-    }
-
-    /**
-     * 从人脸分析结果中提取对应的 MBTI / DISC / PDP 文本
-     */
-    private function extractFaceSubType(array $tests, string $subType): string
-    {
-        $target = strtolower($subType);
-        foreach ($tests as $t) {
-            if (strtolower($t['testType'] ?? '') !== 'face') {
-                continue;
-            }
-            $result = $t['result'] ?? '';
-            if (!is_string($result)) {
-                continue;
-            }
-            $dec = json_decode($result, true);
-            if (!is_array($dec)) {
-                continue;
-            }
-
-            if ($target === 'mbti') {
-                if (!empty($dec['mbti']['type'])) {
-                    return (string) $dec['mbti']['type'];
-                }
-                if (!empty($dec['mbtiType'])) {
-                    return (string) $dec['mbtiType'];
-                }
-            } elseif ($target === 'disc') {
-                if (!empty($dec['disc']['primary'])) {
-                    return (string) $dec['disc']['primary'];
-                }
-                if (!empty($dec['disc'])) {
-                    return (string) $dec['disc'];
-                }
-            } elseif ($target === 'pdp') {
-                if (!empty($dec['pdp']['primary'])) {
-                    return (string) $dec['pdp']['primary'];
-                }
-                if (!empty($dec['pdp'])) {
-                    return (string) $dec['pdp'];
-                }
-            }
-        }
-        return '';
     }
 }

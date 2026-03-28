@@ -1,15 +1,30 @@
 import axios from 'axios'
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios'
 import { ElMessage } from 'element-plus'
+import {
+  getBearerTokenForCurrentApp,
+  clearAdminAuthKeys,
+  clearSuperadminAuthKeys
+} from '@/utils/authStorage'
 
-// 获取API基础URL
+let lastBizErrorKey = ''
+let lastBizErrorAt = 0
+function showBizErrorOnce(message: string) {
+  const key = message || '请求失败'
+  const now = Date.now()
+  if (key === lastBizErrorKey && now - lastBizErrorAt < 1800) return
+  lastBizErrorKey = key
+  lastBizErrorAt = now
+  ElMessage.error(key)
+}
+
+// 获取API基础URL（开发环境留空 VITE_API_BASE_URL 时走同源 /api/v1，由 Vite 代理到本机后端）
 const getBaseURL = (): string => {
-  const envURL = import.meta.env.VITE_API_BASE_URL
+  const raw = import.meta.env.VITE_API_BASE_URL as string | undefined
+  const envURL = typeof raw === 'string' ? raw.trim() : ''
   if (envURL) {
-    // 如果环境变量是完整URL，拼接 /api/v1
     return envURL.endsWith('/') ? `${envURL}api/v1` : `${envURL}/api/v1`
   }
-  // 默认使用相对路径
   return '/api/v1'
 }
 
@@ -26,7 +41,7 @@ const service: AxiosInstance = axios.create({
 service.interceptors.request.use(
   (config) => {
     // 可以在这里添加 token
-    const token = localStorage.getItem('authToken')
+    const token = getBearerTokenForCurrentApp()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -45,7 +60,7 @@ service.interceptors.response.use(
 
     // 如果返回的状态码不是 200，则认为是错误
     if (res.code && res.code !== 200) {
-      ElMessage.error(res.message || '请求失败')
+      showBizErrorOnce(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))
     }
 
@@ -59,21 +74,15 @@ service.interceptors.response.use(
       
       if (status === 401) {
         ElMessage.error('未授权，请重新登录')
-        // 清除所有登录状态和Token
-        localStorage.removeItem('authToken')
-        localStorage.removeItem('userRole')
-        localStorage.removeItem('userId')
-        localStorage.removeItem('adminLoggedIn')
-        localStorage.removeItem('superAdminLoggedIn')
-        
-        // 根据当前路径跳转到对应登录页
         if (window.location.pathname.startsWith('/superadmin')) {
+          clearSuperadminAuthKeys()
           window.location.href = '/superadmin/login'
         } else {
+          clearAdminAuthKeys()
           window.location.href = '/admin/login'
         }
       } else if (status === 403) {
-        ElMessage.error('拒绝访问')
+        showBizErrorOnce(data?.message || '拒绝访问')
       } else if (status === 404) {
         ElMessage.error('请求地址不存在')
       } else if (status === 500) {

@@ -91,7 +91,7 @@
         <text class="relationship-text">{{mbtiDesc.relationships}}</text>
       </view>
 
-      <view class="action-section">
+      <!-- <view class="action-section">
         <button class="btn btn-primary" open-type="share">
           <text class="btn-text">分享结果</text>
         </button>
@@ -101,7 +101,7 @@
         <view class="btn btn-outline" bindtap="goHome">
           <text class="btn-text-outline">返回首页</text>
         </view>
-      </view>
+      </view> -->
     </view>
   </scroll-view>
 </view>

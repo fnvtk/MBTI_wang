@@ -29,7 +29,7 @@ Page({
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
       siteTitle: gd.reviewMode ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: gd.reviewMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      startButtonText: gd.reviewMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
       aiAnalysisText: gd.reviewMode ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: !!gd.reviewMode
     })
@@ -48,7 +48,7 @@ Page({
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
-            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '开始面相测试'),
+            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '拍摄'),
             aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
@@ -108,7 +108,7 @@ Page({
     const rm = !!gd.reviewMode
     this.setData({
       siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '开始面相测试'),
+      startButtonText: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
       aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm
     })
@@ -132,14 +132,10 @@ Page({
     }
   },
 
-  // 开始测试（审核模式跳问卷，正常模式跳拍照）
+  // 与底栏中间一致：始终进入拍摄 Tab（审核态在 camera 页内展示问卷引导）
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    if (this.data.reviewMode) {
-      wx.navigateTo({ url: '/pages/test-select/index' })
-    } else {
-      wx.switchTab({ url: '/pages/index/camera' })
-    }
+    wx.switchTab({ url: '/pages/index/camera' })
   },
 
   // 上传照片（个人版入口：强制本次链路为个人定价）

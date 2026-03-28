@@ -1,7 +1,7 @@
 // pages/purchase/index.js - 开通会员（深度服务价格：个人/企业区分，类目由后端配置可新增）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -22,12 +22,12 @@ Page({
   onLoad(options) {
     const tab = (options && options.tab === 'enterprise') ? 'enterprise' : 'personal'
     this.setData({ activeTab: tab })
-    wx.setNavigationBarTitle({ title: tab === 'enterprise' ? '开通企业版' : '开通个人版' })
+    wx.setNavigationBarTitle({ title: '深度服务' })
     this.loadDeepPricing()
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
+    // 不在此页强制跳转资料页：避免与付费按钮上的手机号授权打架导致死循环；未绑手机由按钮 open-type 引导
     this.setData({ hasPhone: hasPhone() })
   },
 
@@ -72,7 +72,9 @@ Page({
 
   switchTab(e) {
     const tab = e.currentTarget.dataset.tab
+    if (tab !== 'personal' && tab !== 'enterprise') return
     this.setData({ activeTab: tab })
+    wx.setNavigationBarTitle({ title: '深度服务' })
   },
 
   // 无需再次授权时，直接点击按钮执行购买/咨询
@@ -82,9 +84,8 @@ Page({
     this.handlePurchase(tab, index)
   },
 
-  // 实际执行购买/咨询逻辑（已确保有手机号）
+  // 实际执行购买/咨询逻辑（手机号由外层 getPhoneNumber 或 hasPhone 分支保证）
   handlePurchase(tab, index) {
-    if (!ensureProfileCompleteAndRedirect()) return
     if (index === undefined || index === null) return
     const list = tab === 'enterprise' ? this.data.enterpriseCategories : this.data.personalCategories
     const category = list[index]
@@ -181,6 +182,8 @@ Page({
       }
     })
   },
+
+  catchTap() {},
 
   closeSuccessModal() {
     this.setData({ 'successModal.visible': false })

@@ -21,6 +21,8 @@ Route::group('api', function () {
     Route::get('config/runtime', 'api.AppConfig/runtime');
     Route::get('config/deep-pricing', 'api.AppConfig/deepPricing');
     Route::post('analyze', 'api.Analyze/index');
+    // 小程序埋点批量上报（无需登录；带 token 时关联 user_id）
+    Route::post('analytics/events', 'api.Analytics/batch');
 })->middleware('cors');
 
 // 前端需要认证的API路由
@@ -168,6 +170,14 @@ Route::group('api/v1/superadmin', function () {
     // 超级管理员认证
     Route::get('auth/me', 'superadmin.Auth/me');
     Route::post('auth/logout', 'superadmin.Auth/logout');
+
+    // 全平台订单列表（与 admin.Order 共用逻辑，超管不限企业）
+    Route::get('orders', 'admin.Order/index');
+
+    // 将无 enterpriseId 的订单/测试等归并到指定企业（仅超管；默认预览）
+    Route::post('data-migration/attach-orphan-orders', 'superadmin.DataMigration/attachOrphanOrders');
+    // 将全平台无归属测试记录/小程序用户并入「存客宝」或指定企业（仅超管）
+    Route::post('data-migration/attach-orphans-to-cunkbao', 'superadmin.DataMigration/attachOrphansToCunkbao');
     
     // 企业管理（超管专用）
     // 注意：带参数的路由要放在不带参数的路由之前，避免路由匹配冲突
@@ -255,6 +265,10 @@ Route::group('api/v1/superadmin', function () {
     Route::post('distribution/withdrawals/:id/reject', 'superadmin.Distribution/rejectWithdrawal');
     Route::get('distribution/settings', 'superadmin.Distribution/settings');
     Route::put('distribution/settings', 'superadmin.Distribution/updateSettings');
+
+    // 小程序埋点统计（仅超管）
+    Route::get('analytics/summary', 'superadmin.Analytics/summary');
+    Route::get('analytics/events', 'superadmin.Analytics/events');
 })->middleware(['cors', 'auth', 'superadmin']);
 
 // ==================== 兼容旧版路由（保留，逐步废弃）====================

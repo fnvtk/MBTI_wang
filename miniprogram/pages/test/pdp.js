@@ -23,15 +23,16 @@ Page({
   onLoad() {
     const questions = shuffleQuestions(pdpQuestions)
     this.setData({ questions, currentQuestion: questions[0] })
+    try { require('../../utils/analytics').track('test_start', { type: 'pdp', total: questions.length }) } catch (e) {}
     this.startTimer()
   },
 
   onUnload() {
-    if (this.timer) clearInterval(this.timer)
     if (this._advanceTimer) {
       clearTimeout(this._advanceTimer)
       this._advanceTimer = null
     }
+    if (this.timer) clearInterval(this.timer)
   },
 
   startTimer() {
@@ -57,38 +58,48 @@ Page({
   },
 
   selectAnswer(e) {
-    const value = e.currentTarget.dataset.value
-    const q = this.data.currentQuestion
-    if (value === undefined || value === null || !q || q.id === undefined) return
-
     if (this._advanceTimer) {
       clearTimeout(this._advanceTimer)
       this._advanceTimer = null
     }
+    const value = e.currentTarget.dataset.value
+    const cq = this.data.currentQuestion
+    if (value == null || !cq || cq.id == null) return
 
-    const questionId = q.id
+    const questionId = cq.id
+    const idx = this.data.currentIndex
+    const tot = this.data.total
     const answers = { ...this.data.answers }
     answers[questionId] = value
+    const answeredCount = Object.keys(answers).length
 
-    this.setData({
-      selectedAnswer: value,
-      answers: answers,
-      answeredCount: Object.keys(answers).length,
-      progress: (Object.keys(answers).length / this.data.total) * 100
-    }, () => {
-      if (this._advanceTimer) {
-        clearTimeout(this._advanceTimer)
+    this.setData(
+      {
+        selectedAnswer: value,
+        answers,
+        answeredCount,
+        progress: tot ? (answeredCount / tot) * 100 : 0
+      },
+      () => {
+        this._advanceTimer = setTimeout(() => {
+          this._advanceTimer = null
+          const d = this.data
+          if (d.currentIndex !== idx || !d.currentQuestion || d.currentQuestion.id !== questionId) return
+          if (idx < tot - 1) {
+            this.nextQuestion()
+          } else {
+            this.submitTest()
+          }
+        }, 300)
       }
-      this._advanceTimer = setTimeout(() => {
-        this._advanceTimer = null
-        if (this.data.currentIndex < this.data.total - 1) {
-          this.nextQuestion()
-        }
-      }, 300)
-    })
+    )
   },
 
   prevQuestion() {
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
     if (this.data.currentIndex > 0) {
       const newIndex = this.data.currentIndex - 1
       const newQuestion = this.data.questions[newIndex]
@@ -114,6 +125,10 @@ Page({
 
   submitTest() {
     if (this.data.isSubmitting) return
+    if (this.timer) {
+      clearInterval(this.timer)
+      this.timer = null
+    }
     this.setData({ isSubmitting: true })
 
     const scores = { Tiger: 0, Peacock: 0, Koala: 0, Owl: 0, Chameleon: 0 }
@@ -144,6 +159,7 @@ Page({
 
     // 本地缓存 + 全局缓存
     wx.setStorageSync('pdpResult', resultData)
+    try { require('../../utils/analytics').track('test_complete', { type: 'pdp', result: dominantType, duration: resultData.testDuration }) } catch (e) {}
     if (app && typeof app.saveTestResult === 'function') {
       app.saveTestResult('pdp', resultData)
     }

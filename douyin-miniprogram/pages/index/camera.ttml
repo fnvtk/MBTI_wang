@@ -1,5 +1,13 @@
-<!--pages/index/camera.wxml - 拍照页面-->
-<view class="container" tt:if="{{!reviewMode}}">
+<!--pages/index/camera.ttml - 拍照页面-->
+<view class="camera-page-root">
+<view class="container review-mode-panel" tt:if="{{reviewMode}}">
+  <view class="review-mode-card">
+    <text class="review-mode-title">问卷审核模式</text>
+    <text class="review-mode-desc">当前未开放实时拍摄面相，请先做 MBTI / DISC / PDP 等问卷测试；后台关闭「审核模式」后即可使用拍摄报告。</text>
+    <view class="review-mode-btn" bindtap="goToQuestionnaire">去做性格测试</view>
+  </view>
+</view>
+<view class="container" tt:else>
   <view class="progress-section">
     <view class="progress-info">
       <text class="step-text">步骤 {{photoIndex + 1}}/3</text>
@@ -59,11 +67,11 @@
     </view>
   </view>
 
-  <!-- 手机号授权入口：仅在未授权时显示，就地弹出微信系统手机号授权 -->
   <view class="phone-auth-section" tt:if="{{needPhoneAuth}}">
     <text class="phone-auth-tip">为保障服务与联系，请先授权手机号。</text>
     <button class="phone-auth-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
-      授权手机号后开始查看报告
+      授权手机号后继续拍摄
     </button>
   </view>
+</view>
 </view>

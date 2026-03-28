@@ -40,7 +40,7 @@
       },
       {
         "pagePath": "pages/index/camera",
-        "text": "查看报告",
+        "text": "拍摄",
         "iconPath": "images/camera.png",
         "selectedIconPath": "images/camera-active.png"
       },

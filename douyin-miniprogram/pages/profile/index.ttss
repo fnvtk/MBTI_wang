@@ -259,6 +259,91 @@ page {
   margin-bottom: 20rpx;
 }
 
+.depth-parse-title {
+  letter-spacing: 4rpx;
+  margin-bottom: 16rpx;
+}
+
+.depth-unified-card {
+  background: #FFFFFF;
+  border-radius: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.05);
+  border: 1rpx solid rgba(0,0,0,0.04);
+}
+
+.depth-unified-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28rpx 32rpx 12rpx;
+}
+
+.depth-unified-subtitle {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #374151;
+}
+
+.depth-header-link {
+  display: flex;
+  align-items: center;
+  gap: 4rpx;
+}
+
+.depth-header-link:active {
+  opacity: 0.75;
+}
+
+.depth-header-link-text {
+  font-size: 24rpx;
+  color: #F43F5E;
+  font-weight: 500;
+}
+
+.depth-header-chevron {
+  font-size: 28rpx;
+  color: #F43F5E;
+  font-weight: 300;
+}
+
+.depth-empty-hint {
+  padding: 8rpx 32rpx 20rpx;
+}
+
+.depth-empty-hint text {
+  font-size: 24rpx;
+  color: #9CA3AF;
+  line-height: 1.55;
+}
+
+.depth-empty-hint--compact {
+  padding-top: 4rpx;
+  padding-bottom: 16rpx;
+}
+
+.depth-inner-divider {
+  height: 1rpx;
+  background: #F3F4F6;
+  margin: 8rpx 32rpx 0;
+}
+
+.cards-scroll--in-card {
+  width: 100%;
+}
+
+.cards-row--in-card {
+  padding: 8rpx 24rpx 20rpx;
+}
+
+.menu-item--flat {
+  padding: 28rpx 32rpx;
+}
+
+.menu-divider--in-card {
+  margin: 0 32rpx;
+}
+
 .section-header .section-title {
   margin-bottom: 0;
 }
@@ -303,6 +388,29 @@ page {
   flex-shrink: 0;
 }
 
+.result-card--placeholder {
+  background: #f3f4f6 !important;
+  border-color: #e5e7eb !important;
+  box-shadow: none !important;
+}
+
+.result-card--placeholder .card-deco {
+  opacity: 0.12 !important;
+}
+
+.result-card--placeholder .card-label,
+.result-card--placeholder .card-time {
+  color: #9ca3af !important;
+}
+
+.result-card--placeholder .card-value {
+  color: #6b7280 !important;
+}
+
+.result-card--placeholder .card-icon-wrap {
+  opacity: 0.65;
+}
+
 .card-deco {
   position: absolute;
   top: -24rpx;
@@ -317,6 +425,7 @@ page {
 .card-blue .card-deco   { background: #BFDBFE; }
 .card-orange .card-deco { background: #FDE68A; }
 .card-rose .card-deco   { background: #FECDD3; }
+.card-teal .card-deco   { background: #99f6e4; }
 
 .card-icon-wrap {
   width: 64rpx;
@@ -331,6 +440,7 @@ page {
 .card-icon-blue   { background: #DBEAFE; }
 .card-icon-orange { background: #FEF3C7; }
 .card-icon-rose   { background: #FFE4E6; }
+.card-icon-teal   { background: #ccfbf1; }
 
 .card-icon {
   font-size: 32rpx;
@@ -352,6 +462,17 @@ page {
 .card-blue .card-value   { color: #2563EB; }
 .card-orange .card-value { color: #D97706; }
 .card-rose .card-value   { color: #E11D48; }
+.card-teal .card-value   { color: #0f766e; }
+
+.card-value--small {
+  font-size: 26rpx !important;
+  font-weight: 700 !important;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
 
 .card-time {
   font-size: 20rpx;

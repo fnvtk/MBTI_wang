@@ -1,7 +1,7 @@
 <template>
-  <div class="page-container">
-    <div class="page-header">
-      <div class="header-left">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
+    <div class="page-header" :class="{ 'header-embedded': embedded }">
+      <div v-if="!embedded" class="header-left">
         <h2>数据库管理</h2>
         <p class="subtitle">管理数据库连接、备份和恢复</p>
       </div>
@@ -151,6 +151,8 @@ import { ref, onMounted, computed } from 'vue'
 import { DocumentCopy, Search, View, Download, Delete, RefreshLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const loading = ref(false)
 const searchTerm = ref('')
@@ -479,5 +481,13 @@ onMounted(() => {
   .info-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+}
+
+.page-container.is-embedded {
+  min-height: auto;
+}
+
+.page-header.header-embedded {
+  justify-content: flex-end;
 }
 </style>

@@ -39,7 +39,9 @@ Page({
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }
-    if (!ensureProfileCompleteAndRedirect()) return
+    if (!ensureProfileCompleteAndRedirect()) {
+      return
+    }
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1 })
     }
@@ -170,7 +172,11 @@ Page({
 
   // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
   completeCapture() {
-    if (!ensureProfileCompleteAndRedirect()) return
+    if (!hasPhone()) {
+      wx.showToast({ title: '请先授权手机号', icon: 'none' })
+      this.setData({ needPhoneAuth: true })
+      return
+    }
     const urls = (this.data.uploadedUrls || []).filter(Boolean)
     if (!urls.length) {
       wx.showToast({ title: '请先上传至少一张照片', icon: 'none' })

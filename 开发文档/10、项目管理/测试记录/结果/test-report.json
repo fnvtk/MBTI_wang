@@ -1,0 +1,69 @@
+{
+  "测试时间": "2026-02-10T07:56:22.337Z",
+  "页面URL": "http://localhost:3002/superadmin/ai-config",
+  "测试状态": "成功",
+  "测试结果": {
+    "登录成功": true,
+    "页面加载": true,
+    "AI服务商列表": {
+      "显示": true,
+      "已找到": [
+        "OpenAI",
+        "Anthropic",
+        "DeepSeek",
+        "Moonshot",
+        "Groq",
+        "Coze",
+        "通义千问",
+        "智谱"
+      ],
+      "未找到": [],
+      "完成度": "8/8"
+    },
+    "查询余额按钮": true,
+    "统计概览卡片": {
+      "显示": true,
+      "已找到": [
+        "服务商总数",
+        "已启用",
+        "已配置密钥",
+        "余额告警"
+      ],
+      "完成度": "4/4"
+    },
+    "控制台消息数": 15,
+    "页面错误数": 4,
+    "失败请求数": 5
+  },
+  "截图位置": "/Users/karuo/Documents/开发/3、自营项目/MBTI/test-screenshots",
+  "控制台消息": [
+    "[info] %cDownload the React DevTools for a better development experience: https://reactjs.org/link/react-devtools font-weight:bold",
+    "[error] Warning: Text content did not match. Server: \"%s\" Client: \"%s\"%s \nhtml {\n  font-family: &#x27;__GeistSans_ac79ff&#x27;, &#x27;__GeistSans_Fallback_ac79ff&#x27;;\n  --font-sans: __variable_ac79ff;\n  --font-mono: __variable_8a4d12;\n}\n         \nhtml {\n  font-family: '__GeistSans_ac79ff', '__GeistSans_Fallback_ac79ff';\n  --font-sans: __variable_ac79ff;\n  --font-mono: __variable_8a4d12;\n}\n         \n    at style\n    at head\n    at html\n    at RootLayout (Server)\n    at RedirectErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/redirect-boundary.js:74:9)\n    at RedirectBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/redirect-boundary.js:82:11)\n    at NotFoundErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/not-found-boundary.js:76:9)\n    at NotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/not-found-boundary.js:84:11)\n    at DevRootNotFoundBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/dev-root-not-found-boundary.js:33:11)\n    at ReactDevOverlay (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/react-dev-overlay/app/ReactDevOverlay.js:87:9)\n    at HotReload (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/react-dev-overlay/app/hot-reloader-client.js:321:11)\n    at Router (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/app-router.js:207:11)\n    at ErrorBoundaryHandler (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/error-boundary.js:113:9)\n    at ErrorBoundary (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/error-boundary.js:160:11)\n    at AppRouter (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/components/app-router.js:585:13)\n    at ServerRoot (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/app-index.js:112:27)\n    at Root (webpack-internal:///(app-pages-browser)/./node_modules/.pnpm/next@14.2.16_@playwright+test@1.58.2_react-dom@18.0.0_react@18.0.0__react@18.0.0/node_modules/next/dist/client/app-index.js:117:11)",
+    "[error] Warning: An error occurred during hydration. The server HTML was replaced with client content in <%s>. #document",
+    "[log] [Fast Refresh] rebuilding",
+    "[log] [Fast Refresh] done in 139ms",
+    "[log] [Fast Refresh] done in 163ms",
+    "[log] [Fast Refresh] rebuilding",
+    "[log] [Fast Refresh] done in 115ms",
+    "[log] [Fast Refresh] rebuilding",
+    "[log] [Fast Refresh] done in 342ms",
+    "[log] [Fast Refresh] rebuilding",
+    "[log] [Fast Refresh] done in 129ms",
+    "[log] [Fast Refresh] rebuilding",
+    "[log] [Fast Refresh] done in 386ms",
+    "[log] [Fast Refresh] rebuilding"
+  ],
+  "页面错误": [
+    "Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+    "Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+    "Error: Text content does not match server-rendered HTML.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error",
+    "Error: There was an error while hydrating. Because the error happened outside of a Suspense boundary, the entire root will switch to client rendering.\nSee more info here: https://nextjs.org/docs/messages/react-hydration-error"
+  ],
+  "失败请求": [
+    "http://localhost:3002/superadmin?_rsc=hslbz - net::ERR_ABORTED",
+    "http://localhost:3002/superadmin?_rsc=1uavj - net::ERR_ABORTED",
+    "http://localhost:3002/superadmin/ai-config?_rsc=1ur82 - net::ERR_ABORTED",
+    "http://localhost:3002/superadmin/ai-config?_rsc=161kx - net::ERR_ABORTED",
+    "http://localhost:3002/superadmin/ai-config?_rsc=1lze6 - net::ERR_ABORTED"
+  ]
+}

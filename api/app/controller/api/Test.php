@@ -282,6 +282,7 @@ class Test extends BaseController
         $resultText = '';
         $emoji      = '';
         $typeName   = '';
+        $gallupPreview = '';
 
         switch ($testType) {
             case 'mbti':
@@ -314,7 +315,17 @@ class Test extends BaseController
                 break;
         }
 
-        return [
+        if (in_array($testType, ['face', 'ai'], true)) {
+            $g = $data['gallupTop3'] ?? null;
+            if (is_array($g) && $g !== []) {
+                $slice = array_slice($g, 0, 3);
+                $gallupPreview = implode('、', array_map(static function ($x) {
+                    return (string) $x;
+                }, $slice));
+            }
+        }
+
+        $out = [
             'id'              => (int) $row['id'],
             'testType'        => ($testType === 'face') ? 'ai' : $testType,
             'emoji'           => $emoji,
@@ -324,6 +335,11 @@ class Test extends BaseController
             'isPaid'          => (int) ($row['isPaid'] ?? 0),
             'requiresPayment' => (int) ($row['requiresPayment'] ?? 0),
         ];
+        if ($gallupPreview !== '') {
+            $out['gallupPreview'] = $gallupPreview;
+        }
+
+        return $out;
     }
 
     /**
@@ -491,12 +507,15 @@ class Test extends BaseController
 
             if ($id > 0) {
                 UserProfileModel::recordTest($userId, $testType, $id, $writeEnterpriseId, $now);
-                // 仅当 enterpriseId 来自请求体（企业分享链接）时才更新绑定关系
-                if ($enterpriseFromRequest && $enterpriseId !== null && $enterpriseId > 0) {
-                    Db::name('wechat_users')->where('id', $userId)->update([
-                        'enterpriseId' => $enterpriseId,
-                        'updatedAt'    => $now,
-                    ]);
+                // 用户尚无企业归属时，从本次测试上下文补写（请求体带 eid 或已绑定企业回落值）
+                if ($writeEnterpriseId !== null && (int) $writeEnterpriseId > 0) {
+                    $curEid = Db::name('wechat_users')->where('id', $userId)->value('enterpriseId');
+                    if ($curEid === null || $curEid === '' || (int) $curEid === 0) {
+                        Db::name('wechat_users')->where('id', $userId)->update([
+                            'enterpriseId' => (int) $writeEnterpriseId,
+                            'updatedAt'    => $now,
+                        ]);
+                    }
                 }
                 // 测试完成佣金结算（无需付款，异步不影响主流程）
                 try {
@@ -632,6 +651,9 @@ class Test extends BaseController
         $out['hrView'] = null;
         $out['bossView'] = null;
         $out['resumeHighlights'] = '';
+        $out['careerDevelopment'] = '';
+        $out['familyParenting'] = '';
+        $out['partnerCofounder'] = '';
         if (isset($out['careers'])) {
             $out['careers'] = [];
         }

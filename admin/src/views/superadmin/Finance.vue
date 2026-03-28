@@ -1,8 +1,8 @@
 <template>
-  <div class="page-container">
+  <div class="page-container" :class="{ 'is-embedded': embedded }">
     <!-- 页面标题 -->
-    <div class="page-header">
-      <div class="header-left">
+    <div class="page-header" :class="{ 'header-embedded': embedded }">
+      <div v-if="!embedded" class="header-left">
         <h2>财务管理</h2>
         <p class="subtitle">收入、成本及利润分析</p>
       </div>
@@ -326,6 +326,8 @@ import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import { formatMoneyYuan } from '@/utils/format'
 
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
 const activeTab = ref('revenue')
 const overviewLoading = ref(false)
 
@@ -503,6 +505,15 @@ watch(activeTab, (tab) => {
     display: flex;
     gap: 12px;
   }
+
+  &.header-embedded {
+    justify-content: flex-end;
+  }
+}
+
+.page-container.is-embedded {
+  padding-top: 0;
+  min-height: auto;
 }
 
 .zero-hint {

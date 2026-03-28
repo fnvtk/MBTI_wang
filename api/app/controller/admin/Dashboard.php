@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -10,6 +11,7 @@ use think\facade\Request;
  */
 class Dashboard extends BaseController
 {
+    use ExtractsTestResults;
     /**
      * 获取统计数据
      * @return \think\response\Json
@@ -138,16 +140,265 @@ class Dashboard extends BaseController
                 }
             }
 
+            $topTestUsers = $this->buildTopTestUsers($enterpriseId, 10);
+
+            $testCatalog = $this->buildTestCatalog($enterpriseId);
+            $distributionMbti = $this->aggregateTestLabels($enterpriseId, 'mbti', 14);
+            $distributionDisc = $this->aggregateTestLabels($enterpriseId, 'disc', 12);
+            $distributionPdp = $this->aggregateTestLabels($enterpriseId, 'pdp', 12);
+            $faceSubtypeHints = $this->aggregateFaceSubtypeHints($enterpriseId, 8);
+
             return success([
                 'totalUsers' => $totalUsers,
                 'testsCompleted' => $testsCompleted,
                 'activeToday' => $activeToday,
                 'pendingReviews' => $pendingReviews,
                 'testTrends' => $trendData,
+                'topTestUsers' => $topTestUsers,
+                'testCatalog' => $testCatalog,
+                'distributionMbti' => $distributionMbti,
+                'distributionDisc' => $distributionDisc,
+                'distributionPdp' => $distributionPdp,
+                'faceSubtypeHints' => $faceSubtypeHints,
             ]);
         } catch (\Exception $e) {
             return error('获取统计数据失败：' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * 按测试完成次数排序，取前 N 名小程序用户（与列表页口径一致：test_results 按企业过滤）
+     */
+    private function buildTopTestUsers(?int $enterpriseId, int $limit = 10): array
+    {
+        $limit = min(max($limit, 1), 50);
+        $q = Db::name('test_results')->field('userId, COUNT(*) as cnt')->group('userId')->order('cnt', 'desc')->limit($limit);
+        if ($enterpriseId) {
+            $q->where('enterpriseId', $enterpriseId);
+        }
+        $rankRows = $q->select()->toArray();
+        if (empty($rankRows)) {
+            return [];
+        }
+        $uids = array_values(array_filter(array_map(static function ($r) {
+            return (int) ($r['userId'] ?? 0);
+        }, $rankRows)));
+        $countMap = [];
+        foreach ($rankRows as $r) {
+            $uid = (int) ($r['userId'] ?? 0);
+            if ($uid > 0) {
+                $countMap[$uid] = (int) ($r['cnt'] ?? 0);
+            }
+        }
+        if (empty($uids)) {
+            return [];
+        }
+
+        $users = Db::name('wechat_users')
+            ->whereIn('id', $uids)
+            ->field('id,nickname,phone,avatar,createdAt')
+            ->select()
+            ->toArray();
+        $userMap = [];
+        foreach ($users as $u) {
+            $userMap[(int) $u['id']] = $u;
+        }
+
+        $trQuery = Db::name('test_results')->whereIn('userId', $uids);
+        if ($enterpriseId) {
+            $trQuery->where('enterpriseId', $enterpriseId);
+        }
+        $testRows = $trQuery
+            ->field('userId, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->select()
+            ->toArray();
+
+        $testsByUser = [];
+        foreach ($testRows as $row) {
+            $uid = (int) ($row['userId'] ?? 0);
+            if ($uid <= 0) {
+                continue;
+            }
+            if (!isset($testsByUser[$uid])) {
+                $testsByUser[$uid] = [];
+            }
+            $raw = $row['resultData'] ?? '';
+            $testsByUser[$uid][] = [
+                'testType'  => $row['testType'] ?? '',
+                'result'    => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                'createdAt' => (int) ($row['createdAt'] ?? 0),
+            ];
+        }
+
+        $out = [];
+        foreach ($uids as $uid) {
+            $wu = $userMap[$uid] ?? null;
+            $tests = $testsByUser[$uid] ?? [];
+            $lastAt = 0;
+            foreach ($tests as $t) {
+                $lastAt = max($lastAt, (int) ($t['createdAt'] ?? 0));
+            }
+            $out[] = [
+                'id'            => $uid,
+                'username'      => $wu ? ($wu['nickname'] ?? ('用户' . $uid)) : ('用户' . $uid),
+                'nickname'      => $wu ? ($wu['nickname'] ?? '') : '',
+                'phone'         => $wu ? ($wu['phone'] ?? '') : '',
+                'avatar'        => $wu ? ($wu['avatar'] ?? '') : '',
+                'testCount'     => $countMap[$uid] ?? 0,
+                'lastTestAt'    => $lastAt > 0 ? $lastAt : null,
+                'mbtiType'      => $this->extractResultType($tests, 'mbti'),
+                'pdpType'       => $this->extractResultType($tests, 'pdp'),
+                'discType'      => $this->extractResultType($tests, 'disc'),
+                'faceMbtiType'  => $this->extractFaceSubType($tests, 'mbti'),
+                'faceDiscType'  => $this->extractFaceSubType($tests, 'disc'),
+                'facePdpType'   => $this->extractFaceSubType($tests, 'pdp'),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * 四类测评完成人次 / 参与人数（本企业口径）
+     *
+     * @return array<int, array{key:string,label:string,records:int,uniqueUsers:int}>
+     */
+    private function buildTestCatalog(?int $enterpriseId): array
+    {
+        $defs = [
+            ['key' => 'face', 'label' => '人脸分析'],
+            ['key' => 'mbti', 'label' => 'MBTI'],
+            ['key' => 'disc', 'label' => 'DISC'],
+            ['key' => 'pdp', 'label' => 'PDP'],
+        ];
+        $out = [];
+        foreach ($defs as $def) {
+            $tt = $def['key'];
+            $q = Db::name('test_results')->where('testType', $tt);
+            if ($enterpriseId) {
+                $q->where('enterpriseId', $enterpriseId);
+            }
+            $records = (int) $q->count();
+            $q2 = Db::name('test_results')->where('testType', $tt);
+            if ($enterpriseId) {
+                $q2->where('enterpriseId', $enterpriseId);
+            }
+            $uniqueUsers = (int) $q2->distinct(true)->count('userId');
+            $out[] = [
+                'key'         => $tt,
+                'label'       => $def['label'],
+                'records'     => $records,
+                'uniqueUsers' => $uniqueUsers,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * 按结果标签聚合单类测评（与列表摘要同一解析逻辑）
+     *
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function aggregateTestLabels(?int $enterpriseId, string $testType, int $topN): array
+    {
+        $counts = [];
+        $query = Db::name('test_results')
+            ->where('testType', $testType)
+            ->field('id,resultData');
+        if ($enterpriseId) {
+            $query->where('enterpriseId', $enterpriseId);
+        }
+        $query->chunk(400, function ($rows) use (&$counts, $testType) {
+            foreach ($rows as $row) {
+                $raw = $row['resultData'] ?? '';
+                $label = $this->labelFromResultRow($testType, $raw);
+                if ($label === '') {
+                    $label = '未识别';
+                }
+                $counts[$label] = ($counts[$label] ?? 0) + 1;
+            }
+        });
+        arsort($counts);
+
+        return $this->countsToTopNWithOther($counts, $topN);
+    }
+
+    /**
+     * 人脸结果中推测的 MBTI / DISC / PDP 标签分布（辅助「面相」侧报告）
+     *
+     * @return array{mbti:array,disc:array,pdp:array}
+     */
+    private function aggregateFaceSubtypeHints(?int $enterpriseId, int $topN): array
+    {
+        $subMaps = ['mbti' => [], 'disc' => [], 'pdp' => []];
+        $query = Db::name('test_results')
+            ->where('testType', 'face')
+            ->field('id,resultData');
+        if ($enterpriseId) {
+            $query->where('enterpriseId', $enterpriseId);
+        }
+        $query->chunk(400, function ($rows) use (&$subMaps) {
+            foreach ($rows as $row) {
+                $raw = $row['resultData'] ?? '';
+                $str = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+                if ($str === '' || $str === 'null') {
+                    continue;
+                }
+                foreach (['mbti', 'disc', 'pdp'] as $sub) {
+                    $label = $this->extractFaceSubType([['testType' => 'face', 'result' => $str]], $sub);
+                    if ($label === '') {
+                        continue;
+                    }
+                    $subMaps[$sub][$label] = ($subMaps[$sub][$label] ?? 0) + 1;
+                }
+            }
+        });
+
+        $out = [];
+        foreach ($subMaps as $k => $counts) {
+            arsort($counts);
+            $out[$k] = $this->countsToTopNWithOther($counts, $topN);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param array<string,int> $counts
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function countsToTopNWithOther(array $counts, int $topN): array
+    {
+        $topN = min(max($topN, 1), 50);
+        $items = [];
+        $i = 0;
+        $other = 0;
+        foreach ($counts as $label => $c) {
+            $c = (int) $c;
+            if ($i < $topN) {
+                $items[] = ['label' => (string) $label, 'count' => $c];
+                $i++;
+            } else {
+                $other += $c;
+            }
+        }
+        if ($other > 0) {
+            $items[] = ['label' => '其他', 'count' => $other];
+        }
+
+        return $items;
+    }
+
+    private function labelFromResultRow(string $testType, $raw): string
+    {
+        $str = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+        if ($str === '' || $str === 'null') {
+            return '';
+        }
+
+        return $this->extractResultType([['testType' => $testType, 'result' => $str]], $testType);
     }
 
     /**

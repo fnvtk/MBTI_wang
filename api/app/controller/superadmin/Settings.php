@@ -2,6 +2,7 @@
 namespace app\controller\superadmin;
 
 use app\BaseController;
+use app\common\service\FeishuLeadWebhookService;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\User as UserModel;
 use app\model\Enterprise as EnterpriseModel;
@@ -272,6 +273,69 @@ class Settings extends BaseController
         } catch (\Exception $e) {
             return error('保存失败：' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * 飞书获客 Webhook（与 admin 共用配置）
+     */
+    public function getFeishuLeadConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+        $cfg = FeishuLeadWebhookService::getConfig();
+        return success([
+            'enabled'       => !empty($cfg['enabled']),
+            'webhookUrl'    => (string) ($cfg['webhookUrl'] ?? ''),
+            'contactPerson' => (string) ($cfg['contactPerson'] ?? '运营'),
+        ]);
+    }
+
+    public function updateFeishuLeadConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+        $raw = $this->request->getContent();
+        $input = $raw ? json_decode($raw, true) : [];
+        if (!is_array($input)) {
+            $input = [];
+        }
+        $enabled = !empty($input['enabled']);
+        $webhookUrl = trim((string) ($input['webhookUrl'] ?? ''));
+        $contactPerson = trim((string) ($input['contactPerson'] ?? '运营'));
+        if ($contactPerson === '') {
+            $contactPerson = '运营';
+        }
+        if ($enabled && $webhookUrl !== '' && stripos($webhookUrl, 'http') !== 0) {
+            return error('Webhook 须以 http(s) 开头', 400);
+        }
+        $json = json_encode([
+            'enabled'       => $enabled,
+            'webhookUrl'    => $webhookUrl,
+            'contactPerson' => $contactPerson,
+        ], JSON_UNESCAPED_UNICODE);
+        $now = time();
+        $key = FeishuLeadWebhookService::CONFIG_KEY;
+        $exists = Db::name('system_config')->where('key', $key)->where('enterprise_id', 0)->find();
+        if ($exists) {
+            Db::name('system_config')
+                ->where('key', $key)
+                ->where('enterprise_id', 0)
+                ->update(['value' => $json, 'updatedAt' => $now]);
+        } else {
+            Db::name('system_config')->insert([
+                'key'           => $key,
+                'enterprise_id' => 0,
+                'value'         => $json,
+                'description'   => '飞书获客 Webhook',
+                'createdAt'     => $now,
+                'updatedAt'     => $now,
+            ]);
+        }
+        return success(null, '已保存');
     }
 
     /**

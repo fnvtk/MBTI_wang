@@ -16,34 +16,74 @@ Page({
   },
 
   onLoad() {
-    const rm = !!(app.globalData && app.globalData.reviewMode)
-    this.setData({ reviewMode: rm })
-    this.cameraContext = wx.createCameraContext()
+    this.setData({ reviewMode: !!app.globalData.reviewMode })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
       this.setData({ aiAnalysisText: tc.aiAnalysisText })
-    } else {
-      app.getRuntimeConfig().then((cfg) => {
-        if (cfg && cfg.textConfig) {
-          app.globalData.textConfig = cfg.textConfig
-          this.setData({ aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析' })
+    }
+    app.getRuntimeConfig().then((cfg) => {
+      if (cfg) {
+        if (typeof cfg.reviewMode === 'boolean') {
+          app.globalData.reviewMode = cfg.reviewMode
         }
-      }).catch(() => {})
+        if (cfg.textConfig) {
+          app.globalData.textConfig = cfg.textConfig
+          this.setData({
+            aiAnalysisText: cfg.textConfig.aiAnalysisText || '分析',
+            reviewMode: !!app.globalData.reviewMode
+          })
+          return
+        }
+      }
+      this.setData({ reviewMode: !!app.globalData.reviewMode })
+    }).catch(() => {
+      this.setData({ reviewMode: !!app.globalData.reviewMode })
+    })
+  },
+
+  /** 非审核模式且相机在页上时再创建上下文 */
+  onReady() {
+    if (!app.globalData.reviewMode) {
+      this.initCameraContext()
+    }
+  },
+
+  goToQuestionnaire() {
+    wx.navigateTo({ url: '/pages/test-select/index' })
+  },
+
+  initCameraContext() {
+    try {
+      if (typeof wx.createCameraContext === 'function') {
+        this.cameraContext = wx.createCameraContext()
+      }
+    } catch (e) {
+      console.error('initCameraContext', e)
+      this.cameraContext = null
     }
   },
 
   onShow() {
-    const rm = !!(app.globalData && app.globalData.reviewMode)
+    const rm = !!app.globalData.reviewMode
     this.setData({ reviewMode: rm })
-    // 审核模式下重定向到测试选择页
-    if (rm) {
-      wx.navigateTo({ url: '/pages/test-select/index' })
-      return
-    }
-    if (!ensureProfileCompleteAndRedirect()) return
+
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       this.getTabBar().setData({ selected: 1, reviewMode: !!app.globalData.reviewMode })
     }
+
+    // 审核模式：只展示本页引导，不再强跳 navigateTo（失败时曾导致白屏且无拍摄区）
+    if (rm) {
+      return
+    }
+
+    if (!ensureProfileCompleteAndRedirect()) {
+      return
+    }
+
+    if (this.data.photos.length < 3) {
+      this.initCameraContext()
+    }
+
     this.setData({ needPhoneAuth: !hasPhone() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
@@ -82,9 +122,18 @@ Page({
       return
     }
 
+    if (!this.cameraContext) {
+      this.initCameraContext()
+    }
+    if (!this.cameraContext || typeof this.cameraContext.takePhoto !== 'function') {
+      wx.showToast({ title: '相机未就绪，请稍候再试', icon: 'none' })
+      return
+    }
+
     this.cameraContext.takePhoto({
       quality: 'high',
       success: (res) => {
+        try { require('../../utils/analytics').track('take_photo', { index: this.data.photos.length + 1 }) } catch (e) {}
         const photos = [...this.data.photos, res.tempImagePath]
         const photoIndex = photos.length
         const guideText = this.data.guideTexts[photoIndex] || '拍摄完成'
@@ -100,7 +149,17 @@ Page({
         }
       },
       fail: (err) => {
-        wx.showToast({ title: '拍照失败', icon: 'none' })
+        const msg = (err && (err.errMsg || err.message)) ? String(err.errMsg || err.message) : ''
+        if (msg.indexOf('auth deny') >= 0 || msg.indexOf('authorize') >= 0) {
+          wx.showModal({
+            title: '需要相机权限',
+            content: '请在设置中允许使用摄像头',
+            confirmText: '去设置',
+            success: (r) => { if (r.confirm) wx.openSetting() }
+          })
+        } else {
+          wx.showToast({ title: '拍照失败，请重试', icon: 'none' })
+        }
         console.error('拍照失败:', err)
       }
     })
@@ -121,6 +180,7 @@ Page({
             guideText: '请正对镜头'
           })
           wx.showToast({ title: '已清空，请重新拍摄', icon: 'success' })
+          setTimeout(() => this.initCameraContext(), 200)
         }
       }
     })
@@ -128,7 +188,6 @@ Page({
 
   // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
   completeCapture() {
-    if (!ensureProfileCompleteAndRedirect()) return
     if (!hasPhone()) {
       wx.showToast({ title: '请先授权手机号', icon: 'none' })
       this.setData({ needPhoneAuth: true })
@@ -174,11 +233,13 @@ Page({
         wx.hideLoading()
         wx.setStorageSync('aiPhotos', urls)
         this.setData({ uploading: false })
+        try { require('../../utils/analytics').track('photo_upload_success', { count: urls.length }) } catch (e) {}
         wx.navigateTo({ url: '/pages/index/result' })
       })
       .catch((err) => {
         wx.hideLoading()
         this.setData({ uploading: false })
+        try { require('../../utils/analytics').track('photo_upload_fail', { error: (err && err.message) || '' }) } catch (e) {}
         wx.showToast({ title: err.message || '上传失败', icon: 'none' })
       })
   },

@@ -20,7 +20,7 @@ class Order extends BaseController
         if (!$user) {
             return error('未登录', 401);
         }
-        if (!in_array($user['role'] ?? '', ['admin', 'enterprise_admin'])) {
+        if (!in_array($user['role'] ?? '', ['admin', 'enterprise_admin', 'superadmin'])) {
             return error('无权限访问', 403);
         }
 
@@ -31,11 +31,14 @@ class Order extends BaseController
         $status = trim(Request::param('status', ''));
         $productType = trim(Request::param('productType', ''));
 
-        // admin / enterprise_admin 均只能看本企业订单
-        $enterpriseId = $user['enterpriseId'] ?? null;
-        if (!$enterpriseId) {
-            $adminRow = Db::name('users')->where('id', $user['userId'] ?? 0)->find();
-            $enterpriseId = $adminRow['enterpriseId'] ?? null;
+        // 超管：全平台订单；其余管理员仅本企业
+        $enterpriseId = null;
+        if (($user['role'] ?? '') !== 'superadmin') {
+            $enterpriseId = $user['enterpriseId'] ?? null;
+            if (!$enterpriseId) {
+                $adminRow = Db::name('users')->where('id', $user['userId'] ?? 0)->find();
+                $enterpriseId = $adminRow['enterpriseId'] ?? null;
+            }
         }
 
         $query = Db::name('orders');

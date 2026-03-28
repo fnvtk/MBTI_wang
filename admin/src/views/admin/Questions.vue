@@ -1,6 +1,6 @@
 <template>
-  <div class="page-container" v-loading="loading">
-    <div class="page-header">
+  <div class="page-container" :class="{ 'is-embedded': embedded }" v-loading="loading">
+    <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>题库管理</h2>
         <p class="subtitle">管理 MBTI、DISC、PDP 三套测试题库的导入、导出和验证</p>
@@ -201,6 +201,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Cpu, Aim, MagicStick, Upload, Download, CircleCheck, Search, View, InfoFilled, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
+
+withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
 
 const search = ref('')
 const fileInput = ref<HTMLInputElement>()
@@ -1056,4 +1058,8 @@ onMounted(async () => {
 
 .mt-6 { margin-top: 24px; }
 .mr-1 { margin-right: 4px; }
+
+.page-container.is-embedded {
+  min-height: auto;
+}
 </style>

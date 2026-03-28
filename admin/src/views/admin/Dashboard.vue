@@ -1,101 +1,151 @@
 <template>
-  <div class="dashboard-container" v-loading="loading">
-    <!-- 统计卡片 -->
-    <div class="stats-grid">
-      <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">总用户数</div>
-              <div class="stat-value">{{ stats.totalUsers }}</div>
-            </div>
-            <div class="stat-icon blue">
-              <el-icon><User /></el-icon>
-            </div>
-          </div>
+  <div class="dashboard-viewport" v-loading="loading">
+    <header class="dash-head">
+      <h1 class="dash-title">数据概览</h1>
+      <p class="dash-tagline">
+        企业侧测评闭环：小程序面相与 MBTI / DISC / PDP 答题 → MySQL 落库 → 本页看用户与测试趋势、拉新邀请码（全链路见开发文档《小程序全链路功能与接口》）。
+      </p>
+    </header>
 
-      <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">已完成测试</div>
-              <div class="stat-value">{{ stats.testsCompleted }}</div>
-            </div>
-            <div class="stat-icon green">
-              <el-icon><Document /></el-icon>
-            </div>
-          </div>
-
-      <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">今日活跃</div>
-              <div class="stat-value">{{ stats.activeToday }}</div>
-            </div>
-            <div class="stat-icon purple">
-              <el-icon><TrendCharts /></el-icon>
-            </div>
-          </div>
-
-      <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">待审核</div>
-              <div class="stat-value">{{ stats.pendingReviews }}</div>
-            </div>
-            <div class="stat-icon orange">
-              <el-icon><User /></el-icon>
-            </div>
-          </div>
-    </div>
-
-    <!-- 测试趋势折线图 -->
-    <div class="activity-section">
-      <div class="section-header">
-        <h2 class="section-title">测试趋势</h2>
-        <p class="section-subtitle">最近 14 天人脸分析、MBTI、PDP、DISC 等关键测试的完成情况</p>
-      </div>
-
-      <div class="trend-chart-wrapper" v-if="testTrends.length">
-        <VChart class="trend-chart-echarts" :option="chartOption" autoresize />
-      </div>
-
-      <div class="empty-state" v-else>
-        <span>暂无测试趋势数据</span>
+    <div class="dash-kpis">
+      <div v-for="(card, i) in kpiCards" :key="card.key" class="stat-card" :style="{ animationDelay: `${i * 45}ms` }">
+        <div class="stat-info">
+          <div class="stat-label">{{ card.label }}</div>
+          <div class="stat-value">{{ card.value }}</div>
+        </div>
+        <div :class="['stat-icon', card.tone]">
+          <el-icon><component :is="card.icon" /></el-icon>
+        </div>
       </div>
     </div>
 
-    <!-- 邀请二维码 -->
-    <div class="activity-section invite-section">
-      <div class="section-header">
-        <h2 class="section-title">专属邀请小程序码</h2>
-        <p class="section-subtitle">生成专属邀请二维码，员工/客户扫码即可进入小程序完成测试</p>
-        <el-button size="small" type="primary" @click="loadBothQrcodes" :loading="inviteLoading">
-          {{ inviteQrcodeEnterprise ? '重新生成' : '生成二维码' }}
-        </el-button>
+    <div class="dash-catalog" v-if="testCatalog.length">
+      <div
+        v-for="(row, i) in catalogRows"
+        :key="row.key"
+        class="catalog-card"
+        :style="{ animationDelay: `${120 + i * 40}ms` }"
+      >
+        <div :class="['catalog-icon', row.tone]">
+          <el-icon><component :is="row.icon" /></el-icon>
+        </div>
+        <div class="catalog-body">
+          <div class="catalog-label">{{ row.label }}</div>
+          <div class="catalog-metrics">
+            <span><em>{{ row.records }}</em> 人次</span>
+            <span class="sep">·</span>
+            <span><em>{{ row.uniqueUsers }}</em> 人</span>
+          </div>
+        </div>
       </div>
+    </div>
 
-      <div class="invite-content" v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
-        <div class="invite-qrcode-wrap">
-          <img :src="inviteQrcodeEnterprise" alt="企业版小程序码" class="invite-qrcode" />
-          <div class="invite-qrcode-label enterprise">企业版</div>
-          <div class="invite-qrcode-path">/pages/enterprise/index</div>
+    <div class="dash-main">
+      <section class="panel panel-chart">
+        <div class="panel-head">
+          <h2 class="panel-title">近 14 日测试趋势</h2>
+          <p class="panel-desc">人脸 · MBTI · PDP · DISC 完成量；下方为性格结果分布（与本企业测评数据一致）</p>
         </div>
-        <div class="invite-qrcode-wrap">
-          <img :src="inviteQrcodePersonal" alt="个人版小程序码" class="invite-qrcode" />
-          <div class="invite-qrcode-label personal">个人版</div>
-          <div class="invite-qrcode-path">/pages/index/index</div>
+        <div v-if="hasDistribution" class="distr-band">
+          <div v-for="block in distributionBlocks" :key="block.key" class="distr-col">
+            <div class="distr-col-head">
+              <el-icon class="distr-head-ic"><component :is="block.icon" /></el-icon>
+              <span>{{ block.title }}</span>
+            </div>
+            <div class="distr-list">
+              <div v-for="it in block.items" :key="block.key + it.label" class="distr-row-line">
+                <span class="distr-lab" :title="it.label">{{ it.label }}</span>
+                <div class="distr-bar-track">
+                  <div
+                    class="distr-bar-fill"
+                    :class="block.barClass"
+                    :style="{ width: barWidthPct(block.max, it.count) }"
+                  />
+                </div>
+                <span class="distr-num">{{ it.count }}</span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-      <div class="invite-content" v-else>
-        <div class="empty-state">
-          <span>点击上方按钮生成企业版与个人版二维码</span>
+        <div class="chart-box">
+          <VChart v-if="testTrends.length" class="trend-chart" :option="chartOption" autoresize />
+          <div v-else class="panel-empty">暂无趋势数据</div>
         </div>
-      </div>
+      </section>
+
+      <aside class="panel panel-side">
+        <div class="side-block side-users">
+          <div class="panel-head row">
+            <div>
+              <h2 class="panel-title">测试 Top 10</h2>
+              <p class="panel-desc">按完成次数 · 本企业口径</p>
+            </div>
+            <el-button type="primary" link size="small" @click="router.push('/admin/users')">全部用户</el-button>
+          </div>
+          <div class="table-wrap">
+            <el-table
+              v-if="topTestUsers.length"
+              :data="topTestUsers"
+              size="small"
+              stripe
+              class="compact-table"
+              :max-height="tableMaxH"
+            >
+              <el-table-column label="#" width="42">
+                <template #default="{ $index }">{{ $index + 1 }}</template>
+              </el-table-column>
+              <el-table-column label="用户" min-width="88" show-overflow-tooltip>
+                <template #default="{ row }">{{ row.username || '未命名' }}</template>
+              </el-table-column>
+              <el-table-column prop="testCount" label="次数" width="52" align="center" />
+              <el-table-column label="摘要" min-width="100" show-overflow-tooltip>
+                <template #default="{ row }">{{ summarizeTypes(row) }}</template>
+              </el-table-column>
+            </el-table>
+            <div v-else class="panel-empty tight">暂无测试记录</div>
+          </div>
+        </div>
+
+        <div class="side-block side-invite">
+          <div class="panel-head row">
+            <div>
+              <h2 class="panel-title">邀请小程序码</h2>
+              <p class="panel-desc">企业版扫码进企业测评；个人版扫码进个人首页</p>
+            </div>
+            <el-button size="small" type="primary" @click="loadInviteQrcode" :loading="inviteLoading">
+              {{ inviteQrcodeEnterprise || inviteQrcodePersonal ? '刷新' : '生成' }}
+            </el-button>
+          </div>
+          <div class="invite-body">
+            <template v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
+              <div v-if="inviteQrcodeEnterprise" class="invite-card">
+                <span class="invite-label">企业版</span>
+                <img :src="inviteQrcodeEnterprise" alt="企业版邀请码" class="invite-img" />
+              </div>
+              <div v-if="inviteQrcodePersonal" class="invite-card">
+                <span class="invite-label">个人版</span>
+                <img :src="inviteQrcodePersonal" alt="个人版邀请码" class="invite-img" />
+              </div>
+            </template>
+            <span v-else class="invite-placeholder">点击生成（将同时生成两枚码）</span>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   User,
   Document,
-  TrendCharts
+  TrendCharts,
+  Camera,
+  Reading,
+  Histogram,
+  Medal
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -107,6 +157,22 @@ import VChart from 'vue-echarts'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
+const router = useRouter()
+
+interface TopUserRow {
+  id: number
+  username: string
+  phone: string
+  testCount: number
+  lastTestAt: number | null
+  mbtiType: string
+  pdpType: string
+  discType: string
+  faceMbtiType: string
+  faceDiscType: string
+  facePdpType: string
+}
+
 const stats = reactive({
   totalUsers: 0,
   testsCompleted: 0,
@@ -117,71 +183,156 @@ const stats = reactive({
 const testTrends = ref<
   Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>
 >([])
+const topTestUsers = ref<TopUserRow[]>([])
+const testCatalog = ref<
+  Array<{ key: string; label: string; records: number; uniqueUsers: number }>
+>([])
+const distributionMbti = ref<Array<{ label: string; count: number }>>([])
+const distributionDisc = ref<Array<{ label: string; count: number }>>([])
+const distributionPdp = ref<Array<{ label: string; count: number }>>([])
+const faceSubtypeHints = ref<{
+  mbti: Array<{ label: string; count: number }>
+  disc: Array<{ label: string; count: number }>
+  pdp: Array<{ label: string; count: number }>
+}>({ mbti: [], disc: [], pdp: [] })
+
 const loading = ref(false)
 const inviteLoading = ref(false)
 const inviteQrcodeEnterprise = ref<string>('')
 const inviteQrcodePersonal = ref<string>('')
 
+/** 侧栏表格最大高度：单屏内滚动，不撑开整页 */
+const tableMaxH = 220
+
+const kpiCards = computed(() => [
+  { key: 'u', label: '总用户数', value: stats.totalUsers, icon: User, tone: 'blue' },
+  { key: 't', label: '已完成测试', value: stats.testsCompleted, icon: Document, tone: 'green' },
+  { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' },
+  { key: 'p', label: '待审核', value: stats.pendingReviews, icon: User, tone: 'orange' }
+])
+
+const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
+  face: { icon: Camera, tone: 'teal' },
+  mbti: { icon: Reading, tone: 'blue' },
+  disc: { icon: Histogram, tone: 'indigo' },
+  pdp: { icon: Medal, tone: 'amber' }
+}
+
+const catalogRows = computed(() =>
+  testCatalog.value.map(row => {
+    const m = catalogIconMap[row.key] || { icon: Document, tone: 'blue' }
+    return {
+      ...row,
+      icon: m.icon,
+      tone: m.tone,
+      records: row.records ?? 0,
+      uniqueUsers: row.uniqueUsers ?? 0
+    }
+  })
+)
+
+function sliceItems(items: Array<{ label: string; count: number }>, n: number) {
+  return (items || []).slice(0, n)
+}
+
+const distributionBlocks = computed(() => {
+  const mbti = sliceItems(distributionMbti.value, 6)
+  const disc = sliceItems(distributionDisc.value, 6)
+  const pdp = sliceItems(distributionPdp.value, 6)
+  const faceMerged: Array<{ label: string; count: number }> = []
+  const fh = faceSubtypeHints.value || { mbti: [], disc: [], pdp: [] }
+  const pushPref = (prefix: string, arr: Array<{ label: string; count: number }>, max: number) => {
+    let k = 0
+    for (const it of arr || []) {
+      if (k >= max) break
+      faceMerged.push({ label: `${prefix}${it.label}`, count: it.count })
+      k++
+    }
+  }
+  pushPref('面·MBTI ', fh.mbti, 2)
+  pushPref('面·DISC ', fh.disc, 2)
+  pushPref('面·PDP ', fh.pdp, 2)
+
+  const blocks = [
+    { key: 'mbti', title: 'MBTI（答题）', items: mbti, icon: Reading, barClass: 'bar-mbti' },
+    { key: 'disc', title: 'DISC（答题）', items: disc, icon: Histogram, barClass: 'bar-disc' },
+    { key: 'pdp', title: 'PDP（答题）', items: pdp, icon: Medal, barClass: 'bar-pdp' },
+    { key: 'face', title: '面相推测', items: faceMerged, icon: Camera, barClass: 'bar-face' }
+  ]
+  return blocks.map(b => ({
+    ...b,
+    max: Math.max(1, ...b.items.map(i => i.count))
+  }))
+})
+
+const hasDistribution = computed(() =>
+  distributionBlocks.value.some(b => b.items.length > 0)
+)
+
+function barWidthPct(max: number, count: number) {
+  if (!max || !count) return '0%'
+  return `${Math.round((count / max) * 100)}%`
+}
+
 const chartOption = computed(() => {
   const dates = testTrends.value.map(d => d.date.slice(5))
   return {
-    tooltip: {
-      trigger: 'axis'
-    },
+    animationDuration: 480,
+    animationEasing: 'cubicOut',
+    tooltip: { trigger: 'axis' },
     legend: {
-      data: ['人脸分析', 'MBTI', 'PDP', 'DISC'],
-      bottom: 0
+      data: ['人脸', 'MBTI', 'PDP', 'DISC'],
+      top: 0,
+      textStyle: { fontSize: 11, color: '#6b7280' }
     },
-    grid: {
-      left: 40,
-      right: 20,
-      top: 30,
-      bottom: 40
-    },
+    grid: { left: 36, right: 12, top: 36, bottom: 24 },
     xAxis: {
       type: 'category',
       data: dates,
       boundaryGap: false,
       axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#6b7280' }
+      axisLabel: { color: '#9ca3af', fontSize: 10 }
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
       splitLine: { lineStyle: { color: '#f3f4f6' } },
-      axisLabel: { color: '#6b7280' }
+      axisLabel: { color: '#9ca3af', fontSize: 10 }
     },
     series: [
       {
-        name: '人脸分析',
+        name: '人脸',
         type: 'line',
-        smooth: true,
+        smooth: 0.35,
         showSymbol: false,
+        lineStyle: { width: 2 },
         itemStyle: { color: '#22c55e' },
         data: testTrends.value.map(d => d.face)
       },
       {
         name: 'MBTI',
         type: 'line',
-        smooth: true,
+        smooth: 0.35,
         showSymbol: false,
+        lineStyle: { width: 2 },
         itemStyle: { color: '#3b82f6' },
         data: testTrends.value.map(d => d.mbti)
       },
       {
         name: 'PDP',
         type: 'line',
-        smooth: true,
+        smooth: 0.35,
         showSymbol: false,
+        lineStyle: { width: 2 },
         itemStyle: { color: '#f97316' },
         data: testTrends.value.map(d => d.pdp)
       },
       {
         name: 'DISC',
         type: 'line',
-        smooth: true,
+        smooth: 0.35,
         showSymbol: false,
+        lineStyle: { width: 2 },
         itemStyle: { color: '#6366f1' },
         data: testTrends.value.map(d => d.disc)
       }
@@ -189,7 +340,16 @@ const chartOption = computed(() => {
   }
 })
 
-// 加载数据
+function summarizeTypes(row: TopUserRow) {
+  const parts: string[] = []
+  if (row.mbtiType) parts.push(row.mbtiType)
+  if (row.pdpType) parts.push(row.pdpType)
+  if (row.discType) parts.push(row.discType)
+  const faceBits = [row.faceMbtiType, row.facePdpType, row.faceDiscType].filter(Boolean)
+  if (faceBits.length) parts.push('面:' + faceBits.join('/'))
+  return parts.length ? parts.join(' · ') : '—'
+}
+
 const loadData = async () => {
   loading.value = true
   try {
@@ -200,6 +360,26 @@ const loadData = async () => {
       stats.activeToday = response.data.activeToday || 0
       stats.pendingReviews = response.data.pendingReviews || 0
       testTrends.value = response.data.testTrends || []
+      topTestUsers.value = Array.isArray(response.data.topTestUsers) ? response.data.topTestUsers : []
+      testCatalog.value = Array.isArray(response.data.testCatalog) ? response.data.testCatalog : []
+      distributionMbti.value = Array.isArray(response.data.distributionMbti)
+        ? response.data.distributionMbti
+        : []
+      distributionDisc.value = Array.isArray(response.data.distributionDisc)
+        ? response.data.distributionDisc
+        : []
+      distributionPdp.value = Array.isArray(response.data.distributionPdp)
+        ? response.data.distributionPdp
+        : []
+      const fh = response.data.faceSubtypeHints
+      faceSubtypeHints.value =
+        fh && typeof fh === 'object'
+          ? {
+              mbti: Array.isArray(fh.mbti) ? fh.mbti : [],
+              disc: Array.isArray(fh.disc) ? fh.disc : [],
+              pdp: Array.isArray(fh.pdp) ? fh.pdp : []
+            }
+          : { mbti: [], disc: [], pdp: [] }
     }
   } catch (error: any) {
     console.error('加载数据失败:', error)
@@ -213,23 +393,23 @@ onMounted(() => {
   loadData()
 })
 
-// 同时生成企业版+个人版二维码
-const loadBothQrcodes = async () => {
+const loadInviteQrcode = async () => {
   if (inviteLoading.value) return
   inviteLoading.value = true
   try {
-    const [entRes, perRes]: any[] = await Promise.all([
-      request.get('/admin/invite/qrcode', { params: { type: 'enterprise' } }),
-      request.get('/admin/invite/qrcode', { params: { type: 'personal' } })
-    ])
-    const entQr = entRes?.qrcode || entRes?.data?.qrcode || ''
-    const perQr = perRes?.qrcode || perRes?.data?.qrcode || ''
-    if (entQr) inviteQrcodeEnterprise.value = entQr
-    if (perQr) inviteQrcodePersonal.value = perQr
-    if (!entQr && !perQr) ElMessage.error('生成邀请二维码失败')
+    const res: any = await request.get('/admin/invite/qrcode')
+    const d = res?.data
+    const ent = d?.enterprise?.qrcode ?? d?.qrcode
+    const per = d?.personal?.qrcode
+    if (typeof ent === 'string' && ent) inviteQrcodeEnterprise.value = ent
+    if (typeof per === 'string' && per) inviteQrcodePersonal.value = per
+    if (inviteQrcodeEnterprise.value || inviteQrcodePersonal.value) {
+      ElMessage.success('已生成企业版与个人版小程序码')
+    } else {
+      ElMessage.error(res?.message || res?.msg || '生成失败，请确认企业绑定')
+    }
   } catch (error: any) {
-    console.error('生成邀请二维码失败:', error)
-    ElMessage.error(error?.message || '生成邀请二维码失败')
+    ElMessage.error(error?.message || '生成失败')
   } finally {
     inviteLoading.value = false
   }
@@ -237,196 +417,471 @@ const loadBothQrcodes = async () => {
 </script>
 
 <style scoped lang="scss">
-.dashboard-container {
-  padding: 24px;
-  background-color: #f9fafb;
-  min-height: 100vh;
+@keyframes dashFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.stats-grid {
+.dashboard-viewport {
+  height: calc(100vh - 56px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 18px 16px;
+  box-sizing: border-box;
+  background: #f3f4f6;
+}
+
+.dash-head {
+  flex: 0 0 auto;
+  margin-bottom: 10px;
+  animation: dashFadeUp 0.4s ease-out both;
+}
+
+.dash-title {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.dash-tagline {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6b7280;
+  max-width: 920px;
+}
+
+.dash-kpis {
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-bottom: 28px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.dash-catalog {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.catalog-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  animation: dashFadeUp 0.45s ease-out both;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06);
+  }
+}
+
+.catalog-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+
+  &.teal {
+    background: #f0fdfa;
+    color: #0d9488;
+  }
+
+  &.blue {
+    background: #eff6ff;
+    color: #3b82f6;
+  }
+
+  &.indigo {
+    background: #eef2ff;
+    color: #6366f1;
+  }
+
+  &.amber {
+    background: #fffbeb;
+    color: #d97706;
+  }
+}
+
+.catalog-body {
+  min-width: 0;
+}
+
+.catalog-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 2px;
+}
+
+.catalog-metrics {
+  font-size: 11px;
+  color: #6b7280;
+
+  em {
+    font-style: normal;
+    font-weight: 700;
+    color: #374151;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .sep {
+    margin: 0 4px;
+    color: #d1d5db;
+  }
 }
 
 .stat-card {
   background: #fff;
   border-radius: 10px;
-  padding: 20px 24px;
+  padding: 12px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  animation: dashFadeUp 0.45s ease-out both;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
   }
 
-    .stat-info {
-      .stat-label {
-        font-size: 14px;
-      color: #6b7280;
-      margin-bottom: 6px;
-      }
-
-      .stat-value {
-      font-size: 28px;
-        font-weight: 700;
-        color: #111827;
-      line-height: 1;
-      }
-    }
-
-    .stat-icon {
-    width: 42px;
-    height: 42px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-
-      &.blue {
-        background-color: #eff6ff;
-        color: #3b82f6;
-      }
-
-      &.green {
-        background-color: #f0fdf4;
-        color: #22c55e;
-      }
-
-      &.purple {
-        background-color: #faf5ff;
-        color: #a855f7;
-      }
-
-      &.orange {
-        background-color: #fffbeb;
-        color: #f59e0b;
-      }
-  }
-}
-
-.activity-section {
-  background: #fff;
-  border-radius: 10px;
-  padding: 28px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
-
-  .section-header {
-    margin-bottom: 24px;
-
-    .section-title {
-      font-size: 20px;
-      font-weight: 700;
-      color: #111827;
-      margin: 0 0 6px 0;
-    }
-
-    .section-subtitle {
-      font-size: 13px;
-      color: #6b7280;
-      margin: 0;
-    }
-  }
-
-  .trend-chart-wrapper {
-    margin-top: 12px;
-  }
-
-  .trend-chart-echarts {
-    width: 100%;
-    height: 260px;
-  }
-}
-
-.invite-section {
-  margin-top: 24px;
-
-  .section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-
-    .section-title {
-      margin-bottom: 0;
-    }
-  }
-
-  .invite-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 40px;
-  }
-
-  .invite-qrcode-wrap {
-    text-align: center;
-    padding: 16px 20px;
-    border-radius: 10px;
-    border: 1px solid #f3f4f6;
-    background: #fafafa;
-  }
-
-  .invite-qrcode {
-    width: 160px;
-    height: 160px;
-    border-radius: 8px;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-  }
-
-  .invite-qrcode-label {
-    font-size: 15px;
-    font-weight: 600;
-    margin-top: 10px;
-
-    &.enterprise { color: #7c3aed; }
-    &.personal   { color: #3b82f6; }
-  }
-
-  .invite-qrcode-path {
-    font-size: 12px;
-    color: #9ca3af;
-    font-family: monospace;
-    margin-top: 2px;
-  }
-
-  .invite-tip {
+  .stat-label {
     font-size: 12px;
     color: #6b7280;
-    margin-top: 6px;
-    max-width: 180px;
+    margin-bottom: 4px;
   }
 
-  .empty-state {
-    padding: 24px 0;
-    color: #9ca3af;
-    font-size: 14px;
+  .stat-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.2s ease;
+  }
+
+  .stat-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+
+    &.blue {
+      background: #eff6ff;
+      color: #3b82f6;
+    }
+    &.green {
+      background: #f0fdf4;
+      color: #22c55e;
+    }
+    &.purple {
+      background: #faf5ff;
+      color: #a855f7;
+    }
+    &.orange {
+      background: #fffbeb;
+      color: #f59e0b;
+    }
   }
 }
 
-@media (max-width: 768px) {
-  .stats-grid {
+.dash-main {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr minmax(280px, 30%);
+  gap: 10px;
+  animation: dashFadeUp 0.5s ease-out 0.08s both;
+}
+
+.panel {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-chart {
+  min-height: 0;
+}
+
+.distr-band {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.distr-col {
+  min-width: 0;
+  background: #fafafa;
+  border-radius: 8px;
+  padding: 8px 10px;
+  border: 1px solid #f3f4f6;
+}
+
+.distr-col-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #374151;
+  margin-bottom: 6px;
+
+  .distr-head-ic {
+    font-size: 14px;
+    color: #6b7280;
+  }
+}
+
+.distr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 108px;
+  overflow-y: auto;
+}
+
+.distr-row-line {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(36px, 42%) 22px;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.distr-lab {
+  color: #4b5563;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.distr-bar-track {
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.distr-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.35s ease;
+
+  &.bar-mbti {
+    background: #3b82f6;
+  }
+
+  &.bar-disc {
+    background: #6366f1;
+  }
+
+  &.bar-pdp {
+    background: #f97316;
+  }
+
+  &.bar-face {
+    background: #14b8a6;
+  }
+}
+
+.distr-num {
+  text-align: right;
+  color: #6b7280;
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-side {
+  gap: 10px;
+  padding: 10px;
+}
+
+.panel-head {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+
+  &.row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+  }
+}
+
+.panel-title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.panel-desc {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.chart-box {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.trend-chart {
+  width: 100%;
+  height: 100%;
+  min-height: 140px;
+}
+
+.panel-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  color: #9ca3af;
+  font-size: 13px;
+
+  &.tight {
+    height: 80px;
+  }
+}
+
+.side-block {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side-users {
+  flex: 1;
+  min-height: 0;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.table-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.compact-table {
+  width: 100%;
+}
+
+.side-invite {
+  flex: 0 0 auto;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f3f4f6;
+}
+
+.invite-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  min-height: 112px;
+}
+
+.invite-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.invite-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.invite-img {
+  width: 112px;
+  height: 112px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  object-fit: contain;
+  background: #fff;
+}
+
+.invite-placeholder {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+@media (max-width: 1100px) {
+  .dash-main {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-viewport {
+    height: auto;
+    min-height: calc(100vh - 56px);
+    overflow-y: auto;
+  }
+
+  .panel-chart .chart-box {
+    min-height: 220px;
+  }
+}
+
+@media (max-width: 640px) {
+  .dash-kpis {
     grid-template-columns: repeat(2, 1fr);
   }
-  
-  .activity-section {
-    padding: 20px;
-      }
-    }
 
-@media (max-width: 480px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
+  .dash-catalog {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .distr-band {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 </style>

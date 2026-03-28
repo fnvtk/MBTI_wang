@@ -2,47 +2,23 @@
 Component({
   data: {
     selected: 0,
-    reviewMode: false,
     list: [
       { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
-      { pagePath: '/pages/index/camera', text: '查看报告', textKey: 'camera', icon: 'camera' },
+      { pagePath: '/pages/index/camera', text: '拍摄', textKey: 'camera', icon: 'camera' },
       { pagePath: '/pages/profile/index', text: '我的', textKey: 'profile', icon: 'user' }
     ]
   },
   lifetimes: {
     attached() {
       this.updateSelected()
-      this.checkReviewMode()
     }
   },
   pageLifetimes: {
     show() {
       this.updateSelected()
-      this.checkReviewMode()
     }
   },
   methods: {
-    checkReviewMode() {
-      try {
-        const app = getApp()
-        const rm = !!(app && app.globalData && app.globalData.reviewMode)
-        if (this.data.reviewMode !== rm) {
-          this.setData({ reviewMode: rm })
-        }
-        // 首次加载时 getRuntimeConfig 可能尚未返回，延迟再检查一次
-        if (!rm && !this._retried) {
-          this._retried = true
-          setTimeout(() => {
-            try {
-              const rmLater = !!(getApp() && getApp().globalData && getApp().globalData.reviewMode)
-              if (rmLater && !this.data.reviewMode) {
-                this.setData({ reviewMode: true })
-              }
-            } catch (e) {}
-          }, 1500)
-        }
-      } catch (e) {}
-    },
     updateSelected() {
       try {
         const pages = getCurrentPages()
@@ -78,13 +54,6 @@ Component({
             return
           }
         } catch (e) {}
-      }
-
-      // 审核模式：中间按钮跳转到测试选择页而非相机
-      if (index === 1 && this.data.reviewMode) {
-        wx.navigateTo({ url: '/pages/test-select/index' })
-        this.setData({ selected: index })
-        return
       }
 
       wx.switchTab({ url })

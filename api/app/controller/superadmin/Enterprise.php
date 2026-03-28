@@ -3,6 +3,7 @@ namespace app\controller\superadmin;
 
 use app\BaseController;
 use app\model\Enterprise as EnterpriseModel;
+use app\model\SystemConfig as SystemConfigModel;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -112,6 +113,13 @@ class Enterprise extends BaseController
             return error('企业不存在', 404);
         }
 
+        $wechatPage      = max(1, (int) Request::param('wechatPage', 1));
+        $wechatPageSize  = min(100, max(1, (int) Request::param('wechatPageSize', 10)));
+        $testPage        = max(1, (int) Request::param('testPage', 1));
+        $testPageSize    = min(100, max(1, (int) Request::param('testPageSize', 10)));
+        $orderPage       = max(1, (int) Request::param('orderPage', 1));
+        $orderPageSize   = min(100, max(1, (int) Request::param('orderPageSize', 10)));
+
         $data = $enterprise->toArray();
         
         // 获取企业下的所有用户ID（只统计未删除的用户）
@@ -151,13 +159,14 @@ class Enterprise extends BaseController
                 ->alias('tr')
                 ->leftJoin('users u', 'tr.userId = u.id')
                 ->where('tr.userId', 'in', $userIds)
-                ->field('tr.id,tr.testType,tr.createdAt,u.username')
+                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,u.username')
                 ->order('tr.createdAt', 'desc')
                 ->limit(50) // 限制返回数量
                 ->select()
                 ->toArray();
         }
         $data['testResults'] = $testResults;
+        $this->attachResultSummaries($data['testResults']);
         
         // 统计测试用量
         if (!empty($userIds)) {
@@ -166,6 +175,128 @@ class Enterprise extends BaseController
                 ->count();
         } else {
             $data['testUsage'] = 0;
+        }
+
+        // —— 小程序侧用户（wechat_users.enterpriseId）——
+        $wechatIds = [];
+        try {
+            $wechatIds = Db::name('wechat_users')->where('enterpriseId', $id)->column('id');
+            $wechatIds = array_values(array_filter($wechatIds));
+        } catch (\Throwable $e) {
+            $wechatIds = [];
+        }
+        $wechatUserTotalCount = 0;
+        try {
+            $wechatUserTotalCount = (int) Db::name('wechat_users')->where('enterpriseId', $id)->count();
+        } catch (\Throwable $e) {
+            $wechatUserTotalCount = 0;
+        }
+        $data['wechatUserCount']      = $wechatUserTotalCount;
+        $data['wechatUsersTotal']     = $wechatUserTotalCount;
+        $data['wechatUsers']          = [];
+        try {
+            $data['wechatUsers'] = Db::name('wechat_users')
+                ->where('enterpriseId', $id)
+                ->field('id,openid,nickname,phone,avatar,status,lastLoginAt,createdAt')
+                ->order('createdAt', 'desc')
+                ->page($wechatPage, $wechatPageSize)
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $data['wechatUsers'] = [];
+        }
+
+        // 该企业下、带 enterpriseId 的小程序测试记录
+        $data['miniprogramTestResults']      = [];
+        $data['miniprogramTestResultsTotal'] = 0;
+        try {
+            $data['miniprogramTestResultsTotal'] = (int) Db::name('test_results')->where('enterpriseId', $id)->count();
+            $data['miniprogramTestResults'] = Db::name('test_results')
+                ->alias('tr')
+                ->leftJoin('wechat_users w', 'tr.userId = w.id')
+                ->where('tr.enterpriseId', $id)
+                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,w.nickname as wechatNickname')
+                ->order('tr.createdAt', 'desc')
+                ->page($testPage, $testPageSize)
+                ->select()
+                ->toArray();
+            $this->attachResultSummaries($data['miniprogramTestResults']);
+        } catch (\Throwable $e) {
+            $data['miniprogramTestResults'] = [];
+        }
+// 订单与消耗（金额分）
+        $paidStatuses = ['paid', 'completed'];
+        try {
+            $data['orderStats'] = [
+                'totalCount'    => (int) Db::name('orders')->where('enterpriseId', $id)->count(),
+                'paidCount'     => (int) Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->count(),
+                'paidAmountFen' => (int) (Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->sum('amount') ?? 0),
+            ];
+            $data['recentOrdersTotal'] = (int) Db::name('orders')->where('enterpriseId', $id)->count();
+            $data['recentOrders'] = Db::name('orders')
+                ->where('enterpriseId', $id)
+                ->order('createdAt', 'desc')
+                ->page($orderPage, $orderPageSize)
+                ->field('id,orderNo,status,amount,productType,userId,createdAt')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $data['orderStats'] = [
+                'totalCount'    => 0,
+                'paidCount'     => 0,
+                'paidAmountFen' => 0,
+            ];
+            $data['recentOrders']      = [];
+            $data['recentOrdersTotal'] = 0;
+        }
+
+        // 埋点：近 30 天，归属该企业的小程序用户
+        $data['analyticsStats'] = [
+            'eventTotal'     => 0,
+            'pageViewCount'  => 0,
+            'byEvent'        => [],
+            'hint'           => null,
+            'windowDays'     => 30,
+        ];
+        if (empty($wechatIds)) {
+            $data['analyticsStats']['hint'] = '暂无 enterpriseId 归属该企业的微信小程序用户，无法按企业聚合埋点';
+        } else {
+            try {
+                $since = date('Y-m-d H:i:s', time() - 30 * 86400);
+                $data['analyticsStats']['eventTotal'] = (int) Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->count();
+                $data['analyticsStats']['pageViewCount'] = (int) Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->where('eventName', 'page_view')
+                    ->count();
+                $byEvent = Db::name('analytics_events')
+                    ->where('userId', 'in', $wechatIds)
+                    ->where('createdAt', '>=', $since)
+                    ->field('eventName, COUNT(*) AS cnt')
+                    ->group('eventName')
+                    ->order('cnt', 'desc')
+                    ->limit(20)
+                    ->select()
+                    ->toArray();
+                $data['analyticsStats']['byEvent'] = $byEvent ?: [];
+            } catch (\Throwable $e) {
+                $data['analyticsStats']['hint'] = '埋点表未就绪或查询失败（请确认已建 analytics_events 表）';
+            }
+        }
+
+        // 全局通知策略（超管在系统设置中配置，影响余额类提醒等）
+        $data['notificationPolicy'] = null;
+        try {
+            $nc = SystemConfigModel::where('key', 'notification')->where('enterprise_id', 0)->find();
+            if ($nc) {
+                $val = $nc->getAttr('value');
+                $data['notificationPolicy'] = is_array($val) ? $val : null;
+            }
+        } catch (\Throwable $e) {
+            $data['notificationPolicy'] = null;
         }
 
         return success($data);
@@ -432,6 +563,75 @@ class Enterprise extends BaseController
         $enterprise->save();
 
         return success($enterprise, '操作成功');
+    }
+
+    /**
+     * 为列表行附加 resultSummary，并移除原始 resultData（减小响应体积）
+     */
+    private function attachResultSummaries(array &$rows): void
+    {
+        foreach ($rows as &$r) {
+            $type = (string) ($r['testType'] ?? '');
+            $r['resultSummary'] = $this->summarizeTestResultForAdmin($type, $r['resultData'] ?? null);
+            unset($r['resultData']);
+        }
+        unset($r);
+    }
+
+    /**
+     * 从 test_results.resultData 解析超管可读短摘要
+     */
+    private function summarizeTestResultForAdmin(string $testType, $resultData): string
+    {
+        if ($resultData === null || $resultData === '') {
+            return '—';
+        }
+        $decoded = is_string($resultData) ? json_decode($resultData, true) : $resultData;
+        if (!is_array($decoded)) {
+            return '—';
+        }
+        $testType = strtolower($testType);
+        switch ($testType) {
+            case 'mbti':
+                if (!empty($decoded['mbtiType'])) {
+                    return (string) $decoded['mbtiType'];
+                }
+                if (!empty($decoded['mbti']['type'])) {
+                    return (string) $decoded['mbti']['type'];
+                }
+                return '—';
+            case 'disc':
+                $d = trim((string) ($decoded['dominantType'] ?? ''));
+                $s = trim((string) ($decoded['secondaryType'] ?? ''));
+                $line = $d . ($d !== '' && $s !== '' ? ' + ' : '') . $s;
+                return $line !== '' ? $line : '—';
+            case 'pdp':
+                $d = trim((string) ($decoded['dominantType'] ?? ''));
+                return $d !== '' ? $d : '—';
+            case 'face':
+            case 'ai':
+                $parts = [];
+                if (!empty($decoded['mbti']['type'])) {
+                    $parts[] = 'MBTI ' . $decoded['mbti']['type'];
+                }
+                if (!empty($decoded['pdp']['primary'])) {
+                    $parts[] = 'PDP ' . $decoded['pdp']['primary'];
+                }
+                if (!empty($decoded['disc']['primary'])) {
+                    $parts[] = 'DISC ' . $decoded['disc']['primary'];
+                }
+                if ($parts !== []) {
+                    return implode(' · ', $parts);
+                }
+                $sum = $decoded['personalitySummary'] ?? $decoded['overview'] ?? '';
+                $sum = is_string($sum) ? trim($sum) : '';
+                if ($sum !== '') {
+                    return mb_strlen($sum) > 48 ? mb_substr($sum, 0, 48) . '…' : $sum;
+                }
+                return '面相/智能分析';
+            default:
+                return '—';
+        }
     }
 }
 

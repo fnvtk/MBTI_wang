@@ -4,7 +4,9 @@
     <div class="page-header">
       <div>
         <h2>系统设置</h2>
-        <p class="subtitle">管理系统配置、API密钥和管理员账户</p>
+        <p class="subtitle">
+          审核与站点、题库、数据库及超管账户等平台级配置（全局定价在「订单和财务」）。此处变更会间接影响各企业管理后台行为。
+        </p>
       </div>
     </div>
 
@@ -20,13 +22,13 @@
     </el-alert>
 
     <div class="settings-content">
-      <div class="custom-tabs-container">
-        <div class="custom-tabs">
+      <div class="custom-tabs-container tabs-scroll">
+        <div class="custom-tabs tabs-many">
           <div
             v-for="tab in tabs"
             :key="tab.value"
             :class="['tab-item', { active: activeTab === tab.value }]"
-            @click="activeTab = tab.value"
+            @click="selectTab(tab.value)"
           >
             <el-icon class="tab-icon"><component :is="tab.icon" /></el-icon>
             {{ tab.label }}
@@ -34,8 +36,97 @@
         </div>
       </div>
 
-      <div class="tab-content-card">
-   
+      <div
+        class="tab-content-card"
+        :class="{ 'flat-embed': isFlatEmbed }"
+      >
+        <!-- 审核模式 -->
+        <div v-if="activeTab === 'review'" class="tab-content">
+          <el-card shadow="never" class="settings-card">
+            <template #header>
+              <div class="card-header">
+                <div class="header-title">
+                  <el-icon class="header-icon"><Document /></el-icon>
+                  <span>小程序审核模式</span>
+                </div>
+                <p class="header-description">提交微信审核前开启，审核通过后关闭。开启后小程序将隐藏所有AI相关功能。</p>
+              </div>
+            </template>
+            <div class="card-content">
+              <div class="review-mode-alert" :class="{ active: reviewMode.enabled }">
+                <div class="review-mode-status">
+                  <span class="review-dot" :class="{ on: reviewMode.enabled }"></span>
+                  <span class="review-status-text">{{ reviewMode.enabled ? '审核模式已开启' : '审核模式已关闭' }}</span>
+                </div>
+                <p class="review-mode-desc">{{ reviewMode.enabled ? '当前小程序处于审核状态，AI面相分析功能已隐藏' : '当前小程序正常运行，所有功能可用' }}</p>
+              </div>
+
+              <div class="switch-section">
+                <div class="switch-item">
+                  <div class="switch-info">
+                    <p class="switch-title">开启审核模式</p>
+                    <p class="switch-desc">开启后小程序将执行以下变更：</p>
+                  </div>
+                  <el-switch
+                    v-model="reviewMode.enabled"
+                    active-color="#ef4444"
+                    inactive-color="#d1d5db"
+                  />
+                </div>
+              </div>
+
+              <div class="review-changes-list">
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">首页「面相分析」「骨相分析」标签</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">AI拍照分析入口（相机/上传）</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">底部导航「拍照」Tab</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">结果页「人工智能生成」标签</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">所有含「AI」字样的文案</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">MBTI / DISC / PDP 问卷测试功能</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">问卷测试结果展示</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon show">保留</span>
+                  <span class="change-text">用户中心、历史记录等基础功能</span>
+                </div>
+              </div>
+
+              <div class="review-tip">
+                <strong>使用流程：</strong>开启审核模式 → 提交小程序代码审核 → 审核通过后关闭审核模式
+              </div>
+
+              <el-button
+                type="primary"
+                :color="reviewMode.enabled ? '#ef4444' : '#6366f1'"
+                class="save-button"
+                @click="handleSave('review')"
+              >
+                <el-icon class="mr-1"><Document /></el-icon>
+                {{ reviewMode.enabled ? '保存并开启审核模式' : '保存并关闭审核模式' }}
+              </el-button>
+            </div>
+          </el-card>
+        </div>
+
         <!-- 系统配置 -->
         <div v-if="activeTab === 'system'" class="tab-content">
           <el-card shadow="never" class="settings-card">
@@ -45,7 +136,7 @@
                 <el-icon class="header-icon"><Setting /></el-icon>
                 <span>系统基础配置</span>
               </div>
-              <p class="header-description">管理网站名称、审核模式等基础设置</p>
+              <p class="header-description">管理网站名称等基础设置</p>
             </div>
           </template>
           <div class="card-content">
@@ -164,16 +255,7 @@
               </div>
             </div>
 
-            <!-- 开关项 -->
-            <div class="switch-section">
-              <div class="switch-item">
-                <div class="switch-info">
-                  <p class="switch-title">审核模式</p>
-                  <p class="switch-desc">开启后小程序隐藏面相/拍照等敏感入口与「AI」相关文案，底部中间入口改为跳转问卷测试，便于微信审核</p>
-                </div>
-                <el-switch v-model="systemConfig.reviewMode" />
-              </div>
-            </div>
+
 
             <el-button
               type="primary"
@@ -378,29 +460,110 @@
           </div>
         </el-card>
         </div>
+
+        <div v-if="activeTab === 'questions'" class="embed-wrap">
+          <Questions embedded />
+        </div>
+        <div v-if="activeTab === 'database'" class="embed-wrap">
+          <Database embedded />
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { Setting, Bell, Lock, Document, ChatDotRound, Postcard } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import {
+  Setting,
+  Bell,
+  Lock,
+  Document,
+  ChatDotRound,
+  Postcard,
+  DataLine,
+  Reading
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import PosterEditor from './PosterEditor.vue'
+import Questions from './Questions.vue'
+import Database from './Database.vue'
 
-const activeTab = ref('system')
+const TAB_IDS = [
+  'review',
+  'system',
+  'notification',
+  'prompts',
+  'poster',
+  'security',
+  'questions',
+  'database'
+] as const
+type TabId = (typeof TAB_IDS)[number]
+
+function isTabId(s: string): s is TabId {
+  return (TAB_IDS as readonly string[]).includes(s)
+}
+
+const route = useRoute()
+const router = useRouter()
+
+const activeTab = ref<TabId>('review')
 const saveSuccess = ref<string | null>(null)
 
-const tabs = [
+const tabs: { label: string; value: TabId; icon: any }[] = [
+  { label: '审核模式', value: 'review', icon: Document },
   { label: '系统配置', value: 'system', icon: Setting },
   { label: '通知设置', value: 'notification', icon: Bell },
   { label: '提示词配置', value: 'prompts', icon: ChatDotRound },
   { label: '海报配置', value: 'poster', icon: Postcard },
-  { label: '账户安全', value: 'security', icon: Lock }
+  { label: '账户安全', value: 'security', icon: Lock },
+  { label: '题库管理', value: 'questions', icon: Reading },
+  { label: '数据库', value: 'database', icon: DataLine }
 ]
 
+const isFlatEmbed = computed(
+  () => activeTab.value === 'questions' || activeTab.value === 'database'
+)
+
+const applyRouteTab = () => {
+  const t = route.query.tab
+  if (t === 'pricing') {
+    router.replace({ path: '/superadmin/commerce', query: { tab: 'pricing' } })
+    return
+  }
+  if (typeof t === 'string' && isTabId(t)) {
+    activeTab.value = t
+  } else {
+    activeTab.value = 'review'
+  }
+}
+
+const selectTab = (tab: TabId) => {
+  activeTab.value = tab
+  const q: Record<string, string> = {}
+  Object.entries(route.query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && k !== 'tab') {
+      q[k] = Array.isArray(v) ? String(v[0]) : String(v)
+    }
+  })
+  if (tab !== 'review') {
+    q.tab = tab
+  }
+  router.replace({ path: '/superadmin/settings', query: Object.keys(q).length ? q : {} })
+}
+
+watch(
+  () => route.query.tab,
+  () => applyRouteTab()
+)
+
+// 审核模式
+const reviewMode = reactive({
+  enabled: false
+})
 
 // 系统配置
 const systemConfig = reactive({
@@ -508,6 +671,7 @@ async function loadEnterpriseOptions() {
 }
 
 onMounted(() => {
+  applyRouteTab()
   loadSettings()
   loadEnterpriseOptions()
 })
@@ -633,10 +797,22 @@ const handleSave = async (section: string) => {
   margin-bottom: 20px;
   width: 100%;
 
+  &.tabs-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .custom-tabs {
     display: flex;
     gap: 4px;
     width: 100%;
+    min-width: min-content;
+
+    &.tabs-many .tab-item {
+      flex: 0 0 auto;
+      padding: 6px 12px;
+      font-size: 12px;
+    }
 
     .tab-item {
       flex: 1;
@@ -677,6 +853,17 @@ const handleSave = async (section: string) => {
   border: 1px solid #f3f4f6;
   padding: 32px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  &.flat-embed {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+}
+
+.embed-wrap {
+  width: 100%;
 }
 
 .settings-card {

@@ -44,6 +44,20 @@
       <text class="status-text">{{hasError ? '分析出现异常' : '分析完成，以下是您的个性化报告'}}</text>
     </view>
 
+    <view class="post-pay-guide" tt:if="{{!hasError && payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
+      <text class="post-pay-guide-title">再完成两步，报告更好归属到您的账号</text>
+      <text class="post-pay-guide-desc">① 授权手机号 ② 完善头像与昵称（「我的」- 个人资料）</text>
+      <view class="post-pay-guide-actions">
+        <button
+          tt:if="{{!hasPhone}}"
+          class="post-pay-guide-btn phone"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onPostPayBindPhone"
+        >授权手机号</button>
+        <view tt:if="{{hasPhone && !isProfileComplete}}" class="post-pay-guide-btn profile" bindtap="goToCompleteProfile">去完善资料</view>
+      </view>
+    </view>
+
     <!-- 错误内容 -->
     <view class="error-content" tt:if="{{hasError}}">
       <text class="error-title">错误信息</text>
@@ -56,29 +70,33 @@
     <!-- 性格类型分析卡片 -->
     <view class="card personality-card" tt:if="{{!hasError}}">
       <text class="card-title">性格类型分析</text>
+      <text class="personality-card-sub">MBTI · PDP · DISC 联合速览</text>
 
-      <!-- MBTI类型 -->
       <view class="personality-type">
         <text class="type-code">{{result.mbti}}</text>
         <text class="type-name">{{result.title}}</text>
+        <view class="type-chip-row" tt:if="{{result.pdp || result.disc}}">
+          <text class="type-chip" tt:if="{{result.pdp}}">{{result.pdpEmoji}}{{result.pdp}}</text>
+          <text class="type-chip type-chip--disc" tt:if="{{result.disc}}">DISC {{result.disc}}</text>
+        </view>
         <text class="type-desc">{{result.summary}}</text>
       </view>
 
-      <!-- PDP和DISC -->
       <view class="type-details">
         <view class="type-box pdp-box">
+          <text class="type-emoji" tt:if="{{result.pdpEmoji}}">{{result.pdpEmoji}}</text>
           <text class="type-label">PDP主性格</text>
           <text class="type-value">{{result.pdp || '--'}}</text>
           <text class="type-sub" tt:if="{{result.pdpAux}}">辅助: {{result.pdpAux}}</text>
         </view>
         <view class="type-box disc-box">
+          <text class="type-emoji type-emoji--disc">◎</text>
           <text class="type-label">DISC类型</text>
           <text class="type-value">{{result.disc || '--'}}型</text>
           <text class="type-sub" tt:if="{{result.discAux}}">辅助: {{result.discAux}}</text>
         </view>
       </view>
 
-      <!-- 主要优势 -->
       <view class="advantages-box" tt:if="{{result.traits.length > 0}}">
         <text class="advantages-label">主要优势</text>
         <view class="advantages-list">
@@ -88,13 +106,8 @@
           </view>
         </view>
       </view>
-
-      <view class="next-btn" bindtap="goToMBTI">
-        <text class="next-btn-text">下一步：详细性格测试 →</text>
-      </view>
     </view>
 
-    <!-- 性格概述 -->
     <view class="card" tt:if="{{!hasError && result.summary}}">
       <text class="card-title">性格概述</text>
       <text class="card-text">{{result.summary}}</text>
@@ -111,36 +124,59 @@
       </view>
     </view>
 
-    <!-- 付费解锁完整报告（不展示虚拟假数据） -->
+    <!-- 未解锁：三大场景标题预览 -->
+    <view class="card scene-teaser-bundle" tt:if="{{!hasError && payInfo.requiresPayment && !payInfo.isPaid}}">
+      <text class="scene-bundle-hint">以下版块解锁后展示完整正文</text>
+      <view class="scene-teaser-item">
+        <text class="scene-teaser-title">职业发展方向</text>
+        <view class="scene-teaser-lines">
+          <view class="scene-teaser-line"></view>
+          <view class="scene-teaser-line scene-teaser-line--short"></view>
+        </view>
+      </view>
+      <view class="scene-teaser-item">
+        <text class="scene-teaser-title">家庭亲子关系</text>
+        <view class="scene-teaser-lines">
+          <view class="scene-teaser-line"></view>
+          <view class="scene-teaser-line scene-teaser-line--short"></view>
+        </view>
+      </view>
+      <view class="scene-teaser-item scene-teaser-item--last">
+        <text class="scene-teaser-title">寻找合伙人</text>
+        <view class="scene-teaser-lines">
+          <view class="scene-teaser-line"></view>
+          <view class="scene-teaser-line scene-teaser-line--short"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 付费解锁：先支付，再引导手机号与资料 -->
     <view class="card paywall-card" tt:if="{{!hasError && payInfo.requiresPayment && !payInfo.isPaid}}">
       <view class="paywall-content">
-        <text class="paywall-fake-title">完整版性格深度解析</text>
-        <text class="paywall-tip">解锁后将展示完整报告内容</text>
-        <!-- 中间解锁按钮：未有手机号时就地触发微信手机号授权 -->
-        <button
-          class="paywall-btn"
-          tt:if="{{!hasPhone}}"
-          open-type="getPhoneNumber"
-          bindgetphonenumber="onGetPhoneNumberForFacePay"
-        >
-          <text class="paywall-btn-main">解锁完整报告</text>
-          <text class="paywall-btn-price">￥{{payInfo.amountYuan || 0}} / 次</text>
-        </button>
-        <!-- 已有手机号时：普通按钮，直接解锁 -->
-        <button
-          class="paywall-btn"
-          tt:elif="{{hasPhone}}"
-          bindtap="unlockFullReport"
-        >
-          <text class="paywall-btn-main">解锁完整报告</text>
-          <text class="paywall-btn-price">￥{{payInfo.amountYuan || 0}} / 次</text>
-        </button>
-        <text class="paywall-tip">一次性解锁本次{{reportTitle || '分析报告'}}，永久保存在「历史记录」中</text>
+        <text class="paywall-fake-title">完整版深度解析</text>
+        <text class="paywall-tip">含面相、骨相、人际与职业 / 家庭 / 合伙三大场景</text>
+        <view class="paywall-btn paywall-btn--compact" bindtap="onTapUnlockPay">
+          <text class="paywall-btn-main">{{payInfo.amountYuan || 1}} 元解锁</text>
+        </view>
+        <text class="paywall-tip">解锁后可在「历史记录」再次查看；绑定手机与资料见上方绿色提示条</text>
       </view>
     </view>
 
     <!-- ========== 详细分析区（解锁后可见） ========== -->
     <block tt:if="{{!hasError && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+
+      <view class="card scene-detail-card" tt:if="{{result.careerDevelopment}}">
+        <text class="card-title">职业发展方向</text>
+        <text class="card-text">{{result.careerDevelopment}}</text>
+      </view>
+      <view class="card scene-detail-card" tt:if="{{result.familyParenting}}">
+        <text class="card-title">家庭亲子关系</text>
+        <text class="card-text">{{result.familyParenting}}</text>
+      </view>
+      <view class="card scene-detail-card" tt:if="{{result.partnerCofounder}}">
+        <text class="card-title">寻找合伙人</text>
+        <text class="card-text">{{result.partnerCofounder}}</text>
+      </view>
 
       <!-- 面相分析（审核模式隐藏） -->
       <block tt:if="{{!reviewMode && result.faceAnalysis}}">
@@ -281,19 +317,6 @@
       </view>
 
     </block>
-
-    <!-- 操作按钮 -->
-    <view class="action-section" tt:if="{{!hasError}}">
-      <button class="btn btn-primary" open-type="share">
-        <text class="btn-text">分享我的分析报告</text>
-      </button>
-      <view class="btn btn-outline" bindtap="retake">
-        <text class="btn-text-outline">重新分析</text>
-      </view>
-      <view class="btn btn-outline" bindtap="goHome">
-        <text class="btn-text-outline">返回首页</text>
-      </view>
-    </view>
 
   </view>
 </view>

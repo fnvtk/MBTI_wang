@@ -1,6 +1,29 @@
 // app.js - MBTI抖音小程序主入口
 const { request } = require('./utils/request.js')
 
+// 全局注入：所有页面 onShow 自动上报 page_view；onShareAppMessage 自动上报 share
+const _OrigPage = Page
+Page = function (pageConfig) {
+  const origOnShow = pageConfig.onShow
+  pageConfig.onShow = function () {
+    try {
+      const { reportPageView } = require('./utils/analytics.js')
+      reportPageView()
+    } catch (e) {}
+    if (typeof origOnShow === 'function') {
+      origOnShow.call(this)
+    }
+  }
+  if (typeof pageConfig.onShareAppMessage === 'function') {
+    const origShare = pageConfig.onShareAppMessage
+    pageConfig.onShareAppMessage = function (res) {
+      try { require('./utils/analytics.js').reportShare('friend') } catch (e) {}
+      return origShare.call(this, res)
+    }
+  }
+  return _OrigPage(pageConfig)
+}
+
 App({
   globalData: {
     userInfo: null,
@@ -21,15 +44,38 @@ App({
     reviewMode: true
   },
 
-  onLaunch() {
+  onLaunch(launchOptions) {
+    this.globalData.scene = launchOptions && launchOptions.scene ? launchOptions.scene : ''
     this.loadStoredData()
     this.silentLogin()
+
+    try {
+      const analytics = require('./utils/analytics.js')
+      analytics.reportAppLaunch(launchOptions)
+    } catch (e) {}
 
     this.getRuntimeConfig().then((cfg) => {
       if (cfg) {
         if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
+        if (typeof cfg.reviewMode === 'boolean') {
+          this.globalData.reviewMode = cfg.reviewMode
+        }
       }
     }).catch(() => {})
+  },
+
+  onShow() {
+    try {
+      const { reportPageView } = require('./utils/analytics.js')
+      reportPageView()
+    } catch (e) {}
+  },
+
+  onHide() {
+    try {
+      const { flush } = require('./utils/analytics.js')
+      flush()
+    } catch (e) {}
   },
 
   loadStoredData() {
@@ -83,14 +129,17 @@ App({
           }
 
           const url = `${this.globalData.apiBase}/api/auth/douyin`
+          const loginData = { code: code || '', anonymousCode: anonymousCode || '' }
+          try {
+            const gd = this.globalData || {}
+            const eid = gd.enterpriseIdFromScene || (gd.userInfo && gd.userInfo.enterpriseId) || gd.defaultEnterpriseId
+            if (eid && Number(eid) > 0) loginData.enterpriseId = Number(eid)
+          } catch (e) {}
           tt.request({
             url,
             method: 'POST',
             header: { 'Content-Type': 'application/json' },
-            data: {
-              code: code || '',
-              anonymousCode: anonymousCode || ''
-            },
+            data: loginData,
             success: (response) => {
               if (response.statusCode === 200 && response.data && response.data.code === 200) {
                 const data = response.data.data || {}

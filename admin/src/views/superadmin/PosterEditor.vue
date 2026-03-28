@@ -325,6 +325,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { getBearerTokenForCurrentApp } from '@/utils/authStorage'
 import axios from 'axios'
 
 // ────── 类型 ──────
@@ -534,7 +535,7 @@ const moveLayer = (id: string, dir: -1 | 1) => {
 const uploadFile = async (file: File): Promise<string> => {
   const formData = new FormData()
   formData.append('file', file)
-  const token = localStorage.getItem('authToken')
+  const token = getBearerTokenForCurrentApp()
   const baseURL = import.meta.env.VITE_API_BASE_URL
     ? (import.meta.env.VITE_API_BASE_URL.endsWith('/')
       ? `${import.meta.env.VITE_API_BASE_URL}api/v1`

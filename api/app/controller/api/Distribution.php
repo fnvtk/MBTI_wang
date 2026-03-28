@@ -119,7 +119,13 @@ class Distribution extends BaseController
                     'updatedAt' => $now,
                 ]);
         } else {
-            // ── 不同推荐人 → 抢绑（覆盖，记录旧推荐人）
+            // ── 不同推荐人：有效期内禁止更换（对齐「一级一月 / 30 天锁定」策略，参考 Soul 分销规则）
+            $exExpire = (int) ($existing['expireAt'] ?? 0);
+            $exStatus = (string) ($existing['status'] ?? '');
+            if ($exStatus === 'active' && $exExpire > $now) {
+                return success(null, '绑定有效期内暂不可更换推荐人，到期后可重新绑定');
+            }
+            // ── 已过期或非 active → 允许抢绑（覆盖，记录旧推荐人）
             Db::name('distribution_bindings')
                 ->where('id', $existing['id'])
                 ->update([

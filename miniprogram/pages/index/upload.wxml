@@ -98,7 +98,7 @@
         open-type="getPhoneNumber"
         bindgetphonenumber="onGetPhoneNumber"
       >
-        授权手机号后开始查看报告
+        授权手机号后继续上传
       </button>
     </view>
   </view>
