@@ -128,20 +128,20 @@
         </view>
       </scroll-view>
       <view class="depth-empty-hint depth-empty-hint--compact">
-        <text>灰色为未完成项，点击即可进入测评或拍摄；右上方可查看全部历史。</text>
+        <text>灰色为未完成项，点击即可进入测评；右上方可查看全部历史。</text>
       </view>
       <view class="depth-inner-divider"></view>
-      <view class="menu-item menu-item--flat" bindtap="goToActionTest" tt:if="{{!reviewMode}}">
+      <view class="menu-item menu-item--flat" bindtap="goToTestSelect">
         <view class="menu-icon-wrap menu-icon-amber">
-          <text class="menu-icon">📷</text>
+          <text class="menu-icon">🧠</text>
         </view>
         <view class="menu-content">
-          <text class="menu-title">动作测试（拍摄）</text>
-          <text class="menu-sub">拍摄人像照片，生成面相、骨相与盖洛普等解析</text>
+          <text class="menu-title">详细性格测试</text>
+          <text class="menu-sub">MBTI、PDP、DISC 三套问卷，任选一项开始</text>
         </view>
         <text class="menu-chevron">›</text>
       </view>
-      <view class="menu-divider menu-divider--in-card" tt:if="{{!reviewMode}}"></view>
+      <view class="menu-divider menu-divider--in-card"></view>
       <view class="menu-item menu-item--flat" bindtap="goToDeepService">
         <view class="menu-icon-wrap menu-icon-purple">
           <text class="menu-icon">✨</text>
@@ -149,6 +149,17 @@
         <view class="menu-content">
           <text class="menu-title">深度解读与方案</text>
           <text class="menu-sub">个人报告与团队／企业服务，进入后按需选择</text>
+        </view>
+        <text class="menu-chevron">›</text>
+      </view>
+      <view class="menu-divider menu-divider--in-card"></view>
+      <view class="menu-item menu-item--flat" bindtap="goToOrders">
+        <view class="menu-icon-wrap menu-icon-emerald">
+          <text class="menu-icon">🧾</text>
+        </view>
+        <view class="menu-content">
+          <text class="menu-title">我的订单</text>
+          <text class="menu-sub">支付记录与订单状态</text>
         </view>
         <text class="menu-chevron">›</text>
       </view>

@@ -125,6 +125,7 @@ Page({
     this.cameraContext.takePhoto({
       quality: 'high',
       success: (res) => {
+        try { require('../../utils/analytics').track('take_photo', { index: this.data.photos.length + 1 }) } catch (e) {}
         const photos = [...this.data.photos, res.tempImagePath]
         const photoIndex = photos.length
         const guideText = this.data.guideTexts[photoIndex] || '拍摄完成'
@@ -225,11 +226,13 @@ Page({
         tt.hideLoading()
         tt.setStorageSync('aiPhotos', urls)
         this.setData({ uploading: false })
+        try { require('../../utils/analytics').track('photo_upload_success', { count: urls.length }) } catch (e) {}
         tt.navigateTo({ url: '/pages/index/result' })
       })
       .catch((err) => {
         tt.hideLoading()
         this.setData({ uploading: false })
+        try { require('../../utils/analytics').track('photo_upload_fail', { error: (err && err.message) || '' }) } catch (e) {}
         tt.showToast({ title: err.message || '上传失败', icon: 'none' })
       })
   },

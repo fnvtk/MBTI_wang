@@ -32,6 +32,7 @@ Page({
       total,
       progress: total ? Math.round((1 / total) * 100) : 0
     })
+    try { require('../../utils/analytics').track('test_start', { type: 'mbti', total }) } catch (e) {}
     this.startTimer()
   },
 
@@ -43,6 +44,10 @@ Page({
   },
 
   onUnload() {
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
     if (this.timer) {
       clearInterval(this.timer)
     }
@@ -66,36 +71,53 @@ Page({
     }, 1000)
   },
 
-  // 选择答案（用闭包保存题号，避免 setTimeout 与 setData 时序导致最后一题未提交）
+  // 选择答案：防抖 + 过期回调校验，避免连点导致重复 next 漏题
   selectAnswer(e) {
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
     const value = e.currentTarget.dataset.value
-    const questionId = this.data.currentQuestion.id
+    const cq = this.data.currentQuestion
+    if (value == null || !cq || cq.id == null) return
+
+    const questionId = cq.id
     const idx = this.data.currentIndex
     const tot = this.data.total
 
-    let answers = { ...this.data.answers }
+    const answers = { ...this.data.answers }
     answers[questionId] = value
     const answeredCount = Object.keys(answers).length
     const progress = tot ? Math.round(((idx + 1) / tot) * 100) : 0
 
-    this.setData({
-      selectedAnswer: value,
-      answers,
-      answeredCount,
-      progress
-    })
-
-    setTimeout(() => {
-      if (idx < tot - 1) {
-        this.nextQuestion()
-      } else {
-        this.submitTest()
+    this.setData(
+      {
+        selectedAnswer: value,
+        answers,
+        answeredCount,
+        progress
+      },
+      () => {
+        this._advanceTimer = setTimeout(() => {
+          this._advanceTimer = null
+          const d = this.data
+          if (d.currentIndex !== idx || !d.currentQuestion || d.currentQuestion.id !== questionId) return
+          if (idx < tot - 1) {
+            this.nextQuestion()
+          } else {
+            this.submitTest()
+          }
+        }, 320)
       }
-    }, 320)
+    )
   },
 
   // 上一题
   prevQuestion() {
+    if (this._advanceTimer) {
+      clearTimeout(this._advanceTimer)
+      this._advanceTimer = null
+    }
     if (this.data.currentIndex > 0) {
       const newIndex = this.data.currentIndex - 1
       const newQuestion = this.data.questions[newIndex]
@@ -181,6 +203,7 @@ Page({
     }
     wx.setStorageSync('mbtiResult', resultData)
     app.saveTestResult('mbti', resultData)
+    try { require('../../utils/analytics').track('test_complete', { type: 'mbti', result: result.mbtiType, confidence: result.confidence, duration: resultData.testDuration }) } catch (e) {}
 
     wx.redirectTo({
       url: '/pages/result/mbti'

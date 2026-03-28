@@ -9,142 +9,132 @@
     append-to-body
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <div v-loading="loading" class="ud-wrap">
+    <!-- 侧栏 ud-sidebar 与主区 ud-main-pane 之间间距由 .ud-layout 的 gap 控制 -->
+    <div v-loading="loading" class="ud-layout">
       <template v-if="user">
-        <aside class="ud-side">
-          <div class="ud-avatar-block">
-            <img v-if="user.avatar" :src="user.avatar" class="ud-avatar-img" referrerpolicy="no-referrer" />
-            <div v-else class="ud-avatar-letter">{{ avatarLetter }}</div>
-            <div class="ud-name">{{ user.username || '未命名用户' }}</div>
+        <aside class="ud-sidebar">
+          <div class="ud-profile-avatar">
+            <img
+              v-if="detailAvatarUrl"
+              :src="detailAvatarUrl"
+              class="ud-profile-avatar__img"
+              referrerpolicy="no-referrer"
+            />
+            <div v-else class="ud-profile-avatar__letter">{{ avatarLetter }}</div>
+            <div class="ud-profile-name">{{ user.username || '未命名用户' }}</div>
           </div>
-          <div class="ud-meta">
-            <div class="ud-meta-row">
+          <div class="ud-profile-meta">
+            <div class="ud-profile-meta__row">
               <el-icon><Key /></el-icon>
               <span>ID {{ user.id }}</span>
             </div>
-            <div class="ud-meta-row" v-if="user.phone">
+            <div class="ud-profile-meta__row" v-if="user.phone">
               <el-icon><Phone /></el-icon>
               <span>{{ user.phone }}</span>
             </div>
-            <div class="ud-meta-row">
+            <div class="ud-profile-meta__row">
               <el-icon><Calendar /></el-icon>
               <span>{{ formatDate(user.createdAt) }}</span>
             </div>
           </div>
-          <div class="ud-stat-icons">
+          <div class="ud-quick-stats">
             <el-tooltip content="测试次数" placement="top">
-              <div class="ud-stat-ic"><el-icon><DataAnalysis /></el-icon>{{ user.testCount ?? 0 }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><DataAnalysis /></el-icon>{{ user.testCount ?? 0 }}</div>
             </el-tooltip>
             <el-tooltip content="MBTI" placement="top">
-              <div class="ud-stat-ic"><el-icon><Aim /></el-icon>{{ shortOrDash(user.mbtiType) }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><Aim /></el-icon>{{ shortOrDash(user.mbtiType) }}</div>
             </el-tooltip>
             <el-tooltip content="PDP" placement="top">
-              <div class="ud-stat-ic"><el-icon><TrendCharts /></el-icon>{{ shortOrDash(user.pdpType, 4) }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><TrendCharts /></el-icon>{{ shortOrDash(user.pdpType, 4) }}</div>
             </el-tooltip>
             <el-tooltip content="DISC" placement="top">
-              <div class="ud-stat-ic"><el-icon><PieChart /></el-icon>{{ shortOrDash(user.discType, 3) }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><PieChart /></el-icon>{{ shortOrDash(user.discType, 3) }}</div>
             </el-tooltip>
           </div>
-          <div class="ud-tags" v-if="profileTags.length">
-            <div class="ud-tags-title">维度标签</div>
-            <el-tag v-for="t in profileTags" :key="t" size="small" class="ud-tag">{{ t }}</el-tag>
+          <div class="ud-dimension-tags" v-if="profileTags.length">
+            <div class="ud-dimension-tags__title">维度标签</div>
+            <el-tag v-for="t in profileTags" :key="t" size="small" class="ud-dimension-tags__item">{{ t }}</el-tag>
           </div>
         </aside>
 
-        <main class="ud-main">
+        <main class="ud-main-pane">
           <el-tabs v-model="udTab" class="ud-tabs">
             <el-tab-pane label="分析结果" name="analysis">
-              <div class="ud-scroll">
-                <div class="ud-radar-row">
-                  <div class="ud-radar-cell">
-                    <div class="ud-radar-title"><el-icon><Aim /></el-icon> MBTI</div>
-                    <VChart v-if="mbtiRadarOption" class="ud-chart" :option="mbtiRadarOption" autoresize />
-                    <div v-else class="ud-chart-empty">暂无 MBTI 测评</div>
-                    <div v-if="mbtiSummary" class="ud-mini-type">{{ mbtiSummary }}</div>
+              <div class="ud-main-scroll">
+                <div class="ud-chart-row">
+                  <div class="ud-chart-panel">
+                    <div class="ud-chart-heading"><el-icon><Aim /></el-icon> MBTI</div>
+                    <VChart v-if="mbtiRadarOption" class="ud-chart-echart" :option="mbtiRadarOption" autoresize />
+                    <div v-else class="ud-chart-placeholder">暂无 MBTI 测评</div>
+                    <div v-if="mbtiSummary" class="ud-chart-footnote">{{ mbtiSummary }}</div>
                   </div>
-                  <div class="ud-radar-cell">
-                    <div class="ud-radar-title"><el-icon><TrendCharts /></el-icon> PDP</div>
-                    <VChart v-if="pdpRadarOption" class="ud-chart" :option="pdpRadarOption" autoresize />
-                    <div v-else class="ud-chart-empty">暂无 PDP 测评</div>
+                  <div class="ud-chart-panel">
+                    <div class="ud-chart-heading"><el-icon><TrendCharts /></el-icon> PDP</div>
+                    <VChart v-if="pdpRadarOption" class="ud-chart-echart" :option="pdpRadarOption" autoresize />
+                    <div v-else class="ud-chart-placeholder">暂无 PDP 测评</div>
                   </div>
-                  <div class="ud-radar-cell">
-                    <div class="ud-radar-title"><el-icon><PieChart /></el-icon> DISC</div>
-                    <VChart v-if="discRadarOption" class="ud-chart" :option="discRadarOption" autoresize />
-                    <div v-else class="ud-chart-empty">暂无 DISC 测评</div>
+                  <div class="ud-chart-panel">
+                    <div class="ud-chart-heading"><el-icon><PieChart /></el-icon> DISC</div>
+                    <VChart v-if="discRadarOption" class="ud-chart-echart" :option="discRadarOption" autoresize />
+                    <div v-else class="ud-chart-placeholder">暂无 DISC 测评</div>
                   </div>
                 </div>
 
-                <div class="ud-row2">
-                  <div class="ud-card">
-                    <div class="ud-card-h"><el-icon><Star /></el-icon> 盖洛普优势</div>
-                    <div v-if="gallupList.length" class="ud-gallup">
-                      <div v-for="(g, i) in gallupList" :key="i" class="ud-gallup-item">
-                        <span class="ud-gi-n">{{ i + 1 }}</span>
-                        <span class="ud-gi-t">{{ g }}</span>
+                <div class="ud-dual-cards">
+                  <div class="ud-panel-card">
+                    <div class="ud-panel-card__head"><el-icon><Star /></el-icon> 盖洛普优势</div>
+                    <div v-if="gallupList.length" class="ud-gallup-list">
+                      <div v-for="(g, idx) in gallupList" :key="idx" class="ud-gallup-list__item">
+                        <span class="ud-gallup-list__index">{{ Number(idx) + 1 }}</span>
+                        <span class="ud-gallup-list__text">{{ g }}</span>
                       </div>
                     </div>
-                    <div v-else class="ud-muted">暂无盖洛普数据（深度报告解锁后可见）</div>
+                    <div v-else class="ud-empty-hint">暂无盖洛普数据（深度报告解锁后可见）</div>
                   </div>
-                  <div class="ud-card ud-grow">
-                    <div class="ud-card-h"><el-icon><OfficeBuilding /></el-icon> 岗位匹配参考</div>
-                    <div class="ud-roles">
-                      <div v-for="r in roleFitList" :key="r.name" class="ud-role">
-                        <span class="ud-role-n">{{ r.name }}</span>
+                  <div class="ud-panel-card ud-panel-card--wide">
+                    <div class="ud-panel-card__head"><el-icon><OfficeBuilding /></el-icon> 岗位匹配参考</div>
+                    <div class="ud-rolefit-list">
+                      <div v-for="r in roleFitList" :key="r.name" class="ud-rolefit-list__row">
+                        <span class="ud-rolefit-list__name">{{ r.name }}</span>
                         <el-progress :percentage="r.pct" :stroke-width="6" :show-text="false" />
-                        <span class="ud-role-p">{{ r.pct }}%</span>
+                        <span class="ud-rolefit-list__percent">{{ r.pct }}%</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div v-if="showEnterpriseMatch" class="ud-card ud-match-card">
-                  <div class="ud-card-h">
+                <div v-if="showEnterpriseMatch" class="ud-panel-card ud-enterprise-match">
+                  <div class="ud-panel-card__head">
                     <el-icon><Connection /></el-icon> 推荐匹配企业
-                    <span class="ud-hint">按登记企业测评池与您维度同质度排序</span>
+                    <span class="ud-panel-card__hint">按登记企业测评池与您维度同质度排序</span>
                   </div>
-                  <div v-if="matchingEnterprises.length" class="ud-match-list">
-                    <div v-for="ent in matchingEnterprises" :key="ent.id" class="ud-match-row">
-                      <div class="ud-m-info">
-                        <div class="ud-m-name">{{ ent.name }}</div>
-                        <div class="ud-m-sub">{{ ent.matchTypeLabel }} · 匹配度 {{ ent.matchScore }}%</div>
-                        <div class="ud-m-reason">{{ ent.matchReason }}</div>
-                        <div v-if="ent.contactName || ent.contactPhone" class="ud-m-contact">
+                  <div v-if="matchingEnterprises.length" class="ud-enterprise-match__list">
+                    <div v-for="ent in matchingEnterprises" :key="ent.id" class="ud-enterprise-match__item">
+                      <div class="ud-enterprise-match__body">
+                        <div class="ud-enterprise-match__name">{{ ent.name }}</div>
+                        <div class="ud-enterprise-match__meta">{{ ent.matchTypeLabel }} · 匹配度 {{ ent.matchScore }}%</div>
+                        <div class="ud-enterprise-match__desc">{{ ent.matchReason }}</div>
+                        <div v-if="ent.contactName || ent.contactPhone" class="ud-enterprise-match__contact">
                           <el-icon><User /></el-icon>
                           {{ ent.contactName || '负责人' }}
-                          <span v-if="ent.contactPhone" class="ud-m-phone">{{ ent.contactPhone }}</span>
+                          <span v-if="ent.contactPhone" class="ud-enterprise-match__phone">{{ ent.contactPhone }}</span>
                         </div>
-                      </div>
-                      <div class="ud-m-actions">
-                        <el-button
-                          v-if="ent.contactPhone"
-                          type="primary"
-                          size="small"
-                          @click="openDial(ent.contactPhone)"
-                        >
-                          <el-icon><Phone /></el-icon>
-                        </el-button>
-                        <el-button v-if="ent.contactPhone" size="small" @click="copyText(ent.contactPhone, '电话已复制')">
-                          复制电话
-                        </el-button>
-                        <el-button v-if="ent.contactEmail" size="small" @click="openMail(ent.contactEmail)">
-                          邮件
-                        </el-button>
                       </div>
                     </div>
                   </div>
-                  <div v-else class="ud-muted">暂无企业数据</div>
+                  <div v-else class="ud-empty-hint">暂无企业数据</div>
                 </div>
-                <div v-else class="ud-muted ud-enterprise-hint">
+                <div v-else class="ud-empty-hint ud-enterprise-match__hint">
                   跨企业人才匹配与负责人直连请在「超级管理后台 → 用户总览」查看。
                 </div>
               </div>
             </el-tab-pane>
 
             <el-tab-pane label="测试记录" name="tests">
-              <el-table v-if="testTableData.length" :data="paginatedTests" size="small" max-height="360" class="ud-test-tb">
+              <el-table v-if="testTableData.length" :data="paginatedTests" size="small" max-height="360" class="ud-test-records-table">
                 <el-table-column width="52" align="center">
                   <template #default="{ row }">
-                    <el-icon class="ud-ticon" :class="testIconClass(row.testType)"><component :is="testIcon(row.testType)" /></el-icon>
+                    <el-icon class="ud-test-type-icon" :class="testIconClass(row.testType)"><component :is="testIcon(row.testType)" /></el-icon>
                   </template>
                 </el-table-column>
                 <el-table-column prop="createdAt" label="时间" width="108">
@@ -172,8 +162,8 @@
                   </template>
                 </el-table-column>
               </el-table>
-              <div v-else class="ud-muted">暂无测试记录</div>
-              <div class="ud-pager" v-if="testTableData.length > testPageSize">
+              <div v-else class="ud-empty-hint">暂无测试记录</div>
+              <div class="ud-test-records-pagination" v-if="testTableData.length > testPageSize">
                 <el-pagination
                   v-model:current-page="testPage"
                   :page-size="testPageSize"
@@ -185,17 +175,17 @@
             </el-tab-pane>
 
             <el-tab-pane label="人像相册" name="photos">
-              <div v-if="facePhotos.length" class="ud-photos">
+              <div v-if="facePhotos.length" class="ud-photo-gallery">
                 <el-image
                   v-for="(url, idx) in facePhotos"
                   :key="url + idx"
                   :src="url"
                   fit="cover"
-                  class="ud-ph"
+                  class="ud-photo-gallery__thumb"
                   :preview-src-list="facePhotos"
                 />
               </div>
-              <div v-else class="ud-muted">暂无人脸分析照片</div>
+              <div v-else class="ud-empty-hint">暂无人脸分析照片</div>
             </el-tab-pane>
           </el-tabs>
         </main>
@@ -275,6 +265,13 @@ watch(
 const avatarLetter = computed(() => {
   const n = (props.user?.username || props.user?.nickname || '?').trim()
   return (n.charAt(0) || '?').toUpperCase()
+})
+
+const detailAvatarUrl = computed(() => {
+  const u = props.user as Record<string, any> | null | undefined
+  if (!u) return ''
+  const a = u.avatar ?? u.avatarUrl ?? ''
+  return typeof a === 'string' ? a.trim() : ''
 })
 
 const rawTests = computed(() => (props.user?.testList || []) as any[])
@@ -601,18 +598,16 @@ function openMail(email: string) {
   }
 }
 
-.ud-wrap {
-  min-height: 200px;
-}
-
-.ud-grid {
+/* 整行布局：侧栏与主区之间保留视觉空隙（与设计稿一致约 16～24px） */
+.ud-layout {
   display: flex;
-  gap: 14px;
   align-items: stretch;
+  gap: 20px;
+  min-height: 200px;
   max-height: 78vh;
 }
 
-.ud-side {
+.ud-sidebar {
   width: 200px;
   flex-shrink: 0;
   background: linear-gradient(180deg, #faf5ff 0%, #fff 40%);
@@ -621,19 +616,19 @@ function openMail(email: string) {
   padding: 12px;
 }
 
-.ud-avatar-block {
+.ud-profile-avatar {
   text-align: center;
   margin-bottom: 10px;
 }
 
-.ud-avatar-img {
+.ud-profile-avatar__img {
   width: 56px;
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.ud-avatar-letter {
+.ud-profile-avatar__letter {
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -646,14 +641,14 @@ function openMail(email: string) {
   justify-content: center;
 }
 
-.ud-name {
+.ud-profile-name {
   margin-top: 6px;
   font-weight: 700;
   font-size: 14px;
   color: #111827;
 }
 
-.ud-meta-row {
+.ud-profile-meta__row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -666,14 +661,14 @@ function openMail(email: string) {
   }
 }
 
-.ud-stat-icons {
+.ud-quick-stats {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
   margin-top: 10px;
 }
 
-.ud-stat-ic {
+.ud-quick-stats__tile {
   background: #fff;
   border-radius: 8px;
   padding: 6px 8px;
@@ -690,21 +685,21 @@ function openMail(email: string) {
   }
 }
 
-.ud-tags {
+.ud-dimension-tags {
   margin-top: 12px;
 }
 
-.ud-tags-title {
+.ud-dimension-tags__title {
   font-size: 11px;
   color: #9ca3af;
   margin-bottom: 6px;
 }
 
-.ud-tag {
+.ud-dimension-tags__item {
   margin: 0 4px 4px 0;
 }
 
-.ud-main {
+.ud-main-pane {
   flex: 1;
   min-width: 0;
   border: 1px solid #f3f4f6;
@@ -730,26 +725,26 @@ function openMail(email: string) {
   }
 }
 
-.ud-scroll {
+.ud-main-scroll {
   max-height: calc(78vh - 120px);
   overflow-y: auto;
   padding-right: 4px;
 }
 
-.ud-radar-row {
+.ud-chart-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.ud-radar-cell {
+.ud-chart-panel {
   background: #fafafa;
   border-radius: 8px;
   padding: 6px 4px 4px;
   text-align: center;
 }
 
-.ud-radar-title {
+.ud-chart-heading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -764,12 +759,12 @@ function openMail(email: string) {
   }
 }
 
-.ud-chart {
+.ud-chart-echart {
   height: 150px;
   width: 100%;
 }
 
-.ud-chart-empty {
+.ud-chart-placeholder {
   height: 120px;
   display: flex;
   align-items: center;
@@ -778,19 +773,19 @@ function openMail(email: string) {
   color: #9ca3af;
 }
 
-.ud-mini-type {
+.ud-chart-footnote {
   font-size: 11px;
   color: #6b7280;
   padding: 0 4px 4px;
 }
 
-.ud-row2 {
+.ud-dual-cards {
   display: flex;
   gap: 10px;
   margin-top: 10px;
 }
 
-.ud-card {
+.ud-panel-card {
   background: #fff;
   border: 1px solid #f3f4f6;
   border-radius: 8px;
@@ -799,11 +794,11 @@ function openMail(email: string) {
   min-width: 0;
 }
 
-.ud-grow {
+.ud-panel-card--wide {
   flex: 1.2;
 }
 
-.ud-card-h {
+.ud-panel-card__head {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -817,14 +812,14 @@ function openMail(email: string) {
   }
 }
 
-.ud-hint {
+.ud-panel-card__hint {
   font-weight: 400;
   font-size: 11px;
   color: #9ca3af;
   margin-left: 4px;
 }
 
-.ud-gallup-item {
+.ud-gallup-list__item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -832,7 +827,7 @@ function openMail(email: string) {
   margin-bottom: 6px;
 }
 
-.ud-gi-n {
+.ud-gallup-list__index {
   width: 18px;
   height: 18px;
   border-radius: 4px;
@@ -845,13 +840,13 @@ function openMail(email: string) {
   justify-content: center;
 }
 
-.ud-roles {
+.ud-rolefit-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
-.ud-role {
+.ud-rolefit-list__row {
   display: grid;
   grid-template-columns: 72px 1fr 36px;
   gap: 8px;
@@ -859,30 +854,30 @@ function openMail(email: string) {
   font-size: 11px;
 }
 
-.ud-role-n {
+.ud-rolefit-list__name {
   color: #4b5563;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.ud-role-p {
+.ud-rolefit-list__percent {
   text-align: right;
   color: #7c3aed;
   font-weight: 600;
 }
 
-.ud-match-card {
+.ud-enterprise-match {
   margin-top: 10px;
 }
 
-.ud-match-list {
+.ud-enterprise-match__list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.ud-match-row {
+.ud-enterprise-match__item {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -892,26 +887,26 @@ function openMail(email: string) {
   border-radius: 8px;
 }
 
-.ud-m-name {
+.ud-enterprise-match__name {
   font-weight: 600;
   font-size: 13px;
   color: #111827;
 }
 
-.ud-m-sub {
+.ud-enterprise-match__meta {
   font-size: 11px;
   color: #7c3aed;
   margin-top: 2px;
 }
 
-.ud-m-reason {
+.ud-enterprise-match__desc {
   font-size: 11px;
   color: #6b7280;
   margin-top: 4px;
   line-height: 1.4;
 }
 
-.ud-m-contact {
+.ud-enterprise-match__contact {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -924,34 +919,34 @@ function openMail(email: string) {
   }
 }
 
-.ud-m-phone {
+.ud-enterprise-match__phone {
   font-family: ui-monospace, monospace;
   color: #111827;
 }
 
-.ud-m-actions {
+.ud-enterprise-match__actions {
   display: flex;
   flex-direction: column;
   gap: 4px;
   flex-shrink: 0;
 }
 
-.ud-muted {
+.ud-empty-hint {
   font-size: 12px;
   color: #9ca3af;
   padding: 8px 0;
 }
 
-.ud-enterprise-hint {
+.ud-enterprise-match__hint {
   margin-top: 8px;
   line-height: 1.5;
 }
 
-.ud-test-tb {
+.ud-test-records-table {
   width: 100%;
 }
 
-.ud-ticon {
+.ud-test-type-icon {
   font-size: 18px;
 }
 .tic-mbti {
@@ -970,33 +965,33 @@ function openMail(email: string) {
   color: #6b7280;
 }
 
-.ud-pager {
+.ud-test-records-pagination {
   margin-top: 8px;
   display: flex;
   justify-content: center;
 }
 
-.ud-photos {
+.ud-photo-gallery {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.ud-ph {
+.ud-photo-gallery__thumb {
   width: 100px;
   height: 100px;
   border-radius: 8px;
 }
 
 @media (max-width: 900px) {
-  .ud-grid {
+  .ud-layout {
     flex-direction: column;
     max-height: none;
   }
-  .ud-side {
+  .ud-sidebar {
     width: 100%;
   }
-  .ud-radar-row {
+  .ud-chart-row {
     grid-template-columns: 1fr;
   }
 }

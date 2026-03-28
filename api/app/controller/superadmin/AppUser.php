@@ -35,24 +35,31 @@ class AppUser extends BaseController
             return error('无权限访问', 403);
         }
 
-        // 用户数按 openid 去重
+        // ========== 统计全部基于 wechat_users.enterpriseId（而非 test_results.enterpriseId） ==========
+
+        // openid 去重：每个 openid 只保留 id 最大的一条
         try {
-            $totalUsers = (int) Db::name('wechat_users')->count('openid', true);
+            $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
+            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
         } catch (\Throwable $e) {
-            $totalUsers = (int) Db::name('wechat_users')->count();
+            $dedupIds = Db::name('wechat_users')->column('id');
+            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
         }
+        $totalUsers = count($dedupIds);
         $last30d = time() - 30 * 86400;
 
-        // 全部池：去重后的测试用户 & 近 30 天活跃用户（按 userId 去重）
-        // 这里使用逻辑表名 test_results，底层会自动加前缀生成 mbti_test_results
+        // 已测试用户（在 test_results 有记录的 userId 与 dedupIds 取交集）
         $testedUserIds = Db::name('test_results')->distinct(true)->column('userId');
-        $testedUsers = count(array_filter($testedUserIds));
+        $testedUserIds = array_values(array_unique(array_filter(array_map('intval', $testedUserIds))));
+        $testedUsers = count(array_intersect($testedUserIds, $dedupIds));
 
+        // 近 30 天活跃用户
         $activeUserIds = Db::name('test_results')
             ->where('createdAt', '>=', $last30d)
             ->distinct(true)
             ->column('userId');
-        $activeUsers = count(array_filter($activeUserIds));
+        $activeUserIds = array_values(array_unique(array_filter(array_map('intval', $activeUserIds))));
+        $activeUsers = count(array_intersect($activeUserIds, $dedupIds));
 
         $userCards = [
             [
@@ -64,73 +71,44 @@ class AppUser extends BaseController
             ]
         ];
 
-        $individualTotal = 0;
-        $individualActive = 0;
-        try {
-            $individualIds = Db::name('test_results')
-                ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
-                })
-                ->distinct(true)
-                ->column('userId');
-            $individualTotal = count(array_filter($individualIds));
+        // 按 wechat_users.enterpriseId 分组统计
+        $userEidMap = Db::name('wechat_users')->where('id', 'in', $dedupIds)->column('enterpriseId', 'id');
 
-            $individualActiveIds = Db::name('test_results')
-                ->where('createdAt', '>=', $last30d)
-                ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
-                })
-                ->distinct(true)
-                ->column('userId');
-            $individualActive = count(array_filter($individualActiveIds));
-        } catch (\Throwable $e) {
-            $individualTotal = 0;
-            $individualActive = 0;
-        }
-
-        $cunkbaoId = $this->resolveCunkbaoEnterpriseId();
-
+        // 按企业统计：从注册表统计 total，再交叉 test_results 统计 active/tested
         $enterprises = Db::name('enterprises')->field('id,name')->select()->toArray();
         foreach ($enterprises as $e) {
-            $eid = $e['id'];
-            try {
-                $ids = Db::name('test_results')
-                    ->where('enterpriseId', $eid)
-                    ->distinct(true)
-                    ->column('userId');
-                $total = count(array_filter($ids));
+            $eid = (int) $e['id'];
+            $eidUsers = array_keys(array_filter($userEidMap, function ($v) use ($eid) {
+                return (int) $v === $eid;
+            }));
+            $total = count($eidUsers);
+            $active = empty($eidUsers) ? 0 : count(array_intersect($activeUserIds, $eidUsers));
+            $tested = empty($eidUsers) ? 0 : count(array_intersect($testedUserIds, $eidUsers));
 
-                $activeIds = Db::name('test_results')
-                    ->where('enterpriseId', $eid)
-                    ->where('createdAt', '>=', $last30d)
-                    ->distinct(true)
-                    ->column('userId');
-                $active = count(array_filter($activeIds));
-            } catch (\Throwable $ex) {
-                $total = 0;
-                $active = 0;
-            }
-            if ($cunkbaoId !== null && (int) $eid === $cunkbaoId) {
-                $total += $individualTotal;
-                $active += $individualActive;
-            }
             $userCards[] = [
                 'type' => 'enterprise',
                 'enterpriseId' => $eid,
                 'name' => $e['name'] ?? ('企业' . $eid),
                 'total' => $total,
                 'active' => $active,
-                'tested' => $total
+                'tested' => $tested
             ];
         }
 
-        if ($cunkbaoId === null && ($individualTotal > 0 || $individualActive > 0)) {
+        // 无企业归属的个人用户
+        $individualUsers = array_keys(array_filter($userEidMap, function ($v) {
+            return $v === null || $v === '' || (int) $v === 0;
+        }));
+        $individualTotal = count($individualUsers);
+        if ($individualTotal > 0) {
+            $individualActive = count(array_intersect($activeUserIds, $individualUsers));
+            $individualTested = count(array_intersect($testedUserIds, $individualUsers));
             $userCards[] = [
                 'type' => 'individual',
                 'name' => '个人用户(无企业)',
                 'total' => $individualTotal,
                 'active' => $individualActive,
-                'tested' => $individualTotal
+                'tested' => $individualTested
             ];
         }
 
@@ -189,7 +167,7 @@ class AppUser extends BaseController
 
     /**
      * 测试用户列表：分页、关键词、池筛选、MBTI 筛选
-     * GET /api/v1/superadmin/app-users?page=1&pageSize=20&keyword=&pool=all|individual|enterprise&enterpriseId=&mbti=
+     * GET /api/v1/superadmin/app-users?page=1&pageSize=20&keyword=&pool=all|individual|enterprise&enterpriseId=&mbti=&includeZeroTests=
      */
     public function index()
     {
@@ -206,53 +184,12 @@ class AppUser extends BaseController
         $enterpriseId = Request::param('enterpriseId', '');
         $mbti = trim(Request::param('mbti', ''));
 
-        $cunkbaoEnterpriseId = $this->resolveCunkbaoEnterpriseId();
-        if ($pool === 'individual' && $cunkbaoEnterpriseId) {
-            $pool = 'enterprise';
-            $enterpriseId = (string) $cunkbaoEnterpriseId;
-        }
-
         $where = [];
         if ($keyword !== '') {
             $where[] = ['nickname|phone|city|province', 'like', '%' . $keyword . '%'];
         }
 
-        $wechatIds = null;
-        if ($pool === 'individual' || ($pool === 'enterprise' && $enterpriseId !== '')) {
-            try {
-                if ($pool === 'individual') {
-                    $trQuery = Db::name('test_results')->where(function ($q) {
-                        $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
-                    });
-                    $wechatIds = $trQuery->distinct(true)->column('userId');
-                } else {
-                    $eid = (int) $enterpriseId;
-                    if ($cunkbaoEnterpriseId !== null && $eid === $cunkbaoEnterpriseId) {
-                        $idsEnt = Db::name('test_results')->where('enterpriseId', $eid)->distinct(true)->column('userId');
-                        $idsOrphan = Db::name('test_results')->where(function ($q) {
-                            $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
-                        })->distinct(true)->column('userId');
-                        $wechatIds = array_values(array_unique(array_filter(array_merge($idsEnt, $idsOrphan))));
-                    } else {
-                        $wechatIds = Db::name('test_results')->where('enterpriseId', $eid)->distinct(true)->column('userId');
-                    }
-                }
-                $wechatIds = array_values(array_unique(array_filter($wechatIds)));
-            } catch (\Throwable $e) {
-                $wechatIds = null;
-            }
-        }
-        if ($mbti !== '') {
-            $mbtiUserIds = Db::name('test_results')->where('testType', 'mbti')->distinct(true)->column('userId');
-            $mbtiUserIds = array_values(array_unique(array_filter($mbtiUserIds)));
-            if ($wechatIds !== null) {
-                $wechatIds = array_values(array_intersect($wechatIds, $mbtiUserIds));
-            } else {
-                $wechatIds = $mbtiUserIds;
-            }
-        }
-
-        // 按 openid 去重：每个 openid 只保留 id 最大的一条；失败则不去重
+        // 按 openid 去重：每个 openid 只保留 id 最大的一条
         try {
             $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
             $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
@@ -268,15 +205,45 @@ class AppUser extends BaseController
         if ($where) {
             $baseQuery->where($where);
         }
-        if ($wechatIds !== null && !empty($wechatIds)) {
-            $baseQuery->where('id', 'in', array_intersect($dedupIds, $wechatIds));
-        } elseif ($wechatIds !== null && empty($wechatIds)) {
-            return paginate_response([], 0, $page, $pageSize);
+
+        // 池筛选：直接基于 wechat_users.enterpriseId
+        if ($pool === 'individual') {
+            $baseQuery->where(function ($q) {
+                $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
+            });
+        } elseif ($pool === 'enterprise' && $enterpriseId !== '') {
+            $baseQuery->where('enterpriseId', (int) $enterpriseId);
+        }
+
+        // 默认不展示「从未有过测试记录」的用户；?includeZeroTests=1 可显示全部（排查用）
+        $includeZeroTests = Request::param('includeZeroTests', '');
+        $showUntested = ($includeZeroTests === '1' || $includeZeroTests === 'true' || $includeZeroTests === true);
+        if (!$showUntested) {
+            $testedUserIds = Db::name('test_results')->distinct(true)->column('userId');
+            $testedUserIds = array_values(array_unique(array_filter(array_map('intval', $testedUserIds))));
+            if (empty($testedUserIds)) {
+                return paginate_response([], 0, $page, $pageSize);
+            }
+            $baseQuery->whereIn('id', $testedUserIds);
+        }
+
+        // MBTI 筛选：保留旧逻辑，从 test_results 取有 mbti 测试的用户
+        if ($mbti !== '') {
+            $mbtiUserIds = Db::name('test_results')->where('testType', 'mbti')->distinct(true)->column('userId');
+            $mbtiUserIds = array_values(array_unique(array_filter($mbtiUserIds)));
+            if (!empty($mbtiUserIds)) {
+                $baseQuery->where('id', 'in', $mbtiUserIds);
+            } else {
+                return paginate_response([], 0, $page, $pageSize);
+            }
         }
 
         $total = $baseQuery->count();
         $list = (clone $baseQuery)
-            ->field('id,openid,nickname,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
+            ->field([
+                'id', 'openid', 'nickname', 'avatar', 'phone', 'gender',
+                'country', 'province', 'city', 'status', 'lastLoginAt', 'createdAt',
+            ])
             ->order('createdAt', 'desc')
             ->page($page, $pageSize)
             ->select()
@@ -310,38 +277,20 @@ class AppUser extends BaseController
                     'createdAt'  => $row['createdAt'],
                 ];
             }
-            try {
-                $trWithE = Db::name('test_results')
-                    ->where('userId', 'in', $ids)
-                    ->where('enterpriseId', '<>', null)
-                    ->where('enterpriseId', '<>', '')
-                    ->field('userId, enterpriseId')
-                    ->select();
-                $eids = array_unique(array_filter(array_column($trWithE, 'enterpriseId')));
-                $enterpriseNames = [];
-                if (!empty($eids)) {
-                    $enterpriseNames = Db::name('enterprises')->where('id', 'in', $eids)->column('name', 'id');
-                }
-                foreach ($trWithE as $r) {
-                    if (!isset($userEnterprise[$r['userId']])) {
-                        $userEnterprise[$r['userId']] = $enterpriseNames[$r['enterpriseId']] ?? ('企业' . $r['enterpriseId']);
-                    }
-                }
-            } catch (\Throwable $e) {
-                // test_results 可能无 enterpriseId 列
-            }
-            $cunkbaoName = null;
-            if ($cunkbaoEnterpriseId) {
-                $cunkbaoName = (string) (Db::name('enterprises')->where('id', $cunkbaoEnterpriseId)->value('name') ?: '存客宝');
+
+            // 所属企业直接从 wechat_users.enterpriseId 读取
+            $userEids = Db::name('wechat_users')->where('id', 'in', $ids)->column('enterpriseId', 'id');
+            $allEids = array_values(array_unique(array_filter(array_map('intval', $userEids))));
+            $enterpriseNames = [];
+            if (!empty($allEids)) {
+                $enterpriseNames = Db::name('enterprises')->where('id', 'in', $allEids)->column('name', 'id');
             }
             foreach ($ids as $uid) {
-                if (!isset($userEnterprise[$uid])) {
-                    $tc = (int) ($testCounts[$uid] ?? 0);
-                    if ($cunkbaoName !== null && $tc > 0) {
-                        $userEnterprise[$uid] = $cunkbaoName;
-                    } else {
-                        $userEnterprise[$uid] = '个人用户(无企业)';
-                    }
+                $eid = isset($userEids[$uid]) ? (int) $userEids[$uid] : 0;
+                if ($eid > 0 && isset($enterpriseNames[$eid])) {
+                    $userEnterprise[$uid] = $enterpriseNames[$eid];
+                } else {
+                    $userEnterprise[$uid] = '个人用户(无企业)';
                 }
             }
 
@@ -370,6 +319,9 @@ class AppUser extends BaseController
 
         foreach ($list as &$row) {
             $id = $row['id'];
+            $av = $row['avatar'] ?? '';
+            $row['avatar'] = is_scalar($av) ? trim((string) $av) : '';
+            $row['avatarUrl'] = $row['avatar'];
             $testsForUser = $testTypes[$id] ?? [];
             $row['username'] = $row['nickname'] ?? ('用户' . $id);
             $row['testCount'] = (int) ($testCounts[$id] ?? 0);
@@ -390,6 +342,7 @@ class AppUser extends BaseController
             $row['totalPaidAmount'] = $totalPaidFen;
             $row['totalPaidAmountYuan'] = $totalPaidFen > 0 ? round($totalPaidFen / 100, 2) : 0;
         }
+        unset($row);
 
         return paginate_response($list, $total, $page, $pageSize);
     }

@@ -113,6 +113,13 @@ class Enterprise extends BaseController
             return error('企业不存在', 404);
         }
 
+        $wechatPage      = max(1, (int) Request::param('wechatPage', 1));
+        $wechatPageSize  = min(100, max(1, (int) Request::param('wechatPageSize', 10)));
+        $testPage        = max(1, (int) Request::param('testPage', 1));
+        $testPageSize    = min(100, max(1, (int) Request::param('testPageSize', 10)));
+        $orderPage       = max(1, (int) Request::param('orderPage', 1));
+        $orderPageSize   = min(100, max(1, (int) Request::param('orderPageSize', 10)));
+
         $data = $enterprise->toArray();
         
         // 获取企业下的所有用户ID（只统计未删除的用户）
@@ -152,13 +159,14 @@ class Enterprise extends BaseController
                 ->alias('tr')
                 ->leftJoin('users u', 'tr.userId = u.id')
                 ->where('tr.userId', 'in', $userIds)
-                ->field('tr.id,tr.testType,tr.createdAt,u.username')
+                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,u.username')
                 ->order('tr.createdAt', 'desc')
                 ->limit(50) // 限制返回数量
                 ->select()
                 ->toArray();
         }
         $data['testResults'] = $testResults;
+        $this->attachResultSummaries($data['testResults']);
         
         // 统计测试用量
         if (!empty($userIds)) {
@@ -177,39 +185,46 @@ class Enterprise extends BaseController
         } catch (\Throwable $e) {
             $wechatIds = [];
         }
-        $data['wechatUserCount'] = count($wechatIds);
-        $data['wechatUsers'] = [];
-        if (!empty($wechatIds)) {
-            try {
-                $data['wechatUsers'] = Db::name('wechat_users')
-                    ->where('id', 'in', $wechatIds)
-                    ->field('id,openid,nickname,phone,avatar,status,lastLoginAt,createdAt')
-                    ->order('createdAt', 'desc')
-                    ->limit(120)
-                    ->select()
-                    ->toArray();
-            } catch (\Throwable $e) {
-                $data['wechatUsers'] = [];
-            }
+        $wechatUserTotalCount = 0;
+        try {
+            $wechatUserTotalCount = (int) Db::name('wechat_users')->where('enterpriseId', $id)->count();
+        } catch (\Throwable $e) {
+            $wechatUserTotalCount = 0;
+        }
+        $data['wechatUserCount']      = $wechatUserTotalCount;
+        $data['wechatUsersTotal']     = $wechatUserTotalCount;
+        $data['wechatUsers']          = [];
+        try {
+            $data['wechatUsers'] = Db::name('wechat_users')
+                ->where('enterpriseId', $id)
+                ->field('id,openid,nickname,phone,avatar,status,lastLoginAt,createdAt')
+                ->order('createdAt', 'desc')
+                ->page($wechatPage, $wechatPageSize)
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $data['wechatUsers'] = [];
         }
 
         // 该企业下、带 enterpriseId 的小程序测试记录
-        $data['miniprogramTestResults'] = [];
+        $data['miniprogramTestResults']      = [];
+        $data['miniprogramTestResultsTotal'] = 0;
         try {
+            $data['miniprogramTestResultsTotal'] = (int) Db::name('test_results')->where('enterpriseId', $id)->count();
             $data['miniprogramTestResults'] = Db::name('test_results')
                 ->alias('tr')
                 ->leftJoin('wechat_users w', 'tr.userId = w.id')
                 ->where('tr.enterpriseId', $id)
-                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,w.nickname as wechatNickname')
+                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,w.nickname as wechatNickname')
                 ->order('tr.createdAt', 'desc')
-                ->limit(60)
+                ->page($testPage, $testPageSize)
                 ->select()
                 ->toArray();
+            $this->attachResultSummaries($data['miniprogramTestResults']);
         } catch (\Throwable $e) {
             $data['miniprogramTestResults'] = [];
         }
-
-        // 订单与消耗（金额分）
+// 订单与消耗（金额分）
         $paidStatuses = ['paid', 'completed'];
         try {
             $data['orderStats'] = [
@@ -217,10 +232,11 @@ class Enterprise extends BaseController
                 'paidCount'     => (int) Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->count(),
                 'paidAmountFen' => (int) (Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->sum('amount') ?? 0),
             ];
+            $data['recentOrdersTotal'] = (int) Db::name('orders')->where('enterpriseId', $id)->count();
             $data['recentOrders'] = Db::name('orders')
                 ->where('enterpriseId', $id)
                 ->order('createdAt', 'desc')
-                ->limit(25)
+                ->page($orderPage, $orderPageSize)
                 ->field('id,orderNo,status,amount,productType,userId,createdAt')
                 ->select()
                 ->toArray();
@@ -230,7 +246,8 @@ class Enterprise extends BaseController
                 'paidCount'     => 0,
                 'paidAmountFen' => 0,
             ];
-            $data['recentOrders'] = [];
+            $data['recentOrders']      = [];
+            $data['recentOrdersTotal'] = 0;
         }
 
         // 埋点：近 30 天，归属该企业的小程序用户
@@ -546,6 +563,75 @@ class Enterprise extends BaseController
         $enterprise->save();
 
         return success($enterprise, '操作成功');
+    }
+
+    /**
+     * 为列表行附加 resultSummary，并移除原始 resultData（减小响应体积）
+     */
+    private function attachResultSummaries(array &$rows): void
+    {
+        foreach ($rows as &$r) {
+            $type = (string) ($r['testType'] ?? '');
+            $r['resultSummary'] = $this->summarizeTestResultForAdmin($type, $r['resultData'] ?? null);
+            unset($r['resultData']);
+        }
+        unset($r);
+    }
+
+    /**
+     * 从 test_results.resultData 解析超管可读短摘要
+     */
+    private function summarizeTestResultForAdmin(string $testType, $resultData): string
+    {
+        if ($resultData === null || $resultData === '') {
+            return '—';
+        }
+        $decoded = is_string($resultData) ? json_decode($resultData, true) : $resultData;
+        if (!is_array($decoded)) {
+            return '—';
+        }
+        $testType = strtolower($testType);
+        switch ($testType) {
+            case 'mbti':
+                if (!empty($decoded['mbtiType'])) {
+                    return (string) $decoded['mbtiType'];
+                }
+                if (!empty($decoded['mbti']['type'])) {
+                    return (string) $decoded['mbti']['type'];
+                }
+                return '—';
+            case 'disc':
+                $d = trim((string) ($decoded['dominantType'] ?? ''));
+                $s = trim((string) ($decoded['secondaryType'] ?? ''));
+                $line = $d . ($d !== '' && $s !== '' ? ' + ' : '') . $s;
+                return $line !== '' ? $line : '—';
+            case 'pdp':
+                $d = trim((string) ($decoded['dominantType'] ?? ''));
+                return $d !== '' ? $d : '—';
+            case 'face':
+            case 'ai':
+                $parts = [];
+                if (!empty($decoded['mbti']['type'])) {
+                    $parts[] = 'MBTI ' . $decoded['mbti']['type'];
+                }
+                if (!empty($decoded['pdp']['primary'])) {
+                    $parts[] = 'PDP ' . $decoded['pdp']['primary'];
+                }
+                if (!empty($decoded['disc']['primary'])) {
+                    $parts[] = 'DISC ' . $decoded['disc']['primary'];
+                }
+                if ($parts !== []) {
+                    return implode(' · ', $parts);
+                }
+                $sum = $decoded['personalitySummary'] ?? $decoded['overview'] ?? '';
+                $sum = is_string($sum) ? trim($sum) : '';
+                if ($sum !== '') {
+                    return mb_strlen($sum) > 48 ? mb_substr($sum, 0, 48) . '…' : $sum;
+                }
+                return '面相/智能分析';
+            default:
+                return '—';
+        }
     }
 }
 

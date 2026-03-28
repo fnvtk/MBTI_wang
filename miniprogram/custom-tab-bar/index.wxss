@@ -17,7 +17,7 @@
 
 .tab-bar-inner {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   min-height: 120rpx;
   padding: 12rpx 12rpx 10rpx;
@@ -31,8 +31,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 4rpx;
+  justify-content: center;
+  padding-bottom: 0;
   z-index: 1;
 }
 
@@ -60,19 +60,19 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  padding-bottom: 4rpx;
+  justify-content: center;
+  padding-bottom: 0;
 }
 
-/* 浮钮：略上移即可，避免压住首页主按钮 */
+/* 浮钮：整体上移，更突出圆形快门、减少与底栏顶边重叠感 */
 .middle-fab {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   width: 100%;
-  transform: translateY(-10rpx);
-  margin-bottom: -6rpx;
+  transform: translateY(-26rpx);
+  margin-bottom: -10rpx;
 }
 
 .center-circle {

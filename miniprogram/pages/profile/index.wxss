@@ -568,6 +568,7 @@ custom-tab-bar {
 .menu-icon-red    { background: #FEF2F2; }
 .menu-icon-indigo { background: #EEF2FF; }
 .menu-icon-amber  { background: #FFFBEB; }
+.menu-icon-emerald { background: #ECFDF5; }
 .menu-icon-purple { background: #EDE9FE; }
 
 .menu-icon {

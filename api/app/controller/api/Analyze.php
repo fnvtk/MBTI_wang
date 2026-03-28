@@ -171,12 +171,15 @@ class Analyze extends BaseController
 
                         if ($testResultId) {
                             UserProfileModel::recordTest($userId, 'face', $testResultId, $writeEnterpriseId, $now);
-                            // 仅当 enterpriseId 来自请求体（企业分享链接）时才更新绑定关系
-                            if ($enterpriseFromRequest && $enterpriseId !== null && $enterpriseId > 0) {
-                                Db::name('wechat_users')->where('id', $userId)->update([
-                                    'enterpriseId' => $enterpriseId,
-                                    'updatedAt'    => $now,
-                                ]);
+                            // 用户尚无企业归属时，从本次测试上下文补写
+                            if ($writeEnterpriseId !== null && (int) $writeEnterpriseId > 0) {
+                                $curEid = Db::name('wechat_users')->where('id', $userId)->value('enterpriseId');
+                                if ($curEid === null || $curEid === '' || (int) $curEid === 0) {
+                                    Db::name('wechat_users')->where('id', $userId)->update([
+                                        'enterpriseId' => (int) $writeEnterpriseId,
+                                        'updatedAt'    => $now,
+                                    ]);
+                                }
                             }
                             // 面相分析由本接口直接写入 test_results，也要补触发测试完成佣金
                             try {
@@ -334,12 +337,15 @@ class Analyze extends BaseController
 
             if ($testResultId > 0) {
                 UserProfileModel::recordTest($userId, 'resume', $testResultId, $enterpriseId > 0 ? $enterpriseId : null, $now);
-                // 如果是企业分享链接进入，更新用户绑定关系
-                if ($enterpriseIdFromRequest && $enterpriseId > 0) {
-                    Db::name('wechat_users')->where('id', $userId)->update([
-                        'enterpriseId' => $enterpriseId,
-                        'updatedAt'    => $now,
-                    ]);
+                // 用户尚无企业归属时，从本次测试上下文补写
+                if ($enterpriseId > 0) {
+                    $curEid = Db::name('wechat_users')->where('id', $userId)->value('enterpriseId');
+                    if ($curEid === null || $curEid === '' || (int) $curEid === 0) {
+                        Db::name('wechat_users')->where('id', $userId)->update([
+                            'enterpriseId' => $enterpriseId,
+                            'updatedAt'    => $now,
+                        ]);
+                    }
                 }
             }
         } catch (\Throwable $e) {

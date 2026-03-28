@@ -74,15 +74,10 @@
         class="card personality-card {{(payInfo.requiresPayment && !payInfo.isPaid) ? 'personality-card--locked' : ''}}"
       >
         <text class="card-title">性格类型分析</text>
-        <text class="personality-card-sub">MBTI · PDP · DISC 联合速览</text>
 
         <view class="personality-type">
           <text class="type-code">{{result.mbti}}</text>
           <text class="type-name">{{result.title}}</text>
-          <view class="type-chip-row" wx:if="{{result.pdp || result.disc}}">
-            <text class="type-chip" wx:if="{{result.pdp}}">{{result.pdpEmoji}}{{result.pdp}}</text>
-            <text class="type-chip type-chip--disc" wx:if="{{result.disc}}">DISC {{result.disc}}</text>
-          </view>
           <text class="type-desc">{{result.summary}}</text>
         </view>
 
@@ -109,10 +104,6 @@
               <text class="advantage-text">{{item}}</text>
             </view>
           </view>
-        </view>
-
-        <view class="next-btn" bindtap="goToMBTI">
-          <text class="next-btn-text">下一步：详细性格测试 →</text>
         </view>
       </view>
 

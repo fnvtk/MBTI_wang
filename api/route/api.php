@@ -57,6 +57,8 @@ Route::group('api', function () {
     Route::post('payment/create', 'api.Payment/create');
     Route::post('payment/notify', 'api.Payment/notify');
     Route::get('payment/query', 'api.Payment/query');
+    // 当前用户订单列表（小程序「我的订单」）
+    Route::get('orders', 'api.Order/index');
     // 分销
     Route::post('distribution/bind', 'api.Distribution/bind');
     Route::get('distribution/stats', 'api.Distribution/stats');

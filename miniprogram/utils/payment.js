@@ -130,15 +130,15 @@ function wxPay(options) {
             // 支付成功后轮询后端订单状态 3~5 次，确保通过微信订单查询接口确认成功
             pollOrderStatus(orderId, 5, 1000, (ok, order) => {
               if (ok) {
+                try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                 wx.showToast({
                   title: '支付成功',
                   icon: 'success',
                   duration: 2000
                 })
-                // 将本地订单信息一并透传给业务方
                 success && success({ payRes, order })
               } else {
-                // 落库状态暂未确认，但微信侧已成功，一般稍后会自动对齐
+                try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount, note: 'poll_pending' }) } catch (e) {}
                 wx.showToast({
                   title: '支付结果处理中，请稍后在历史中查看',
                   icon: 'none',
@@ -150,8 +150,9 @@ function wxPay(options) {
           },
           fail: (payErr) => {
             console.error('支付失败', payErr)
-            
-            if (payErr.errMsg.indexOf('cancel') !== -1) {
+            const isCancel = payErr.errMsg && payErr.errMsg.indexOf('cancel') !== -1
+            try { require('./analytics').reportPayResult(false, { productType: productType || '', orderId, reason: isCancel ? 'cancel' : 'fail' }) } catch (e) {}
+            if (isCancel) {
               wx.showToast({
                 title: '支付已取消',
                 icon: 'none'

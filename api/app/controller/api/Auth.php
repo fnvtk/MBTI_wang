@@ -230,17 +230,27 @@ class Auth extends BaseController
         $now = time();
         $ip = Request::ip();
 
+        $loginEnterpriseId = isset($input['enterpriseId']) && (int) $input['enterpriseId'] > 0
+            ? (int) $input['enterpriseId']
+            : null;
+
         if ($wechatUser) {
-            Db::name('wechat_users')->where('id', $wechatUser['id'])->update([
+            $updateFields = [
                 'sessionKey'  => $sessionKey,
                 'unionid'     => $unionid,
                 'lastLoginAt' => $now,
                 'lastLoginIp' => $ip,
                 'updatedAt'   => $now,
-            ]);
+            ];
+            // 老用户未绑定企业时，从本次登录上下文补写
+            $existingEid = $wechatUser['enterpriseId'] ?? null;
+            if (($existingEid === null || $existingEid === '' || (int) $existingEid === 0) && $loginEnterpriseId !== null) {
+                $updateFields['enterpriseId'] = $loginEnterpriseId;
+            }
+            Db::name('wechat_users')->where('id', $wechatUser['id'])->update($updateFields);
             $wechatUser = Db::name('wechat_users')->where('id', $wechatUser['id'])->find();
         } else {
-            $id = Db::name('wechat_users')->insertGetId([
+            $insertData = [
                 'openid'      => $openid,
                 'unionid'     => $unionid,
                 'sessionKey'  => $sessionKey,
@@ -256,7 +266,11 @@ class Auth extends BaseController
                 'lastLoginIp' => $ip,
                 'createdAt'  => $now,
                 'updatedAt'  => $now,
-            ]);
+            ];
+            if ($loginEnterpriseId !== null) {
+                $insertData['enterpriseId'] = $loginEnterpriseId;
+            }
+            $id = Db::name('wechat_users')->insertGetId($insertData);
             $wechatUser = Db::name('wechat_users')->where('id', $id)->find();
         }
 

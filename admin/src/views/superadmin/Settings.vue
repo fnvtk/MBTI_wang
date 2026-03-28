@@ -136,7 +136,7 @@
                 <el-icon class="header-icon"><Setting /></el-icon>
                 <span>系统基础配置</span>
               </div>
-              <p class="header-description">管理网站名称、维护模式等基础设置</p>
+              <p class="header-description">管理网站名称等基础设置</p>
             </div>
           </template>
           <div class="card-content">
@@ -255,16 +255,7 @@
               </div>
             </div>
 
-            <!-- 开关项 -->
-            <div class="switch-section">
-              <div class="switch-item">
-                <div class="switch-info">
-                  <p class="switch-title">维护模式</p>
-                  <p class="switch-desc">开启后前台将显示维护页面</p>
-                </div>
-                <el-switch v-model="systemConfig.maintenanceMode" />
-              </div>
-            </div>
+
 
             <el-button
               type="primary"

@@ -29,7 +29,7 @@
     >
       <template #title>数据库归并（可选）</template>
       <p class="migrate-text">
-        若需把库里的「无 enterpriseId」记录<strong>永久写入</strong>到「存客宝」企业，可点下方按钮（先预览条数，再二次确认）。仅统计展示时不必执行，接口已把个人池并入存客宝卡片。
+        将把无企业归属的用户写入「存客宝」、补齐其 <code>test_results</code> 的企业字段，并把 <code>user_profile</code> 中 personal 行与该企业 enterprise 行<strong>合并归档</strong>（计数相加后删除 personal）。先预览条数，再二次确认。
       </p>
       <el-button type="primary" plain size="small" :loading="migrateLoading" @click="runOrphanMigrate">
         预览并归并到存客宝
@@ -72,10 +72,15 @@ async function runOrphanMigrate() {
     })
     const d = res.data ?? res
     const name = d.enterpriseName || '存客宝'
-    const tr = d.testResultsRows ?? 0
     const wu = d.wechatUsersRows ?? 0
+    const tr = d.testResultsRows ?? 0
+    const pr = d.userProfilePersonalRows ?? 0
+    if (wu === 0 && tr === 0 && pr === 0) {
+      ElMessage.info((d.hint as string) || '当前无需归并')
+      return
+    }
     await ElMessageBox.confirm(
-      `将把无企业归属的数据写入「${name}」：测试记录约 ${tr} 条，小程序用户表约 ${wu} 行。此操作会修改数据库，是否继续？`,
+      `即将写入「${name}」：小程序用户约 ${wu} 人；待补全企业的测试记录约 ${tr} 条；待合并的 personal 画像行约 ${pr} 条。将修改 wechat_users、test_results、user_profile，是否继续？`,
       '确认归并',
       { type: 'warning', confirmButtonText: '写入', cancelButtonText: '取消' }
     )

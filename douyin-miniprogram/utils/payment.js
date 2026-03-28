@@ -105,6 +105,7 @@ function douyinPay(options) {
             if (payRes.code === 0) {
               pollOrderStatus(orderId, 5, 1000, (ok, order) => {
                 if (ok) {
+                  try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                   tt.showToast({
                     title: '支付成功',
                     icon: 'success',
@@ -112,6 +113,7 @@ function douyinPay(options) {
                   })
                   success && success({ payRes, order })
                 } else {
+                  try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount, note: 'poll_pending' }) } catch (e) {}
                   tt.showToast({
                     title: '支付结果处理中，请稍后查看',
                     icon: 'none',
@@ -121,6 +123,7 @@ function douyinPay(options) {
                 }
               })
             } else if (payRes.code === 4) {
+              try { require('./analytics').reportPayResult(false, { productType: productType || '', orderId, reason: 'cancel' }) } catch (e) {}
               tt.showToast({
                 title: '支付已取消',
                 icon: 'none'

@@ -1,6 +1,36 @@
 // app.js - MBTI小程序主入口
 const { request } = require('./utils/request.js')
 
+// 全局注入：所有页面 onShow 自动上报 page_view；onShareAppMessage 自动上报 share
+const _OrigPage = Page
+Page = function (pageConfig) {
+  const origOnShow = pageConfig.onShow
+  pageConfig.onShow = function () {
+    try {
+      const { reportPageView } = require('./utils/analytics.js')
+      reportPageView()
+    } catch (e) {}
+    if (typeof origOnShow === 'function') {
+      origOnShow.call(this)
+    }
+  }
+  if (typeof pageConfig.onShareAppMessage === 'function') {
+    const origShare = pageConfig.onShareAppMessage
+    pageConfig.onShareAppMessage = function (res) {
+      try { require('./utils/analytics.js').reportShare('friend') } catch (e) {}
+      return origShare.call(this, res)
+    }
+  }
+  if (typeof pageConfig.onShareTimeline === 'function') {
+    const origTimeline = pageConfig.onShareTimeline
+    pageConfig.onShareTimeline = function () {
+      try { require('./utils/analytics.js').reportShare('timeline') } catch (e) {}
+      return origTimeline.call(this)
+    }
+  }
+  return _OrigPage(pageConfig)
+}
+
 App({
   globalData: {
     userInfo: null,
@@ -17,8 +47,8 @@ App({
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
-    apiBase: 'https://mbtiapi.quwanzhi.com',
-    //apiBase: 'http://mbti.com',
+    //apiBase: 'https://mbtiapi.quwanzhi.com',
+    apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数
@@ -32,12 +62,21 @@ App({
     aiResult: null
   },
 
-  onLaunch() {
+  onLaunch(launchOptions) {
+    // 记录场景值供埋点使用
+    this.globalData.scene = launchOptions && launchOptions.scene ? launchOptions.scene : ''
+
     // 加载本地存储的数据
     this.loadStoredData()
-    
+
     // 静默登录获取openId
     this.silentLogin()
+
+    // 上报应用启动事件
+    try {
+      const analytics = require('./utils/analytics.js')
+      analytics.reportAppLaunch(launchOptions)
+    } catch (e) {}
 
     // 预加载站点/小程序名称、维护模式与面相审核模式（camera/首页文案）
     this.getRuntimeConfig().then((cfg) => {
@@ -121,11 +160,17 @@ App({
             return
           }
           const url = `${this.globalData.apiBase}/api/auth/wechat`
+          const loginData = { code: res.code }
+          try {
+            const { getEffectiveEnterpriseId } = require('./utils/enterpriseContext.js')
+            const eid = getEffectiveEnterpriseId()
+            if (eid) loginData.enterpriseId = eid
+          } catch (e) {}
           wx.request({
             url,
             method: 'POST',
             header: { 'Content-Type': 'application/json' },
-            data: { code: res.code },
+            data: loginData,
             success: (response) => {
               if (response.statusCode === 200 && response.data && response.data.code === 200) {
                 const data = response.data.data || {}

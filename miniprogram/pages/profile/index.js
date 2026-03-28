@@ -278,6 +278,14 @@ Page({
     try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/purchase/index' })
   },
+  goToOrders() {
+    if (!this.data.hasLogin) {
+      wx.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/order/index' })
+  },
   goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
@@ -316,10 +324,10 @@ Page({
     if (id) wx.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
     else wx.switchTab({ url: '/pages/index/camera' })
   },
-  /** 动作测试：进入底部「拍摄」页 */
-  goToActionTest() {
-    try { require('../../utils/analytics').track('tap_action_test_camera', {}) } catch (e) {}
-    wx.switchTab({ url: '/pages/index/camera' })
+  /** 详细性格测试：MBTI / PDP / DISC 选择页 */
+  goToTestSelect() {
+    try { require('../../utils/analytics').track('tap_test_select_from_profile', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   logout() {

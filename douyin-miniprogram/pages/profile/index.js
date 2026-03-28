@@ -276,6 +276,14 @@ Page({
     try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
     tt.navigateTo({ url: '/pages/purchase/index' })
   },
+  goToOrders() {
+    if (!this.data.hasLogin) {
+      tt.showToast({ title: '请先登录', icon: 'none' })
+      return
+    }
+    try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/order/index' })
+  },
   goToPurchase() { tt.navigateTo({ url: '/pages/purchase/index' }) },
   goToPurchasePersonal() { tt.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { tt.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
@@ -313,9 +321,9 @@ Page({
     if (id) tt.navigateTo({ url: `/pages/index/result?id=${id}&type=ai` })
     else tt.switchTab({ url: '/pages/index/camera' })
   },
-  goToActionTest() {
-    try { require('../../utils/analytics').track('tap_action_test_camera', {}) } catch (e) {}
-    tt.switchTab({ url: '/pages/index/camera' })
+  goToTestSelect() {
+    try { require('../../utils/analytics').track('tap_test_select_from_profile', {}) } catch (e) {}
+    tt.navigateTo({ url: '/pages/test-select/index' })
   },
 
   logout() {

@@ -72,7 +72,6 @@
       <text class="card-title">性格类型分析</text>
       <text class="personality-card-sub">MBTI · PDP · DISC 联合速览</text>
 
-      <!-- MBTI类型 -->
       <view class="personality-type">
         <text class="type-code">{{result.mbti}}</text>
         <text class="type-name">{{result.title}}</text>
@@ -83,7 +82,6 @@
         <text class="type-desc">{{result.summary}}</text>
       </view>
 
-      <!-- PDP和DISC -->
       <view class="type-details">
         <view class="type-box pdp-box">
           <text class="type-emoji" tt:if="{{result.pdpEmoji}}">{{result.pdpEmoji}}</text>
@@ -99,7 +97,6 @@
         </view>
       </view>
 
-      <!-- 主要优势 -->
       <view class="advantages-box" tt:if="{{result.traits.length > 0}}">
         <text class="advantages-label">主要优势</text>
         <view class="advantages-list">
@@ -109,13 +106,8 @@
           </view>
         </view>
       </view>
-
-      <view class="next-btn" bindtap="goToMBTI">
-        <text class="next-btn-text">下一步：详细性格测试 →</text>
-      </view>
     </view>
 
-    <!-- 性格概述 -->
     <view class="card" tt:if="{{!hasError && result.summary}}">
       <text class="card-title">性格概述</text>
       <text class="card-text">{{result.summary}}</text>

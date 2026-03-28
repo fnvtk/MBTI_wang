@@ -25,11 +25,24 @@ class Analytics extends BaseController
 
         $userId = null;
         $openid = null;
+        $source = null;
         $token = JwtService::getTokenFromRequest($this->request);
         if ($token) {
             $payload = JwtService::verifyToken($token);
-            if ($payload && ($payload['source'] ?? '') === 'wechat') {
-                $userId = (int) ($payload['userId'] ?? $payload['user_id'] ?? 0) ?: null;
+            if ($payload) {
+                $source = $payload['source'] ?? null;
+                if (in_array($source, ['wechat', 'douyin'], true)) {
+                    $userId = (int) ($payload['userId'] ?? $payload['user_id'] ?? 0) ?: null;
+                }
+            }
+        }
+
+        $deviceJson = null;
+        $deviceRaw = $body['device'] ?? null;
+        if (is_array($deviceRaw) && !empty($deviceRaw)) {
+            $deviceJson = json_encode($deviceRaw, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+            if (strlen($deviceJson) > 2000) {
+                $deviceJson = mb_substr($deviceJson, 0, 2000);
             }
         }
 
@@ -45,6 +58,25 @@ class Analytics extends BaseController
             }
             $pagePath = isset($ev['page_path']) ? mb_substr(trim((string) $ev['page_path']), 0, 255) : '';
             $props = $ev['props'] ?? null;
+            $platform = isset($ev['platform']) ? mb_substr(trim((string) $ev['platform']), 0, 16) : ($source ?: null);
+            $sessionId = isset($ev['session_id']) ? mb_substr(trim((string) $ev['session_id']), 0, 64) : null;
+            if ($props !== null && $props !== []) {
+                if ($deviceJson) {
+                    $props['_device'] = $deviceRaw;
+                }
+                if (isset($ev['network'])) {
+                    $props['_network'] = $ev['network'];
+                }
+                if (isset($ev['scene'])) {
+                    $props['_scene'] = $ev['scene'];
+                }
+            } else {
+                $props = [];
+                if ($deviceJson) $props['_device'] = $deviceRaw;
+                if (isset($ev['network'])) $props['_network'] = $ev['network'];
+                if (isset($ev['scene'])) $props['_scene'] = $ev['scene'];
+                if (empty($props)) $props = null;
+            }
             $propsJson = null;
             if ($props !== null && $props !== []) {
                 $propsJson = json_encode($props, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
@@ -64,6 +96,8 @@ class Analytics extends BaseController
                 'pagePath'  => $pagePath ?: null,
                 'propsJson' => $propsJson,
                 'clientTs'  => $clientTs ?: null,
+                'platform'  => $platform,
+                'sessionId' => $sessionId,
                 'createdAt' => $now,
             ];
         }

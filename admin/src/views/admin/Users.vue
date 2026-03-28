@@ -35,7 +35,16 @@
         <el-table-column label="用户信息" min-width="180">
           <template #default="{ row }">
             <div class="user-info-cell">
-              <div class="user-avatar">{{ (row.username || '?')[0] }}</div>
+              <el-avatar
+                :size="36"
+                shape="circle"
+                :src="displayAvatar(row) || undefined"
+                fit="cover"
+                class="user-avatar user-el-avatar"
+                :style="!displayAvatar(row) ? { backgroundColor: avatarBgColor(row) } : {}"
+              >
+                <span class="user-avatar-letter-fallback">{{ avatarLetter(row) }}</span>
+              </el-avatar>
               <div class="user-details">
                 <div class="username">{{ row.username || '未设置昵称' }}</div>
                 <div class="openid-line">{{ row.openid || '—' }}</div>
@@ -328,40 +337,168 @@
               </div>
             </div>
             <div class="face-right">
-              <div class="test-detail-grid">
-                <div class="test-detail-block" v-if="faceDetail.mbti">
+              <!-- 第一组：核心性格标签 (MBTI, DISC, PDP) -->
+              <div class="test-detail-row compact-row">
+                <div class="test-detail-block flex-1" v-if="faceDetail.mbti">
                   <h4 class="detail-subtitle">AI 识别 MBTI</h4>
                   <p class="test-desc">
-                    <strong>{{ faceDetail.mbti.type }}</strong>
-                    <span v-if="faceDetail.mbti.title"> · {{ faceDetail.mbti.title }}</span>
+                    <strong class="text-primary">{{ faceDetail.mbti.type }}</strong>
+                    <span v-if="faceDetail.mbti.title" class="text-secondary"> · {{ faceDetail.mbti.title }}</span>
                   </p>
                 </div>
-                <div class="test-detail-block" v-if="faceDetail.disc">
+                <div class="test-detail-block flex-1" v-if="faceDetail.disc">
                   <h4 class="detail-subtitle">AI 识别 DISC</h4>
                   <p class="test-desc">
-                    主类型：<strong>{{ faceDetail.disc.primary }}</strong>
-                    <span v-if="faceDetail.disc.secondary">，次类型：{{ faceDetail.disc.secondary }}</span>
+                    主类型：<strong class="text-primary">{{ faceDetail.disc.primary }}</strong>
+                    <span v-if="faceDetail.disc.secondary" class="text-secondary">，次：{{ faceDetail.disc.secondary }}</span>
                   </p>
                 </div>
-                <div class="test-detail-block" v-if="faceDetail.pdp">
+                <div class="test-detail-block flex-1" v-if="faceDetail.pdp">
                   <h4 class="detail-subtitle">AI 识别 PDP</h4>
                   <p class="test-desc">
-                    主类型：<strong>{{ faceDetail.pdp.primary }}</strong>
-                    <span v-if="faceDetail.pdp.secondary">，次类型：{{ faceDetail.pdp.secondary }}</span>
+                    主类型：<strong class="text-primary">{{ faceDetail.pdp.primary }}</strong>
+                    <span v-if="faceDetail.pdp.secondary" class="text-secondary">，次：{{ faceDetail.pdp.secondary }}</span>
                   </p>
                 </div>
+              </div>
+
+              <!-- 第二组：核心优势 (主要优势, 盖洛普) -->
+              <div class="test-detail-grid">
+                <div class="test-detail-block" v-if="faceDetail.advantages?.length">
+                  <h4 class="detail-subtitle">主要优势</h4>
+                  <ul class="tag-list">
+                    <li v-for="item in faceDetail.advantages" :key="item">{{ item }}</li>
+                  </ul>
+                </div>
+                <div class="test-detail-block" v-if="faceDetail.gallupTop3?.length">
+                  <h4 class="detail-subtitle">盖洛普前三大优势</h4>
+                  <ol class="face-gallup-list">
+                    <li v-for="(g, gi) in faceDetail.gallupTop3" :key="gi">{{ g }}</li>
+                  </ol>
+                </div>
+              </div>
+
+              <!-- 第三组：综述 -->
+              <div class="test-detail-grid">
                 <div class="test-detail-block" v-if="faceDetail.overview">
                   <h4 class="detail-subtitle">整体气质概览</h4>
                   <p class="test-desc">{{ faceDetail.overview }}</p>
-                </div>
-                <div class="test-detail-block" v-if="faceDetail.boneAnalysis">
-                  <h4 class="detail-subtitle">骨相特征</h4>
-                  <p class="test-desc">{{ faceDetail.boneAnalysis }}</p>
                 </div>
                 <div class="test-detail-block" v-if="faceDetail.personalitySummary">
                   <h4 class="detail-subtitle">性格总结</h4>
                   <p class="test-desc">{{ faceDetail.personalitySummary }}</p>
                 </div>
+              </div>
+
+              <!-- 第四组：面相与骨相 -->
+              <div class="test-detail-grid">
+                <div class="test-detail-block" v-if="faceDetail.faceFeatures?.length">
+                  <h4 class="detail-subtitle">面部特征分析</h4>
+                  <ul class="face-feature-list">
+                    <li v-for="(f, fi) in faceDetail.faceFeatures" :key="fi">
+                      <strong v-if="f.label">{{ f.label }}：</strong>
+                      <span>{{ f.description }}</span>
+                    </li>
+                  </ul>
+                </div>
+                <div class="test-detail-block" v-else-if="faceDetail.faceAnalysisText">
+                  <h4 class="detail-subtitle">面相分析</h4>
+                  <p class="test-desc">{{ faceDetail.faceAnalysisText }}</p>
+                </div>
+
+                <div class="test-detail-block" v-if="faceDetail.boneIceSummary && (faceDetail.boneIceSummary.elementType || faceDetail.boneIceSummary.boneFleshRelation)">
+                  <h4 class="detail-subtitle">骨相分析（《冰鉴》）</h4>
+                  <p v-if="faceDetail.boneIceSummary.elementType" class="test-desc">
+                    <strong>五行形相：</strong>{{ faceDetail.boneIceSummary.elementType }}
+                  </p>
+                  <p v-if="faceDetail.boneIceSummary.boneFleshRelation" class="test-desc">
+                    <strong>骨肉关系：</strong>{{ faceDetail.boneIceSummary.boneFleshRelation }}
+                  </p>
+                </div>
+                <div class="test-detail-block" v-if="faceDetail.boneAnalysisText">
+                  <h4 class="detail-subtitle">骨相特征</h4>
+                  <p class="test-desc">{{ faceDetail.boneAnalysisText }}</p>
+                </div>
+              </div>
+
+              <!-- 第五组：人际与发展 -->
+              <div class="test-detail-grid">
+                <div class="test-detail-block" v-if="faceDetail.relationship">
+                  <h4 class="detail-subtitle">人际关系与团队合作</h4>
+                  <p class="test-desc">{{ faceDetail.relationship }}</p>
+                </div>
+                <div class="test-detail-block" v-if="faceDetail.careers?.length">
+                  <h4 class="detail-subtitle">职业方向参考</h4>
+                  <ul class="tag-list tag-list-info">
+                    <li v-for="c in faceDetail.careers" :key="c">{{ c }}</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- 第六组：生活场景 -->
+              <div class="test-detail-grid">
+                <div class="test-detail-block" v-if="faceDetail.careerDevelopment">
+                  <h4 class="detail-subtitle">职业发展方向</h4>
+                  <p class="test-desc">{{ faceDetail.careerDevelopment }}</p>
+                </div>
+                <div class="test-detail-block" v-if="faceDetail.familyParenting">
+                  <h4 class="detail-subtitle">家庭亲子关系</h4>
+                  <p class="test-desc">{{ faceDetail.familyParenting }}</p>
+                </div>
+                <div class="test-detail-block" v-if="faceDetail.partnerCofounder">
+                  <h4 class="detail-subtitle">寻找合伙人</h4>
+                  <p class="test-desc">{{ faceDetail.partnerCofounder }}</p>
+                </div>
+              </div>
+
+              <!-- 第七组：深度职场洞察 (Portrait, Boss, HR, Resume) -->
+              <div class="test-detail-grid" v-if="faceDetail.portrait || faceDetail.bossView || faceDetail.hrView || faceDetail.resumeHighlights">
+                <template v-if="faceDetail.portrait">
+                  <div class="test-detail-block" v-if="faceDetail.portrait.coreStrengths?.length">
+                    <h4 class="detail-subtitle">深度·核心优势</h4>
+                    <ul class="tag-list">
+                      <li v-for="s in faceDetail.portrait.coreStrengths" :key="s">{{ s }}</li>
+                    </ul>
+                  </div>
+                  <div class="test-detail-block" v-if="faceDetail.portrait.coreRisks?.length">
+                    <h4 class="detail-subtitle">深度·潜在风险</h4>
+                    <ul class="tag-list tag-list-warning">
+                      <li v-for="r in faceDetail.portrait.coreRisks" :key="r">{{ r }}</li>
+                    </ul>
+                  </div>
+                  <div class="test-detail-block" v-if="faceDetail.portrait.workStyle">
+                    <h4 class="detail-subtitle">深度·工作风格</h4>
+                    <p class="test-desc">{{ faceDetail.portrait.workStyle }}</p>
+                  </div>
+                </template>
+                <div class="test-detail-block" v-if="faceDetail.resumeHighlights">
+                  <h4 class="detail-subtitle">简历要点</h4>
+                  <p class="test-desc">{{ faceDetail.resumeHighlights }}</p>
+                </div>
+                <template v-if="faceDetail.bossView">
+                  <div class="test-detail-block" v-if="faceDetail.bossView.headline">
+                    <h4 class="detail-subtitle">老板视角·一句话</h4>
+                    <p class="test-desc">{{ faceDetail.bossView.headline }}</p>
+                  </div>
+                  <div class="test-detail-block" v-if="faceDetail.bossView.costInsight">
+                    <h4 class="detail-subtitle">老板视角·成本洞察</h4>
+                    <p class="test-desc">{{ faceDetail.bossView.costInsight }}</p>
+                  </div>
+                </template>
+                <template v-if="faceDetail.hrView">
+                  <div class="test-detail-block" v-if="faceDetail.hrView.roleRecommend?.bestFit?.length">
+                    <h4 class="detail-subtitle">HR·推荐岗位</h4>
+                    <ul class="tag-list tag-list-info">
+                      <li v-for="r in faceDetail.hrView.roleRecommend.bestFit" :key="r">{{ r }}</li>
+                    </ul>
+                  </div>
+                  <div class="test-detail-block" v-if="faceDetail.hrView.roleRecommend?.notSuitable?.length">
+                    <h4 class="detail-subtitle">HR·不适合场景</h4>
+                    <ul class="tag-list tag-list-warning">
+                      <li v-for="r in faceDetail.hrView.roleRecommend.notSuitable" :key="r">{{ r }}</li>
+                    </ul>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -491,7 +628,10 @@
           <div class="resume-content">{{ currentTestDescription }}</div>
         </div>
 
-        <div class="detail-section" v-if="currentTestType !== 'resume' && currentTestDescription">
+        <div
+          class="detail-section"
+          v-if="currentTestType !== 'resume' && currentTestType !== 'face' && currentTestType !== 'ai' && currentTestDescription"
+        >
           <h4 class="detail-subtitle">补充说明</h4>
           <p class="test-desc">{{ currentTestDescription }}</p>
         </div>
@@ -505,6 +645,7 @@ import { ref, computed, onMounted } from 'vue'
 import { Download, Search, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
 
 const loading = ref(false)
@@ -551,6 +692,24 @@ async function loadUsers() {
   } finally {
     loading.value = false
   }
+}
+
+function displayAvatar(row: Record<string, any>) {
+  const a = row?.avatar ?? row?.avatarUrl ?? ''
+  return typeof a === 'string' ? a.trim() : ''
+}
+
+function avatarLetter(row: { username?: string; nickname?: string }) {
+  const name = (row?.username || row?.nickname || '?').trim()
+  return (name.charAt(0) || '?').toUpperCase()
+}
+
+const AVATAR_PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9', '#3b82f6', '#eab308']
+function avatarBgColor(row: { username?: string; nickname?: string }) {
+  const name = (row?.username || row?.nickname || '?').trim()
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
 }
 
 function formatPhone(phone: string) {
@@ -691,15 +850,7 @@ const pdpDetail = computed(() => {
 const faceDetail = computed(() => {
   const parsed = currentTestParsed.value
   if (!parsed || (currentTestType.value !== 'face' && currentTestType.value !== 'ai')) return null
-  return {
-    mbti: parsed.mbti || null,
-    disc: parsed.disc || null,
-    pdp: parsed.pdp || null,
-    overview: parsed.overview ?? '',
-    boneAnalysis: parsed.boneAnalysis ?? '',
-    personalitySummary: parsed.personalitySummary ?? '',
-    photos: Array.isArray(parsed.photoUrls) ? parsed.photoUrls : []
-  }
+  return buildFaceDetailFromParsed(parsed)
 })
 
 const resumeDetail = computed(() => {
@@ -735,7 +886,15 @@ function extractTestDescription(parsed: any, testType: string): string {
   }
 
   if (t === 'face' || t === 'ai') {
-    return String(parsed.overview ?? parsed.personalitySummary ?? '')
+    const parts = [
+      parsed.relationship,
+      parsed.faceAnalysis && typeof parsed.faceAnalysis === 'string' ? parsed.faceAnalysis : '',
+      parsed.boneAnalysis && typeof parsed.boneAnalysis === 'string' ? parsed.boneAnalysis : ''
+    ]
+      .map((x) => String(x || '').trim())
+      .filter(Boolean)
+    const extra = parts.length ? `\n\n${parts.join('\n\n')}` : ''
+    return String(parsed.overview ?? parsed.personalitySummary ?? '') + extra
   }
 
   if (t === 'resume') {
@@ -936,18 +1095,14 @@ onMounted(() => {
     align-items: center;
     gap: 12px;
 
-    .user-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background-color: #7c3aed;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+    .user-avatar.user-el-avatar {
+      flex-shrink: 0;
       font-size: 16px;
       font-weight: 600;
-      flex-shrink: 0;
+    }
+
+    .user-avatar-letter-fallback {
+      color: #fff;
     }
 
     .user-details {
@@ -1313,6 +1468,9 @@ onMounted(() => {
 .face-left {
   width: 220px;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: fit-content;
 }
 
 .face-photos {
@@ -1330,6 +1488,53 @@ onMounted(() => {
 
 .face-right {
   flex: 1;
+}
+
+.test-detail-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.compact-row .test-detail-block {
+  margin-bottom: 0;
+  padding: 12px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.text-primary {
+  color: #4f46e5;
+  font-weight: 600;
+}
+
+.text-secondary {
+  color: #6b7280;
+  font-weight: normal;
+}
+
+.face-gallup-list {
+  margin: 6px 0 0 18px;
+  padding: 0;
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.face-feature-list {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.65;
+
+  li {
+    margin-bottom: 6px;
+  }
 }
 
 .test-desc {

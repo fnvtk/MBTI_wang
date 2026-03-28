@@ -110,15 +110,24 @@
           <div class="panel-head row">
             <div>
               <h2 class="panel-title">邀请小程序码</h2>
-              <p class="panel-desc">员工 / 客户扫码进入企业测评</p>
+              <p class="panel-desc">企业版扫码进企业测评；个人版扫码进个人首页</p>
             </div>
             <el-button size="small" type="primary" @click="loadInviteQrcode" :loading="inviteLoading">
-              {{ inviteQrcode ? '刷新' : '生成' }}
+              {{ inviteQrcodeEnterprise || inviteQrcodePersonal ? '刷新' : '生成' }}
             </el-button>
           </div>
           <div class="invite-body">
-            <img v-if="inviteQrcode" :src="inviteQrcode" alt="邀请码" class="invite-img" />
-            <span v-else class="invite-placeholder">点击生成</span>
+            <template v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
+              <div v-if="inviteQrcodeEnterprise" class="invite-card">
+                <span class="invite-label">企业版</span>
+                <img :src="inviteQrcodeEnterprise" alt="企业版邀请码" class="invite-img" />
+              </div>
+              <div v-if="inviteQrcodePersonal" class="invite-card">
+                <span class="invite-label">个人版</span>
+                <img :src="inviteQrcodePersonal" alt="个人版邀请码" class="invite-img" />
+              </div>
+            </template>
+            <span v-else class="invite-placeholder">点击生成（将同时生成两枚码）</span>
           </div>
         </div>
       </aside>
@@ -189,7 +198,8 @@ const faceSubtypeHints = ref<{
 
 const loading = ref(false)
 const inviteLoading = ref(false)
-const inviteQrcode = ref<string>('')
+const inviteQrcodeEnterprise = ref<string>('')
+const inviteQrcodePersonal = ref<string>('')
 
 /** 侧栏表格最大高度：单屏内滚动，不撑开整页 */
 const tableMaxH = 220
@@ -388,9 +398,13 @@ const loadInviteQrcode = async () => {
   inviteLoading.value = true
   try {
     const res: any = await request.get('/admin/invite/qrcode')
-    const qrcode = res?.data?.qrcode
-    if (qrcode && typeof qrcode === 'string') {
-      inviteQrcode.value = qrcode
+    const d = res?.data
+    const ent = d?.enterprise?.qrcode ?? d?.qrcode
+    const per = d?.personal?.qrcode
+    if (typeof ent === 'string' && ent) inviteQrcodeEnterprise.value = ent
+    if (typeof per === 'string' && per) inviteQrcodePersonal.value = per
+    if (inviteQrcodeEnterprise.value || inviteQrcodePersonal.value) {
+      ElMessage.success('已生成企业版与个人版小程序码')
     } else {
       ElMessage.error(res?.message || res?.msg || '生成失败，请确认企业绑定')
     }
@@ -807,9 +821,24 @@ const loadInviteQrcode = async () => {
 
 .invite-body {
   display: flex;
-  align-items: center;
+  flex-wrap: wrap;
+  align-items: flex-start;
   justify-content: center;
+  gap: 16px;
   min-height: 112px;
+}
+
+.invite-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.invite-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
 }
 
 .invite-img {

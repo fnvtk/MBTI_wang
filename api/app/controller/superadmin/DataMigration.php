@@ -12,6 +12,81 @@ use think\facade\Request;
 class DataMigration extends BaseController
 {
     /**
+     * 小程序用户「未绑定企业」的 SQL 条件：仅 NULL 或 0。
+     * 不使用 enterpriseId = ''（整型列 + ORM 易产生歧义），也不把已绑定企业（>0）算入。
+     */
+    private function sqlWechatUserUnassignedEnterprise(): string
+    {
+        return '(`enterpriseId` IS NULL OR `enterpriseId` = 0)';
+    }
+
+    private function sqlTestResultUnassignedEnterprise(): string
+    {
+        return '(`enterpriseId` IS NULL OR `enterpriseId` = 0)';
+    }
+
+    /**
+     * 将同一 userId 下 personal + enterprise(目标企业) 两条 user_profile 合并为一行：
+     * 计数类字段相加；last* 类字段取 lastTestAt 更新的一侧（相同时优先企业行）
+     */
+    private function mergePersonalUserProfileIntoEnterprise(int $userId, int $enterpriseId, int $now): void
+    {
+        if ($userId <= 0 || $enterpriseId <= 0) {
+            return;
+        }
+
+        $personal = Db::name('user_profile')
+            ->where('userId', $userId)
+            ->where('userType', 'personal')
+            ->whereRaw('(`enterpriseId` IS NULL OR `enterpriseId` = 0)')
+            ->find();
+
+        if (!$personal) {
+            return;
+        }
+
+        $enterprise = Db::name('user_profile')
+            ->where('userId', $userId)
+            ->where('userType', 'enterprise')
+            ->where('enterpriseId', $enterpriseId)
+            ->find();
+
+        if (!$enterprise) {
+            Db::name('user_profile')->where('id', (int) $personal['id'])->update([
+                'userType'     => 'enterprise',
+                'enterpriseId' => $enterpriseId,
+                'updatedAt'    => $now,
+            ]);
+
+            return;
+        }
+
+        $sumKeys = [
+            'testsTotal', 'testsMbti', 'testsDisc', 'testsPdp', 'testsFace',
+            'ordersTotal', 'paidOrders', 'totalPaidAmount',
+        ];
+        $update = [];
+        foreach ($sumKeys as $k) {
+            $update[$k] = (int) ($personal[$k] ?? 0) + (int) ($enterprise[$k] ?? 0);
+        }
+
+        $pAt = (int) ($personal['lastTestAt'] ?? 0);
+        $eAt = (int) ($enterprise['lastTestAt'] ?? 0);
+        $pickPersonal = $pAt > $eAt;
+        $src = $pickPersonal ? $personal : $enterprise;
+
+        foreach (['lastTestResultId', 'lastTestType', 'lastTestAt', 'lastMbtiResultId', 'lastDiscResultId', 'lastPdpResultId', 'lastFaceResultId'] as $k) {
+            if (array_key_exists($k, $src)) {
+                $update[$k] = $src[$k];
+            }
+        }
+        $update['updatedAt'] = $now;
+
+        Db::name('user_profile')->where('id', (int) $enterprise['id'])->update($update);
+        Db::name('user_profile')->where('id', (int) $personal['id'])->delete();
+    }
+
+    /**
      * POST /api/v1/superadmin/data-migration/attach-orphan-orders
      *
      * Body JSON:
@@ -92,9 +167,7 @@ class DataMigration extends BaseController
         if ($syncWechatUsers && !empty($userIdsFromOrders)) {
             $wechatPatchCount = (int) Db::name('wechat_users')
                 ->whereIn('id', $userIdsFromOrders)
-                ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0);
-                })
+                ->whereRaw($this->sqlWechatUserUnassignedEnterprise())
                 ->count();
         }
 
@@ -169,11 +242,10 @@ class DataMigration extends BaseController
             if ($syncWechatUsers && !empty($userIdsFromOrders)) {
                 Db::name('wechat_users')
                     ->whereIn('id', $userIdsFromOrders)
-                    ->where(function ($q) {
-                        $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0);
-                    })
+                    ->whereRaw($this->sqlWechatUserUnassignedEnterprise())
                     ->update([
                         'enterpriseId' => $targetEnterpriseId,
+                        'updatedAt'    => $now,
                     ]);
             }
 
@@ -277,10 +349,13 @@ class DataMigration extends BaseController
     }
 
     /**
-     * 将全平台「无 enterpriseId」的 test_results 与 wechat_users 归属到存客宝（或指定企业）
+     * 存客宝归并：wechat_users 无企业用户写入目标企业；
+     * 已/将归属该企业的用户下，test_results 中 enterpriseId 为空的记录补写目标企业；
+     * user_profile 中 personal(NULL) 与 enterprise(目标) 合并计数后删除 personal 行。
+     *
      * POST /api/v1/superadmin/data-migration/attach-orphans-to-cunkbao
      *
-     * Body: targetEnterpriseId (可选)、dryRun (默认 true)、confirm、clonePersonalProfile (默认 true)
+     * Body: targetEnterpriseId (可选)、dryRun (默认 true)、confirm
      */
     public function attachOrphansToCunkbao()
     {
@@ -296,7 +371,6 @@ class DataMigration extends BaseController
 
         $dryRun = array_key_exists('dryRun', $body) ? (bool) $body['dryRun'] : true;
         $confirm = !empty($body['confirm']);
-        $clonePersonalProfile = array_key_exists('clonePersonalProfile', $body) ? (bool) $body['clonePersonalProfile'] : true;
 
         $targetEnterpriseId = (int) ($body['targetEnterpriseId'] ?? 0);
         if ($targetEnterpriseId <= 0) {
@@ -312,71 +386,84 @@ class DataMigration extends BaseController
             return error('目标企业不存在', 404);
         }
 
-        $testAffected = (int) Db::name('test_results')
-            ->where(function ($q) {
-                $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0)->whereOr('enterpriseId', '');
-            })
-            ->count();
-
-        $wechatAffected = (int) Db::name('wechat_users')
-            ->where(function ($q) {
-                $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0);
-            })
-            ->count();
-
-        $userIdsFromTests = Db::name('test_results')
-            ->where(function ($q) {
-                $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0)->whereOr('enterpriseId', '');
-            })
-            ->distinct(true)
-            ->column('userId');
-        $userIdsFromWechat = Db::name('wechat_users')
-            ->where(function ($q) {
-                $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0);
-            })
+        $orphanUserIds = Db::name('wechat_users')
+            ->whereRaw($this->sqlWechatUserUnassignedEnterprise())
             ->column('id');
-        $distinctUserIds = array_values(array_unique(array_filter(array_merge($userIdsFromTests, $userIdsFromWechat))));
+        $orphanUserIds = array_values(array_unique(array_filter(array_map('intval', $orphanUserIds))));
+        $wechatAffected = count($orphanUserIds);
+
+        $boundNow = Db::name('wechat_users')
+            ->where('enterpriseId', $targetEnterpriseId)
+            ->column('id');
+        $boundNow = array_values(array_unique(array_filter(array_map('intval', $boundNow))));
+        $usersInScope = array_values(array_unique(array_merge($boundNow, $orphanUserIds)));
+
+        $testResultsAffected = empty($usersInScope) ? 0 : (int) Db::name('test_results')
+            ->whereIn('userId', $usersInScope)
+            ->whereRaw($this->sqlTestResultUnassignedEnterprise())
+            ->count();
+
+        $userProfilePersonalRows = empty($usersInScope) ? 0 : (int) Db::name('user_profile')
+            ->where('userType', 'personal')
+            ->whereRaw('(`enterpriseId` IS NULL OR `enterpriseId` = 0)')
+            ->whereIn('userId', $usersInScope)
+            ->count();
 
         $preview = [
-            'targetEnterpriseId' => $targetEnterpriseId,
-            'enterpriseName'     => $ent['name'] ?? '',
-            'testResultsRows'    => $testAffected,
-            'wechatUsersRows'    => $wechatAffected,
-            'distinctUserIds'    => $distinctUserIds,
-            'dryRun'             => $dryRun,
+            'targetEnterpriseId'       => $targetEnterpriseId,
+            'enterpriseName'           => $ent['name'] ?? '',
+            'wechatUsersRows'          => $wechatAffected,
+            'testResultsRows'          => $testResultsAffected,
+            'userProfilePersonalRows'  => $userProfilePersonalRows,
+            'dryRun'                   => $dryRun,
         ];
 
+        $nothingToDo = $wechatAffected === 0 && $testResultsAffected === 0 && $userProfilePersonalRows === 0;
+
         if ($dryRun || !$confirm) {
-            $preview['hint'] = $dryRun
-                ? '当前为预览。写入请传 dryRun=false 且 confirm=true。'
-                : '未写入：请同时传 dryRun=false 与 confirm=true。';
+            $preview['hint'] = $nothingToDo
+                ? '当前无需归并：归属用户、测试记录与画像均无待处理项。'
+                : ($dryRun
+                    ? '当前为预览。写入请传 dryRun=false 且 confirm=true。'
+                    : '未写入：请同时传 dryRun=false 与 confirm=true。');
             return success($preview);
+        }
+
+        if ($nothingToDo) {
+            $preview['hint'] = '无需写入。';
+            return success($preview, '无需归并');
         }
 
         $now = time();
         Db::startTrans();
         try {
-            Db::name('test_results')
-                ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0)->whereOr('enterpriseId', '');
-                })
-                ->update([
-                    'enterpriseId' => $targetEnterpriseId,
-                    'testScope'    => 'enterprise',
-                    'updatedAt'    => $now,
-                ]);
+            if (!empty($orphanUserIds)) {
+                Db::name('wechat_users')
+                    ->whereIn('id', $orphanUserIds)
+                    ->whereRaw($this->sqlWechatUserUnassignedEnterprise())
+                    ->update([
+                        'enterpriseId' => $targetEnterpriseId,
+                        'updatedAt'    => $now,
+                    ]);
+            }
 
-            Db::name('wechat_users')
-                ->where(function ($q) {
-                    $q->whereNull('enterpriseId')->whereOr('enterpriseId', 0);
-                })
-                ->update([
-                    'enterpriseId' => $targetEnterpriseId,
-                ]);
+            $boundAfter = Db::name('wechat_users')
+                ->where('enterpriseId', $targetEnterpriseId)
+                ->column('id');
+            $boundAfter = array_values(array_unique(array_filter(array_map('intval', $boundAfter))));
 
-            if ($clonePersonalProfile && !empty($distinctUserIds)) {
-                foreach ($distinctUserIds as $uid) {
-                    $this->ensureEnterpriseProfileFromPersonal((int) $uid, $targetEnterpriseId, $now);
+            if (!empty($boundAfter)) {
+                Db::name('test_results')
+                    ->whereIn('userId', $boundAfter)
+                    ->whereRaw($this->sqlTestResultUnassignedEnterprise())
+                    ->update([
+                        'enterpriseId' => $targetEnterpriseId,
+                        'testScope'    => 'enterprise',
+                        'updatedAt'    => $now,
+                    ]);
+
+                foreach ($boundAfter as $uid) {
+                    $this->mergePersonalUserProfileIntoEnterprise((int) $uid, $targetEnterpriseId, $now);
                 }
             }
 
@@ -387,7 +474,7 @@ class DataMigration extends BaseController
         }
 
         $preview['executed'] = true;
-        $preview['hint'] = '已写入。无企业归属的测试与用户已归属到目标企业。';
+        $preview['hint'] = '已写入：小程序用户归属、无企业测试记录、画像 personal 行合并已完成。';
         return success($preview, '归并完成');
     }
 }

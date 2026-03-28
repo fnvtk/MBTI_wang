@@ -102,6 +102,7 @@ Page({
   },
 
   onLoad(options) {
+    this._payInfoSetByDetail = false
     const id = options && options.id
     const type = options && options.type
 
@@ -154,13 +155,14 @@ Page({
             const apiData = payload.data || payload
             // 历史详情场景下，记录当前测试记录ID
             this.setData({ testResultId: id })
-            this.processResult(apiData)
-            // 从历史进入：金额与是否需付款以 test_results 的 paidAmount/needPaymentToUnlock 为准
+            // 先确定付费状态（设置 _payInfoSetByDetail 标记），再渲染结果
+            // 避免 processResult 内部异步拉全局配置覆盖掉数据库级别的付费判定
             this.initPayInfoFromRuntime(
               !!payload.requiresPayment,
               !!payload.isPaid,
               payload
             )
+            this.processResult(apiData)
           } else {
             wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
             setTimeout(() => wx.navigateBack(), 1500)
@@ -254,6 +256,7 @@ Page({
             setTimeout(() => this.showNoFaceError(msg), 300)
           } else if (bodyCode === 200) {
             const apiData = res.data.data || res.data
+            try { require('../../utils/analytics').track('ai_analysis_complete', { mbti: (apiData.mbti && apiData.mbti.type) || '' }) } catch (e) {}
             this.setData({ progress: 100, analyzingTip: '分析完成！' })
             setTimeout(() => {
               this.processResult(apiData)
@@ -342,8 +345,9 @@ Page({
           amountYuan
         }
       })
-    } else {
-      // 拍照直连分析未带 _payment 时，拉 runtime 定价（与历史详情入口互不覆盖）
+    } else if (!this._payInfoSetByDetail) {
+      // 拍照直连分析未带 _payment 时，拉 runtime 定价
+      // 历史详情入口已由 initPayInfoFromRuntime(detailPayload) 处理过，不再覆盖
       this.initPayInfoFromRuntime()
     }
   },
@@ -369,6 +373,8 @@ Page({
       const paidAmount = Number(detailPayload.paidAmount ?? 0)
       const amountYuan = detailPayload.amountYuan != null ? Number(detailPayload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
       const needPay = detailPayload.needPaymentToUnlock === true || (!!detailPayload.requiresPayment && !detailPayload.isPaid && paidAmount > 0)
+      // 标记：历史详情已确定付费状态，processResult 中不再用全局配置覆盖
+      this._payInfoSetByDetail = true
       this.setData({
         payInfo: {
           requiresPayment: needPay,
@@ -430,6 +436,7 @@ Page({
 
   /** 付费墙主按钮：先支付，支付后再引导手机号与资料 */
   onTapUnlockPay() {
+    try { require('../../utils/analytics').track('tap_unlock_pay', { amount: this.data.payInfo.amountYuan, testResultId: this.data.testResultId }) } catch (e) {}
     this.unlockFullReport()
   },
 
@@ -534,16 +541,14 @@ Page({
           const payload = res.data.data
           const apiData = payload.data || payload
 
-          // 详情接口在后台会根据 isPaid 返回完整结构，这里直接复用已有处理逻辑
-          this.processResult(apiData)
-
-          // 同步数据库中的付费状态与金额（test_results.paidAmount）
+          // 先确定付费状态，再渲染结果（避免 processResult 异步覆盖）
           const recordRequires =
             typeof payload.requiresPayment === 'boolean' || typeof payload.requiresPayment === 'number'
               ? !!payload.requiresPayment
               : null
           const recordIsPaid = !!payload.isPaid
           this.initPayInfoFromRuntime(recordRequires, recordIsPaid, payload)
+          this.processResult(apiData)
         } else {
           console.error('刷新完整报告失败', res)
         }
@@ -575,11 +580,6 @@ Page({
       hasError: true,
       errorMessage: message || '分析失败，请稍后重试'
     })
-  },
-
-  // 跳转到详情性格测试选择页（MBTI / PDP / DISC 三选一）
-  goToMBTI() {
-    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   shareResult() {
