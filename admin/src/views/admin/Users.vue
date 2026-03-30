@@ -35,7 +35,20 @@
         <el-table-column label="用户信息" min-width="180">
           <template #default="{ row }">
             <div class="user-info-cell">
-              <div class="user-avatar">{{ (row.username || '?')[0] }}</div>
+              <img
+                v-if="displayAvatarUrl(row.avatar)"
+                :src="displayAvatarUrl(row.avatar)"
+                class="user-avatar user-avatar-img"
+                referrerpolicy="no-referrer"
+                alt=""
+              />
+              <div
+                v-else
+                class="user-avatar user-avatar-letter"
+                :style="{ backgroundColor: avatarBgColor(row) }"
+              >
+                {{ avatarLetter(row) }}
+              </div>
               <div class="user-details">
                 <div class="username">{{ row.username || '未设置昵称' }}</div>
                 <div class="openid-line">{{ row.openid || '—' }}</div>
@@ -685,6 +698,27 @@ async function loadUsers() {
   }
 }
 
+/** 有效头像地址（接口字段 avatar，过滤空白） */
+function displayAvatarUrl(avatar: string | null | undefined) {
+  const u = avatar != null ? String(avatar).trim() : ''
+  return u || ''
+}
+
+/** 无头像时文字占位：昵称首字 */
+function avatarLetter(row: { username?: string; nickname?: string }) {
+  const name = (row?.username || row?.nickname || '?').trim()
+  const ch = name.charAt(0) || '?'
+  return /[a-zA-Z]/.test(ch) ? ch.toUpperCase() : ch
+}
+
+const AVATAR_PALETTE = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#14b8a6', '#0ea5e9', '#3b82f6', '#eab308']
+function avatarBgColor(row: { username?: string; nickname?: string }) {
+  const name = (row?.username || row?.nickname || '?').trim()
+  let hash = 0
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
+}
+
 function formatPhone(phone: string) {
   if (!phone) return '-'
   if (phone.length === 11) return phone.substring(0, 3) + '****' + phone.substring(7)
@@ -1072,6 +1106,16 @@ onMounted(() => {
       width: 36px;
       height: 36px;
       border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .user-avatar-img {
+      object-fit: cover;
+      border: 1px solid #e5e7eb;
+      background: #f3f4f6;
+    }
+
+    .user-avatar-letter {
       background-color: #7c3aed;
       color: #fff;
       display: flex;
@@ -1079,7 +1123,6 @@ onMounted(() => {
       justify-content: center;
       font-size: 16px;
       font-weight: 600;
-      flex-shrink: 0;
     }
 
     .user-details {
