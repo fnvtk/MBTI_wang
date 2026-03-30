@@ -32,9 +32,20 @@ class Dashboard extends BaseController
         try {
             // admin / enterprise_admin 均只统计本企业数据
             $enterpriseId = $user['enterpriseId'] ?? null;
+            if (is_array($enterpriseId)) {
+                $enterpriseId = null;
+            }
+            $enterpriseId = $enterpriseId !== null && $enterpriseId !== '' ? (int) $enterpriseId : null;
+            if ($enterpriseId !== null && $enterpriseId <= 0) {
+                $enterpriseId = null;
+            }
             if (!$enterpriseId) {
                 $adminRow = Db::name('users')->where('id', $user['userId'] ?? 0)->find();
-                $enterpriseId = $adminRow['enterpriseId'] ?? null;
+                $eid = $adminRow['enterpriseId'] ?? null;
+                $enterpriseId = ($eid !== null && $eid !== '') ? (int) $eid : null;
+                if ($enterpriseId !== null && $enterpriseId <= 0) {
+                    $enterpriseId = null;
+                }
             }
 
             // 企业用户 ID 集合（用于后续统计个人版测试）

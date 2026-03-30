@@ -6,6 +6,38 @@ namespace app\controller\admin\concern;
  */
 trait ExtractsTestResults
 {
+    /**
+     * 结果字段可能为数组/对象，禁止直接 (string) 强转导致 Array to string conversion
+     */
+    private function coerceResultLabel($value): string
+    {
+        if ($value === null || $value === '') {
+            return '';
+        }
+        if (is_string($value)) {
+            return trim($value);
+        }
+        if (is_numeric($value)) {
+            return (string) $value;
+        }
+        if (is_array($value)) {
+            if (isset($value['type']) && is_string($value['type'])) {
+                return trim($value['type']);
+            }
+            if (isset($value['primary']) && is_string($value['primary'])) {
+                return trim($value['primary']);
+            }
+            foreach (['name', 'label', 'code'] as $k) {
+                if (isset($value[$k]) && is_string($value[$k]) && $value[$k] !== '') {
+                    return trim($value[$k]);
+                }
+            }
+            return '';
+        }
+
+        return '';
+    }
+
     private function extractResultType(array $tests, string $type): string
     {
         $targetType = strtolower($type);
@@ -27,7 +59,13 @@ trait ExtractsTestResults
             }
 
             if ($targetType === 'mbti') {
-                return (string) ($dec['mbtiType'] ?? $dec['type'] ?? $dec['result'] ?? '');
+                foreach (['mbtiType', 'type', 'result'] as $k) {
+                    $s = $this->coerceResultLabel($dec[$k] ?? null);
+                    if ($s !== '') {
+                        return $s;
+                    }
+                }
+                return '';
             }
 
             if ($targetType === 'disc') {
@@ -35,10 +73,11 @@ trait ExtractsTestResults
                 if (is_string($desc) && $desc !== '') {
                     return $desc;
                 }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
+                $dom = $this->coerceResultLabel($dec['dominantType'] ?? null);
+                if ($dom !== '') {
+                    return $dom;
                 }
-                return (string) ($dec['disc'] ?? '');
+                return $this->coerceResultLabel($dec['disc'] ?? null);
             }
 
             if ($targetType === 'pdp') {
@@ -46,13 +85,18 @@ trait ExtractsTestResults
                 if (is_string($desc) && $desc !== '') {
                     return $desc;
                 }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
+                $dom = $this->coerceResultLabel($dec['dominantType'] ?? null);
+                if ($dom !== '') {
+                    return $dom;
                 }
-                return (string) ($dec['pdp'] ?? '');
+                return $this->coerceResultLabel($dec['pdp'] ?? null);
             }
 
-            return (string) ($dec['type'] ?? $dec['result'] ?? '');
+            $fallback = $this->coerceResultLabel($dec['type'] ?? null);
+            if ($fallback !== '') {
+                return $fallback;
+            }
+            return $this->coerceResultLabel($dec['result'] ?? null);
         }
         return '';
     }
@@ -82,17 +126,25 @@ trait ExtractsTestResults
                 }
             } elseif ($target === 'disc') {
                 if (!empty($dec['disc']['primary'])) {
-                    return (string) $dec['disc']['primary'];
+                    return $this->coerceResultLabel($dec['disc']['primary']);
                 }
-                if (!empty($dec['disc'])) {
-                    return (string) $dec['disc'];
+                $d = $dec['disc'] ?? null;
+                if (is_array($d)) {
+                    $s = $this->coerceResultLabel($d);
+                    if ($s !== '') {
+                        return $s;
+                    }
                 }
             } elseif ($target === 'pdp') {
                 if (!empty($dec['pdp']['primary'])) {
-                    return (string) $dec['pdp']['primary'];
+                    return $this->coerceResultLabel($dec['pdp']['primary']);
                 }
-                if (!empty($dec['pdp'])) {
-                    return (string) $dec['pdp'];
+                $p = $dec['pdp'] ?? null;
+                if (is_array($p)) {
+                    $s = $this->coerceResultLabel($p);
+                    if ($s !== '') {
+                        return $s;
+                    }
                 }
             }
         }

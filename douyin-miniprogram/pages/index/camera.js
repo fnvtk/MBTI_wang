@@ -71,13 +71,19 @@ Page({
 
   onShow() {
     const rm = _auditFlag()
+    const faceOff = !!(app.globalData.enterprisePermissions && app.globalData.enterprisePermissions.face === false)
     this.setData({ reviewMode: rm })
 
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1, reviewMode: rm })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
 
     if (rm) {
+      return
+    }
+    if (faceOff) {
+      tt.navigateTo({ url: '/pages/test-select/index' })
       return
     }
     if (!ensureProfileCompleteAndRedirect()) return

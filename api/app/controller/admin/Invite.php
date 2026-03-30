@@ -19,14 +19,23 @@ class Invite extends BaseController
     public function qrcode()
     {
         $admin = $this->request->user ?? null;
-        if (!$admin || !in_array($admin['role'] ?? '', ['admin', 'enterprise_admin'])) {
+        $role  = $admin['role'] ?? '';
+        if (!$admin || !in_array($role, ['admin', 'enterprise_admin', 'superadmin'], true)) {
             return error('无权限访问', 403);
         }
 
         $enterpriseId = null;
-        if (($admin['role'] ?? '') === 'enterprise_admin') {
+        if ($role === 'enterprise_admin') {
             $row = Db::name('users')->where('id', (int) ($admin['userId'] ?? 0))->find();
             $enterpriseId = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : null;
+        } elseif ($role === 'superadmin') {
+            $enterpriseId = (int) $this->request->param('enterpriseId', 0);
+            if ($enterpriseId <= 0) {
+                $enterpriseId = self::resolveDefaultEnterpriseIdForPlatform();
+            }
+            if ($enterpriseId <= 0) {
+                return error('请传 enterpriseId，或在系统设置中配置默认企业', 400);
+            }
         } else {
             $enterpriseId = (int) $this->request->param('enterpriseId', 0);
             if ($enterpriseId <= 0) {
@@ -79,6 +88,47 @@ class Invite extends BaseController
                 'label'  => '个人版',
             ],
         ]);
+    }
+
+    /**
+     * 超管生成企业版太阳码时：请求未带 enterpriseId 则按系统 defaultEnterpriseId → 首家运营企业
+     */
+    private static function resolveDefaultEnterpriseIdForPlatform(): int
+    {
+        try {
+            $systemRow = Db::name('system_config')->where('key', 'system')->where('enterprise_id', 0)->find();
+            if ($systemRow && !empty($systemRow['value'])) {
+                $sysVal = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
+                if (is_array($sysVal) && !empty($sysVal['defaultEnterpriseId'])) {
+                    $de = (int) $sysVal['defaultEnterpriseId'];
+                    if ($de > 0) {
+                        return $de;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+        try {
+            $first = Db::name('enterprises')
+                ->whereNull('deletedAt')
+                ->where('status', 'operating')
+                ->order('id', 'asc')
+                ->value('id');
+            if ($first) {
+                return (int) $first;
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        try {
+            $any = Db::name('enterprises')->whereNull('deletedAt')->order('id', 'asc')->value('id');
+
+            return $any ? (int) $any : 0;
+        } catch (\Throwable $e) {
+            return 0;
+        }
     }
 }
 

@@ -40,25 +40,65 @@ Page({
     promoTotalEarned: '0.00',
     promoWithdrawable: '0.00',
     /** 是否有企业权限（绑定企业）：有则显示「我的简历」 */
-    hasEnterprise: false
+    hasEnterprise: false,
+    // 企业功能权限：默认全开（个人版 / 未配置时）
+    permFace: true,
+    permMbti: true,
+    permPdp: true,
+    permDisc: true,
+    permDistribution: true,
+    /** 最新测试横滑区：仅有已出结果的卡片时才显示，避免禁权或未测评占位 */
+    showLatestTestCards: false,
+    /** 用户卡片下性格标签：在「当前权限下无任何问卷结果」时显示灰色提示 */
+    showEmptyPersonalityTags: true
+  },
+
+  _computeShowLatestTestCards(d) {
+    const rm = !!(d.reviewMode)
+    if (d.permMbti && d.mbtiType) return true
+    if (d.permPdp && d.pdpType) return true
+    if (d.permDisc && d.discType) return true
+    if (!rm && d.permFace && (d.gallupPreview || d.aiType)) return true
+    return false
+  },
+
+  _computeShowEmptyPersonalityTags(d) {
+    return !((d.mbtiType && d.permMbti) || (d.discType && d.permDisc) || (d.pdpType && d.permPdp))
   },
 
   onLoad() {
     // 仅在 onLoad 执行一次，onShow 里的 runLoginThenLoad 会导致重复请求
     this.runLoginThenLoad()
   },
+  _syncPerms(overrides = {}) {
+    const p = app.globalData.enterprisePermissions
+    const next = {
+      permFace: !p || p.face !== false,
+      permMbti: !p || p.mbti !== false,
+      permPdp:  !p || p.pdp  !== false,
+      permDisc: !p || p.disc !== false,
+      permDistribution: !p || p.distribution !== false,
+      ...overrides
+    }
+    const d = { ...this.data, ...next }
+    this.setData({
+      ...next,
+      showLatestTestCards: this._computeShowLatestTestCards(d),
+      showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
+    })
+  },
+
   onShow() {
-    // 同步审核模式（与 runtime maintenanceMode / reviewMode 一致）
     const gd = app.globalData
-    this.setData({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
     }
     
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      const audit = !!(gd.reviewMode || gd.maintenanceMode)
-      this.getTabBar().setData({ selected: 2, reviewMode: audit })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
   },
 
@@ -108,6 +148,9 @@ Page({
   },
 
   loadData() {
+    const gd = app.globalData
+    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
     const token = app.globalData.token || wx.getStorageSync('token')
 
@@ -164,7 +207,7 @@ Page({
         const discType = r.disc ? r.disc.resultText.replace(/型$/, '') : ''
 
         const gallupPreview = (r.ai && r.ai.gallupPreview) ? String(r.ai.gallupPreview) : ''
-        this.setData({
+        const patch = {
           testCount:    totalCount,
           hasResults:   !!(r.mbti || r.disc || r.pdp || r.ai),
           mbtiType:     r.mbti ? r.mbti.resultText : '',
@@ -180,6 +223,12 @@ Page({
           discResultId: r.disc ? r.disc.id : null,
           pdpResultId:  r.pdp  ? r.pdp.id  : null,
           aiResultId:   r.ai   ? r.ai.id   : null,
+        }
+        const d = { ...this.data, ...patch }
+        this.setData({
+          ...patch,
+          showLatestTestCards: this._computeShowLatestTestCards(d),
+          showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
         })
       },
       fail: () => {
@@ -234,7 +283,7 @@ Page({
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     }
 
-    this.setData({
+    const patch = {
       testCount,
       hasResults: testCount > 0,
       mbtiType: mbtiResult ? getTypeOnly(mbtiResult, 'mbti') : '',
@@ -250,6 +299,12 @@ Page({
       discResultId: null,
       pdpResultId:  null,
       aiResultId:   null,
+    }
+    const d = { ...this.data, ...patch }
+    this.setData({
+      ...patch,
+      showLatestTestCards: this._computeShowLatestTestCards(d),
+      showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
     })
   },
 

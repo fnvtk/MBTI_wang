@@ -72,14 +72,20 @@ Page({
 
   onShow() {
     const rm = this._audit()
+    const faceOff = !!(app.globalData.enterprisePermissions && app.globalData.enterprisePermissions.face === false)
     this.setData({ reviewMode: rm })
 
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1, reviewMode: rm })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
 
     // 审核模式：只展示本页引导，不再强跳 navigateTo（失败时曾导致白屏且无拍摄区）
     if (rm) {
+      return
+    }
+    if (faceOff) {
+      wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }
 

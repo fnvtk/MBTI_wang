@@ -22,6 +22,31 @@
       </div>
 
       <div class="tab-content-card" :class="{ 'flat-embed': activeTab === 'finance' }">
+        <div v-if="activeTab === 'features'" class="tab-content" v-loading="permLoading">
+          <div class="content-header">
+            <h3>终端功能开关</h3>
+            <p class="content-description">
+              仅可在超管为贵司授权的范围内调整。若超管未开放某项（如人脸分析），此处不显示对应开关。
+            </p>
+          </div>
+          <div class="form-section">
+            <template v-if="visibleAdminPermItems.length === 0">
+              <p class="hint-muted">当前无超管授权项可配置，请联系平台管理员。</p>
+            </template>
+            <template v-else>
+              <div class="perm-admin-row" v-for="p in visibleAdminPermItems" :key="p.key">
+                <span class="perm-admin-label">{{ p.label }}</span>
+                <el-switch v-model="adminPerms[p.key]" />
+              </div>
+              <div class="save-actions">
+                <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveAdminPermissions" :loading="permSaving">
+                  保存功能开关
+                </el-button>
+              </div>
+            </template>
+          </div>
+        </div>
+
         <div v-if="activeTab === 'account'" class="tab-content">
           <div class="content-header">
             <h3>管理员账号设置</h3>
@@ -82,14 +107,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { getAdminRole } from '@/utils/authStorage'
 import Finance from './Finance.vue'
 
-const TAB_IDS = ['account', 'finance'] as const
+const TAB_IDS = ['account', 'features', 'finance'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -101,15 +127,25 @@ const router = useRouter()
 const activeTab = ref<TabId>('account')
 const loading = ref(false)
 
-const tabs: { label: string; value: TabId }[] = [
-  { label: '账号设置', value: 'account' },
-  { label: '企业余额', value: 'finance' }
-]
+const isEnterpriseAdmin = () => getAdminRole() === 'enterprise_admin'
+
+const tabs = computed(() => {
+  const rows: { label: string; value: TabId }[] = [{ label: '账号设置', value: 'account' }]
+  if (isEnterpriseAdmin()) {
+    rows.push({ label: '功能开关', value: 'features' })
+  }
+  rows.push({ label: '企业余额', value: 'finance' })
+  return rows
+})
 
 const applyRouteTab = () => {
   const t = route.query.tab
   if (typeof t === 'string' && isTabId(t)) {
-    activeTab.value = t
+    if (t === 'features' && !isEnterpriseAdmin()) {
+      activeTab.value = 'account'
+    } else {
+      activeTab.value = t
+    }
   } else {
     activeTab.value = 'account'
   }
@@ -135,6 +171,65 @@ const accountConfig = reactive({
   currentPassword: '',
   confirmPassword: ''
 })
+
+const permItems = [
+  { key: 'face', label: '人脸分析' },
+  { key: 'mbti', label: 'MBTI' },
+  { key: 'pdp', label: 'PDP' },
+  { key: 'disc', label: 'DISC' },
+  { key: 'distribution', label: '分销推广' }
+] as const
+
+const defaultAdminPermissions = () =>
+  ({ face: true, mbti: true, pdp: true, disc: true, distribution: true }) as Record<string, boolean>
+
+const permLoading = ref(false)
+const permSaving = ref(false)
+const adminPermsCeiling = ref<Record<string, boolean>>(defaultAdminPermissions())
+const adminPerms = reactive<Record<string, boolean>>(defaultAdminPermissions())
+
+const visibleAdminPermItems = computed(() =>
+  permItems.filter((p) => adminPermsCeiling.value[p.key] !== false)
+)
+
+const loadAdminPermissions = async () => {
+  if (!isEnterpriseAdmin()) return
+  permLoading.value = true
+  try {
+    const res: any = await request.get('/admin/enterprise/permissions')
+    if (res.code === 200 && res.data) {
+      Object.assign(adminPerms, defaultAdminPermissions(), res.data.permissions || {})
+      adminPermsCeiling.value = { ...defaultAdminPermissions(), ...(res.data.permissionsCeiling || {}) }
+    }
+  } catch (e: any) {
+    console.error(e)
+    ElMessage.error(e?.message || '加载功能开关失败')
+  } finally {
+    permLoading.value = false
+  }
+}
+
+const saveAdminPermissions = async () => {
+  if (!isEnterpriseAdmin()) return
+  permSaving.value = true
+  try {
+    const body: Record<string, boolean> = { ...defaultAdminPermissions() }
+    for (const p of permItems) {
+      body[p.key] = adminPermsCeiling.value[p.key] === false ? false : !!adminPerms[p.key]
+    }
+    const res: any = await request.put('/admin/enterprise/permissions', { permissions: body })
+    if (res.code === 200) {
+      ElMessage.success('功能开关已保存')
+      await loadAdminPermissions()
+    } else {
+      ElMessage.error(res.msg || '保存失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    permSaving.value = false
+  }
+}
 
 const loadSettings = async () => {
   loading.value = true
@@ -186,9 +281,21 @@ watch(
   () => applyRouteTab()
 )
 
+watch(
+  () => activeTab.value,
+  (tab) => {
+    if (tab === 'features' && isEnterpriseAdmin()) {
+      loadAdminPermissions()
+    }
+  }
+)
+
 onMounted(() => {
   applyRouteTab()
   loadSettings()
+  if (activeTab.value === 'features' && isEnterpriseAdmin()) {
+    loadAdminPermissions()
+  }
 })
 </script>
 
@@ -215,6 +322,26 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 0;
+}
+
+.hint-muted {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.perm-admin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 360px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.perm-admin-label {
+  font-size: 14px;
+  color: #374151;
 }
 
 .custom-tabs-container {

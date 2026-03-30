@@ -45,46 +45,77 @@ class AppUser extends BaseController
             $enterpriseId = $adminRow['enterpriseId'] ?? null;
         }
 
-        // 若有企业ID：先从 user_profile 中取出属于本企业的 userId 列表（以画像为主表）
-        $profileUserIds = [];
+        $baseQuery = null;
+
+        // 企业场景：禁止 column 全量 userId + 超大 whereIn，改为「画像池子 + openid 去重」子查询 JOIN（全在库内完成）
         if ($enterpriseId) {
-            $profileUserIds = Db::name('user_profile')
-                ->where('enterpriseId', $enterpriseId)
-                ->column('userId');
-            $profileUserIds = $profileUserIds ? array_values(array_unique(array_filter($profileUserIds))) : [];
-            if (empty($profileUserIds)) {
+            $eid = (int) $enterpriseId;
+            // 子查询会在 SQL 中出现两次，条件用字面量避免占位符绑定重复/错位的风险
+            $poolSql = Db::name('user_profile')
+                ->whereRaw('enterpriseId = ' . $eid)
+                ->group('userId')
+                ->field('userId')
+                ->buildSql(true);
+
+            try {
+                $dedupSql = Db::name('wechat_users')
+                    ->alias('w2')
+                    ->join([$poolSql => 'p2'], 'w2.id = p2.userId')
+                    ->field('w2.openid, MAX(w2.id) AS mid')
+                    ->group('w2.openid')
+                    ->buildSql(true);
+            } catch (\Throwable $e) {
                 return paginate_response([], 0, $page, $pageSize);
+            }
+
+            $baseQuery = Db::name('wechat_users')->alias('w')
+                ->join([$poolSql => 'p'], 'w.id = p.userId')
+                ->join([$dedupSql => 'd'], 'w.id = d.mid');
+
+            if ($keyword !== '') {
+                $kw = '%' . $keyword . '%';
+                $baseQuery->where(function ($q) use ($kw) {
+                    $q->whereLike('w.nickname', $kw)
+                        ->whereOr('w.phone', 'like', $kw)
+                        ->whereOr('w.city', 'like', $kw)
+                        ->whereOr('w.province', 'like', $kw);
+                });
+            }
+        } else {
+            // 无企业归属（极少）：沿用全表 openid 去重 + IN 列表
+            try {
+                $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
+                $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
+            } catch (\Throwable $e) {
+                $dedupIds = Db::name('wechat_users')->column('id');
+                $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
+            }
+            if (empty($dedupIds)) {
+                return paginate_response([], 0, $page, $pageSize);
+            }
+            $baseQuery = Db::name('wechat_users')->where('id', 'in', $dedupIds);
+            if ($where) {
+                $baseQuery->where($where);
             }
         }
 
-        // 按 openid 去重：每个 openid 只保留 id 最大的一条；失败则不去重
-        try {
-            $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
-            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
-        } catch (\Throwable $e) {
-            $dedupIds = Db::name('wechat_users')->column('id');
-            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
+        if ($enterpriseId) {
+            $total = (int) (clone $baseQuery)->distinct(true)->count('w.id');
+            $list = (clone $baseQuery)
+                ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
+                ->order('w.createdAt', 'desc')
+                ->page($page, $pageSize)
+                ->select()
+                ->toArray();
+        } else {
+            $total = (int) (clone $baseQuery)->count();
+            $list = (clone $baseQuery)
+                ->field('id,nickname,openid,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
+                ->order('createdAt', 'desc')
+                ->page($page, $pageSize)
+                ->select()
+                ->toArray();
         }
-        if (empty($dedupIds)) {
-            return paginate_response([], 0, $page, $pageSize);
-        }
-
-        $baseQuery = Db::name('wechat_users')->where('id', 'in', $dedupIds);
-        // 若从画像表中筛出了当前企业的用户池，则仅保留这些 userId
-        if (!empty($profileUserIds)) {
-            $baseQuery->whereIn('id', $profileUserIds);
-        }
-        if ($where) {
-            $baseQuery->where($where);
-        }
-
-        $total = (int) $baseQuery->count();
-        $list = (clone $baseQuery)
-            ->field('id,nickname,openid,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
-            ->order('createdAt', 'desc')
-            ->page($page, $pageSize)
-            ->select()
-            ->toArray();
 
         // 为每条用户附加测试统计（test_results.userId 对应 wechat_users.id）
         $ids = array_column($list, 'id');
@@ -103,20 +134,49 @@ class AppUser extends BaseController
             if ($enterpriseId) {
                 $trBase->where('enterpriseId', $enterpriseId);
             }
-            $counts = (clone $trBase)
+            // 次数与最近测试时间一次 GROUP 查完，减少往返
+            $trAggRows = (clone $trBase)
+                ->field('userId, COUNT(*) AS cnt, MAX(createdAt) AS lastAt')
                 ->group('userId')
-                ->column('COUNT(*) as cnt', 'userId');
-            $testCounts = $counts ?: [];
+                ->select()
+                ->toArray();
+            foreach ($trAggRows as $r) {
+                $uid = (int) ($r['userId'] ?? 0);
+                if ($uid > 0) {
+                    $testCounts[$uid] = (int) ($r['cnt'] ?? 0);
+                    $lastTestAt[$uid] = $r['lastAt'];
+                }
+            }
 
-            $lastRows = (clone $trBase)
-                ->field('id, userId, testType, resultData, createdAt, enterpriseId as testEnterpriseId')
-                ->order('createdAt', 'desc')
-                ->select();
+            // 每人每种 testType 仅取最新一条（含 MAX(id) 消解同一时间戳多行），禁止 select 全量记录
+            try {
+                $aggSub = Db::name('test_results')->where('userId', 'in', $ids);
+                if ($enterpriseId) {
+                    $aggSub->where('enterpriseId', $enterpriseId);
+                }
+                $aggSql = $aggSub
+                    ->field('userId, testType, MAX(createdAt) as mc, MAX(id) as mid')
+                    ->group('userId, testType')
+                    ->buildSql(true);
+
+                $lastDetailQuery = Db::name('test_results')->alias('t')
+                    ->join([$aggSql => 'agg'], 't.userId = agg.userId AND t.testType = agg.testType AND t.id = agg.mid')
+                    ->field('t.id, t.userId, t.testType, t.resultData, t.createdAt, t.enterpriseId as testEnterpriseId');
+                if ($enterpriseId) {
+                    $lastDetailQuery->where('t.enterpriseId', $enterpriseId);
+                }
+                $lastRows = $lastDetailQuery->select()->toArray();
+            } catch (\Throwable $e) {
+                $lastRows = (clone $trBase)
+                    ->field('id, userId, testType, resultData, createdAt, enterpriseId as testEnterpriseId')
+                    ->order('createdAt', 'desc')
+                    ->limit(2000)
+                    ->select()
+                    ->toArray();
+            }
+
             foreach ($lastRows as $row) {
                 $uid = $row['userId'];
-                if (!isset($lastTestAt[$uid])) {
-                    $lastTestAt[$uid] = $row['createdAt'];
-                }
                 if (!isset($testTypes[$uid])) {
                     $testTypes[$uid] = [];
                 }
@@ -127,6 +187,12 @@ class AppUser extends BaseController
                     'testScope' => !empty($row['testEnterpriseId']) ? 'enterprise' : 'personal',
                 ];
             }
+            foreach ($testTypes as $uid => &$tlist) {
+                usort($tlist, static function ($a, $b) {
+                    return (int) ($b['createdAt'] ?? 0) <=> (int) ($a['createdAt'] ?? 0);
+                });
+            }
+            unset($tlist);
             // 付款统计：user_profile（按当前企业过滤）
             try {
                 $profilesQuery = Db::name('user_profile')

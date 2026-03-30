@@ -42,30 +42,88 @@ App({
     pdpResult: null,
     aiResult: null,
     maintenanceMode: undefined,
-    reviewMode: undefined
+    reviewMode: undefined,
+    enterprisePermissions: null
   },
 
   onLaunch(launchOptions) {
     this.globalData.scene = launchOptions && launchOptions.scene ? launchOptions.scene : ''
     this.loadStoredData()
-    this.silentLogin()
 
     try {
       const analytics = require('./utils/analytics.js')
       analytics.reportAppLaunch(launchOptions)
     } catch (e) {}
 
-    this.getRuntimeConfig().then((cfg) => {
-      if (cfg) {
-        if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
-        if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
-        if (cfg.reviewMode !== undefined) {
-          this.globalData.reviewMode = !!cfg.reviewMode
-        } else if (cfg.maintenanceMode !== undefined) {
-          this.globalData.reviewMode = !!cfg.maintenanceMode
+    this.silentLogin()
+      .catch(() => {})
+      .then(() => this.getRuntimeConfig())
+      .then(() => {
+        this._afterRuntimeSynced()
+      })
+      .catch(() => {})
+  },
+
+  _afterRuntimeSynced() {
+    try {
+      const pages = getCurrentPages()
+      if (!pages || pages.length === 0) return
+      const top = pages[pages.length - 1]
+      if (!top) return
+      const gd = this.globalData
+      const ep = gd.enterprisePermissions
+      const audit = !!(gd.reviewMode || gd.maintenanceMode)
+      const permFace = !ep || ep.face !== false
+
+      if (typeof top.getTabBar === 'function') {
+        const tb = top.getTabBar()
+        if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+      }
+
+      const route = top.route || ''
+      if (route === 'pages/index/index' && typeof top.setData === 'function') {
+        top.setData({
+          reviewMode: audit,
+          permFace,
+          siteTitle: audit ? String(gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
+          startButtonText: (audit || (ep && ep.face === false)) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+          aiAnalysisText: audit ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析')
+        })
+      } else if (route === 'pages/profile/index' && typeof top.setData === 'function') {
+        if (typeof top._syncPerms === 'function') top._syncPerms.call(top)
+        top.setData({ reviewMode: audit })
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+        }
+      } else if (route === 'pages/enterprise/index' && typeof top.setData === 'function') {
+        const maintenanceMode = audit
+        const pf = permFace
+        top.setData({
+          maintenanceMode,
+          reviewMode: maintenanceMode,
+          permFace: pf,
+          siteTitle: gd.siteTitle || '神仙团队性格测试',
+          startButtonEnterprise: (maintenanceMode || !pf) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
+          aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'
+        })
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+        }
+      } else if (route === 'pages/index/camera' && typeof top.setData === 'function') {
+        top.setData({ reviewMode: audit })
+        if (ep && ep.face === false) {
+          tt.navigateTo({ url: '/pages/test-select/index' })
+        }
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
         }
       }
-    }).catch(() => {})
+    } catch (e) {
+      console.error('_afterRuntimeSynced', e)
+    }
   },
 
   onShow() {
@@ -342,6 +400,7 @@ App({
   },
 
   getRuntimeConfig() {
+    const reqId = (this._runtimeReqSeq = (this._runtimeReqSeq || 0) + 1)
     return new Promise((resolve, reject) => {
       const scope = this.globalData.appScope || 'personal'
       const base = this.globalData.apiBase.replace(/\/$/, '')
@@ -352,6 +411,10 @@ App({
         method: 'GET',
         header: token ? { Authorization: 'Bearer ' + token } : {},
         success: (res) => {
+          if (reqId !== this._runtimeReqSeq) {
+            resolve(null)
+            return
+          }
           if (res.statusCode === 200 && res.data && res.data.code === 200) {
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
@@ -361,6 +424,16 @@ App({
               this.globalData.reviewMode = !!data.reviewMode
             } else if (data.maintenanceMode !== undefined) {
               this.globalData.reviewMode = !!data.maintenanceMode
+            }
+            if (data.defaultEnterpriseId != null && Number(data.defaultEnterpriseId) > 0) {
+              this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)
+            } else {
+              this.globalData.defaultEnterpriseId = null
+            }
+            if (data.enterprisePermissions && typeof data.enterprisePermissions === 'object') {
+              this.globalData.enterprisePermissions = data.enterprisePermissions
+            } else {
+              this.globalData.enterprisePermissions = null
             }
             resolve(data)
           } else {

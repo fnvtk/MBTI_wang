@@ -49,16 +49,16 @@
       <!-- 类型标签 -->
       <scroll-view scroll-x class="tags-scroll">
         <view class="tags-row">
-          <view class="tag tag-purple" tt:if="{{mbtiType}}">
+          <view class="tag tag-purple" tt:if="{{mbtiType && permMbti}}">
             <text class="tag-text">{{mbtiType}}</text>
           </view>
-          <view class="tag tag-blue" tt:if="{{discType}}">
+          <view class="tag tag-blue" tt:if="{{discType && permDisc}}">
             <text class="tag-text">{{discType}}型</text>
           </view>
-          <view class="tag tag-orange" tt:if="{{pdpType}}">
+          <view class="tag tag-orange" tt:if="{{pdpType && permPdp}}">
             <text class="tag-text">{{pdpType}}</text>
           </view>
-          <view class="tag tag-gray" tt:if="{{!mbtiType && !discType && !pdpType}}">
+          <view class="tag tag-gray" tt:if="{{showEmptyPersonalityTags}}">
             <text class="tag-text">暂无测试记录</text>
           </view>
         </view>
@@ -78,57 +78,57 @@
           <text class="depth-header-chevron">›</text>
         </view>
       </view>
-      <scroll-view scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
+      <scroll-view tt:if="{{showLatestTestCards}}" scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
         <view class="cards-row cards-row--in-card">
-          <view class="result-card card-purple {{mbtiType ? '' : 'result-card--placeholder'}}" bindtap="viewMBTI">
+          <view class="result-card card-purple" bindtap="viewMBTI" tt:if="{{permMbti && mbtiType}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-purple">
               <text class="card-icon">🧠</text>
             </view>
             <text class="card-label">MBTI性格</text>
-            <text class="card-value">{{mbtiType || '未测评'}}</text>
-            <text class="card-time">{{mbtiType ? mbtiTime : '点击进入问卷'}}</text>
+            <text class="card-value">{{mbtiType}}</text>
+            <text class="card-time">{{mbtiTime}}</text>
           </view>
-          <view class="result-card card-orange {{pdpType ? '' : 'result-card--placeholder'}}" bindtap="viewPDP">
+          <view class="result-card card-orange" bindtap="viewPDP" tt:if="{{permPdp && pdpType}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-orange">
               <text class="card-icon">🦁</text>
             </view>
             <text class="card-label">PDP行为</text>
-            <text class="card-value">{{pdpType || '未测评'}}</text>
-            <text class="card-time">{{pdpType ? pdpTime : '点击进入问卷'}}</text>
+            <text class="card-value">{{pdpType}}</text>
+            <text class="card-time">{{pdpTime}}</text>
           </view>
-          <view class="result-card card-blue {{discType ? '' : 'result-card--placeholder'}}" bindtap="viewDISC">
+          <view class="result-card card-blue" bindtap="viewDISC" tt:if="{{permDisc && discType}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-blue">
               <text class="card-icon">📊</text>
             </view>
             <text class="card-label">DISC测评</text>
-            <text class="card-value">{{discType ? discType + '型' : '未测评'}}</text>
-            <text class="card-time">{{discType ? discTime : '点击进入问卷'}}</text>
+            <text class="card-value">{{discType + '型'}}</text>
+            <text class="card-time">{{discTime}}</text>
           </view>
-          <view class="result-card card-teal {{(gallupPreview || aiType) ? '' : 'result-card--placeholder'}}" bindtap="viewGallup" tt:if="{{!reviewMode}}">
+          <view class="result-card card-teal" bindtap="viewGallup" tt:if="{{!reviewMode && permFace && (gallupPreview || aiType)}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-teal">
               <text class="card-icon">⭐</text>
             </view>
             <text class="card-label">盖洛普优势</text>
-            <text class="card-value card-value--small">{{gallupPreview || (aiType ? '见面相报告' : '未测评')}}</text>
-            <text class="card-time">{{gallupPreview ? aiTime : (aiType ? '已拍面相可查看' : '先完成面相拍摄')}}</text>
+            <text class="card-value card-value--small">{{gallupPreview || '见面相报告'}}</text>
+            <text class="card-time">{{aiTime}}</text>
           </view>
-          <view class="result-card card-rose {{aiType ? '' : 'result-card--placeholder'}}" bindtap="viewAI" tt:if="{{!reviewMode}}">
+          <view class="result-card card-rose" bindtap="viewAI" tt:if="{{!reviewMode && permFace && aiType}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-rose">
               <text class="card-icon">👁️</text>
             </view>
             <text class="card-label">面相分析</text>
-            <text class="card-value">{{aiType || '未测评'}}</text>
-            <text class="card-time">{{aiType ? aiTime : '去拍摄分析'}}</text>
+            <text class="card-value">{{aiType}}</text>
+            <text class="card-time">{{aiTime}}</text>
           </view>
         </view>
       </scroll-view>
-      <view class="depth-empty-hint depth-empty-hint--compact">
-        <text>灰色为未完成项，点击即可进入测评；右上方可查看全部历史。</text>
+      <view tt:if="{{showLatestTestCards}}" class="depth-empty-hint depth-empty-hint--compact">
+        <text>点击卡片查看详情；右上方可查看全部测试记录。</text>
       </view>
       <view class="depth-inner-divider"></view>
       <view class="menu-item menu-item--flat" bindtap="goToTestSelect">
@@ -178,7 +178,7 @@
   </view>
 
   <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
-  <view class="section px-section" tt:if="{{hasLogin && promoDistributionEnabled && !reviewMode}}">
+  <view class="section px-section" tt:if="{{hasLogin && promoDistributionEnabled && !reviewMode && permDistribution}}">
     <view class="promo-card" bindtap="goToPromo">
       <view class="promo-header">
         <view class="promo-title-wrap">

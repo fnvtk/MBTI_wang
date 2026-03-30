@@ -7,16 +7,16 @@
         <view class="tab-item {{activeTab === 'all' ? 'active' : ''}}" bindtap="changeTab" data-tab="all">
           <text class="tab-text">全部</text>
         </view>
-        <view class="tab-item {{activeTab === 'mbti' ? 'active' : ''}}" bindtap="changeTab" data-tab="mbti">
+        <view tt:if="{{permMbti}}" class="tab-item {{activeTab === 'mbti' ? 'active' : ''}}" bindtap="changeTab" data-tab="mbti">
           <text class="tab-text">MBTI</text>
         </view>
-        <view class="tab-item {{activeTab === 'pdp' ? 'active' : ''}}" bindtap="changeTab" data-tab="pdp">
+        <view tt:if="{{permPdp}}" class="tab-item {{activeTab === 'pdp' ? 'active' : ''}}" bindtap="changeTab" data-tab="pdp">
           <text class="tab-text">PDP</text>
         </view>
-        <view class="tab-item {{activeTab === 'disc' ? 'active' : ''}}" bindtap="changeTab" data-tab="disc">
+        <view tt:if="{{permDisc}}" class="tab-item {{activeTab === 'disc' ? 'active' : ''}}" bindtap="changeTab" data-tab="disc">
           <text class="tab-text">DISC</text>
         </view>
-        <view tt:if="{{!reviewMode}}" class="tab-item {{activeTab === 'ai' ? 'active' : ''}}" bindtap="changeTab" data-tab="ai">
+        <view tt:if="{{!reviewMode && permFace}}" class="tab-item {{activeTab === 'ai' ? 'active' : ''}}" bindtap="changeTab" data-tab="ai">
           <text class="tab-text">面相</text>
         </view>
         <view tt:if="{{isEnterprise}}" class="tab-item {{activeTab === 'resume' ? 'active' : ''}}" bindtap="changeTab" data-tab="resume">
@@ -57,11 +57,12 @@
       </view>
     </view>
 
-    <!-- 加载中 -->
-    <view class="load-more-row" tt:if="{{loading}}">
-      <text class="load-more-text">加载中...</text>
+    <view class="load-more-row" tt:if="{{loadingMore}}">
+      <text class="load-more-text">加载更多...</text>
     </view>
-
+    <view tt:elif="{{hasMore && list.length > 0}}" class="load-more-row">
+      <text class="load-more-text">上拉或继续滑动加载更多</text>
+    </view>
     <view tt:elif="{{list.length > 0}}" class="load-more-row">
       <text class="load-more-text no-more">共 {{total}} 条</text>
     </view>

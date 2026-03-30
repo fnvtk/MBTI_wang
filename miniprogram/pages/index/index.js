@@ -10,7 +10,8 @@ Page({
     siteTitle: '神仙团队性格测试',
     startButtonText: '开始性格测试',
     aiAnalysisText: '分析',
-    reviewMode: true
+    reviewMode: true,
+    permFace: true
   },
 
   onLoad(options) {
@@ -25,6 +26,8 @@ Page({
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
     const gd = getApp().globalData
     const rm0 = !!(gd.reviewMode || gd.maintenanceMode)
+    const ep = gd.enterprisePermissions
+    const pf = !ep || ep.face !== false
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
@@ -32,7 +35,8 @@ Page({
       siteTitle: rm0 ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
       startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
       aiAnalysisText: rm0 ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
-      reviewMode: rm0
+      reviewMode: rm0,
+      permFace: pf
     })
     // 预加载站点名称与文案配置
     app.getRuntimeConfig().then((cfg) => {
@@ -53,7 +57,8 @@ Page({
             aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
-        this.setData({ reviewMode: rm })
+        const ep2 = getApp().globalData.enterprisePermissions
+        this.setData({ reviewMode: rm, permFace: !ep2 || ep2.face !== false })
         try {
           const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
           if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
@@ -97,9 +102,9 @@ Page({
 
   onShow() {
     const gd0 = getApp().globalData || {}
-    const audit = !!(gd0.reviewMode || gd0.maintenanceMode)
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0, reviewMode: audit })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
     // 个人版首页：固定 scope=personal，并清除企业来源上下文
     try {
@@ -108,11 +113,13 @@ Page({
     } catch (e) {}
     const g = getApp().globalData
     const rm = !!(g.reviewMode || g.maintenanceMode)
+    const ep3 = g.enterprisePermissions
     this.setData({
       siteTitle: rm ? (g.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (g.siteTitle || '神仙团队性格测试'),
-      startButtonText: rm ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '拍摄'),
+      startButtonText: (rm || (ep3 && ep3.face === false)) ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '拍摄'),
       aiAnalysisText: rm ? '分析' : ((g.textConfig && g.textConfig.aiAnalysisText) || '分析'),
-      reviewMode: rm
+      reviewMode: rm,
+      permFace: !ep3 || ep3.face !== false
     })
     const userInfo = getApp().globalData.userInfo || wx.getStorageSync('userInfo') || {}
     this.setData({ showEnterpriseEntry: userInfo.hasEnterprise === true })
@@ -138,7 +145,9 @@ Page({
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
     const gd = getApp().globalData
-    if (gd.reviewMode || gd.maintenanceMode) {
+    const ep = gd.enterprisePermissions
+    const faceOff = ep && ep.face === false
+    if (gd.reviewMode || gd.maintenanceMode || faceOff) {
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }

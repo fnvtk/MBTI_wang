@@ -7,9 +7,16 @@ Page({
     tabName: '',
     list: [],
     total: 0,
+    page: 1,
+    hasMore: false,
     loading: false,
+    loadingMore: false,
     isEnterprise: false,
-    reviewMode: false
+    reviewMode: false,
+    permMbti: true,
+    permPdp: true,
+    permDisc: true,
+    permFace: true
   },
 
   _checkIsEnterprise() {
@@ -23,54 +30,110 @@ Page({
     return scope === 'enterprise' || !!enterpriseId
   },
 
+  _syncPermsAndTab() {
+    const p = app.globalData.enterprisePermissions
+    const permMbti = !p || p.mbti !== false
+    const permPdp = !p || p.pdp !== false
+    const permDisc = !p || p.disc !== false
+    const permFace = !p || p.face !== false
+    const reviewMode = !!app.globalData.reviewMode
+    const isEnterprise = this._checkIsEnterprise()
+    const names = { all: '', mbti: 'MBTI', pdp: 'PDP', disc: 'DISC', ai: '面相', resume: '简历' }
+    let { activeTab } = this.data
+    if (activeTab === 'mbti' && !permMbti) activeTab = 'all'
+    if (activeTab === 'pdp' && !permPdp) activeTab = 'all'
+    if (activeTab === 'disc' && !permDisc) activeTab = 'all'
+    if (activeTab === 'ai' && (!permFace || reviewMode)) activeTab = 'all'
+    if (activeTab === 'resume' && !isEnterprise) activeTab = 'all'
+    this.setData({
+      isEnterprise,
+      permMbti, permPdp, permDisc, permFace, reviewMode,
+      activeTab,
+      tabName: names[activeTab] || ''
+    })
+  },
+
   onLoad() {
-    this.setData({ isEnterprise: this._checkIsEnterprise() })
+    this._syncPermsAndTab()
     this.loadAll()
   },
 
   onShow() {
-    this.setData({ isEnterprise: this._checkIsEnterprise(), reviewMode: !!app.globalData.reviewMode })
+    this._syncPermsAndTab()
     this.loadAll()
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1 })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
   },
 
-  // 一次拉取全部历史（pageSize=500）
   loadAll() {
     if (this.data.loading) return
-    this.setData({ loading: true, list: [] })
+    this.setData({ loading: true, list: [], page: 1, hasMore: false, loadingMore: false })
+    this._fetchHistoryPage(1, false)
+  },
 
+  loadMore() {
+    if (!this.data.hasMore || this.data.loadingMore || this.data.loading) return
+    const next = this.data.page + 1
+    this.setData({ loadingMore: true })
+    this._fetchHistoryPage(next, true)
+  },
+
+  onReachBottom() {
+    this.loadMore()
+  },
+
+  _fetchHistoryPage(pageNum, append) {
     const token = app.globalData.token || tt.getStorageSync('token')
     const apiBase = app.globalData.apiBase
     const { activeTab } = this.data
     const typeParam = activeTab === 'all' ? '' : `&type=${activeTab}`
 
     if (!token || !apiBase) {
-      this.setData({ loading: false })
+      this.setData({ loading: false, loadingMore: false })
       this.loadFromStorage()
       return
     }
 
     tt.request({
-      url: `${apiBase}/api/test/history?page=1&pageSize=500${typeParam}&scope=all`,
+      url: `${apiBase}/api/test/history?page=${pageNum}&pageSize=10${typeParam}&scope=all`,
       method: 'GET',
       header: { Authorization: `Bearer ${token}` },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.data) {
           const payload = res.data.data
-          const rawList = Array.isArray(payload) ? payload : (payload.list || [])
-          const total = Array.isArray(payload) ? rawList.length : (payload.total || 0)
+          const rawList = payload.list || []
           const formatted = this.formatList(rawList)
-          this.setData({ list: formatted, total, loading: false })
+          const total = typeof payload.total === 'number' ? payload.total : formatted.length
+          const hasMore = !!payload.hasMore
+          if (append) {
+            this.setData({
+              list: this.data.list.concat(formatted),
+              total,
+              hasMore,
+              page: pageNum,
+              loadingMore: false,
+              loading: false
+            })
+          } else {
+            this.setData({
+              list: formatted,
+              total,
+              hasMore,
+              page: pageNum,
+              loading: false,
+              loadingMore: false
+            })
+          }
         } else {
-          this.setData({ loading: false })
-          this.loadFromStorage()
+          this.setData({ loading: false, loadingMore: false })
+          if (!append) this.loadFromStorage()
         }
       },
       fail: () => {
-        this.setData({ loading: false })
-        this.loadFromStorage()
+        this.setData({ loading: false, loadingMore: false })
+        if (!append) this.loadFromStorage()
       }
     })
   },
@@ -81,7 +144,8 @@ Page({
 
     return rawList.map((item, idx) => {
       if (item.typeName) {
-        return { ...item, enterpriseName: item.enterpriseName || '' }
+        const t = String(item.testType || item.type || 'mbti').toLowerCase()
+        return { ...item, type: t, enterpriseName: item.enterpriseName || '' }
       }
       const testType = (item.testType || item.type || 'mbti').toLowerCase()
       const ts = item.createdAt || item.testTime || item.timestamp
@@ -99,16 +163,17 @@ Page({
 
   // 本地缓存回退
   loadFromStorage() {
+    const { permMbti, permPdp, permDisc, permFace, reviewMode } = this.data
     const mbtiResult = tt.getStorageSync('mbtiResult')
     const discResult = tt.getStorageSync('discResult')
     const pdpResult  = tt.getStorageSync('pdpResult')
     const aiResult   = tt.getStorageSync('aiResult')
     const list = []
-    if (mbtiResult) list.push({ type: 'mbti', key: 'mbti', emoji: '🧠', typeName: 'MBTI性格测试', resultText: mbtiResult.mbtiType || '未知', testTime: this.formatTime(mbtiResult.timestamp), data: mbtiResult })
-    if (pdpResult)  list.push({ type: 'pdp',  key: 'pdp',  emoji: pdpResult.description?.emoji || '🦁', typeName: 'PDP行为偏好测试', resultText: pdpResult.description?.type || '未知', testTime: this.formatTime(pdpResult.timestamp || pdpResult.completedAt), data: pdpResult })
-    if (discResult) list.push({ type: 'disc', key: 'disc', emoji: '📊', typeName: 'DISC性格测试', resultText: (discResult.dominantType || '未知') + '型', testTime: this.formatTime(discResult.timestamp || discResult.completedAt), data: discResult })
-    if (aiResult && !app.globalData.reviewMode) list.push({ type: 'ai', key: 'ai', emoji: '👁️', typeName: '面相分析', resultText: aiResult.mbti || '未知', testTime: this.formatTime(aiResult.timestamp || aiResult.completedAt), data: aiResult })
-    this.setData({ list, total: list.length, loading: false })
+    if (mbtiResult && permMbti) list.push({ type: 'mbti', key: 'mbti', emoji: '🧠', typeName: 'MBTI性格测试', resultText: mbtiResult.mbtiType || '未知', testTime: this.formatTime(mbtiResult.timestamp), data: mbtiResult })
+    if (pdpResult && permPdp)  list.push({ type: 'pdp',  key: 'pdp',  emoji: pdpResult.description?.emoji || '🦁', typeName: 'PDP行为偏好测试', resultText: pdpResult.description?.type || '未知', testTime: this.formatTime(pdpResult.timestamp || pdpResult.completedAt), data: pdpResult })
+    if (discResult && permDisc) list.push({ type: 'disc', key: 'disc', emoji: '📊', typeName: 'DISC性格测试', resultText: (discResult.dominantType || '未知') + '型', testTime: this.formatTime(discResult.timestamp || discResult.completedAt), data: discResult })
+    if (aiResult && permFace && !reviewMode) list.push({ type: 'ai', key: 'ai', emoji: '👁️', typeName: '面相分析', resultText: aiResult.mbti || '未知', testTime: this.formatTime(aiResult.timestamp || aiResult.completedAt), data: aiResult })
+    this.setData({ list, total: list.length, page: 1, hasMore: false, loading: false, loadingMore: false })
   },
 
   changeTab(e) {

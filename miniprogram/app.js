@@ -47,8 +47,8 @@ App({
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
-    apiBase: 'https://mbtiapi.quwanzhi.com',
-    //apiBase: 'http://mbti.com',
+    //apiBase: 'https://mbtiapi.quwanzhi.com',
+    apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数
@@ -59,7 +59,9 @@ App({
     mbtiResult: null,
     discResult: null,
     pdpResult: null,
-    aiResult: null
+    aiResult: null,
+    // 企业功能权限（超管在企业管理中配置）：null=无限制（个人版），对象时按 key 控制
+    enterprisePermissions: null
   },
 
   onLaunch(launchOptions) {
@@ -69,30 +71,85 @@ App({
     // 加载本地存储的数据
     this.loadStoredData()
 
-    // 静默登录获取openId
-    this.silentLogin()
-
     // 上报应用启动事件
     try {
       const analytics = require('./utils/analytics.js')
       analytics.reportAppLaunch(launchOptions)
     } catch (e) {}
 
-    // 预加载站点/小程序名称、维护模式与面相审核模式（camera/首页文案）
-    this.getRuntimeConfig().then((cfg) => {
-      if (cfg) {
-        if (cfg.siteTitle) this.globalData.siteTitle = cfg.siteTitle
-        if (cfg.maintenanceMode !== undefined) this.globalData.maintenanceMode = !!cfg.maintenanceMode
-        if (typeof cfg.reviewMode === 'boolean') {
-          this.globalData.reviewMode = cfg.reviewMode
+    // 必须先完成静默登录再拉 runtime：否则无 token 时 enterprisePermissions 永远 null，清除缓存后必现「要二次刷新」
+    this.silentLogin()
+      .catch(() => {})
+      .then(() => this.getRuntimeConfig())
+      .then(() => {
+        this._afterRuntimeSynced()
+      })
+      .catch(() => {})
+  },
+
+  /**
+   * runtime 写入 globalData 后，同步当前栈顶页面与 tabBar（避免首屏用旧 null 权限）
+   */
+  _afterRuntimeSynced() {
+    try {
+      const pages = getCurrentPages()
+      if (!pages || pages.length === 0) return
+      const top = pages[pages.length - 1]
+      if (!top) return
+      const gd = this.globalData
+      const ep = gd.enterprisePermissions
+      const audit = !!(gd.reviewMode || gd.maintenanceMode)
+      const permFace = !ep || ep.face !== false
+
+      if (typeof top.getTabBar === 'function') {
+        const tb = top.getTabBar()
+        if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+      }
+
+      const route = top.route || ''
+      if (route === 'pages/index/index' && typeof top.setData === 'function') {
+        top.setData({
+          reviewMode: audit,
+          permFace,
+          siteTitle: audit ? String(gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
+          startButtonText: (audit || (ep && ep.face === false)) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+          aiAnalysisText: audit ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析')
+        })
+      } else if (route === 'pages/profile/index' && typeof top.setData === 'function') {
+        if (typeof top._syncPerms === 'function') top._syncPerms.call(top)
+        top.setData({ reviewMode: audit })
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
         }
-        if (cfg.defaultEnterpriseId != null && Number(cfg.defaultEnterpriseId) > 0) {
-          this.globalData.defaultEnterpriseId = Number(cfg.defaultEnterpriseId)
-        } else {
-          this.globalData.defaultEnterpriseId = null
+      } else if (route === 'pages/enterprise/index' && typeof top.setData === 'function') {
+        const maintenanceMode = audit
+        const pf = permFace
+        top.setData({
+          maintenanceMode,
+          reviewMode: maintenanceMode,
+          permFace: pf,
+          siteTitle: gd.siteTitle || '神仙团队AI性格测试',
+          startButtonEnterprise: (maintenanceMode || !pf) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
+          aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析'
+        })
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
+        }
+      } else if (route === 'pages/index/camera' && typeof top.setData === 'function') {
+        top.setData({ reviewMode: audit })
+        if (ep && ep.face === false) {
+          wx.navigateTo({ url: '/pages/test-select/index' })
+        }
+        if (typeof top.getTabBar === 'function') {
+          const tb = top.getTabBar()
+          if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
         }
       }
-    }).catch(() => {})
+    } catch (e) {
+      console.error('_afterRuntimeSynced', e)
+    }
   },
 
   onShow() {
@@ -386,6 +443,7 @@ App({
    * @returns {Promise<{pricingType, pricing, aiProviderId, aiProviderName}>}
    */
   getRuntimeConfig() {
+    const reqId = (this._runtimeReqSeq = (this._runtimeReqSeq || 0) + 1)
     return new Promise((resolve, reject) => {
       const scope = this.globalData.appScope || 'personal'
       const base = this.globalData.apiBase.replace(/\/$/, '')
@@ -396,6 +454,10 @@ App({
         method: 'GET',
         header: token ? { Authorization: 'Bearer ' + token } : {},
         success: (res) => {
+          if (reqId !== this._runtimeReqSeq) {
+            resolve(null)
+            return
+          }
           if (res.statusCode === 200 && res.data && res.data.code === 200) {
             const data = res.data.data || {}
             if (data.siteTitle) this.globalData.siteTitle = data.siteTitle
@@ -410,6 +472,11 @@ App({
               this.globalData.defaultEnterpriseId = Number(data.defaultEnterpriseId)
             } else {
               this.globalData.defaultEnterpriseId = null
+            }
+            if (data.enterprisePermissions && typeof data.enterprisePermissions === 'object') {
+              this.globalData.enterprisePermissions = data.enterprisePermissions
+            } else {
+              this.globalData.enterprisePermissions = null
             }
             resolve(data)
           } else {

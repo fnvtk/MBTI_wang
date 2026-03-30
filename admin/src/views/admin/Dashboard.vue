@@ -2,9 +2,7 @@
   <div class="dashboard-viewport" v-loading="loading">
     <header class="dash-head">
       <h1 class="dash-title">数据概览</h1>
-      <p class="dash-tagline">
-        企业侧测评闭环：小程序面相与 MBTI / DISC / PDP 答题 → MySQL 落库 → 本页看用户与测试趋势、拉新邀请码（全链路见开发文档《小程序全链路功能与接口》）。
-      </p>
+      <p class="dash-tagline"></p>
     </header>
 
     <div class="dash-kpis">

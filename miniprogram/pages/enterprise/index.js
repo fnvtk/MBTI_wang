@@ -10,7 +10,9 @@ Page({
     siteTitle: '神仙团队AI性格测试',
     startButtonEnterprise: '开始面部测试',
     aiAnalysisText: '智能分析',
-    maintenanceMode: false
+    maintenanceMode: false,
+    reviewMode: false,
+    permFace: true
   },
 
   onLoad(options) {
@@ -62,13 +64,17 @@ Page({
     const navbarHeightRpx = statusBarHeightRpx + 88
     const gd = app.globalData
     const maintenanceMode = !!(gd.reviewMode || gd.maintenanceMode)
+    const ep = gd.enterprisePermissions
+    const pf = !ep || ep.face !== false
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
+      startButtonEnterprise: (maintenanceMode || !pf) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
       aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
-      maintenanceMode
+      maintenanceMode,
+      reviewMode: maintenanceMode,
+      permFace: pf
     })
 
     // 未绑定企业的用户：扫码带 eid 或超管配置了默认企业时也允许使用企业版
@@ -92,10 +98,14 @@ Page({
             if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
               app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
             }
+            const ep2 = app.globalData.enterprisePermissions
+            const pf2 = !ep2 || ep2.face !== false
             this.setData({
-              startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+              startButtonEnterprise: (maintenanceMode || !pf2) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
               aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
-              maintenanceMode
+              maintenanceMode,
+              reviewMode: maintenanceMode,
+              permFace: pf2
             })
           }
         }).catch(() => {})
@@ -120,10 +130,14 @@ Page({
           if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
             app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
           }
+          const ep3 = app.globalData.enterprisePermissions
+          const pf3 = !ep3 || ep3.face !== false
           this.setData({
-            startButtonEnterprise: maintenanceMode ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+            startButtonEnterprise: (maintenanceMode || !pf3) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
             aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
-            maintenanceMode
+            maintenanceMode,
+            reviewMode: maintenanceMode,
+            permFace: pf3
           })
         }
         if ((cfg && cfg.pricingType) !== 'enterprise' && !app.globalData.enterpriseIdFromScene && !(app.globalData.defaultEnterpriseId && Number(app.globalData.defaultEnterpriseId) > 0)) {
@@ -157,18 +171,20 @@ Page({
   onShow() {
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       const tabBar = this.getTabBar()
-      const gd = getApp().globalData || {}
-      const audit = !!(gd.reviewMode || gd.maintenanceMode)
-      tabBar.setData({ selected: 0, reviewMode: audit })
+      if (typeof tabBar.updateSelected === 'function') tabBar.updateSelected()
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
     const maintenanceMode = !!(gd.reviewMode || gd.maintenanceMode)
+    const ep4 = gd.enterprisePermissions
+    const pf4 = !ep4 || ep4.face !== false
     this.setData({
       siteTitle: gd.siteTitle || '神仙团队AI性格测试',
-      startButtonEnterprise: maintenanceMode ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
+      startButtonEnterprise: (maintenanceMode || !pf4) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始面部测试'),
       aiAnalysisText: (gd.textConfig && gd.textConfig.aiAnalysisText) || '智能分析',
-      maintenanceMode
+      maintenanceMode,
+      reviewMode: maintenanceMode,
+      permFace: pf4
     })
   },
 
@@ -181,7 +197,8 @@ Page({
 
   // 开始AI面部测试（先校验是否已上传简历，再跳转相机）；审核模式下直接跳转 test-select
   startAITest() {
-    if (this.data.maintenanceMode) {
+    const ep = getApp().globalData.enterprisePermissions
+    if (this.data.maintenanceMode || (ep && ep.face === false)) {
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }

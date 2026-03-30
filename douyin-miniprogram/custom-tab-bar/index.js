@@ -3,6 +3,7 @@ Component({
   data: {
     selected: 0,
     reviewMode: false,
+    hideMiddleFab: false,
     list: [
       { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
       { pagePath: '/pages/index/camera', text: '拍摄', textKey: 'camera', icon: 'camera' },
@@ -29,18 +30,20 @@ Component({
         const url = currentPage.route
         const gd = getApp().globalData || {}
         const reviewMode = !!(gd.reviewMode || gd.maintenanceMode)
+        const ep = gd.enterprisePermissions
+        const hideMiddleFab = reviewMode || !!(ep && ep.face === false)
         let selected = 0
         if (url === 'pages/index/index' || url === 'pages/enterprise/index') {
           selected = 0
         } else if (url === 'pages/index/camera') {
-          selected = 1
+          selected = hideMiddleFab ? 0 : 1
         } else if (url === 'pages/profile/index') {
           selected = 2
         }
-        this.setData({ selected, reviewMode })
+        this.setData({ selected, reviewMode, hideMiddleFab })
       } catch (error) {
         console.error('updateSelected error:', error)
-        this.setData({ selected: 0, reviewMode: false })
+        this.setData({ selected: 0, reviewMode: false, hideMiddleFab: false })
       }
     },
     switchTab(e) {
@@ -48,7 +51,8 @@ Component({
       let url = e.currentTarget.dataset.path
 
       const gd = getApp().globalData || {}
-      if (index === 1 && !!(gd.reviewMode || gd.maintenanceMode)) {
+      const faceOff = !!(gd.enterprisePermissions && gd.enterprisePermissions.face === false)
+      if (index === 1 && (!!(gd.reviewMode || gd.maintenanceMode) || faceOff)) {
         return
       }
 

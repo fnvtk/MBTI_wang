@@ -5,7 +5,7 @@
     <text class="intro-desc">完成问卷即可获得对应维度的专业性格报告</text>
   </view>
 
-  <view class="card entry-card" bindtap="goMBTI">
+  <view class="card entry-card" bindtap="goMBTI" wx:if="{{permMbti}}">
     <view class="entry-icon-wrap mbti">
       <text class="entry-emoji">🧠</text>
     </view>
@@ -16,7 +16,7 @@
     <text class="entry-arrow">→</text>
   </view>
 
-  <view class="card entry-card" bindtap="goPDP">
+  <view class="card entry-card" bindtap="goPDP" wx:if="{{permPdp}}">
     <view class="entry-icon-wrap pdp">
       <text class="entry-emoji">🦁</text>
     </view>
@@ -27,7 +27,7 @@
     <text class="entry-arrow">→</text>
   </view>
 
-  <view class="card entry-card" bindtap="goDISC">
+  <view class="card entry-card" bindtap="goDISC" wx:if="{{permDisc}}">
     <view class="entry-icon-wrap disc">
       <text class="entry-emoji">📊</text>
     </view>

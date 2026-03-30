@@ -16,6 +16,11 @@ class Enterprise extends BaseController
      * 获取企业列表
      * @return \think\response\Json
      */
+    private function normalizePerms($raw): array
+    {
+        return EnterpriseModel::normalizePermissionsValue($raw);
+    }
+
     public function index()
     {
         // 验证是否为超级管理员
@@ -47,6 +52,12 @@ class Enterprise extends BaseController
             ->page($page, $pageSize)
             ->select()
             ->toArray();
+
+        foreach ($list as &$item) {
+            $item['permissions']        = $this->normalizePerms($item['permissions'] ?? null);
+            $item['permissionsCeiling'] = EnterpriseModel::normalizedPermissionsCeiling($item);
+        }
+        unset($item);
 
         // 统计每个企业的用户数和测试用量
         foreach ($list as &$item) {
@@ -121,15 +132,16 @@ class Enterprise extends BaseController
         $orderPageSize   = min(100, max(1, (int) Request::param('orderPageSize', 10)));
 
         $data = $enterprise->toArray();
-        
-        // 获取企业下的所有用户ID（只统计未删除的用户）
-        $userIds = Db::name('users')
-            ->where('enterpriseId', $id)
+        $data['permissionsCeiling'] = EnterpriseModel::normalizedPermissionsCeiling($enterprise);
+        $data['permissions']        = $this->normalizePerms($data['permissions'] ?? null);
+
+        $eid = (int) $id;
+
+        // 统计后台账号用户数（避免 column 全量 id + 巨大 whereIn）
+        $data['userCount'] = (int) Db::name('users')
+            ->where('enterpriseId', $eid)
             ->where('deletedAt', null)
-            ->column('id');
-        
-        // 统计用户数
-        $data['userCount'] = count($userIds);
+            ->count();
         
         // 获取管理员账号列表（企业管理员角色，只获取未删除的）
         $adminAccounts = Db::name('users')
@@ -152,42 +164,45 @@ class Enterprise extends BaseController
             ->toArray();
         $data['users'] = $users;
         
-        // 获取测试结果列表
+        // 测试结果（后台 users 归属）：JOIN 企业，禁止 whereIn 海量 userId
         $testResults = [];
-        if (!empty($userIds)) {
-            $testResults = Db::name('test_results')
-                ->alias('tr')
-                ->leftJoin('users u', 'tr.userId = u.id')
-                ->where('tr.userId', 'in', $userIds)
-                ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,u.username')
-                ->order('tr.createdAt', 'desc')
-                ->limit(50) // 限制返回数量
-                ->select()
-                ->toArray();
+        try {
+            if ($data['userCount'] > 0) {
+                $testResults = Db::name('test_results')
+                    ->alias('tr')
+                    ->join('users u', 'tr.userId = u.id')
+                    ->where('u.enterpriseId', $eid)
+                    ->where('u.deletedAt', null)
+                    ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,u.username')
+                    ->order('tr.createdAt', 'desc')
+                    ->limit(50)
+                    ->select()
+                    ->toArray();
+            }
+        } catch (\Throwable $e) {
+            $testResults = [];
         }
         $data['testResults'] = $testResults;
         $this->attachResultSummaries($data['testResults']);
-        
-        // 统计测试用量
-        if (!empty($userIds)) {
-            $data['testUsage'] = Db::name('test_results')
-                ->where('userId', 'in', $userIds)
-                ->count();
-        } else {
+
+        try {
+            $data['testUsage'] = $data['userCount'] > 0
+                ? (int) Db::name('test_results')
+                    ->alias('tr')
+                    ->join('users u', 'tr.userId = u.id')
+                    ->where('u.enterpriseId', $eid)
+                    ->where('u.deletedAt', null)
+                    ->count()
+                : 0;
+        } catch (\Throwable $e) {
             $data['testUsage'] = 0;
         }
 
         // —— 小程序侧用户（wechat_users.enterpriseId）——
-        $wechatIds = [];
-        try {
-            $wechatIds = Db::name('wechat_users')->where('enterpriseId', $id)->column('id');
-            $wechatIds = array_values(array_filter($wechatIds));
-        } catch (\Throwable $e) {
-            $wechatIds = [];
-        }
+        // 禁止加载全量 wechat user id 到 PHP 再 IN(...) 查 analytics_events（大数据必超时）
         $wechatUserTotalCount = 0;
         try {
-            $wechatUserTotalCount = (int) Db::name('wechat_users')->where('enterpriseId', $id)->count();
+            $wechatUserTotalCount = (int) Db::name('wechat_users')->where('enterpriseId', $eid)->count();
         } catch (\Throwable $e) {
             $wechatUserTotalCount = 0;
         }
@@ -196,7 +211,7 @@ class Enterprise extends BaseController
         $data['wechatUsers']          = [];
         try {
             $data['wechatUsers'] = Db::name('wechat_users')
-                ->where('enterpriseId', $id)
+                ->where('enterpriseId', $eid)
                 ->field('id,openid,nickname,phone,avatar,status,lastLoginAt,createdAt')
                 ->order('createdAt', 'desc')
                 ->page($wechatPage, $wechatPageSize)
@@ -210,11 +225,11 @@ class Enterprise extends BaseController
         $data['miniprogramTestResults']      = [];
         $data['miniprogramTestResultsTotal'] = 0;
         try {
-            $data['miniprogramTestResultsTotal'] = (int) Db::name('test_results')->where('enterpriseId', $id)->count();
+            $data['miniprogramTestResultsTotal'] = (int) Db::name('test_results')->where('enterpriseId', $eid)->count();
             $data['miniprogramTestResults'] = Db::name('test_results')
                 ->alias('tr')
                 ->leftJoin('wechat_users w', 'tr.userId = w.id')
-                ->where('tr.enterpriseId', $id)
+                ->where('tr.enterpriseId', $eid)
                 ->field('tr.id,tr.testType,tr.createdAt,tr.userId,tr.resultData,w.nickname as wechatNickname')
                 ->order('tr.createdAt', 'desc')
                 ->page($testPage, $testPageSize)
@@ -224,17 +239,17 @@ class Enterprise extends BaseController
         } catch (\Throwable $e) {
             $data['miniprogramTestResults'] = [];
         }
-// 订单与消耗（金额分）
+        // 订单与消耗（金额分）
         $paidStatuses = ['paid', 'completed'];
         try {
             $data['orderStats'] = [
-                'totalCount'    => (int) Db::name('orders')->where('enterpriseId', $id)->count(),
-                'paidCount'     => (int) Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->count(),
-                'paidAmountFen' => (int) (Db::name('orders')->where('enterpriseId', $id)->whereIn('status', $paidStatuses)->sum('amount') ?? 0),
+                'totalCount'    => (int) Db::name('orders')->where('enterpriseId', $eid)->count(),
+                'paidCount'     => (int) Db::name('orders')->where('enterpriseId', $eid)->whereIn('status', $paidStatuses)->count(),
+                'paidAmountFen' => (int) (Db::name('orders')->where('enterpriseId', $eid)->whereIn('status', $paidStatuses)->sum('amount') ?? 0),
             ];
-            $data['recentOrdersTotal'] = (int) Db::name('orders')->where('enterpriseId', $id)->count();
+            $data['recentOrdersTotal'] = (int) Db::name('orders')->where('enterpriseId', $eid)->count();
             $data['recentOrders'] = Db::name('orders')
-                ->where('enterpriseId', $id)
+                ->where('enterpriseId', $eid)
                 ->order('createdAt', 'desc')
                 ->page($orderPage, $orderPageSize)
                 ->field('id,orderNo,status,amount,productType,userId,createdAt')
@@ -258,23 +273,27 @@ class Enterprise extends BaseController
             'hint'           => null,
             'windowDays'     => 30,
         ];
-        if (empty($wechatIds)) {
+        if ($wechatUserTotalCount <= 0) {
             $data['analyticsStats']['hint'] = '暂无 enterpriseId 归属该企业的微信小程序用户，无法按企业聚合埋点';
         } else {
             try {
+                $wechatIdSub = Db::name('wechat_users')
+                    ->whereRaw('enterpriseId = ' . $eid)
+                    ->field('id')
+                    ->buildSql(true);
                 $since = date('Y-m-d H:i:s', time() - 30 * 86400);
                 $data['analyticsStats']['eventTotal'] = (int) Db::name('analytics_events')
-                    ->where('userId', 'in', $wechatIds)
                     ->where('createdAt', '>=', $since)
+                    ->whereRaw('userId IN ' . $wechatIdSub)
                     ->count();
                 $data['analyticsStats']['pageViewCount'] = (int) Db::name('analytics_events')
-                    ->where('userId', 'in', $wechatIds)
                     ->where('createdAt', '>=', $since)
                     ->where('eventName', 'page_view')
+                    ->whereRaw('userId IN ' . $wechatIdSub)
                     ->count();
                 $byEvent = Db::name('analytics_events')
-                    ->where('userId', 'in', $wechatIds)
                     ->where('createdAt', '>=', $since)
+                    ->whereRaw('userId IN ' . $wechatIdSub)
                     ->field('eventName, COUNT(*) AS cnt')
                     ->group('eventName')
                     ->order('cnt', 'desc')
@@ -376,6 +395,13 @@ class Enterprise extends BaseController
             $enterprise->balance = $data['balance'] ?? 0.00;
             $enterprise->status = $status;
             $enterprise->trialExpireAt = ($status === 'trial' && isset($data['trialExpireAt'])) ? $data['trialExpireAt'] : null;
+            if (isset($data['permissions']) && is_array($data['permissions'])) {
+                $norm = $this->normalizePerms($data['permissions']);
+            } else {
+                $norm = EnterpriseModel::permissionDefaults();
+            }
+            $enterprise->permissions        = $norm;
+            $enterprise->permissionsCeiling = $norm;
             $enterprise->save();
 
             $enterpriseId = $enterprise->id;
@@ -460,6 +486,14 @@ class Enterprise extends BaseController
             $enterprise->trialExpireAt = null;
         }
 
+        if (isset($data['permissions']) && is_array($data['permissions'])) {
+            $newCeiling = $this->normalizePerms($data['permissions']);
+            $oldEff     = EnterpriseModel::normalizePermissionsValue($enterprise->permissions ?? null);
+            $merged     = EnterpriseModel::clampEffectiveToNewCeiling($newCeiling, $oldEff);
+            $enterprise->permissions        = $merged;
+            $enterprise->permissionsCeiling = $newCeiling;
+            unset($data['permissions']);
+        }
         $enterprise->save($data);
 
         $newBalance = (float) ($enterprise->balance ?? 0);
@@ -472,7 +506,9 @@ class Enterprise extends BaseController
         }
 
         $enterpriseData = $enterprise->toArray();
-        
+        $enterpriseData['permissionsCeiling'] = EnterpriseModel::normalizedPermissionsCeiling($enterprise);
+        $enterpriseData['permissions']        = $this->normalizePerms($enterpriseData['permissions'] ?? null);
+
         // 统计用户数和测试用量（只统计未删除的用户）
         $enterpriseData['userCount'] = Db::name('users')
             ->where('enterpriseId', $id)

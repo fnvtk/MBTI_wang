@@ -2,6 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use think\facade\Db;
@@ -28,23 +29,44 @@ class Test extends BaseController
             return error('未登录', 401);
         }
 
-        $type     = Request::param('type', 'all');   // all|mbti|disc|pdp|face
+        $type     = Request::param('type', 'all');   // all|mbti|disc|pdp|face|ai|resume
         $scope    = Request::param('scope', 'all');  // all|personal|enterprise
         $page     = max(1, (int) Request::param('page', 1));
         $pageSize = (int) Request::param('pageSize', 0);
         if ($pageSize <= 0) {
-            $pageSize = 500;
+            $pageSize = 10;
         }
-        $pageSize = min(500, max(1, $pageSize));
+        $pageSize = min(100, max(1, $pageSize));
 
+        $allowedTestTypes = $this->wechatAllowedTestTypes($userId);
+
+        // 列表只展示摘要：禁止 tr.* 拉全表 resultData（单条可达数 MB×500=卡死）；仅截取 JSON 前若干字符用于解析标题
+        $listJsonSliceLen = 32768;
         $base = Db::name('test_results')
             ->alias('tr')
             ->leftJoin('wechat_users wu', 'tr.userId = wu.id')
             ->leftJoin('enterprises e_tr', 'tr.enterpriseId = e_tr.id')
             ->leftJoin('enterprises e_wu', 'wu.enterpriseId = e_wu.id')
             ->where('tr.userId', $userId)
-            ->field('tr.*, e_tr.name as enterpriseName, wu.enterpriseId as bindEnterpriseId, e_wu.name as bindEnterpriseName')
+            ->field(
+                'tr.id,tr.testType,tr.createdAt,tr.enterpriseId,tr.requiresPayment,tr.isPaid,tr.orderId,tr.paidAmount,' .
+                'e_tr.name as enterpriseName,wu.enterpriseId as bindEnterpriseId,e_wu.name as bindEnterpriseName,' .
+                'SUBSTRING(COALESCE(CAST(tr.resultData AS CHAR(65532)),\'\'),1,' . $listJsonSliceLen . ') as resultDataLite'
+            )
             ->order('tr.createdAt', 'desc');
+
+        $profileIncomplete = !self::isWechatProfileComplete($userId);
+
+        if ($allowedTestTypes === []) {
+            return success([
+                'list'     => [],
+                'total'    => 0,
+                'page'     => $page,
+                'pageSize' => $pageSize,
+                'hasMore'  => false,
+            ]);
+        }
+        $base->whereIn('tr.testType', $allowedTestTypes);
 
         if ($type !== 'all') {
             if (in_array($type, ['face', 'ai'], true)) {
@@ -82,9 +104,8 @@ class Test extends BaseController
             $orderId = isset($row['orderId']) ? (int) $row['orderId'] : null;
             $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
             $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
-            $profileIncomplete = !self::isWechatProfileComplete($userId);
 
-            $raw = $row['resultData'] ?? ($row['result'] ?? null);
+            $raw = $row['resultDataLite'] ?? ($row['resultData'] ?? null);
             $data = null;
             if ($raw !== null && $raw !== '') {
                 $decoded = json_decode($raw, true);
@@ -107,37 +128,37 @@ class Test extends BaseController
                 'enterpriseName'  => $enterpriseName,
             ];
 
-            // 映射为小程序 history 页需要的结构
+            // 映射为小程序 history 页列表结构；完整报告走 GET /api/test/detail?id= 减轻响应体积
             switch ($testType) {
                 case 'mbti':
-                    $mbtiType = $data['mbtiType'] ?? $data['mbti'] ?? '未知';
+                    $mbtiType = is_array($data) ? ($data['mbtiType'] ?? $data['mbti'] ?? '未知') : '未知';
                     $list[] = array_merge([
                         'id'        => $id,
                         'type'      => 'mbti',
                         'key'       => 'mbti_' . $id,
                         'emoji'     => '🧠',
                         'typeName'  => 'MBTI性格测试',
-                        'resultText'=> $mbtiType,
+                        'resultText'=> is_string($mbtiType) || is_numeric($mbtiType) ? (string) $mbtiType : '未知',
                         'testTime'  => $timeLabel,
-                        'data'      => $data,
+                        'data'      => null,
                     ], $paymentFields);
                     break;
                 case 'disc':
-                    $discType = $data['dominantType'] ?? $data['disc'] ?? '未知';
+                    $discType = is_array($data) ? ($data['dominantType'] ?? $data['disc'] ?? '未知') : '未知';
                     $list[] = array_merge([
                         'id'        => $id,
                         'type'      => 'disc',
                         'key'       => 'disc_' . $id,
                         'emoji'     => '📊',
                         'typeName'  => 'DISC性格测试',
-                        'resultText'=> $discType . '型',
+                        'resultText'=> (is_string($discType) || is_numeric($discType) ? (string) $discType : '未知') . '型',
                         'testTime'  => $timeLabel,
-                        'data'      => $data,
+                        'data'      => null,
                     ], $paymentFields);
                     break;
                 case 'pdp':
-                    $primary = $data['description']['type'] ?? $data['pdp'] ?? '未知';
-                    $emoji = $data['description']['emoji'] ?? '🦁';
+                    $primary = is_array($data) ? ($data['description']['type'] ?? $data['pdp'] ?? '未知') : '未知';
+                    $emoji = (is_array($data) && isset($data['description']['emoji'])) ? $data['description']['emoji'] : '🦁';
                     $list[] = array_merge([
                         'id'        => $id,
                         'type'      => 'pdp',
@@ -146,7 +167,7 @@ class Test extends BaseController
                         'typeName'  => 'PDP行为偏好测试',
                         'resultText'=> $primary,
                         'testTime'  => $timeLabel,
-                        'data'      => $data,
+                        'data'      => null,
                     ], $paymentFields);
                     break;
                 case 'face':
@@ -167,7 +188,7 @@ class Test extends BaseController
                         'typeName'  => '面相分析',
                         'resultText'=> $mbtiShort ?: '未知',
                         'testTime'  => $timeLabel,
-                        'data'      => $data,
+                        'data'      => null,
                     ], $paymentFields);
                     break;
                 case 'resume':
@@ -186,7 +207,7 @@ class Test extends BaseController
                         'typeName'  => '简历综合分析',
                         'resultText'=> $summary ?: '简历综合分析',
                         'testTime'  => $timeLabel,
-                        'data'      => $data,
+                        'data'      => null,
                     ], $paymentFields);
                     break;
                 default:
@@ -222,20 +243,28 @@ class Test extends BaseController
 
         $scope = Request::param('scope', 'all'); // all|personal|enterprise
 
+        $allowedAll = $this->wechatAllowedTestTypes($userId);
+        // 「我的」卡片不含简历，但 totalCount 与列表需与 history 权限一致
+        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'pdp', 'disc', 'face', 'ai']));
+        if ($allowedForRecent === []) {
+            return success([
+                'records'    => new \stdClass(),
+                'totalCount' => 0,
+            ]);
+        }
+
         $records = [];
 
-        // 优化：一次性查询所有需要的最新记录，减少数据库连接和查询次数
         $query = Db::name('test_results')
-            ->where('userId', $userId);
-        
+            ->where('userId', $userId)
+            ->whereIn('testType', $allowedForRecent);
+
         if ($scope === 'personal') {
             $query->whereNull('enterpriseId');
         } elseif ($scope === 'enterprise') {
             $query->whereNotNull('enterpriseId');
         }
 
-        // 使用子查询或 Union 可能更复杂，这里采用分组取最新的优化思路
-        // 但 ThinkPHP 中最简单有效的优化是先查出所有类型，再处理
         $allRows = $query->order('createdAt', 'desc')->select()->toArray();
         
         $foundTypes = [];
@@ -262,6 +291,50 @@ class Test extends BaseController
             'records'    => $records,
             'totalCount' => (int) $totalCount,
         ]);
+    }
+
+    /**
+     * 微信用户当前允许的 test_results.testType（绑定企业 permissions + 审核模式；简历仅绑定企业可见）
+     * @return string[]
+     */
+    protected function wechatAllowedTestTypes(int $userId): array
+    {
+        $bindRow           = Db::name('wechat_users')->where('id', $userId)->field('enterpriseId')->find();
+        $boundEnterpriseId = (int) ($bindRow['enterpriseId'] ?? 0);
+        $enterprisePerms   = EnterpriseModel::permissionDefaults();
+        if ($boundEnterpriseId > 0) {
+            $entPermRow = Db::name('enterprises')->where('id', $boundEnterpriseId)->field('permissions')->find();
+            if (is_array($entPermRow)) {
+                $enterprisePerms = EnterpriseModel::normalizePermissionsValue($entPermRow['permissions'] ?? null);
+            }
+        }
+        $reviewMode = false;
+        $systemRow  = Db::name('system_config')->where('key', 'system')->find();
+        if ($systemRow && !empty($systemRow['value'])) {
+            $sysVal = is_string($systemRow['value']) ? json_decode($systemRow['value'], true) : $systemRow['value'];
+            if (is_array($sysVal) && !empty($sysVal['maintenanceMode'])) {
+                $reviewMode = true;
+            }
+        }
+        $allowed = [];
+        if (!empty($enterprisePerms['mbti'])) {
+            $allowed[] = 'mbti';
+        }
+        if (!empty($enterprisePerms['pdp'])) {
+            $allowed[] = 'pdp';
+        }
+        if (!empty($enterprisePerms['disc'])) {
+            $allowed[] = 'disc';
+        }
+        if (!empty($enterprisePerms['face']) && !$reviewMode) {
+            $allowed[] = 'face';
+            $allowed[] = 'ai';
+        }
+        if ($boundEnterpriseId > 0) {
+            $allowed[] = 'resume';
+        }
+
+        return array_values(array_unique($allowed));
     }
 
     /**

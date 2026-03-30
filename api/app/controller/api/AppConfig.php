@@ -2,6 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\AiProvider as AiProviderModel;
 use app\common\service\JwtService;
@@ -39,15 +40,21 @@ class AppConfig extends BaseController
                 }
             }
         }
-        if ($scope !== 'personal' && $user && ($user['source'] ?? '') === 'wechat') {
+        // 绑定企业 ID：任意 scope 都要能读到（个人首页也是 scope=personal，否则 enterprisePermissions 永远为 null）
+        $userBoundEnterpriseId = null;
+        if ($user && ($user['source'] ?? '') === 'wechat') {
             $userId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
             if ($userId > 0) {
                 $row = Db::name('wechat_users')->where('id', $userId)->field('enterpriseId')->find();
                 if (!empty($row['enterpriseId'])) {
-                    $enterpriseId = (int) $row['enterpriseId'];
-                    $pricingType = 'enterprise';
+                    $userBoundEnterpriseId = (int) $row['enterpriseId'];
                 }
             }
+        }
+        // 定价/文案用的 enterpriseId：仅在非个人 scope 时走企业定价（与个人页 scope=personal 仍可返回企业权限）
+        if ($scope !== 'personal' && $userBoundEnterpriseId !== null && $userBoundEnterpriseId > 0) {
+            $enterpriseId = $userBoundEnterpriseId;
+            $pricingType = 'enterprise';
         }
 
         // 系统配置：审核模式、默认企业（无带参入口时小程序回落）
@@ -161,6 +168,20 @@ class AppConfig extends BaseController
         // 与 maintenanceMode 同源：小程序旧逻辑读 reviewMode
         $reviewMode = $maintenanceMode;
 
+        // 企业功能权限：与定价 scope 解耦；库中 permissions 为空/异常时仍返回默认值，避免前端判空异常
+        $eidForPermissions = ($enterpriseId > 0) ? $enterpriseId : (($userBoundEnterpriseId ?? 0) > 0 ? $userBoundEnterpriseId : null);
+        $enterprisePermissions = null;
+        if ($eidForPermissions > 0) {
+            try {
+                $ent = Db::name('enterprises')->where('id', $eidForPermissions)->field('permissions')->find();
+                if (is_array($ent)) {
+                    $enterprisePermissions = EnterpriseModel::normalizePermissionsValue($ent['permissions'] ?? null);
+                }
+            } catch (\Throwable $e) {
+                $enterprisePermissions = null;
+            }
+        }
+
         return success([
             'pricingType' => $pricingType,
             'pricing' => $pricing,
@@ -174,6 +195,7 @@ class AppConfig extends BaseController
             'maintenanceMode' => $maintenanceMode,
             'reviewMode' => $reviewMode,
             'defaultEnterpriseId' => $defaultEnterpriseId,
+            'enterprisePermissions' => $enterprisePermissions,
         ]);
     }
 

@@ -133,6 +133,50 @@
       </div>
     </div>
 
+    <!-- 邀请小程序码（与企业后台一致：企业版 + 个人版） -->
+    <div class="invite-section">
+      <div class="section-header invite-header">
+        <div>
+          <h2 class="section-title">邀请小程序码</h2>
+          <p class="section-subtitle">企业版进企业测评，个人版进小程序首页；企业版太阳码对应下方所选企业</p>
+        </div>
+        <div class="invite-header-actions">
+          <el-select
+            v-model="inviteSelectedEnterpriseId"
+            placeholder="选择企业（生成企业版码）"
+            filterable
+            clearable
+            style="width: 220px"
+            size="small"
+            @change="loadInviteQrcode"
+          >
+            <el-option
+              v-for="opt in inviteEnterpriseOptions"
+              :key="opt.id"
+              :label="opt.name"
+              :value="opt.id"
+            />
+          </el-select>
+          <el-button type="primary" size="small" :loading="inviteLoading" @click="loadInviteQrcode">
+            {{ inviteQrcodeEnterprise || inviteQrcodePersonal ? '刷新' : '生成' }}
+          </el-button>
+        </div>
+      </div>
+      <div class="invite-body">
+        <template v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
+          <div v-if="inviteQrcodeEnterprise" class="invite-card">
+            <span class="invite-label">企业版</span>
+            <img :src="inviteQrcodeEnterprise" alt="企业版太阳码" class="invite-img" />
+          </div>
+          <div v-if="inviteQrcodePersonal" class="invite-card">
+            <span class="invite-label">个人版</span>
+            <img :src="inviteQrcodePersonal" alt="个人版太阳码" class="invite-img" />
+          </div>
+        </template>
+        <span v-else class="invite-placeholder">{{ inviteLoadError || '选择企业后点击生成，或未选企业时使用系统默认企业' }}</span>
+      </div>
+    </div>
+
     <!-- 测试趋势折线图 -->
     <div class="trend-section">
       <div class="section-header">
@@ -238,6 +282,7 @@ import {
   Setting
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
+import { ElMessage } from 'element-plus'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart } from 'echarts/charts'
@@ -272,9 +317,17 @@ const stats = reactive({
 
 interface DynamicItem { icon: string; text: string; time: string }
 interface RankingItem { name: string; tests: number; amount: number }
+interface InviteEnterpriseOption { id: number; name: string }
 
 const recentDynamics = ref<DynamicItem[]>([])
 const enterpriseRanking = ref<RankingItem[]>([])
+
+const inviteLoading = ref(false)
+const inviteQrcodeEnterprise = ref<string>('')
+const inviteQrcodePersonal = ref<string>('')
+const inviteLoadError = ref<string>('')
+const inviteEnterpriseOptions = ref<InviteEnterpriseOption[]>([])
+const inviteSelectedEnterpriseId = ref<number | null>(null)
 
 type TrendPoint = { date: string; face: number; mbti: number; pdp: number; disc: number; total: number }
 const testTrends = ref<TrendPoint[]>([])
@@ -430,11 +483,76 @@ const handleViewAll = () => {
   router.push('/superadmin/enterprises')
 }
 
-onMounted(() => {
+const loadInviteEnterprisesAndSettings = async () => {
+  try {
+    const [settingsRes, entRes]: any[] = await Promise.all([
+      request.get('/superadmin/settings'),
+      request.get('/superadmin/enterprises', { params: { page: 1, pageSize: 500 } })
+    ])
+    const list = entRes?.data?.list ?? []
+    inviteEnterpriseOptions.value = list.map((r: any) => ({
+      id: Number(r.id),
+      name: r.name ? String(r.name) : `企业#${r.id}`
+    }))
+    const defRaw = settingsRes?.data?.system?.defaultEnterpriseId
+    const defNum =
+      defRaw != null && defRaw !== '' && !Number.isNaN(Number(defRaw)) ? Number(defRaw) : null
+    const idSet = new Set(inviteEnterpriseOptions.value.map(o => o.id))
+    if (defNum != null && defNum > 0 && idSet.has(defNum)) {
+      inviteSelectedEnterpriseId.value = defNum
+    } else if (inviteEnterpriseOptions.value.length > 0) {
+      inviteSelectedEnterpriseId.value = inviteEnterpriseOptions.value[0].id
+    } else {
+      inviteSelectedEnterpriseId.value = null
+    }
+  } catch (e) {
+    console.error('加载邀请码企业列表失败:', e)
+    inviteEnterpriseOptions.value = []
+    inviteSelectedEnterpriseId.value = null
+  }
+}
+
+const loadInviteQrcode = async () => {
+  if (inviteLoading.value) return
+  inviteLoading.value = true
+  inviteLoadError.value = ''
+  try {
+    const params: Record<string, number> = {}
+    if (inviteSelectedEnterpriseId.value != null && inviteSelectedEnterpriseId.value > 0) {
+      params.enterpriseId = inviteSelectedEnterpriseId.value
+    }
+    const res: any = await request.get('/superadmin/invite/qrcode', {
+      params: Object.keys(params).length ? params : undefined
+    })
+    const d = res?.data
+    const ent = d?.enterprise?.qrcode ?? d?.qrcode
+    const per = d?.personal?.qrcode
+    if (typeof ent === 'string' && ent) inviteQrcodeEnterprise.value = ent
+    else inviteQrcodeEnterprise.value = ''
+    if (typeof per === 'string' && per) inviteQrcodePersonal.value = per
+    else inviteQrcodePersonal.value = ''
+
+    if (!inviteQrcodeEnterprise.value && !inviteQrcodePersonal.value) {
+      const msg = res?.message || res?.msg || '生成失败，请确认小程序配置与企业'
+      inviteLoadError.value = msg
+      ElMessage.error(msg)
+    }
+  } catch (error: any) {
+    const msg = error?.message || '生成失败'
+    inviteLoadError.value = msg
+    ElMessage.error(msg)
+  } finally {
+    inviteLoading.value = false
+  }
+}
+
+onMounted(async () => {
   loadOverview()
   loadRecentDynamics()
   loadEnterpriseRanking()
   loadTestTrends()
+  await loadInviteEnterprisesAndSettings()
+  loadInviteQrcode()
 })
 </script>
 
@@ -619,6 +737,68 @@ onMounted(() => {
     &.gray .action-icon {
       background-color: #6b7280;
     }
+  }
+}
+
+.invite-section {
+  margin-bottom: 28px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid #f3f4f6;
+
+  .invite-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+
+  .invite-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .invite-body {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 16px;
+    min-height: 112px;
+    padding: 8px 0;
+  }
+
+  .invite-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .invite-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .invite-img {
+    width: 112px;
+    height: 112px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    object-fit: contain;
+    background: #fff;
+  }
+
+  .invite-placeholder {
+    font-size: 12px;
+    color: #9ca3af;
   }
 }
 

@@ -106,9 +106,26 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="140" fixed="right">
+        <el-table-column label="超管授权" min-width="200">
+          <template #default="{ row }">
+            <div class="perm-tags">
+              <el-tag v-for="p in permItems" :key="p.key" size="small"
+                :type="permCeilingVal(row, p.key) !== false ? 'success' : 'info'"
+                :effect="permCeilingVal(row, p.key) !== false ? 'light' : 'plain'"
+                class="perm-tag"
+              >{{ p.label }}</el-tag>
+            </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="操作" width="176" fixed="right">
           <template #default="{ row }">
             <div class="action-buttons">
+              <el-tooltip content="邀请小程序码" placement="top">
+                <el-button link class="action-invite" @click="openInviteQrcodeDialog(row)">
+                  <el-icon><Picture /></el-icon>
+                </el-button>
+              </el-tooltip>
               <el-button link @click="handleView(row)"><el-icon><View /></el-icon></el-button>
               <el-button link @click="handleEdit(row)"><el-icon><Edit /></el-icon></el-button>
               <el-button link type="danger" @click="handleDelete(row)"><el-icon><Delete /></el-icon></el-button>
@@ -222,6 +239,16 @@
             </el-form-item>
           </el-col>
         </el-row>
+
+        <el-form-item label="功能授权（超管）" class="mt-12">
+          <p class="perm-form-hint">决定企业管理员能否在后台为终端用户打开该项；关闭后管理端不会出现对应开关。</p>
+          <div class="perm-switch-group">
+            <div class="perm-switch-item" v-for="p in permItems" :key="p.key">
+              <span class="perm-label">{{ p.label }}</span>
+              <el-switch v-model="newEnterprise.permissions[p.key]" />
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
 
       <template #footer>
@@ -293,6 +320,16 @@
             value-format="YYYY-MM-DD HH:mm:ss"
             class="w-full"
           />
+        </el-form-item>
+
+        <el-form-item label="功能授权（超管）">
+          <p class="perm-form-hint">保存后将收紧企业管理员可调范围；对已关闭项，终端与企业后台同步关闭。</p>
+          <div class="perm-switch-group">
+            <div class="perm-switch-item" v-for="p in permItems" :key="p.key">
+              <span class="perm-label">{{ p.label }}</span>
+              <el-switch v-model="editEnterprise.permissions[p.key]" />
+            </div>
+          </div>
         </el-form-item>
       </el-form>
 
@@ -660,6 +697,54 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 邀请小程序码（按当前行企业 ID） -->
+    <el-dialog
+      v-model="showInviteQrcodeDialog"
+      width="440px"
+      class="custom-dialog invite-qrcode-dialog"
+      align-center
+      destroy-on-close
+      @closed="resetInviteQrcodeDialog"
+    >
+      <template #header>
+        <div class="dialog-header">
+          <h3 class="dialog-title">邀请小程序码</h3>
+          <p class="dialog-subtitle">
+            {{ inviteDialogEnterprise?.name || '企业' }} · 企业版进企业测评，个人版进小程序首页
+          </p>
+        </div>
+      </template>
+      <div v-loading="inviteQrcodeLoading" class="invite-qrcode-dialog-body">
+        <div
+          v-if="inviteQrcodeEnterpriseB64 || inviteQrcodePersonalB64"
+          class="invite-qrcode-pair"
+        >
+          <div v-if="inviteQrcodeEnterpriseB64" class="invite-qrcode-card">
+            <span class="invite-qrcode-label">企业版</span>
+            <img :src="inviteQrcodeEnterpriseB64" alt="企业版太阳码" class="invite-qrcode-img" />
+          </div>
+          <div v-if="inviteQrcodePersonalB64" class="invite-qrcode-card">
+            <span class="invite-qrcode-label">个人版</span>
+            <img :src="inviteQrcodePersonalB64" alt="个人版太阳码" class="invite-qrcode-img" />
+          </div>
+        </div>
+        <p v-else class="invite-qrcode-placeholder">{{ inviteQrcodeError || '加载中…' }}</p>
+      </div>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showInviteQrcodeDialog = false" class="cancel-btn">关闭</el-button>
+          <el-button
+            type="primary"
+            color="#3b82f6"
+            :loading="inviteQrcodeLoading"
+            @click="loadInviteQrcodeForDialog"
+          >
+            刷新
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -680,7 +765,8 @@ import {
   DataAnalysis,
   Document,
   Wallet,
-  Postcard
+  Postcard,
+  Picture
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from '@/utils/request'
@@ -714,6 +800,61 @@ const detailOrderPageSize = ref(10)
 /** 企业详情弹窗当前 Tab（对齐用户详情：先总览再明细） */
 const enterpriseDetailTab = ref('overview')
 const creating = ref(false)
+
+/** 邀请小程序码（企业列表操作列） */
+const showInviteQrcodeDialog = ref(false)
+const inviteDialogEnterprise = ref<{ id: number; name: string } | null>(null)
+const inviteQrcodeLoading = ref(false)
+const inviteQrcodeEnterpriseB64 = ref('')
+const inviteQrcodePersonalB64 = ref('')
+const inviteQrcodeError = ref('')
+
+const resetInviteQrcodeDialog = () => {
+  inviteDialogEnterprise.value = null
+  inviteQrcodeEnterpriseB64.value = ''
+  inviteQrcodePersonalB64.value = ''
+  inviteQrcodeError.value = ''
+}
+
+const loadInviteQrcodeForDialog = async () => {
+  const ent = inviteDialogEnterprise.value
+  if (!ent?.id) return
+  inviteQrcodeLoading.value = true
+  inviteQrcodeError.value = ''
+  try {
+    const res: any = await request.get('/superadmin/invite/qrcode', {
+      params: { enterpriseId: ent.id }
+    })
+    const d = res?.data
+    const qEnt = d?.enterprise?.qrcode ?? d?.qrcode
+    const qPer = d?.personal?.qrcode
+    inviteQrcodeEnterpriseB64.value = typeof qEnt === 'string' && qEnt ? qEnt : ''
+    inviteQrcodePersonalB64.value = typeof qPer === 'string' && qPer ? qPer : ''
+    if (!inviteQrcodeEnterpriseB64.value && !inviteQrcodePersonalB64.value) {
+      inviteQrcodeError.value = res?.message || res?.msg || '生成失败，请检查小程序配置'
+      ElMessage.error(inviteQrcodeError.value)
+    }
+  } catch (e: any) {
+    inviteQrcodeError.value = e?.message || '加载失败'
+    ElMessage.error(inviteQrcodeError.value)
+  } finally {
+    inviteQrcodeLoading.value = false
+  }
+}
+
+const openInviteQrcodeDialog = (row: any) => {
+  inviteDialogEnterprise.value = {
+    id: Number(row.id),
+    name: row.name ? String(row.name) : `企业#${row.id}`
+  }
+  inviteQrcodeEnterpriseB64.value = ''
+  inviteQrcodePersonalB64.value = ''
+  inviteQrcodeError.value = ''
+  showInviteQrcodeDialog.value = true
+  nextTick(() => {
+    loadInviteQrcodeForDialog()
+  })
+}
 
 /** 企业侧栏头像首字 */
 const enterpriseAvatarLetter = computed(() => {
@@ -773,6 +914,25 @@ const statusOptions = [
   { label: '已停用', value: 'disabled' }
 ]
 
+const permItems = [
+  { key: 'face', label: '人脸分析' },
+  { key: 'mbti', label: 'MBTI' },
+  { key: 'pdp', label: 'PDP' },
+  { key: 'disc', label: 'DISC' },
+  { key: 'distribution', label: '分销' },
+]
+
+const defaultPermissions = () => ({ face: true, mbti: true, pdp: true, disc: true, distribution: true })
+
+/** 列表/展示：超管授权上限（兼容未返回 permissionsCeiling 的旧接口） */
+const permCeilingVal = (row: Record<string, any>, key: string) => {
+  const c = row.permissionsCeiling
+  if (c && typeof c === 'object' && key in c) return c[key]
+  const p = row.permissions
+  if (p && typeof p === 'object' && key in p) return p[key]
+  return true
+}
+
 const enterprises = ref<any[]>([])
 
 const newEnterprise = reactive({
@@ -785,7 +945,8 @@ const newEnterprise = reactive({
   contactPhone: '',
   contactEmail: '',
   status: 'operating',
-  trialExpireAt: '' as string
+  trialExpireAt: '' as string,
+  permissions: defaultPermissions() as Record<string, boolean>
 })
 
 const editEnterprise = reactive({
@@ -795,7 +956,8 @@ const editEnterprise = reactive({
   contactPhone: '',
   contactEmail: '',
   status: 'operating',
-  trialExpireAt: ''
+  trialExpireAt: '',
+  permissions: defaultPermissions() as Record<string, boolean>
 })
 
 const getStatusLabel = (status: string) => {
@@ -925,7 +1087,8 @@ const handleCreateEnterprise = async () => {
       contactName: newEnterprise.contactName,
       contactPhone: newEnterprise.contactPhone,
       contactEmail: newEnterprise.contactEmail,
-      status: newEnterprise.status
+      status: newEnterprise.status,
+      permissions: { ...newEnterprise.permissions }
     })
     
     if (response.code === 200) {
@@ -941,7 +1104,8 @@ const handleCreateEnterprise = async () => {
         contactPhone: '',
         contactEmail: '',
         status: 'operating',
-        trialExpireAt: ''
+        trialExpireAt: '',
+        permissions: defaultPermissions()
       })
       loadEnterprises()
     }
@@ -1059,11 +1223,18 @@ const handleEditDialogOpen = async () => {
     editEnterprise.contactEmail = ''
     editEnterprise.status = 'operating'
     editEnterprise.trialExpireAt = ''
+    editEnterprise.permissions = defaultPermissions()
     
     // 等待一个tick确保清空完成
     await nextTick()
     
     // 使用 Object.assign 一次性更新所有字段
+    const ceilingFromApi =
+      data.permissionsCeiling && typeof data.permissionsCeiling === 'object'
+        ? { ...defaultPermissions(), ...data.permissionsCeiling }
+        : data.permissions && typeof data.permissions === 'object'
+          ? { ...defaultPermissions(), ...data.permissions }
+          : defaultPermissions()
     Object.assign(editEnterprise, {
       name: data.name || '',
       code: data.code || '',
@@ -1071,7 +1242,8 @@ const handleEditDialogOpen = async () => {
       contactPhone: data.contactPhone || '',
       contactEmail: data.contactEmail || '',
       status: data.status || 'operating',
-      trialExpireAt: trialExpireAtStr
+      trialExpireAt: trialExpireAtStr,
+      permissions: ceilingFromApi
     })
     
     console.log('表单数据已填充:', editEnterprise)
@@ -1101,7 +1273,8 @@ const handleSaveEdit = async () => {
       contactName: editEnterprise.contactName,
       contactPhone: editEnterprise.contactPhone,
       contactEmail: editEnterprise.contactEmail,
-      status: editEnterprise.status
+      status: editEnterprise.status,
+      permissions: { ...editEnterprise.permissions }
     }
     
     // 如果选择试用，添加到期时间（转换为时间戳）
@@ -1336,8 +1509,54 @@ watch([searchTerm, statusFilter], () => {
       &.el-button--danger:hover {
         color: #ef4444;
       }
+
+      &.action-invite:hover {
+        color: #3b82f6;
+      }
     }
   }
+}
+
+.invite-qrcode-dialog-body {
+  min-height: 140px;
+}
+
+.invite-qrcode-pair {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  padding: 8px 0;
+}
+
+.invite-qrcode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.invite-qrcode-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.invite-qrcode-img {
+  width: 120px;
+  height: 120px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  object-fit: contain;
+  background: #fff;
+}
+
+.invite-qrcode-placeholder {
+  margin: 0;
+  font-size: 13px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 24px 12px;
 }
 
 .empty-state {
@@ -1960,6 +2179,48 @@ watch([searchTerm, statusFilter], () => {
 
 .page-container.is-embedded {
   min-height: auto;
+}
+
+/* 权限标签 */
+.perm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.perm-tag {
+  font-size: 11px;
+  border-radius: 4px;
+}
+
+.perm-form-hint {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 10px 0;
+  line-height: 1.45;
+}
+
+/* 权限开关组（编辑 / 创建弹窗） */
+.perm-switch-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 24px;
+}
+
+.perm-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.perm-label {
+  font-size: 13px;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.mt-12 {
+  margin-top: 12px;
 }
 
 @media (max-width: 900px) {

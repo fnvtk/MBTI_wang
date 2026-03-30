@@ -1,20 +1,40 @@
-// pages/test-select/index.js - 人脸测试后的详情性格测试入口（MBTI / PDP / DISC）
+// pages/test-select/index.js
+const app = getApp()
+
 Page({
-  data: {},
+  data: {
+    permFace: true,
+    permMbti: true,
+    permPdp: true,
+    permDisc: true
+  },
 
-  onLoad() {},
+  onLoad() {
+    this._syncPerms()
+  },
 
-  // 进入 MBTI 测试
+  onShow() {
+    this._syncPerms()
+  },
+
+  _syncPerms() {
+    const p = app.globalData.enterprisePermissions
+    this.setData({
+      permFace: !p || p.face !== false,
+      permMbti: !p || p.mbti !== false,
+      permPdp:  !p || p.pdp  !== false,
+      permDisc: !p || p.disc !== false
+    })
+  },
+
   goMBTI() {
     tt.navigateTo({ url: '/pages/test/mbti' })
   },
 
-  // 进入 PDP 测试
   goPDP() {
     tt.navigateTo({ url: '/pages/test/pdp' })
   },
 
-  // 进入 DISC 测试
   goDISC() {
     tt.navigateTo({ url: '/pages/test/disc' })
   }

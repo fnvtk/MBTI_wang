@@ -21,8 +21,8 @@
       <view class="image-wrapper">
         <image class="main-image" src="/images/mbti-team-image.png" mode="aspectFit"></image>
       </view>
-      <view class="float-tag tag-1" tt:if="{{!reviewMode}}">面相分析</view>
-      <view class="float-tag tag-2" tt:if="{{!reviewMode}}">骨相分析</view>
+      <view class="float-tag tag-1" tt:if="{{!reviewMode && permFace}}">面相分析</view>
+      <view class="float-tag tag-2" tt:if="{{!reviewMode && permFace}}">骨相分析</view>
       <view class="float-tag tag-3">性格测评</view>
       <view class="float-tag tag-1" tt:if="{{reviewMode}}">MBTI</view>
       <view class="float-tag tag-2" tt:if="{{reviewMode}}">DISC</view>
@@ -31,7 +31,7 @@
 
   <view class="process-section">
     <view class="section-title">测试流程</view>
-    <view class="process-steps" tt:if="{{!reviewMode}}">
+    <view class="process-steps" tt:if="{{!reviewMode && permFace}}">
       <view class="step-item">
         <view class="step-circle active">1</view>
         <text class="step-label">STEP1</text>
@@ -50,7 +50,7 @@
         <text class="step-text">生成报告</text>
       </view>
     </view>
-    <view class="process-steps" tt:if="{{reviewMode}}">
+    <view class="process-steps" tt:if="{{reviewMode || !permFace}}">
       <view class="step-item">
         <view class="step-circle active">1</view>
         <text class="step-label">STEP1</text>

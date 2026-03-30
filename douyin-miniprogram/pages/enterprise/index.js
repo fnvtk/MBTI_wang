@@ -9,7 +9,8 @@ Page({
     siteTitle: '神仙团队性格测试',
     startButtonEnterprise: '开始性格测试',
     aiAnalysisText: '分析',
-    reviewMode: true
+    reviewMode: true,
+    permFace: true
   },
 
   onLoad(options) {
@@ -60,14 +61,17 @@ Page({
     const statusBarHeightRpx = (statusBarHeight * 750) / screenWidth
     const navbarHeightRpx = statusBarHeightRpx + 88
     const gd = app.globalData
-    const rm = !!gd.reviewMode
+    const rm = !!(gd.reviewMode || gd.maintenanceMode)
+    const ep = gd.enterprisePermissions
+    const pf = !ep || ep.face !== false
     this.setData({
       statusBarHeight: statusBarHeightRpx,
       navbarHeight: navbarHeightRpx,
       siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonEnterprise: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
+      startButtonEnterprise: (rm || !pf) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
       aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
-      reviewMode: rm
+      reviewMode: rm,
+      permFace: pf
     })
 
     // 未绑定企业的用户：若从邀请码扫码进入（有 enterpriseIdFromScene）也允许使用企业版
@@ -103,10 +107,14 @@ Page({
           }
           if (cfg.textConfig) {
             app.globalData.textConfig = cfg.textConfig
-            const rm2 = !!app.globalData.reviewMode
+            const rm2 = !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
+            const ep2 = app.globalData.enterprisePermissions
+            const pf2 = !ep2 || ep2.face !== false
             this.setData({
-              startButtonEnterprise: rm2 ? '开始性格测试' : (cfg.textConfig.startButtonEnterprise || '开始性格测试'),
-              aiAnalysisText: rm2 ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
+              startButtonEnterprise: (rm2 || !pf2) ? '开始性格测试' : (cfg.textConfig.startButtonEnterprise || '开始性格测试'),
+              aiAnalysisText: rm2 ? '分析' : (cfg.textConfig.aiAnalysisText || '分析'),
+              reviewMode: rm2,
+              permFace: pf2
             })
           }
         }
@@ -139,19 +147,21 @@ Page({
   },
 
   onShow() {
-    const gtab = getApp().globalData || {}
-    const auditTb = !!(gtab.reviewMode || gtab.maintenanceMode)
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 0, reviewMode: auditTb })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
     try { getApp().globalData.appScope = 'enterprise' } catch (e) {}
     const gd = getApp().globalData
     const rm = !!(gd.reviewMode || gd.maintenanceMode)
+    const ep4 = gd.enterprisePermissions
+    const pf4 = !ep4 || ep4.face !== false
     this.setData({
       siteTitle: rm ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonEnterprise: rm ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
+      startButtonEnterprise: (rm || !pf4) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonEnterprise) || '开始性格测试'),
       aiAnalysisText: rm ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
-      reviewMode: rm
+      reviewMode: rm,
+      permFace: pf4
     })
   },
 
@@ -163,7 +173,8 @@ Page({
   },
 
   startAITest() {
-    if (this.data.reviewMode) {
+    const ep = app.globalData.enterprisePermissions
+    if (this.data.reviewMode || (ep && ep.face === false)) {
       tt.navigateTo({ url: '/pages/test-select/index' })
       return
     }

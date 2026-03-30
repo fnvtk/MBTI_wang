@@ -35,13 +35,15 @@ Page({
 
   onShow() {
     const audit = !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
-    if (audit) {
+    const faceOff = !!(app.globalData.enterprisePermissions && app.globalData.enterprisePermissions.face === false)
+    if (audit || faceOff) {
       tt.navigateTo({ url: '/pages/test-select/index' })
       return
     }
     if (!ensureProfileCompleteAndRedirect()) return
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
-      this.getTabBar().setData({ selected: 1, reviewMode: audit })
+      const tb = this.getTabBar()
+      if (typeof tb.updateSelected === 'function') tb.updateSelected()
     }
     this.setData({ needPhoneAuth: !hasPhone() })
     const tc = app.globalData.textConfig

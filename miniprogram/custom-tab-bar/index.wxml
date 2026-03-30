@@ -1,7 +1,7 @@
 <!-- 自定义 tabBar：顶部分割线 + 三栏；中间单独一列避免浮钮与左右叠层 -->
 <view class="tab-bar">
   <view class="tab-bar-line"></view>
-  <view class="tab-bar-inner {{reviewMode ? 'tab-bar-inner--audit' : ''}}">
+  <view class="tab-bar-inner {{hideMiddleFab ? 'tab-bar-inner--audit' : ''}}">
     <view
       class="tab-item {{selected === 0 ? 'active' : ''}}"
       data-index="0"
@@ -13,7 +13,7 @@
     </view>
 
     <!-- 中间列：非审核模式显示「拍摄」 -->
-    <view class="tab-slot-middle" wx:if="{{!reviewMode}}">
+    <view class="tab-slot-middle" wx:if="{{!hideMiddleFab}}">
       <view
         class="middle-fab {{selected === 1 ? 'active' : ''}}"
         data-index="1"

@@ -1,5 +1,13 @@
 <template>
   <div class="finance-page" :class="{ 'is-embedded': embedded }">
+    <!-- 嵌入系统设置「企业余额」时单独展示操作区（独立页仍有完整 page-header） -->
+    <div v-if="embedded" class="embedded-toolbar">
+      <div class="embedded-toolbar-actions">
+        <el-button @click="loadAll" :loading="loading">刷新</el-button>
+        <el-button type="primary" color="#7c3aed" @click="openRechargeDialog">生成充值码</el-button>
+      </div>
+    </div>
+
     <div v-if="!embedded" class="page-header">
       <div>
         <h2>企业余额</h2>
@@ -382,5 +390,18 @@ onMounted(() => {
 .finance-page.is-embedded {
   padding: 0;
   min-height: auto;
+}
+
+.embedded-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.embedded-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 </style>

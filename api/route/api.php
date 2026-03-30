@@ -137,6 +137,10 @@ Route::group('api/v1/admin', function () {
     Route::get('settings/fonts', 'admin.Settings/getFonts');
     Route::put('settings/credentials', 'admin.Settings/updateCredentials');
     Route::get('settings', 'admin.Settings/index');
+
+    // 企业功能开关（企业管理员，受超管 permissionsCeiling 约束）
+    Route::get('enterprise/permissions', 'admin.EnterprisePermissions/index');
+    Route::put('enterprise/permissions', 'admin.EnterprisePermissions/update');
     
     // 分销管理（企业管理员）
     Route::get('distribution/overview', 'admin.Distribution/overview');
@@ -248,7 +252,9 @@ Route::group('api/v1/superadmin', function () {
     Route::get('overview/enterprise-ranking', 'superadmin.Overview/enterpriseRanking');
     Route::get('overview/test-trends', 'superadmin.Overview/testTrends');
     Route::get('overview', 'superadmin.Overview/index');
-    
+    // 超管邀请小程序码（与企业后台同一控制层逻辑，企业版需 enterpriseId 或系统默认企业）
+    Route::get('invite/qrcode', 'admin.Invite/qrcode');
+
     // 财务管理（超管专用）
     Route::get('finance/overview', 'superadmin.Finance/overview');
     Route::get('finance/revenue-details', 'superadmin.Finance/revenueDetails');
