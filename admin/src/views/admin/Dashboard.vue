@@ -15,6 +15,18 @@
           <el-icon><component :is="card.icon" /></el-icon>
         </div>
       </div>
+      <div class="stat-card stat-card-recharge" :style="{ animationDelay: `${kpiCards.length * 45}ms` }">
+        <div class="stat-card-recharge-inner">
+          <div class="stat-label">企业余额</div>
+          <el-button type="primary" class="recharge-btn" @click="goEnterpriseRecharge">
+            <el-icon class="recharge-btn-icon"><Wallet /></el-icon>
+            企业充值
+          </el-button>
+        </div>
+        <div class="stat-icon amber">
+          <el-icon><Wallet /></el-icon>
+        </div>
+      </div>
     </div>
 
     <div class="dash-catalog" v-if="testCatalog.length">
@@ -75,19 +87,19 @@
         <div class="side-block side-users">
           <div class="panel-head row">
             <div>
-              <h2 class="panel-title">测试 Top 10</h2>
+              <h2 class="panel-title">测试 Top 20</h2>
               <p class="panel-desc">按完成次数 · 本企业口径</p>
             </div>
             <el-button type="primary" link size="small" @click="router.push('/admin/users')">全部用户</el-button>
           </div>
-          <div class="table-wrap">
+          <div ref="tableWrapRef" class="table-wrap">
             <el-table
               v-if="topTestUsers.length"
               :data="topTestUsers"
               size="small"
               stripe
               class="compact-table"
-              :max-height="tableMaxH"
+              :height="sideTableHeight"
             >
               <el-table-column label="#" width="42">
                 <template #default="{ $index }">{{ $index + 1 }}</template>
@@ -134,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   User,
@@ -143,7 +155,8 @@ import {
   Camera,
   Reading,
   Histogram,
-  Medal
+  Medal,
+  Wallet
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -174,8 +187,7 @@ interface TopUserRow {
 const stats = reactive({
   totalUsers: 0,
   testsCompleted: 0,
-  activeToday: 0,
-  pendingReviews: 0
+  activeToday: 0
 })
 
 const testTrends = ref<
@@ -200,15 +212,31 @@ const inviteQrcodeEnterprise = ref<string>('')
 const inviteQrcodePersonal = ref<string>('')
 const inviteLoadError = ref<string>('')
 
-/** 侧栏表格最大高度：单屏内滚动，不撑开整页 */
-const tableMaxH = 220
+/** 侧栏表格高度：随 `.table-wrap` 可用空间变化（适配 Top 20，避免固定 220px 导致大片留白） */
+const tableWrapRef = ref<HTMLElement | null>(null)
+const sideTableHeight = ref(360)
+let tableWrapResizeObserver: ResizeObserver | null = null
+
+function updateSideTableHeight() {
+  const el = tableWrapRef.value
+  if (!el) {
+    return
+  }
+  const h = Math.floor(el.getBoundingClientRect().height)
+  if (h >= 120) {
+    sideTableHeight.value = h
+  }
+}
 
 const kpiCards = computed(() => [
   { key: 'u', label: '总用户数', value: stats.totalUsers, icon: User, tone: 'blue' },
   { key: 't', label: '已完成测试', value: stats.testsCompleted, icon: Document, tone: 'green' },
-  { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' },
-  { key: 'p', label: '待审核', value: stats.pendingReviews, icon: User, tone: 'orange' }
+  { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' }
 ])
+
+function goEnterpriseRecharge() {
+  void router.push({ path: '/admin/settings', query: { tab: 'finance' } })
+}
 
 const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
   face: { icon: Camera, tone: 'teal' },
@@ -357,7 +385,6 @@ const loadData = async () => {
       stats.totalUsers = response.data.totalUsers || 0
       stats.testsCompleted = response.data.testsCompleted || 0
       stats.activeToday = response.data.activeToday || 0
-      stats.pendingReviews = response.data.pendingReviews || 0
       testTrends.value = response.data.testTrends || []
       topTestUsers.value = Array.isArray(response.data.topTestUsers) ? response.data.topTestUsers : []
       testCatalog.value = Array.isArray(response.data.testCatalog) ? response.data.testCatalog : []
@@ -385,12 +412,27 @@ const loadData = async () => {
     ElMessage.error(error.message || '加载数据失败')
   } finally {
     loading.value = false
+    void nextTick(() => updateSideTableHeight())
   }
 }
 
 onMounted(() => {
-  loadData()
-  loadInviteQrcode()
+  void nextTick(() => {
+    updateSideTableHeight()
+    if (tableWrapRef.value && typeof ResizeObserver !== 'undefined') {
+      tableWrapResizeObserver = new ResizeObserver(() => updateSideTableHeight())
+      tableWrapResizeObserver.observe(tableWrapRef.value)
+    }
+  })
+  window.addEventListener('resize', updateSideTableHeight)
+  void loadData()
+  void loadInviteQrcode()
+})
+
+onUnmounted(() => {
+  tableWrapResizeObserver?.disconnect()
+  tableWrapResizeObserver = null
+  window.removeEventListener('resize', updateSideTableHeight)
 })
 
 const loadInviteQrcode = async () => {
@@ -558,6 +600,30 @@ const loadInviteQrcode = async () => {
   .sep {
     margin: 0 4px;
     color: #d1d5db;
+  }
+}
+
+.stat-card-recharge {
+  .stat-card-recharge-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .recharge-btn {
+    flex-shrink: 0;
+  }
+
+  .recharge-btn-icon {
+    margin-right: 4px;
+    vertical-align: middle;
+  }
+
+  .stat-icon.amber {
+    background: #fffbeb;
+    color: #d97706;
   }
 }
 
@@ -802,15 +868,19 @@ const loadInviteQrcode = async () => {
 .side-users {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   padding: 10px 12px;
   background: #fafafa;
   border-radius: 8px;
   border: 1px solid #f3f4f6;
+  overflow: hidden;
 }
 
 .table-wrap {
-  flex: 1;
+  flex: 1 1 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .compact-table {

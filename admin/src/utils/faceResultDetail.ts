@@ -40,6 +40,73 @@ export interface FaceDetailView {
   careers: string[]
 }
 
+function collectPhotoUrls(parsed: Record<string, any>): string[] {
+  const out: string[] = []
+  const pushUrl = (s: string) => {
+    const t = s.trim()
+    if (t && (t.startsWith('http://') || t.startsWith('https://'))) out.push(t)
+  }
+  const pushArr = (v: unknown) => {
+    if (!Array.isArray(v)) return
+    for (const x of v) {
+      if (typeof x === 'string') pushUrl(x)
+    }
+  }
+  pushArr(parsed.photoUrls)
+  pushArr(parsed.photos)
+  pushArr(parsed.imageUrls)
+  for (const k of ['photoUrl', 'imageUrl', 'faceImageUrl'] as const) {
+    const u = parsed[k]
+    if (typeof u === 'string') pushUrl(u)
+  }
+  return [...new Set(out)]
+}
+
+function isPlaceholderTitle(s: string): boolean {
+  return !s || s === '—' || s === '-' || s === '–' || s === '--'
+}
+
+function normalizeMbtiBlock(parsed: Record<string, any>): { type?: string; title?: string } | null {
+  const m = parsed.mbti
+  if (m && typeof m === 'object' && !Array.isArray(m)) {
+    const o = m as { type?: string; title?: string }
+    const type = o.type != null ? String(o.type).trim() : ''
+    let title = o.title != null ? String(o.title).trim() : ''
+    if (isPlaceholderTitle(title)) title = ''
+    if (!type) return null
+    return title ? { type, title } : { type }
+  }
+  const typeOnly =
+    (typeof m === 'string' && m.trim() ? m.trim() : '') ||
+    String(parsed.mbtiType ?? parsed.mbti_type ?? '').trim()
+  if (!typeOnly) return null
+  let titleRaw = String(parsed.mbtiTitle ?? parsed.title ?? '').trim()
+  if (isPlaceholderTitle(titleRaw)) titleRaw = ''
+  return titleRaw ? { type: typeOnly, title: titleRaw } : { type: typeOnly }
+}
+
+function normalizeDiscBlock(parsed: Record<string, any>): { primary?: string; secondary?: string } | null {
+  const d = parsed.disc
+  if (d && typeof d === 'object' && !Array.isArray(d)) {
+    return d as { primary?: string; secondary?: string }
+  }
+  if (typeof d === 'string' && d.trim()) {
+    return { primary: d.trim() }
+  }
+  return null
+}
+
+function normalizePdpBlock(parsed: Record<string, any>): { primary?: string; secondary?: string } | null {
+  const p = parsed.pdp
+  if (p && typeof p === 'object' && !Array.isArray(p)) {
+    return p as { primary?: string; secondary?: string }
+  }
+  if (typeof p === 'string' && p.trim()) {
+    return { primary: p.trim() }
+  }
+  return null
+}
+
 function parseMaybeJsonObject(raw: unknown): Record<string, any> | null {
   if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
     return raw as Record<string, any>
@@ -113,10 +180,10 @@ export function buildFaceDetailFromParsed(parsed: Record<string, any> | null | u
     Array.isArray(v) ? (v as unknown[]).map((x) => String(x)).filter(Boolean) : []
 
   return {
-    photos: Array.isArray(parsed.photoUrls) ? (parsed.photoUrls as string[]) : [],
-    mbti: parsed.mbti && typeof parsed.mbti === 'object' ? parsed.mbti : null,
-    disc: parsed.disc && typeof parsed.disc === 'object' ? parsed.disc : null,
-    pdp: parsed.pdp && typeof parsed.pdp === 'object' ? parsed.pdp : null,
+    photos: collectPhotoUrls(parsed),
+    mbti: normalizeMbtiBlock(parsed),
+    disc: normalizeDiscBlock(parsed),
+    pdp: normalizePdpBlock(parsed),
     overview: String(parsed.overview ?? ''),
     personalitySummary: String(parsed.personalitySummary ?? ''),
     faceAnalysisText,

@@ -28,7 +28,7 @@
       <div class="stat-card">
         <div class="stat-info">
           <div class="stat-label">已完成/已支付</div>
-          <div class="stat-value">{{ paidCount }}</div>
+          <div class="stat-value">{{ paidCompletedTotal }}</div>
         </div>
         <div class="stat-icon green">
           <el-icon><Box /></el-icon>
@@ -38,7 +38,7 @@
       <div class="stat-card">
         <div class="stat-info">
           <div class="stat-label">总收入</div>
-          <div class="stat-value">{{ totalIncome }}</div>
+          <div class="stat-value">{{ totalIncomeDisplay }}</div>
         </div>
         <div class="stat-icon purple">
           <el-icon><Money /></el-icon>
@@ -196,6 +196,8 @@ const statusFilter = ref('')
 const productFilter = ref('')
 const orders = ref<any[]>([])
 const total = ref(0)
+const paidCompletedTotal = ref(0)
+const totalRevenueFen = ref(0)
 const currentPage = ref(1)
 const pageSize = 20
 
@@ -218,14 +220,10 @@ const productOptions = [
   { label: '完整报告', value: 'report' }
 ]
 
-const paidCount = computed(() =>
-  orders.value.filter((o: any) => ['paid', 'completed'].includes(o.status || '')).length
-)
-const totalIncome = computed(() => {
-  const sum = orders.value
-    .filter((o: any) => ['paid', 'completed'].includes(o.status || ''))
-    .reduce((acc: number, o: any) => acc + (Number(o.amount) || 0), 0)
-  return '¥' + (sum / 100).toFixed(2)
+const totalIncomeDisplay = computed(() => {
+  const n = totalRevenueFen.value
+  if (!Number.isFinite(n)) return '¥0.00'
+  return '¥' + (n / 100).toFixed(2)
 })
 
 function formatPhone(phone: string) {
@@ -317,9 +315,13 @@ async function loadOrders() {
     const list = res.data?.list ?? res?.list ?? []
     orders.value = list
     total.value = res.data?.total ?? res?.total ?? 0
+    paidCompletedTotal.value = Number(res.data?.paidCompletedCount ?? 0) || 0
+    totalRevenueFen.value = Number(res.data?.totalRevenueFen ?? 0) || 0
   } catch {
     orders.value = []
     total.value = 0
+    paidCompletedTotal.value = 0
+    totalRevenueFen.value = 0
   } finally {
     loading.value = false
   }

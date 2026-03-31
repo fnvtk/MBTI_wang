@@ -71,18 +71,6 @@
 
     <!-- 主内容区 -->
     <main class="layout-main">
-      <div class="mission-strip">
-        <div class="mission-inner">
-          <span class="mission-text">
-            <strong>核心职责</strong>：配置与监督各企业使用的
-            <strong>普通管理后台</strong>
-            （用户运营、订单、分销等由企业管理员在日常后台完成）。
-          </span>
-          <el-button type="danger" size="small" plain @click="goAdminConsole">
-            进入管理后台
-          </el-button>
-        </div>
-      </div>
       <router-view />
     </main>
   </div>
@@ -356,32 +344,6 @@ const handleLogout = async () => {
 
   @media (min-width: 1024px) {
     padding-left: 240px;
-  }
-}
-
-.mission-strip {
-  background: linear-gradient(90deg, #fef2f2 0%, #fff7ed 100%);
-  border-bottom: 1px solid #fecaca;
-}
-
-.mission-inner {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 10px 24px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.mission-text {
-  font-size: 13px;
-  color: #44403c;
-  line-height: 1.5;
-
-  strong {
-    color: #991b1b;
   }
 }
 </style>

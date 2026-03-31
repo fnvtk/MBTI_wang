@@ -69,6 +69,10 @@ class Order extends BaseController
             }
         }
 
+        // 与列表相同筛选条件下的全量统计（非当前页）：已支付/已完成单数、实收金额（分）
+        $paidCompletedCount = (int) (clone $query)->whereIn('status', ['paid', 'completed'])->count();
+        $totalRevenueFen = (int) (clone $query)->whereIn('status', ['paid', 'completed'])->sum('amount');
+
         $query->order('createdAt', 'desc');
         $total = (int) (clone $query)->count();
         $list = (clone $query)->page($page, $pageSize)->select()->toArray();
@@ -122,7 +126,16 @@ class Order extends BaseController
             $row['testData'] = $testsByOrder[$row['id']] ?? [];
         }
 
-        return paginate_response($list, $total, $page, $pageSize);
+        return success([
+            'list'       => $list,
+            'total'      => $total,
+            'page'       => $page,
+            'pageSize'   => $pageSize,
+            'hasMore'    => ($page * $pageSize) < $total,
+            // 看板卡片：全量口径（随 keyword / status / productType / 企业 筛选变化，与 total 一致）
+            'paidCompletedCount' => $paidCompletedCount,
+            'totalRevenueFen'    => $totalRevenueFen,
+        ]);
     }
 
     /**

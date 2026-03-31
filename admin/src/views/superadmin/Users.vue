@@ -421,7 +421,7 @@
                   v-for="(url, idx) in faceDetail.photos"
                   :key="url + idx"
                   :src="url"
-                  fit="cover"
+                  fit="contain"
                   :preview-src-list="faceDetail.photos"
                 />
               </div>
@@ -729,6 +729,7 @@ import { Download, Search, View, UserFilled, User, OfficeBuilding, DataLine } fr
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
+import { parseTestResultPayload } from '@/utils/testResultParse'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
@@ -884,15 +885,11 @@ function formatTestType(testType: string) {
 }
 
 function extractTestSummary(test: any): string {
-  const raw = test?.result
-  if (typeof raw !== 'string' || !raw) return ''
-  let data: any
-  try {
-    data = JSON.parse(raw)
-  } catch {
-    return raw
+  const data = parseTestResultPayload(test?.result ?? test?.resultData)
+  if (!data) {
+    const raw = test?.result
+    return typeof raw === 'string' ? raw : ''
   }
-  if (!data || typeof data !== 'object') return raw
 
   const type = (test?.testType || '').toLowerCase()
 
@@ -999,15 +996,8 @@ const resumeDetail = computed(() => {
 })
 
 function parseTestResult(test: any): any {
-  const raw = test?.result
-  if (typeof raw !== 'string' || !raw) return null
-  try {
-    const data = JSON.parse(raw)
-    if (!data || typeof data !== 'object') return null
-    return data
-  } catch {
-    return null
-  }
+  if (!test) return null
+  return parseTestResultPayload(test.result ?? test.resultData)
 }
 
 function extractTestDescription(parsed: any, testType: string): string {
@@ -1108,9 +1098,29 @@ async function handleView(row: any) {
   }
 }
 
-function handleViewTest(row: any) {
-  currentTest.value = row
+async function handleViewTest(row: any) {
+  const testId = row?.id != null ? Number(row.id) : NaN
+  if (!Number.isFinite(testId) || testId <= 0) {
+    ElMessage.warning('测试记录缺少有效 ID')
+    return
+  }
+  currentTest.value = null
   showTestDetailDialog.value = true
+  testDetailLoading.value = true
+  try {
+    const res: any = await request.get(`/superadmin/test-records/${testId}`)
+    const payload = res?.data != null ? res.data : res
+    if (payload && typeof payload === 'object' && (payload.testType != null || payload.result != null)) {
+      currentTest.value = payload
+    } else {
+      ElMessage.warning('未获取到测试详情')
+      showTestDetailDialog.value = false
+    }
+  } catch {
+    showTestDetailDialog.value = false
+  } finally {
+    testDetailLoading.value = false
+  }
 }
 
 async function handleClickTestTag(row: any, testType: string) {
@@ -1872,7 +1882,7 @@ onMounted(() => {
 }
 
 .face-left {
-  width: 220px;
+  width: 280px;
   flex-shrink: 0;
   position: sticky;
   top: 0;
@@ -1880,15 +1890,27 @@ onMounted(() => {
 }
 
 .face-photos {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 
   :deep(.el-image) {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 100%;
-    height: 100px;
     border-radius: 8px;
     overflow: hidden;
+    background: #f1f5f9;
+  }
+
+  :deep(.el-image__inner) {
+    display: block;
+    max-width: 100%;
+    max-height: min(65vh, 560px);
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
   }
 }
 

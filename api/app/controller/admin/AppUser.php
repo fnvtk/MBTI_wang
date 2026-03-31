@@ -73,13 +73,11 @@ class AppUser extends BaseController
                 ->join([$dedupSql => 'd'], 'w.id = d.mid');
 
             if ($keyword !== '') {
-                $kw = '%' . $keyword . '%';
-                $baseQuery->where(function ($q) use ($kw) {
-                    $q->whereLike('w.nickname', $kw)
-                        ->whereOr('w.phone', 'like', $kw)
-                        ->whereOr('w.city', 'like', $kw)
-                        ->whereOr('w.province', 'like', $kw);
-                });
+                $like = '%' . addcslashes($keyword, '%_\\') . '%';
+                $baseQuery->whereRaw(
+                    '(w.nickname LIKE ? OR w.phone LIKE ? OR w.city LIKE ? OR w.province LIKE ?)',
+                    [$like, $like, $like, $like]
+                );
             }
         } else {
             // 无企业归属（极少）：沿用全表 openid 去重 + IN 列表
@@ -103,7 +101,7 @@ class AppUser extends BaseController
             $total = (int) (clone $baseQuery)->distinct(true)->count('w.id');
             $list = (clone $baseQuery)
                 ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
-                ->order('w.createdAt', 'desc')
+                ->order('w.id', 'desc')
                 ->page($page, $pageSize)
                 ->select()
                 ->toArray();
@@ -111,7 +109,7 @@ class AppUser extends BaseController
             $total = (int) (clone $baseQuery)->count();
             $list = (clone $baseQuery)
                 ->field('id,nickname,openid,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
-                ->order('createdAt', 'desc')
+                ->order('id', 'desc')
                 ->page($page, $pageSize)
                 ->select()
                 ->toArray();
@@ -323,5 +321,72 @@ class AppUser extends BaseController
         $data['facePdpType'] = $this->extractFaceSubType($tests, 'pdp');
 
         return success($data);
+    }
+
+    /**
+     * 单条测试记录详情（与 testList 中单条结构一致，供后台「测试记录 → 详情」）
+     * GET /api/v1/admin/test-records/:id
+     */
+    public function testRecord($id)
+    {
+        $user = $this->request->user ?? null;
+        if (!$user) {
+            return error('未登录', 401);
+        }
+        if (!in_array($user['role'] ?? '', ['admin', 'enterprise_admin'], true)) {
+            return error('无权限访问', 403);
+        }
+
+        $testId = (int) $id;
+        if ($testId <= 0) {
+            return error('记录ID无效', 400);
+        }
+
+        $tr = Db::name('test_results')->where('id', $testId)->find();
+        if (!$tr) {
+            return error('记录不存在', 404);
+        }
+
+        $wechatUserId = (int) ($tr['userId'] ?? 0);
+        if ($wechatUserId <= 0) {
+            return error('记录数据异常', 400);
+        }
+
+        $enterpriseId = $user['enterpriseId'] ?? null;
+        if (!$enterpriseId) {
+            $adminRow = Db::name('users')->where('id', $user['userId'] ?? 0)->find();
+            $enterpriseId = $adminRow['enterpriseId'] ?? null;
+        }
+
+        if ($enterpriseId) {
+            $has = Db::name('user_profile')
+                ->where('userId', $wechatUserId)
+                ->where('enterpriseId', $enterpriseId)
+                ->find();
+            if (!$has) {
+                return error('无权限查看', 403);
+            }
+            $tid = isset($tr['enterpriseId']) ? (int) $tr['enterpriseId'] : 0;
+            if ($tid !== (int) $enterpriseId) {
+                return error('无权限查看该测试记录', 403);
+            }
+        }
+
+        $raw = $tr['resultData'] ?? '';
+        $out = [
+            'id'                => $testId,
+            'userId'            => $wechatUserId,
+            'testType'          => $tr['testType'] ?? '',
+            'result'            => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+            'createdAt'         => $tr['createdAt'] ?? null,
+            'requiresPayment'   => (int) ($tr['requiresPayment'] ?? 0),
+            'isPaid'            => (int) ($tr['isPaid'] ?? 0),
+            'paidAmount'        => isset($tr['paidAmount']) ? (int) $tr['paidAmount'] : null,
+            'paidAt'            => $tr['paidAt'] ?? null,
+            'orderId'           => isset($tr['orderId']) ? (int) $tr['orderId'] : null,
+            'testScope'         => !empty($tr['enterpriseId']) ? 'enterprise' : 'personal',
+        ];
+
+        return success($out);
     }
 }

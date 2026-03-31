@@ -48,21 +48,13 @@ class Dashboard extends BaseController
                 }
             }
 
-            // 企业用户 ID 集合（用于后续统计个人版测试）
-            $enterpriseUserIds = [];
+            // 总用户数：企业维度用 COUNT；全局用 DISTINCT openid（禁止拉全表 id）
             if ($enterpriseId) {
-                $enterpriseUserIds = Db::name('wechat_users')
-                    ->where('enterpriseId', $enterpriseId)
-                    ->column('id');
-                $enterpriseUserIds = array_values(array_filter($enterpriseUserIds));
-            }
-
-            // 总用户数：wechat_users.enterpriseId = 本企业
-            if ($enterpriseId) {
-                $totalUsers = count($enterpriseUserIds);
+                $totalUsers = (int) Db::name('wechat_users')->where('enterpriseId', $enterpriseId)->count();
             } else {
                 try {
-                    $totalUsers = (int) Db::name('wechat_users')->count('openid', true);
+                    $ru = Db::name('wechat_users')->field('COUNT(DISTINCT openid) AS c')->find();
+                    $totalUsers = (int) ($ru['c'] ?? 0);
                 } catch (\Throwable $e) {
                     $totalUsers = (int) Db::name('wechat_users')->count();
                 }
@@ -77,20 +69,18 @@ class Dashboard extends BaseController
                 $testsCompleted = (int) Db::name('test_results')->count();
             }
 
-            // 今日活跃用户数
+            // 今日活跃用户数（库内 COUNT DISTINCT，禁止拉全量 userId）
             $todayStart = strtotime(date('Y-m-d 00:00:00'));
             $todayEnd = strtotime(date('Y-m-d 23:59:59'));
-            $activeQuery = Db::name('test_results')
+            $activeRow = Db::name('test_results')
                 ->where('createdAt', '>=', $todayStart)
-                ->where('createdAt', '<=', $todayEnd);
-            if ($enterpriseId) {
-                $activeQuery->where('enterpriseId', $enterpriseId);
-                $activeIds  = $activeQuery->distinct(true)->column('userId');
-                $activeToday = count(array_filter($activeIds));
-            } else {
-                $activeIds  = $activeQuery->distinct(true)->column('userId');
-                $activeToday = count(array_filter($activeIds));
-            }
+                ->where('createdAt', '<=', $todayEnd)
+                ->when((bool) $enterpriseId, static function ($q) use ($enterpriseId) {
+                    $q->where('enterpriseId', $enterpriseId);
+                })
+                ->field('COUNT(DISTINCT userId) AS c')
+                ->find();
+            $activeToday = (int) ($activeRow['c'] ?? 0);
 
             // 待审核（暂返回0）
             $pendingReviews = 0;
@@ -151,7 +141,7 @@ class Dashboard extends BaseController
                 }
             }
 
-            $topTestUsers = $this->buildTopTestUsers($enterpriseId, 10);
+            $topTestUsers = $this->buildTopTestUsers($enterpriseId, 20);
 
             $testCatalog = $this->buildTestCatalog($enterpriseId);
             $distributionMbti = $this->aggregateTestLabels($enterpriseId, 'mbti', 14);
@@ -180,7 +170,7 @@ class Dashboard extends BaseController
     /**
      * 按测试完成次数排序，取前 N 名小程序用户（与列表页口径一致：test_results 按企业过滤）
      */
-    private function buildTopTestUsers(?int $enterpriseId, int $limit = 10): array
+    private function buildTopTestUsers(?int $enterpriseId, int $limit = 20): array
     {
         $limit = min(max($limit, 1), 50);
         $q = Db::name('test_results')->field('userId, COUNT(*) as cnt')->group('userId')->order('cnt', 'desc')->limit($limit);
@@ -215,31 +205,74 @@ class Dashboard extends BaseController
             $userMap[(int) $u['id']] = $u;
         }
 
-        $trQuery = Db::name('test_results')->whereIn('userId', $uids);
-        if ($enterpriseId) {
-            $trQuery->where('enterpriseId', $enterpriseId);
-        }
-        $testRows = $trQuery
-            ->field('userId, testType, resultData, createdAt')
-            ->order('createdAt', 'desc')
-            ->select()
-            ->toArray();
-
+        // 每人每类测评仅取最新一条（MAX id），禁止拉取 TopN 用户历史上全部 test_results
         $testsByUser = [];
-        foreach ($testRows as $row) {
-            $uid = (int) ($row['userId'] ?? 0);
-            if ($uid <= 0) {
-                continue;
+        try {
+            $aggSub = Db::name('test_results')
+                ->whereIn('userId', $uids)
+                ->whereIn('testType', ['face', 'mbti', 'disc', 'pdp']);
+            if ($enterpriseId) {
+                $aggSub->where('enterpriseId', $enterpriseId);
             }
-            if (!isset($testsByUser[$uid])) {
-                $testsByUser[$uid] = [];
+            $aggSql = $aggSub
+                ->field('userId, testType, MAX(id) AS mid')
+                ->group('userId, testType')
+                ->buildSql(true);
+
+            $testRows = Db::name('test_results')->alias('t')
+                ->join([$aggSql => 'agg'], 't.userId = agg.userId AND t.testType = agg.testType AND t.id = agg.mid')
+                ->field('t.userId, t.testType, t.resultData, t.createdAt')
+                ->select()
+                ->toArray();
+
+            foreach ($testRows as $row) {
+                $uid = (int) ($row['userId'] ?? 0);
+                if ($uid <= 0) {
+                    continue;
+                }
+                if (!isset($testsByUser[$uid])) {
+                    $testsByUser[$uid] = [];
+                }
+                $raw = $row['resultData'] ?? '';
+                $testsByUser[$uid][] = [
+                    'testType'  => $row['testType'] ?? '',
+                    'result'    => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                    'createdAt' => (int) ($row['createdAt'] ?? 0),
+                ];
             }
-            $raw = $row['resultData'] ?? '';
-            $testsByUser[$uid][] = [
-                'testType'  => $row['testType'] ?? '',
-                'result'    => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
-                'createdAt' => (int) ($row['createdAt'] ?? 0),
-            ];
+        } catch (\Throwable $e) {
+            $trQuery = Db::name('test_results')->whereIn('userId', $uids);
+            if ($enterpriseId) {
+                $trQuery->where('enterpriseId', $enterpriseId);
+            }
+            $testRows = $trQuery
+                ->field('userId, testType, resultData, createdAt')
+                ->order('createdAt', 'desc')
+                ->limit(5000)
+                ->select()
+                ->toArray();
+
+            foreach ($testRows as $row) {
+                $uid = (int) ($row['userId'] ?? 0);
+                if ($uid <= 0) {
+                    continue;
+                }
+                if (!isset($testsByUser[$uid])) {
+                    $testsByUser[$uid] = [];
+                }
+                $tt = strtolower((string) ($row['testType'] ?? ''));
+                foreach ($testsByUser[$uid] as $ex) {
+                    if (strtolower((string) ($ex['testType'] ?? '')) === $tt) {
+                        continue 2;
+                    }
+                }
+                $raw = $row['resultData'] ?? '';
+                $testsByUser[$uid][] = [
+                    'testType'  => $row['testType'] ?? '',
+                    'result'    => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+                    'createdAt' => (int) ($row['createdAt'] ?? 0),
+                ];
+            }
         }
 
         $out = [];
@@ -283,24 +316,34 @@ class Dashboard extends BaseController
             ['key' => 'disc', 'label' => 'DISC'],
             ['key' => 'pdp', 'label' => 'PDP'],
         ];
+
+        $q = Db::name('test_results')
+            ->whereIn('testType', ['face', 'mbti', 'disc', 'pdp']);
+        if ($enterpriseId) {
+            $q->where('enterpriseId', $enterpriseId);
+        }
+        $rows = $q->field('testType, COUNT(*) AS records, COUNT(DISTINCT userId) AS uniqueUsers')
+            ->group('testType')
+            ->select()
+            ->toArray();
+
+        $byType = [];
+        foreach ($rows as $r) {
+            $byType[$r['testType'] ?? ''] = [
+                'records'     => (int) ($r['records'] ?? 0),
+                'uniqueUsers' => (int) ($r['uniqueUsers'] ?? 0),
+            ];
+        }
+
         $out = [];
         foreach ($defs as $def) {
             $tt = $def['key'];
-            $q = Db::name('test_results')->where('testType', $tt);
-            if ($enterpriseId) {
-                $q->where('enterpriseId', $enterpriseId);
-            }
-            $records = (int) $q->count();
-            $q2 = Db::name('test_results')->where('testType', $tt);
-            if ($enterpriseId) {
-                $q2->where('enterpriseId', $enterpriseId);
-            }
-            $uniqueUsers = (int) $q2->distinct(true)->count('userId');
+            $st = $byType[$tt] ?? ['records' => 0, 'uniqueUsers' => 0];
             $out[] = [
                 'key'         => $tt,
                 'label'       => $def['label'],
-                'records'     => $records,
-                'uniqueUsers' => $uniqueUsers,
+                'records'     => $st['records'],
+                'uniqueUsers' => $st['uniqueUsers'],
             ];
         }
 
@@ -314,6 +357,90 @@ class Dashboard extends BaseController
      */
     private function aggregateTestLabels(?int $enterpriseId, string $testType, int $topN): array
     {
+        try {
+            return $this->aggregateTestLabelsWithSql($enterpriseId, $testType, $topN);
+        } catch (\Throwable $e) {
+            return $this->aggregateTestLabelsChunked($enterpriseId, $testType, $topN);
+        }
+    }
+
+    /**
+     * 使用 MySQL JSON 函数在库内分组统计（避免全表 chunk）
+     *
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function aggregateTestLabelsWithSql(?int $enterpriseId, string $testType, int $topN): array
+    {
+        if (!in_array($testType, ['mbti', 'disc', 'pdp'], true)) {
+            throw new \InvalidArgumentException('unsupported testType');
+        }
+
+        $table = $this->testResultsTableName();
+        $entClause = '';
+        $bind = [$testType];
+        if ($enterpriseId) {
+            $entClause = ' AND `enterpriseId` = ? ';
+            $bind[] = $enterpriseId;
+        }
+
+        if ($testType === 'mbti') {
+            $expr = "CASE
+                WHEN JSON_VALID(`resultData`) = 0 OR `resultData` IS NULL OR `resultData` = '' THEN '未识别'
+                ELSE COALESCE(
+                    NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.mbtiType'))), ''),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.type')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.type'))), ''), NULL),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.result')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.result'))), ''), NULL),
+                    '未识别'
+                )
+            END";
+        } elseif ($testType === 'disc') {
+            $expr = "CASE
+                WHEN JSON_VALID(`resultData`) = 0 OR `resultData` IS NULL OR `resultData` = '' THEN '未识别'
+                ELSE COALESCE(
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.description.type')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.description.type'))), ''), NULL),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.dominantType')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.dominantType'))), ''), NULL),
+                    NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.disc.primary'))), ''),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.disc')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.disc'))), ''), NULL),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.type')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.type'))), ''), NULL),
+                    '未识别'
+                )
+            END";
+        } else {
+            $expr = "CASE
+                WHEN JSON_VALID(`resultData`) = 0 OR `resultData` IS NULL OR `resultData` = '' THEN '未识别'
+                ELSE COALESCE(
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.description.type')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.description.type'))), ''), NULL),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.dominantType')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.dominantType'))), ''), NULL),
+                    NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.pdp.primary'))), ''),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.pdp')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.pdp'))), ''), NULL),
+                    IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.type')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.type'))), ''), NULL),
+                    '未识别'
+                )
+            END";
+        }
+
+        $sql = "SELECT `label`, COUNT(*) AS `cnt` FROM (
+            SELECT ({$expr}) AS `label`
+            FROM `{$table}`
+            WHERE `testType` = ? {$entClause}
+        ) `t`
+        GROUP BY `label`";
+
+        $rows = Db::query($sql, $bind);
+        $counts = [];
+        foreach ($rows as $r) {
+            $counts[(string) ($r['label'] ?? '')] = (int) ($r['cnt'] ?? 0);
+        }
+        arsort($counts);
+
+        return $this->countsToTopNWithOther($counts, $topN);
+    }
+
+    /**
+     * @return array<int, array{label:string,count:int}>
+     */
+    private function aggregateTestLabelsChunked(?int $enterpriseId, string $testType, int $topN): array
+    {
         $counts = [];
         $query = Db::name('test_results')
             ->where('testType', $testType)
@@ -321,7 +448,7 @@ class Dashboard extends BaseController
         if ($enterpriseId) {
             $query->where('enterpriseId', $enterpriseId);
         }
-        $query->chunk(400, function ($rows) use (&$counts, $testType) {
+        $query->chunk(800, function ($rows) use (&$counts, $testType) {
             foreach ($rows as $row) {
                 $raw = $row['resultData'] ?? '';
                 $label = $this->labelFromResultRow($testType, $raw);
@@ -343,6 +470,87 @@ class Dashboard extends BaseController
      */
     private function aggregateFaceSubtypeHints(?int $enterpriseId, int $topN): array
     {
+        try {
+            return $this->aggregateFaceSubtypeHintsWithSql($enterpriseId, $topN);
+        } catch (\Throwable $e) {
+            return $this->aggregateFaceSubtypeHintsChunked($enterpriseId, $topN);
+        }
+    }
+
+    /**
+     * @return array{mbti:array,disc:array,pdp:array}
+     */
+    private function aggregateFaceSubtypeHintsWithSql(?int $enterpriseId, int $topN): array
+    {
+        $table = $this->testResultsTableName();
+        $entClause = '';
+        $bind = [];
+        if ($enterpriseId) {
+            $entClause = ' AND `enterpriseId` = ? ';
+            $bind[] = $enterpriseId;
+        }
+
+        $sqlFaceMbti = "SELECT `label`, COUNT(*) AS `cnt` FROM (
+            SELECT COALESCE(
+                NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.mbti.type'))), ''),
+                NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.mbtiType'))), ''),
+                ''
+            ) AS `label`
+            FROM `{$table}`
+            WHERE `testType` = 'face' AND JSON_VALID(`resultData`) {$entClause}
+        ) `t`
+        WHERE `label` <> ''
+        GROUP BY `label`";
+
+        $sqlFaceDisc = "SELECT `label`, COUNT(*) AS `cnt` FROM (
+            SELECT COALESCE(
+                NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.disc.primary'))), ''),
+                IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.disc')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.disc'))), ''), ''),
+                ''
+            ) AS `label`
+            FROM `{$table}`
+            WHERE `testType` = 'face' AND JSON_VALID(`resultData`) {$entClause}
+        ) `t`
+        WHERE `label` <> ''
+        GROUP BY `label`";
+
+        $sqlFacePdp = "SELECT `label`, COUNT(*) AS `cnt` FROM (
+            SELECT COALESCE(
+                NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.pdp.primary'))), ''),
+                IF(JSON_TYPE(JSON_EXTRACT(`resultData`, '$.pdp')) = 'STRING', NULLIF(TRIM(JSON_UNQUOTE(JSON_EXTRACT(`resultData`, '$.pdp'))), ''), ''),
+                ''
+            ) AS `label`
+            FROM `{$table}`
+            WHERE `testType` = 'face' AND JSON_VALID(`resultData`) {$entClause}
+        ) `t`
+        WHERE `label` <> ''
+        GROUP BY `label`";
+
+        $out = [];
+        foreach (
+            [
+                'mbti' => $sqlFaceMbti,
+                'disc' => $sqlFaceDisc,
+                'pdp'  => $sqlFacePdp,
+            ] as $k => $sql
+        ) {
+            $rows = Db::query($sql, $bind);
+            $counts = [];
+            foreach ($rows as $r) {
+                $counts[(string) ($r['label'] ?? '')] = (int) ($r['cnt'] ?? 0);
+            }
+            arsort($counts);
+            $out[$k] = $this->countsToTopNWithOther($counts, $topN);
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array{mbti:array,disc:array,pdp:array}
+     */
+    private function aggregateFaceSubtypeHintsChunked(?int $enterpriseId, int $topN): array
+    {
         $subMaps = ['mbti' => [], 'disc' => [], 'pdp' => []];
         $query = Db::name('test_results')
             ->where('testType', 'face')
@@ -350,7 +558,7 @@ class Dashboard extends BaseController
         if ($enterpriseId) {
             $query->where('enterpriseId', $enterpriseId);
         }
-        $query->chunk(400, function ($rows) use (&$subMaps) {
+        $query->chunk(800, function ($rows) use (&$subMaps) {
             foreach ($rows as $row) {
                 $raw = $row['resultData'] ?? '';
                 $str = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
@@ -374,6 +582,11 @@ class Dashboard extends BaseController
         }
 
         return $out;
+    }
+
+    private function testResultsTableName(): string
+    {
+        return Db::name('test_results')->getTable();
     }
 
     /**

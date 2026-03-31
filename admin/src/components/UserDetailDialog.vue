@@ -153,7 +153,7 @@
                 </el-table-column>
                 <el-table-column label="操作" width="72" align="center">
                   <template #default="{ row }">
-                    <el-button link type="primary" size="small" @click="$emit('view-test', row)">详情</el-button>
+                    <el-button link type="primary" size="small" @click.stop="$emit('view-test', row)">详情</el-button>
                   </template>
                 </el-table-column>
               </el-table>

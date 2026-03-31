@@ -5,7 +5,7 @@
       <div>
         <h2>系统设置</h2>
         <p class="subtitle">
-          审核与站点、题库、数据库及超管账户等平台级配置（全局定价在「订单和财务」）。此处变更会间接影响各企业管理后台行为。
+          审核与站点、题库及超管账户等平台级配置（全局定价在「订单和财务」）。此处变更会间接影响各企业管理后台行为。
         </p>
       </div>
     </div>
@@ -269,68 +269,6 @@
         </el-card>
         </div>
 
-        <!-- 通知设置 -->
-        <div v-if="activeTab === 'notification'" class="tab-content">
-          <el-card shadow="never" class="settings-card">
-          <template #header>
-            <div class="card-header">
-              <div class="header-title">
-                <el-icon class="header-icon"><Bell /></el-icon>
-                <span>通知与告警设置</span>
-              </div>
-              <p class="header-description">管理系统通知和企业告警规则</p>
-            </div>
-          </template>
-          <div class="card-content">
-            <div class="switch-section">
-              <div class="switch-item">
-                <div class="switch-info">
-                  <p class="switch-title">邮件通知</p>
-                  <p class="switch-desc">发送重要事件邮件通知</p>
-                </div>
-                <el-switch v-model="notificationConfig.emailNotification" />
-              </div>
-
-              <div class="switch-item">
-                <div class="switch-info">
-                  <p class="switch-title">余额不足告警</p>
-                  <p class="switch-desc">企业余额低于阈值时提醒</p>
-                </div>
-                <el-switch v-model="notificationConfig.lowBalanceAlert" />
-              </div>
-
-              <div v-if="notificationConfig.lowBalanceAlert" class="threshold-input">
-                <label class="form-label">余额告警阈值（元）</label>
-                <el-input-number
-                  v-model="notificationConfig.lowBalanceThreshold"
-                  :min="100"
-                  :step="100"
-                  :controls="false"
-                  class="form-input threshold-input-field"
-                />
-              </div>
-
-              <div class="switch-item">
-                <div class="switch-info">
-                  <p class="switch-title">新企业入驻通知</p>
-                  <p class="switch-desc">有新企业入驻时发送通知</p>
-                </div>
-                <el-switch v-model="notificationConfig.newEnterpriseNotify" />
-              </div>
-            </div>
-
-            <el-button
-              type="primary"
-              color="#6366f1"
-              class="save-button"
-              @click="handleSave('notification')"
-            >
-              <el-icon class="mr-1"><Document /></el-icon>保存通知设置
-            </el-button>
-          </div>
-        </el-card>
-        </div>
-
         <!-- 提示词配置 -->
         <div v-if="activeTab === 'prompts'" class="tab-content">
           <el-card shadow="never" class="settings-card">
@@ -464,9 +402,6 @@
         <div v-if="activeTab === 'questions'" class="embed-wrap">
           <Questions embedded />
         </div>
-        <div v-if="activeTab === 'database'" class="embed-wrap">
-          <Database embedded />
-        </div>
       </div>
     </div>
   </div>
@@ -477,29 +412,24 @@ import { ref, reactive, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Setting,
-  Bell,
   Lock,
   Document,
   ChatDotRound,
   Postcard,
-  DataLine,
   Reading
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import PosterEditor from './PosterEditor.vue'
 import Questions from './Questions.vue'
-import Database from './Database.vue'
 
 const TAB_IDS = [
   'review',
   'system',
-  'notification',
   'prompts',
   'poster',
   'security',
-  'questions',
-  'database'
+  'questions'
 ] as const
 type TabId = (typeof TAB_IDS)[number]
 
@@ -516,17 +446,13 @@ const saveSuccess = ref<string | null>(null)
 const tabs: { label: string; value: TabId; icon: any }[] = [
   { label: '审核模式', value: 'review', icon: Document },
   { label: '系统配置', value: 'system', icon: Setting },
-  { label: '通知设置', value: 'notification', icon: Bell },
   { label: '提示词配置', value: 'prompts', icon: ChatDotRound },
   { label: '海报配置', value: 'poster', icon: Postcard },
   { label: '账户安全', value: 'security', icon: Lock },
-  { label: '题库管理', value: 'questions', icon: Reading },
-  { label: '数据库', value: 'database', icon: DataLine }
+  { label: '题库管理', value: 'questions', icon: Reading }
 ]
 
-const isFlatEmbed = computed(
-  () => activeTab.value === 'questions' || activeTab.value === 'database'
-)
+const isFlatEmbed = computed(() => activeTab.value === 'questions')
 
 const applyRouteTab = () => {
   const t = route.query.tab
@@ -582,14 +508,6 @@ const credentials = reactive({
   confirmPassword: '',
 })
 
-// 通知配置
-const notificationConfig = reactive({
-  emailNotification: true,
-  lowBalanceAlert: true,
-  lowBalanceThreshold: 1000,
-  newEnterpriseNotify: true,
-})
-
 // 小程序文案配置（分析中提示、按钮、报告标题等）
 const textConfig = reactive({
   analyzingTitle: '正在分析中',
@@ -622,11 +540,6 @@ const loadSettings = async () => {
       // 加载小程序文案配置
       if (response.data.textConfig && typeof response.data.textConfig === 'object') {
         Object.assign(textConfig, response.data.textConfig)
-      }
-      
-      // 加载通知配置
-      if (response.data.notification) {
-        Object.assign(notificationConfig, response.data.notification)
       }
 
       // 加载提示词配置
@@ -696,17 +609,6 @@ const handleSave = async (section: string) => {
         })
         if (response.code === 200) {
           ElMessage.success('系统配置已保存')
-          saveSuccess.value = section
-          setTimeout(() => {
-            saveSuccess.value = null
-          }, 3000)
-        }
-        break
-        
-      case 'notification':
-        response = await request.put('/superadmin/settings/notification', notificationConfig)
-        if (response.code === 200) {
-          ElMessage.success('通知配置已保存')
           saveSuccess.value = section
           setTimeout(() => {
             saveSuccess.value = null
@@ -991,15 +893,6 @@ const handleSave = async (section: string) => {
 
     :deep(.el-input__inner) {
       font-size: 14px;
-    }
-  }
-
-  &.threshold-input {
-    margin-left: 16px;
-    margin-top: -8px;
-
-    .threshold-input-field {
-      max-width: 320px;
     }
   }
 }

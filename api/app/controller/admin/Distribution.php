@@ -11,6 +11,65 @@ use think\facade\Request;
  */
 class Distribution extends BaseController
 {
+    /**
+     * 企业管理员 enterpriseId：JWT 可能为空，需与 users 表对齐（与订单等接口一致）
+     */
+    private function resolveEnterpriseIdForAdmin(?array $user): int
+    {
+        if (!$user || !in_array($user['role'] ?? '', ['admin', 'enterprise_admin'], true)) {
+            return 0;
+        }
+        $eid = $user['enterpriseId'] ?? null;
+        if (is_array($eid)) {
+            $eid = null;
+        }
+        $enterpriseId = $eid !== null && $eid !== '' ? (int) $eid : 0;
+        if ($enterpriseId <= 0) {
+            $adminRow = Db::name('users')->where('id', (int) ($user['userId'] ?? 0))->find();
+            $e2 = $adminRow['enterpriseId'] ?? null;
+            $enterpriseId = ($e2 !== null && $e2 !== '') ? (int) $e2 : 0;
+        }
+
+        return $enterpriseId > 0 ? $enterpriseId : 0;
+    }
+
+    /**
+     * 本企业维度的「推荐人 id」集合：佣金表 + 企业绑定表 + 历史仅填 agentId 的佣金行
+     *
+     * @return int[]
+     */
+    private function distributorUserIdsForEnterprise(int $enterpriseId): array
+    {
+        if ($enterpriseId <= 0) {
+            return [];
+        }
+
+        $a = Db::name('commission_records')
+            ->where('enterpriseId', $enterpriseId)
+            ->where('inviterId', '>', 0)
+            ->distinct(true)
+            ->column('inviterId');
+        $b = Db::name('distribution_bindings')
+            ->where('enterpriseId', $enterpriseId)
+            ->where('inviterId', '>', 0)
+            ->distinct(true)
+            ->column('inviterId');
+        $c = Db::name('commission_records')
+            ->where('enterpriseId', $enterpriseId)
+            ->where(function ($q) {
+                $q->whereNull('inviterId')->whereOr('inviterId', 0);
+            })
+            ->where('agentId', '>', 0)
+            ->distinct(true)
+            ->column('agentId');
+
+        $merged = array_merge($a ?: [], $b ?: [], $c ?: []);
+
+        return array_values(array_unique(array_filter(array_map('intval', $merged), static function ($v) {
+            return $v > 0;
+        })));
+    }
+
     // ─────────────────────────────────────────────────────────────
     //  GET distribution/overview
     // ─────────────────────────────────────────────────────────────
@@ -21,7 +80,10 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
         $todayStart = strtotime(date('Y-m-d 00:00:00'));
         $days = 7;
         $trendStart = strtotime(date('Y-m-d 00:00:00', strtotime('-' . ($days - 1) . ' days')));
@@ -105,83 +167,102 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $search       = trim((string) Request::param('search', ''));
         $page         = max(1, (int) Request::param('page', 1));
         $pageSize     = min(100, (int) Request::param('pageSize', 20));
 
         try {
-            // 找出与本企业关联的所有有过邀请行为的用户（不限 scope，按 enterpriseId 筛选）
-            $query = Db::name('distribution_bindings')
-                ->where('enterpriseId', $enterpriseId)
-                ->distinct(true)
-                ->field('inviterId')
-                ->buildSql();
+            $poolIds = $this->distributorUserIdsForEnterprise($enterpriseId);
+            if (empty($poolIds)) {
+                return success(['list' => [], 'total' => 0, 'page' => $page, 'pageSize' => $pageSize]);
+            }
 
             $inviterQuery = Db::name('wechat_users')
                 ->alias('u')
-                ->whereRaw("u.id IN {$query}")
+                ->whereIn('u.id', $poolIds)
                 ->field('u.id, u.nickname, u.avatar, u.createdAt');
 
             if ($search !== '') {
                 $inviterQuery->where(function ($q) use ($search) {
                     $q->where('u.nickname', 'like', "%{$search}%")
-                      ->whereOr('u.id', '=', is_numeric($search) ? (int)$search : -1);
+                      ->whereOr('u.id', '=', is_numeric($search) ? (int) $search : -1);
                 });
             }
 
-            $total     = (clone $inviterQuery)->count();
-            $inviters  = $inviterQuery->page($page, $pageSize)->select()->toArray();
+            $inviterQuery->order('u.id', 'desc');
 
-            $inviterIds = array_column($inviters, 'id');
+            $total    = (int) (clone $inviterQuery)->count();
+            $inviters = $inviterQuery->page($page, $pageSize)->select()->toArray();
 
-            // 各邀请人的累计佣金与可提现佣金
-            $commStats = [];
+            $inviterIds = array_values(array_filter(array_map('intval', array_column($inviters, 'id'))));
+
+            $commStats    = [];
+            $withdrawnMap = [];
+            $teamMap      = [];
+
             if (!empty($inviterIds)) {
-                $rows = Db::name('commission_records')
-                    ->whereIn('inviterId', $inviterIds)
+                $inStr = implode(',', $inviterIds);
+                $rows  = Db::name('commission_records')
                     ->where('enterpriseId', $enterpriseId)
-                    ->field('inviterId,
-                             SUM(IF(status IN ("paid","frozen"), commissionFen, 0)) as totalFen,
-                             SUM(IF(status = "paid", commissionFen, 0)) as paidFen')
-                    ->group('inviterId')
-                    ->select()->toArray();
+                    ->whereRaw('COALESCE(inviterId, agentId) IN (' . $inStr . ')')
+                    ->fieldRaw("COALESCE(inviterId, agentId) AS inviterKey, SUM(IF(status IN ('paid','frozen'), commissionFen, 0)) AS totalFen, SUM(IF(status = 'paid', commissionFen, 0)) AS paidFen")
+                    ->group('inviterKey')
+                    ->select()
+                    ->toArray();
                 foreach ($rows as $r) {
-                    $commStats[$r['inviterId']] = $r;
+                    $kid = (int) ($r['inviterKey'] ?? 0);
+                    if ($kid > 0) {
+                        $commStats[$kid] = $r;
+                    }
                 }
 
-                // 已提现金额
                 $withdrawnRows = Db::name('distribution_withdrawals')
-                    ->whereIn('userId', $inviterIds)
-                    // 提现金额统计：0=审核中,2=待收款,3=已收款
-                    ->whereIn('status', [0, 2, 3])
-                    ->field('userId, SUM(amountFen) as withdrawnFen')
-                    ->group('userId')
-                    ->select()->toArray();
-                $withdrawnMap = [];
+                    ->alias('w')
+                    ->join('wechat_users u', 'w.userId = u.id')
+                    ->whereIn('w.userId', $inviterIds)
+                    ->where('u.enterpriseId', $enterpriseId)
+                    ->whereIn('w.status', [0, 2, 3])
+                    ->field('w.userId, SUM(w.amountFen) AS withdrawnFen')
+                    ->group('w.userId')
+                    ->select()
+                    ->toArray();
                 foreach ($withdrawnRows as $r) {
-                    $withdrawnMap[$r['userId']] = (int)$r['withdrawnFen'];
+                    $withdrawnMap[(int) ($r['userId'] ?? 0)] = (int) ($r['withdrawnFen'] ?? 0);
                 }
 
-                // 团队人数（绑定人数，不限 scope）
+                $now = time();
                 $teamRows = Db::name('distribution_bindings')
-                    ->whereIn('inviterId', $inviterIds)
-                    ->where('enterpriseId', $enterpriseId)
-                    ->field('inviterId, COUNT(DISTINCT inviteeId) as teamCount')
-                    ->group('inviterId')
-                    ->select()->toArray();
-                $teamMap = [];
+                    ->alias('b')
+                    ->leftJoin('wechat_users w', 'w.id = b.inviteeId')
+                    ->whereIn('b.inviterId', $inviterIds)
+                    ->where(function ($q) use ($enterpriseId) {
+                        $q->where('b.enterpriseId', $enterpriseId)
+                            ->whereOr(function ($q2) use ($enterpriseId) {
+                                $q2->whereNull('b.enterpriseId')->where('w.enterpriseId', $enterpriseId);
+                            });
+                    })
+                    ->where('b.status', 'active')
+                    ->where('b.expireAt', '>', $now)
+                    ->fieldRaw('b.inviterId, COUNT(DISTINCT b.inviteeId) AS teamCount')
+                    ->group('b.inviterId')
+                    ->select()
+                    ->toArray();
                 foreach ($teamRows as $r) {
-                    $teamMap[$r['inviterId']] = (int)$r['teamCount'];
+                    $teamMap[(int) ($r['inviterId'] ?? 0)] = (int) ($r['teamCount'] ?? 0);
                 }
             }
 
             $list = [];
             foreach ($inviters as $inv) {
-                $uid       = $inv['id'];
-                $totalFen  = (int)($commStats[$uid]['totalFen'] ?? 0);
-                $paidFen   = (int)($commStats[$uid]['paidFen'] ?? 0);
-                $withdrawn = $withdrawnMap[$uid] ?? 0;
+                $uid       = (int) ($inv['id'] ?? 0);
+                $totalFen  = (int) ($commStats[$uid]['totalFen'] ?? 0);
+                $paidFen   = (int) ($commStats[$uid]['paidFen'] ?? 0);
+                $withdrawn = (int) ($withdrawnMap[$uid] ?? 0);
                 $avail     = max(0, $paidFen - $withdrawn);
                 $list[] = [
                     'id'                 => $uid,
@@ -189,7 +270,7 @@ class Distribution extends BaseController
                     'avatar'             => $inv['avatar'] ?? '',
                     'totalCommission'    => number_format($totalFen / 100, 2, '.', ''),
                     'availableCommission'=> number_format($avail / 100, 2, '.', ''),
-                    'teamCount'          => $teamMap[$uid] ?? 0,
+                    'teamCount'          => (int) ($teamMap[$uid] ?? 0),
                     'teamPerformance'    => '-',
                     'inviteCode'         => '-',
                     'level'              => '-',
@@ -213,7 +294,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $page         = max(1, (int) Request::param('page', 1));
         $pageSize     = min(100, (int) Request::param('pageSize', 20));
         $status       = Request::param('status', '');
@@ -226,7 +311,16 @@ class Distribution extends BaseController
                 ->leftJoin('wechat_users invt', 'b.inviteeId = invt.id')
                 ->field('b.*, inv.nickname as inviterName, inv.avatar as inviterAvatar,
                          invt.nickname as inviteeName, invt.avatar as inviteeAvatar')
-                ->where('b.enterpriseId', $enterpriseId);
+                ->where(function ($q) use ($enterpriseId) {
+                    $q->where('b.enterpriseId', $enterpriseId)
+                        ->whereOr(function ($q2) use ($enterpriseId) {
+                            $q2->whereNull('b.enterpriseId')
+                                ->where(function ($q3) use ($enterpriseId) {
+                                    $q3->where('inv.enterpriseId', $enterpriseId)
+                                        ->whereOr('invt.enterpriseId', $enterpriseId);
+                                });
+                        });
+                });
 
             if ($inviterId > 0) {
                 $query->where('b.inviterId', $inviterId);
@@ -264,7 +358,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $page         = max(1, (int) Request::param('page', 1));
         $pageSize     = min(100, (int) Request::param('pageSize', 20));
         $status       = Request::param('status', '');
@@ -279,7 +377,7 @@ class Distribution extends BaseController
                 ->where('c.enterpriseId', $enterpriseId);
 
             if ($inviterId > 0) {
-                $query->where('c.inviterId', $inviterId);
+                $query->whereRaw('COALESCE(c.inviterId, c.agentId) = ?', [$inviterId]);
             }
             if ($status) {
                 $query->where('c.status', $status);
@@ -356,7 +454,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $page         = max(1, (int) Request::param('page', 1));
         $pageSize     = min(100, (int) Request::param('pageSize', 20));
         $status       = Request::param('status', '');
@@ -426,7 +528,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $note         = Request::param('note', '');
         $now          = time();
 
@@ -497,7 +603,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $note         = Request::param('note', '');
         $now          = time();
 
@@ -549,7 +659,10 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
 
         try {
             $config = Db::name('system_config')
@@ -593,7 +706,11 @@ class Distribution extends BaseController
             return error('无权限', 403);
         }
 
-        $enterpriseId = (int) ($user['enterpriseId'] ?? 0);
+        $enterpriseId = $this->resolveEnterpriseIdForAdmin($user);
+        if ($enterpriseId <= 0) {
+            return error('未绑定企业或企业无效', 400);
+        }
+
         $settings = Request::only(['enabled', 'promoCenterTitle', 'bindingDays', 'testSettings']);
 
         $promoTitle = trim((string)($settings['promoCenterTitle'] ?? ''));

@@ -2,6 +2,7 @@
 namespace app\controller\superadmin;
 
 use app\BaseController;
+use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -11,6 +12,8 @@ use think\facade\Request;
  */
 class AppUser extends BaseController
 {
+    use ExtractsTestResults;
+
     /**
      * 名称包含「存客宝」的企业（取 id 最小的一条），用于合并个人侧无归属测试数据
      */
@@ -25,8 +28,31 @@ class AppUser extends BaseController
     }
 
     /**
+     * 从 test_results.resultData 中解析 MBTI 四字母（与概览统计口径一致）
+     */
+    private function parseOverviewMbtiTypeFromResultData($raw): string
+    {
+        $dec = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : null);
+        if (!is_array($dec)) {
+            return '';
+        }
+        $type = '';
+        if (isset($dec['mbtiType'])) {
+            $type = $dec['mbtiType'];
+        } elseif (isset($dec['mbti']['type'])) {
+            $type = $dec['mbti']['type'];
+        } elseif (isset($dec['type'])) {
+            $type = $dec['type'];
+        }
+
+        return strtoupper(trim((string) $type));
+    }
+
+    /**
      * 概览：用户统计、卡片、MBTI 分布
      * GET /api/v1/superadmin/app-users/overview
+     *
+     * 性能：openid 去重与各统计均在库内 JOIN/聚合完成，禁止拉全表 mid、全表 distinct userId、全量 MBTI 行。
      */
     public function overview()
     {
@@ -35,9 +61,136 @@ class AppUser extends BaseController
             return error('无权限访问', 403);
         }
 
-        // ========== 统计全部基于 wechat_users.enterpriseId（而非 test_results.enterpriseId） ==========
+        $last30d = time() - 30 * 86400;
 
-        // openid 去重：每个 openid 只保留 id 最大的一条
+        // ========== 统计全部基于 wechat_users.enterpriseId（而非 test_results.enterpriseId） ==========
+        try {
+            $dedupSql = Db::name('wechat_users')
+                ->alias('w2')
+                ->field('w2.openid, MAX(w2.id) AS mid')
+                ->group('w2.openid')
+                ->buildSql(true);
+
+            $trTestedSql = Db::name('test_results')->distinct(true)->field('userId')->buildSql(true);
+            $trActiveSql = Db::name('test_results')
+                ->where('createdAt', '>=', $last30d)
+                ->distinct(true)
+                ->field('userId')
+                ->buildSql(true);
+
+            $totalUsers = (int) Db::name('wechat_users')->alias('w')
+                ->join([$dedupSql => 'd'], 'w.id = d.mid')
+                ->count();
+
+            $testedRow = Db::name('test_results')->alias('tr')
+                ->join([$dedupSql => 'd'], 'tr.userId = d.mid')
+                ->field('COUNT(DISTINCT tr.userId) AS c')
+                ->find();
+            $testedUsers = (int) ($testedRow['c'] ?? 0);
+
+            $activeRow = Db::name('test_results')->alias('tr')
+                ->join([$dedupSql => 'd'], 'tr.userId = d.mid')
+                ->where('tr.createdAt', '>=', $last30d)
+                ->field('COUNT(DISTINCT tr.userId) AS c')
+                ->find();
+            $activeUsers = (int) ($activeRow['c'] ?? 0);
+
+            $eidExpr = "CASE WHEN w.enterpriseId IS NULL OR w.enterpriseId = '' OR w.enterpriseId = 0 THEN 0 ELSE w.enterpriseId END";
+
+            $aggRows = Db::name('wechat_users')->alias('w')
+                ->join([$dedupSql => 'ded'], 'w.id = ded.mid')
+                ->leftJoin([$trTestedSql => 'tt'], 'tt.userId = w.id')
+                ->leftJoin([$trActiveSql => 'ta'], 'ta.userId = w.id')
+                ->field($eidExpr . ' AS eid, COUNT(*) AS total, SUM(IF(tt.userId IS NOT NULL, 1, 0)) AS tested, SUM(IF(ta.userId IS NOT NULL, 1, 0)) AS active')
+                ->group($eidExpr)
+                ->select()
+                ->toArray();
+
+            $byEid = [];
+            foreach ($aggRows as $row) {
+                $byEid[(int) ($row['eid'] ?? 0)] = [
+                    'total'  => (int) ($row['total'] ?? 0),
+                    'tested' => (int) ($row['tested'] ?? 0),
+                    'active' => (int) ($row['active'] ?? 0),
+                ];
+            }
+
+            $userCards = [
+                [
+                    'type'   => 'all',
+                    'name'   => '全部用户',
+                    'total'  => $totalUsers,
+                    'active' => $activeUsers,
+                    'tested' => $testedUsers,
+                ],
+            ];
+
+            $enterprises = Db::name('enterprises')->field('id,name')->select()->toArray();
+            foreach ($enterprises as $e) {
+                $eid = (int) $e['id'];
+                $st = $byEid[$eid] ?? ['total' => 0, 'active' => 0, 'tested' => 0];
+                $userCards[] = [
+                    'type'         => 'enterprise',
+                    'enterpriseId' => $eid,
+                    'name'         => $e['name'] ?? ('企业' . $eid),
+                    'total'        => $st['total'],
+                    'active'       => $st['active'],
+                    'tested'       => $st['tested'],
+                ];
+            }
+
+            $ind = $byEid[0] ?? null;
+            if ($ind !== null && ($ind['total'] ?? 0) > 0) {
+                $userCards[] = [
+                    'type'   => 'individual',
+                    'name'   => '个人用户(无企业)',
+                    'total'  => $ind['total'],
+                    'active' => $ind['active'],
+                    'tested' => $ind['tested'],
+                ];
+            }
+
+            // MBTI：每人仅最新一条（MAX(id)），且须在 openid 去重后的用户集合内
+            $mbtiTypes = [];
+            try {
+                $mbtiLatestSub = Db::name('test_results')
+                    ->where('testType', 'mbti')
+                    ->field('userId, MAX(id) AS mid')
+                    ->group('userId')
+                    ->buildSql(true);
+
+                $mbtiRows = Db::name('test_results')->alias('t')
+                    ->join([$mbtiLatestSub => 'lm'], 't.userId = lm.userId AND t.id = lm.mid')
+                    ->join([$dedupSql => 'd'], 't.userId = d.mid')
+                    ->column('t.resultData');
+
+                foreach ($mbtiRows as $raw) {
+                    $type = $this->parseOverviewMbtiTypeFromResultData($raw);
+                    if ($type === '') {
+                        continue;
+                    }
+                    $mbtiTypes[$type] = ($mbtiTypes[$type] ?? 0) + 1;
+                }
+            } catch (\Throwable $e) {
+                $mbtiTypes = [];
+            }
+
+            $mbtiDistribution = [];
+            foreach ($mbtiTypes as $type => $count) {
+                $mbtiDistribution[] = ['type' => $type, 'count' => $count];
+            }
+
+            return success([
+                'totalUsers'        => $totalUsers,
+                'testedUsers'       => $testedUsers,
+                'activeUsers'       => $activeUsers,
+                'userCards'         => $userCards,
+                'mbtiDistribution'  => $mbtiDistribution,
+            ]);
+        } catch (\Throwable $e) {
+            // 极少数环境无法 buildSql / JOIN 时降级（仍可能较慢，但保证有数据）
+        }
+
         try {
             $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
             $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
@@ -46,14 +199,11 @@ class AppUser extends BaseController
             $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
         }
         $totalUsers = count($dedupIds);
-        $last30d = time() - 30 * 86400;
 
-        // 已测试用户（在 test_results 有记录的 userId 与 dedupIds 取交集）
         $testedUserIds = Db::name('test_results')->distinct(true)->column('userId');
         $testedUserIds = array_values(array_unique(array_filter(array_map('intval', $testedUserIds))));
         $testedUsers = count(array_intersect($testedUserIds, $dedupIds));
 
-        // 近 30 天活跃用户
         $activeUserIds = Db::name('test_results')
             ->where('createdAt', '>=', $last30d)
             ->distinct(true)
@@ -71,10 +221,8 @@ class AppUser extends BaseController
             ]
         ];
 
-        // 按 wechat_users.enterpriseId 分组统计
         $userEidMap = Db::name('wechat_users')->where('id', 'in', $dedupIds)->column('enterpriseId', 'id');
 
-        // 按企业统计：从注册表统计 total，再交叉 test_results 统计 active/tested
         $enterprises = Db::name('enterprises')->field('id,name')->select()->toArray();
         foreach ($enterprises as $e) {
             $eid = (int) $e['id'];
@@ -95,7 +243,6 @@ class AppUser extends BaseController
             ];
         }
 
-        // 无企业归属的个人用户
         $individualUsers = array_keys(array_filter($userEidMap, function ($v) {
             return $v === null || $v === '' || (int) $v === 0;
         }));
@@ -112,7 +259,6 @@ class AppUser extends BaseController
             ];
         }
 
-        // MBTI 类型分布：按用户去重，每人只计其最新一次 MBTI 结果
         $mbtiTypes = [];
         try {
             $rows = Db::name('test_results')
@@ -127,21 +273,7 @@ class AppUser extends BaseController
                 if ($uid <= 0 || isset($seenUserIds[$uid])) {
                     continue;
                 }
-                $raw = $r['resultData'] ?? '';
-                $dec = is_string($raw) ? json_decode($raw, true) : (is_array($raw) ? $raw : null);
-                if (!is_array($dec)) {
-                    $seenUserIds[$uid] = true;
-                    continue;
-                }
-                $type = '';
-                if (isset($dec['mbtiType'])) {
-                    $type = $dec['mbtiType'];
-                } elseif (isset($dec['mbti']['type'])) {
-                    $type = $dec['mbti']['type'];
-                } elseif (isset($dec['type'])) {
-                    $type = $dec['type'];
-                }
-                $type = strtoupper(trim((string) $type));
+                $type = $this->parseOverviewMbtiTypeFromResultData($r['resultData'] ?? '');
                 $seenUserIds[$uid] = true;
                 if ($type === '') {
                     continue;
@@ -184,52 +316,56 @@ class AppUser extends BaseController
         $enterpriseId = Request::param('enterpriseId', '');
         $mbti = trim(Request::param('mbti', ''));
 
-        $where = [];
-        if ($keyword !== '') {
-            $where[] = ['nickname|phone|city|province', 'like', '%' . $keyword . '%'];
-        }
-
-        // 按 openid 去重：每个 openid 只保留 id 最大的一条
+        // 与管理后台一致：openid 去重在库内用子查询 JOIN，禁止把全表 mid 拉进 PHP 再 whereIn
         try {
-            $dedupIds = Db::name('wechat_users')->field('openid, MAX(id) as mid')->group('openid')->column('mid');
-            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
+            $dedupSql = Db::name('wechat_users')
+                ->alias('w2')
+                ->field('w2.openid, MAX(w2.id) AS mid')
+                ->group('w2.openid')
+                ->buildSql(true);
         } catch (\Throwable $e) {
-            $dedupIds = Db::name('wechat_users')->column('id');
-            $dedupIds = $dedupIds ? array_values(array_filter($dedupIds)) : [];
-        }
-        if (empty($dedupIds)) {
             return paginate_response([], 0, $page, $pageSize);
         }
 
-        $baseQuery = Db::name('wechat_users')->where('id', 'in', $dedupIds);
-        if ($where) {
-            $baseQuery->where($where);
+        $baseQuery = Db::name('wechat_users')->alias('w')
+            ->join([$dedupSql => 'd'], 'w.id = d.mid');
+
+        // 含表别名时用 whereLike+whereOr 链式会在部分 ThinkPHP 版本报「查询表达式错误:W.PHONE」，改 whereRaw 绑定
+        if ($keyword !== '') {
+            $like = '%' . addcslashes($keyword, '%_\\') . '%';
+            $baseQuery->whereRaw(
+                '(w.nickname LIKE ? OR w.phone LIKE ? OR w.city LIKE ? OR w.province LIKE ?)',
+                [$like, $like, $like, $like]
+            );
         }
 
         // 池筛选：直接基于 wechat_users.enterpriseId
         if ($pool === 'individual') {
             $baseQuery->where(function ($q) {
-                $q->whereNull('enterpriseId')->whereOr('enterpriseId', '')->whereOr('enterpriseId', 0);
+                $q->whereNull('w.enterpriseId')->whereOr('w.enterpriseId', '')->whereOr('w.enterpriseId', 0);
             });
         } elseif ($pool === 'enterprise' && $enterpriseId !== '') {
-            $baseQuery->where('enterpriseId', (int) $enterpriseId);
+            $baseQuery->where('w.enterpriseId', (int) $enterpriseId);
         }
 
-        // MBTI 筛选：保留旧逻辑，从 test_results 取有 mbti 测试的用户
+        // MBTI 筛选（与历史行为一致：params.mbti 非空则只保留「有过 MBTI 测评」的用户；在库内 JOIN 替代全表 distinct userId）
         if ($mbti !== '') {
-            $mbtiUserIds = Db::name('test_results')->where('testType', 'mbti')->distinct(true)->column('userId');
-            $mbtiUserIds = array_values(array_unique(array_filter($mbtiUserIds)));
-            if (!empty($mbtiUserIds)) {
-                $baseQuery->where('id', 'in', $mbtiUserIds);
-            } else {
+            try {
+                $hasMbtiSql = Db::name('test_results')
+                    ->where('testType', 'mbti')
+                    ->field('userId')
+                    ->group('userId')
+                    ->buildSql(true);
+                $baseQuery->join([$hasMbtiSql => 'hm'], 'w.id = hm.userId');
+            } catch (\Throwable $e) {
                 return paginate_response([], 0, $page, $pageSize);
             }
         }
 
-        $total = $baseQuery->count();
+        $total = (int) (clone $baseQuery)->count();
         $list = (clone $baseQuery)
-            ->field('id,openid,nickname,avatar,phone,gender,country,province,city,status,lastLoginAt,createdAt')
-            ->order('createdAt', 'desc')
+            ->field('w.id,w.openid,w.nickname,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt,w.enterpriseId')
+            ->order('w.id', 'desc')
             ->page($page, $pageSize)
             ->select()
             ->toArray();
@@ -238,45 +374,74 @@ class AppUser extends BaseController
         $testCounts = [];
         $lastTestAt = [];
         $testTypes = [];
-        $userEnterprise = [];
         $payStats = [];
+        $enterpriseNames = [];
         if (!empty($ids)) {
-            $counts = Db::name('test_results')->where('userId', 'in', $ids)->group('userId')->column('COUNT(*) as cnt', 'userId');
-            $testCounts = $counts ?: [];
-            $lastRows = Db::name('test_results')
-                ->where('userId', 'in', $ids)
-                ->field('id, userId, testType, resultData, createdAt')
-                ->order('createdAt', 'desc')
-                ->select();
+            $trBase = Db::name('test_results')->where('userId', 'in', $ids);
+            $trAggRows = (clone $trBase)
+                ->field('userId, COUNT(*) AS cnt, MAX(createdAt) AS lastAt')
+                ->group('userId')
+                ->select()
+                ->toArray();
+            foreach ($trAggRows as $r) {
+                $uid = (int) ($r['userId'] ?? 0);
+                if ($uid > 0) {
+                    $testCounts[$uid] = (int) ($r['cnt'] ?? 0);
+                    $lastTestAt[$uid] = $r['lastAt'];
+                }
+            }
+
+            // 每人每种 testType 仅取最新一条（含 MAX(id)），与管理端一致，禁止拉全量 test_results
+            try {
+                $aggSub = Db::name('test_results')->where('userId', 'in', $ids);
+                $aggSql = $aggSub
+                    ->field('userId, testType, MAX(createdAt) as mc, MAX(id) as mid')
+                    ->group('userId, testType')
+                    ->buildSql(true);
+
+                $lastRows = Db::name('test_results')->alias('t')
+                    ->join([$aggSql => 'agg'], 't.userId = agg.userId AND t.testType = agg.testType AND t.id = agg.mid')
+                    ->field('t.id, t.userId, t.testType, t.resultData, t.createdAt, t.enterpriseId as testEnterpriseId')
+                    ->select()
+                    ->toArray();
+            } catch (\Throwable $e) {
+                $lastRows = (clone $trBase)
+                    ->field('id, userId, testType, resultData, createdAt, enterpriseId as testEnterpriseId')
+                    ->order('createdAt', 'desc')
+                    ->limit(2000)
+                    ->select()
+                    ->toArray();
+            }
+
             foreach ($lastRows as $row) {
                 $uid = $row['userId'];
-                if (!isset($lastTestAt[$uid])) {
-                    $lastTestAt[$uid] = $row['createdAt'];
-                }
                 if (!isset($testTypes[$uid])) {
                     $testTypes[$uid] = [];
                 }
                 $testTypes[$uid][] = [
-                    'testType'   => $row['testType'],
-                    'result'     => is_string($row['resultData'] ?? '') ? ($row['resultData'] ?? '') : json_encode($row['resultData'] ?? '', JSON_UNESCAPED_UNICODE),
-                    'createdAt'  => $row['createdAt'],
+                    'testType'  => $row['testType'],
+                    'result'    => is_string($row['resultData'] ?? '') ? ($row['resultData'] ?? '') : json_encode($row['resultData'] ?? '', JSON_UNESCAPED_UNICODE),
+                    'createdAt' => $row['createdAt'],
+                    'testScope' => !empty($row['testEnterpriseId']) ? 'enterprise' : 'personal',
                 ];
             }
+            foreach ($testTypes as $uid => &$tlist) {
+                usort($tlist, static function ($a, $b) {
+                    return (int) ($b['createdAt'] ?? 0) <=> (int) ($a['createdAt'] ?? 0);
+                });
+            }
+            unset($tlist);
 
-            // 所属企业直接从 wechat_users.enterpriseId 读取
-            $userEids = Db::name('wechat_users')->where('id', 'in', $ids)->column('enterpriseId', 'id');
-            $allEids = array_values(array_unique(array_filter(array_map('intval', $userEids))));
-            $enterpriseNames = [];
+            $allEids = [];
+            foreach ($list as $lr) {
+                $eid = isset($lr['enterpriseId']) ? (int) $lr['enterpriseId'] : 0;
+                if ($eid > 0) {
+                    $allEids[] = $eid;
+                }
+            }
+            $allEids = array_values(array_unique($allEids));
             if (!empty($allEids)) {
                 $enterpriseNames = Db::name('enterprises')->where('id', 'in', $allEids)->column('name', 'id');
-            }
-            foreach ($ids as $uid) {
-                $eid = isset($userEids[$uid]) ? (int) $userEids[$uid] : 0;
-                if ($eid > 0 && isset($enterpriseNames[$eid])) {
-                    $userEnterprise[$uid] = $enterpriseNames[$eid];
-                } else {
-                    $userEnterprise[$uid] = '个人用户(无企业)';
-                }
             }
 
             // 从用户画像表汇总支付统计（付款次数与总金额）
@@ -316,7 +481,10 @@ class AppUser extends BaseController
             $row['faceMbtiType'] = $this->extractFaceSubType($testsForUser, 'mbti');
             $row['faceDiscType'] = $this->extractFaceSubType($testsForUser, 'disc');
             $row['facePdpType'] = $this->extractFaceSubType($testsForUser, 'pdp');
-            $row['enterprise'] = $userEnterprise[$id] ?? '个人用户(无企业)';
+            $eidRow = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : 0;
+            $row['enterprise'] = ($eidRow > 0 && isset($enterpriseNames[$eidRow]))
+                ? $enterpriseNames[$eidRow]
+                : '个人用户(无企业)';
 
             $pay = $payStats[$id] ?? null;
             $totalPaidFen = $pay ? (int) ($pay['totalPaidAmount'] ?? 0) : 0;
@@ -363,13 +531,15 @@ class AppUser extends BaseController
 
         $tests = Db::name('test_results')
             ->where('userId', $id)
-            ->field('id, testType, resultData, createdAt, requiresPayment, isPaid, paidAmount, paidAt, orderId')
+            ->field('id, testType, resultData, enterpriseId as testEnterpriseId, createdAt, requiresPayment, isPaid, paidAmount, paidAt, orderId')
             ->order('createdAt', 'desc')
             ->select()
             ->toArray();
         foreach ($tests as &$t) {
             $raw = $t['resultData'] ?? '';
             $t['result'] = is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE);
+            $t['testScope']  = !empty($t['testEnterpriseId']) ? 'enterprise' : 'personal';
+            unset($t['testEnterpriseId']);
         }
 
         $data['testCount'] = count($tests);
@@ -390,6 +560,50 @@ class AppUser extends BaseController
         );
 
         return success($data);
+    }
+
+    /**
+     * 单条测试记录详情（与 testList 中单条结构一致）
+     * GET /api/v1/superadmin/test-records/:id
+     */
+    public function testRecord($id)
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || ($user['role'] ?? '') !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+
+        $testId = (int) $id;
+        if ($testId <= 0) {
+            return error('记录ID无效', 400);
+        }
+
+        $tr = Db::name('test_results')->where('id', $testId)->find();
+        if (!$tr) {
+            return error('记录不存在', 404);
+        }
+
+        $wechatUserId = (int) ($tr['userId'] ?? 0);
+        if ($wechatUserId <= 0) {
+            return error('记录数据异常', 400);
+        }
+
+        $raw = $tr['resultData'] ?? '';
+        $out = [
+            'id'                => $testId,
+            'userId'            => $wechatUserId,
+            'testType'          => $tr['testType'] ?? '',
+            'result'            => is_string($raw) ? $raw : json_encode($raw, JSON_UNESCAPED_UNICODE),
+            'createdAt'         => $tr['createdAt'] ?? null,
+            'requiresPayment'   => (int) ($tr['requiresPayment'] ?? 0),
+            'isPaid'            => (int) ($tr['isPaid'] ?? 0),
+            'paidAmount'        => isset($tr['paidAmount']) ? (int) $tr['paidAmount'] : null,
+            'paidAt'            => $tr['paidAt'] ?? null,
+            'orderId'           => isset($tr['orderId']) ? (int) $tr['orderId'] : null,
+            'testScope'         => !empty($tr['enterpriseId']) ? 'enterprise' : 'personal',
+        ];
+
+        return success($out);
     }
 
     /**
@@ -559,118 +773,6 @@ class AppUser extends BaseController
         $s = str_replace([' ', '　'], '', $s);
 
         return mb_strtolower($s, 'UTF-8');
-    }
-
-    private function parseMbtiFromResult($result): string
-    {
-        if (!is_string($result)) return '';
-        $dec = json_decode($result, true);
-        if (is_array($dec)) {
-            return (string) ($dec['type'] ?? $dec['result'] ?? $dec['mbtiType'] ?? '');
-        }
-        return trim($result);
-    }
-
-    private function extractResultType(array $tests, string $type): string
-    {
-        $targetType = strtolower($type);
-        foreach ($tests as $t) {
-            if (strtolower($t['testType'] ?? '') !== $targetType) {
-                continue;
-            }
-            $result = $t['result'] ?? '';
-            if (!is_string($result)) {
-                continue;
-            }
-            $dec = json_decode($result, true);
-            if (!is_array($dec)) {
-                // 无法解析 JSON 时，直接返回原始字符串
-                return $targetType === 'face' ? '人脸分析' : trim($result);
-            }
-
-            // 人脸分析：有记录就返回固定标签
-            if ($targetType === 'face') {
-                return '人脸分析';
-            }
-
-            // MBTI：直接读 mbtiType/type
-            if ($targetType === 'mbti') {
-                return (string) ($dec['mbtiType'] ?? $dec['type'] ?? $dec['result'] ?? '');
-            }
-
-            // DISC：优先 description.type，然后 dominantType
-            if ($targetType === 'disc') {
-                $desc = $dec['description']['type'] ?? null;
-                if (is_string($desc) && $desc !== '') {
-                    return $desc;
-                }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
-                }
-                return (string) ($dec['disc'] ?? '');
-            }
-
-            // PDP：优先 description.type，然后 dominantType
-            if ($targetType === 'pdp') {
-                $desc = $dec['description']['type'] ?? null;
-                if (is_string($desc) && $desc !== '') {
-                    return $desc;
-                }
-                if (!empty($dec['dominantType'])) {
-                    return (string) $dec['dominantType'];
-                }
-                return (string) ($dec['pdp'] ?? '');
-            }
-
-            // 兜底：尝试常见字段
-            return (string) ($dec['type'] ?? $dec['result'] ?? '');
-        }
-        return '';
-    }
-
-    /**
-     * 从人脸分析结果中提取对应的 MBTI / DISC / PDP 文本
-     */
-    private function extractFaceSubType(array $tests, string $subType): string
-    {
-        $target = strtolower($subType);
-        foreach ($tests as $t) {
-            if (strtolower($t['testType'] ?? '') !== 'face') {
-                continue;
-            }
-            $result = $t['result'] ?? '';
-            if (!is_string($result)) {
-                continue;
-            }
-            $dec = json_decode($result, true);
-            if (!is_array($dec)) {
-                continue;
-            }
-
-            if ($target === 'mbti') {
-                if (!empty($dec['mbti']['type'])) {
-                    return (string) $dec['mbti']['type'];
-                }
-                if (!empty($dec['mbtiType'])) {
-                    return (string) $dec['mbtiType'];
-                }
-            } elseif ($target === 'disc') {
-                if (!empty($dec['disc']['primary'])) {
-                    return (string) $dec['disc']['primary'];
-                }
-                if (!empty($dec['disc'])) {
-                    return (string) $dec['disc'];
-                }
-            } elseif ($target === 'pdp') {
-                if (!empty($dec['pdp']['primary'])) {
-                    return (string) $dec['pdp']['primary'];
-                }
-                if (!empty($dec['pdp'])) {
-                    return (string) $dec['pdp'];
-                }
-            }
-        }
-        return '';
     }
 
 }

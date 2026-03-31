@@ -104,6 +104,7 @@ Route::group('api/v1/admin', function () {
     Route::post('upload/image', 'admin.Upload/image');
     
     // 测试用户（小程序用户，只读列表与详情）
+    Route::get('test-records/:id', 'admin.AppUser/testRecord');
     Route::get('app-users/:id', 'admin.AppUser/detail');
     Route::get('app-users', 'admin.AppUser/index');
     // 订单列表（含用户与关联测试数据）
@@ -244,6 +245,7 @@ Route::group('api/v1/superadmin', function () {
     
     // 测试用户（超管专用）
     Route::get('app-users/overview', 'superadmin.AppUser/overview');
+    Route::get('test-records/:id', 'superadmin.AppUser/testRecord');
     Route::get('app-users/:id', 'superadmin.AppUser/detail');
     Route::get('app-users', 'superadmin.AppUser/index');
    
