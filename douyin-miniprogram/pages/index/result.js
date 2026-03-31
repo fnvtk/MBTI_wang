@@ -562,6 +562,10 @@ Page({
     tt.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage'] })
   },
 
+  goToQuestionnaireTest() {
+    tt.navigateTo({ url: '/pages/test-select/index' })
+  },
+
   retake() {
     // camera 是 tabBar 页面，必须用 switchTab
     tt.switchTab({ url: '/pages/index/camera' })

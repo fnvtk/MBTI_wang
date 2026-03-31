@@ -17,11 +17,13 @@
       </div>
       <div class="stat-card stat-card-recharge" :style="{ animationDelay: `${kpiCards.length * 45}ms` }">
         <div class="stat-card-recharge-inner">
-          <div class="stat-label">企业余额</div>
-          <el-button type="primary" class="recharge-btn" @click="goEnterpriseRecharge">
-            <el-icon class="recharge-btn-icon"><Wallet /></el-icon>
-            企业充值
-          </el-button>
+          <div class="stat-info stat-info--recharge">
+            <div class="stat-label">企业余额</div>
+            <div class="stat-value-row">
+              <span class="stat-value">{{ enterpriseBalanceDisplay }}</span>
+              <el-button link type="primary" size="small" class="recharge-btn-inline" @click="goEnterpriseRecharge">充值</el-button>
+            </div>
+          </div>
         </div>
         <div class="stat-icon amber">
           <el-icon><Wallet /></el-icon>
@@ -189,6 +191,13 @@ const stats = reactive({
   testsCompleted: 0,
   activeToday: 0
 })
+
+/** 企业余额（分），来自 /admin/finance/overview，与财务页一致 */
+const balanceFen = ref(0)
+
+const fenToYuan = (fen: number) => (Number(fen || 0) / 100).toFixed(2)
+
+const enterpriseBalanceDisplay = computed(() => `¥${fenToYuan(balanceFen.value)}`)
 
 const testTrends = ref<
   Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>
@@ -377,10 +386,19 @@ function summarizeTypes(row: TopUserRow) {
   return parts.length ? parts.join(' · ') : '—'
 }
 
+async function loadFinanceBalance() {
+  try {
+    const res: any = await request.get('/admin/finance/overview')
+    balanceFen.value = Number(res?.data?.balanceFen ?? 0)
+  } catch {
+    balanceFen.value = 0
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   try {
-    const response: any = await request.get('/admin/dashboard')
+    const [response] = await Promise.all([request.get('/admin/dashboard'), loadFinanceBalance()])
     if (response.code === 200 && response.data) {
       stats.totalUsers = response.data.totalUsers || 0
       stats.testsCompleted = response.data.testsCompleted || 0
@@ -605,20 +623,38 @@ const loadInviteQrcode = async () => {
 
 .stat-card-recharge {
   .stat-card-recharge-inner {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
+    flex: 1;
     min-width: 0;
   }
 
-  .recharge-btn {
-    flex-shrink: 0;
+  .stat-info--recharge {
+    text-align: left;
+
+    .stat-value-row {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 2px 8px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.15;
+      font-variant-numeric: tabular-nums;
+    }
   }
 
-  .recharge-btn-icon {
-    margin-right: 4px;
-    vertical-align: middle;
+  .recharge-btn-inline {
+    flex-shrink: 0;
+    padding: 0 4px;
+    height: auto;
+    margin-bottom: -2px;
+    font-weight: 600;
+    font-size: 14px;
+    vertical-align: baseline;
   }
 
   .stat-icon.amber {

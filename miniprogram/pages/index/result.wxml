@@ -105,6 +105,15 @@
             </view>
           </view>
         </view>
+
+        <view
+          class="result-cta-questionnaire"
+          hover-class="result-cta-questionnaire--pressed"
+          hover-stay-time="120"
+          bindtap="goToQuestionnaireTest"
+        >
+          <text class="result-cta-questionnaire-text">去做详细性格测试</text>
+        </view>
       </view>
 
       <view

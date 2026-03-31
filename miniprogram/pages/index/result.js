@@ -586,6 +586,11 @@ Page({
     wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
   },
 
+  /** 跳转 MBTI / PDP / DISC 题目测试选择页 */
+  goToQuestionnaireTest() {
+    wx.navigateTo({ url: '/pages/test-select/index' })
+  },
+
   retake() {
     // camera 是 tabBar 页面，必须用 switchTab
     wx.switchTab({ url: '/pages/index/camera' })
