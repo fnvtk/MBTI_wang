@@ -1,5 +1,9 @@
 <!--pages/test/mbti.wxml - MBTI测试页面（按旧版模板重构）-->
 <view class="test-page">
+  <view tt:if="{{loading}}" class="test-loading">
+    <text class="test-loading-text">加载题目…</text>
+  </view>
+  <block tt:elif="{{currentQuestion}}">
   <view class="progress-section">
     <view class="progress-info">
       <text class="question-count">问题 {{currentIndex + 1}}/{{total}}</text>
@@ -45,4 +49,5 @@
       <text class="button-text button-text-on-primary">{{isSubmitting ? '正在生成…' : '查看结果'}}</text>
     </view>
   </view>
+  </block>
 </view>

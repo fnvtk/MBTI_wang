@@ -1,5 +1,9 @@
 <!--pages/test/disc.wxml - DISC测试页面（按旧版模板重构）-->
 <view class="test-page">
+  <view wx:if="{{loading}}" class="test-loading">
+    <text class="test-loading-text">加载题目…</text>
+  </view>
+  <block wx:elif="{{currentQuestion}}">
   <view class="progress-section">
     <view class="progress-info">
       <text class="question-count">问题 {{currentIndex + 1}}/{{total}}</text>
@@ -45,4 +49,5 @@
       <text class="submit-text">{{isSubmitting ? '计算中...' : '完成测试，查看结果'}}</text>
     </view>
   </view>
+  </block>
 </view>

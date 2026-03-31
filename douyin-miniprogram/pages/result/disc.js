@@ -1,6 +1,7 @@
 // pages/result/disc.js - DISC结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
+const { getTypeOnly } = require('../../utils/resultFormat')
 
 function toIntPercent(v) {
   if (v == null) return 0
@@ -24,6 +25,7 @@ function withPercentagesInt(data) {
 Page({
   data: {
     result: null,
+    typeSummaryLine: '',
     typeList: [
       { type: 'D', label: 'D型 - 支配型', colorClass: 'fill-d' },
       { type: 'I', label: 'I型 - 影响型', colorClass: 'fill-i' },
@@ -45,7 +47,10 @@ Page({
     }
     const result = tt.getStorageSync('discResult')
     if (result) {
-      this.setData({ result: withPercentagesInt(result) })
+      this.setData({
+        result: withPercentagesInt(result),
+        typeSummaryLine: getTypeOnly(result, 'disc')
+      })
       this.initPayInfoFromRuntime('disc')
     } else {
       tt.showToast({ title: '暂无测试结果', icon: 'none' })
@@ -71,7 +76,10 @@ Page({
           const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
           const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
           const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
-          this.setData({ result: withPercentagesInt(data) })
+          this.setData({
+            result: withPercentagesInt(data),
+            typeSummaryLine: getTypeOnly(data, 'disc')
+          })
           const payInfo = {
             requiresPayment: needPaymentToUnlock,
             isPaid,

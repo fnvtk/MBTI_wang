@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\common\PdpDiscResultText;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -156,6 +157,10 @@ class Order extends BaseController
             return (string) ($data['mbtiType'] ?? $data['type'] ?? $data['result'] ?? '');
         }
         if ($type === 'disc') {
+            $two = PdpDiscResultText::discTopTwo($data);
+            if ($two !== '') {
+                return $two;
+            }
             $desc = $data['description']['type'] ?? null;
             if (is_string($desc) && $desc !== '') {
                 return $desc;
@@ -166,6 +171,10 @@ class Order extends BaseController
             return (string) ($data['disc'] ?? '');
         }
         if ($type === 'pdp') {
+            $two = PdpDiscResultText::pdpTopTwo($data);
+            if ($two !== '') {
+                return $two;
+            }
             $desc = $data['description']['type'] ?? null;
             if (is_string($desc) && $desc !== '') {
                 return $desc;

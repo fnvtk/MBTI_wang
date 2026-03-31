@@ -1,6 +1,7 @@
 // pages/result/pdp.js - PDP结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
+const { getTypeOnly } = require('../../utils/resultFormat')
 
 const PDP_KEYS = ['Tiger', 'Peacock', 'Koala', 'Owl', 'Chameleon']
 
@@ -23,6 +24,7 @@ function withPercentagesInt(data) {
 Page({
   data: {
     result: null,
+    typeSummaryLine: '',
     typeList: [
       { type: 'Tiger', emoji: '🐅', label: '老虎型', colorClass: 'fill-tiger' },
       { type: 'Peacock', emoji: '🦚', label: '孔雀型', colorClass: 'fill-peacock' },
@@ -45,7 +47,10 @@ Page({
     }
     const result = wx.getStorageSync('pdpResult')
     if (result) {
-      this.setData({ result: withPercentagesInt(result) })
+      this.setData({
+        result: withPercentagesInt(result),
+        typeSummaryLine: getTypeOnly(result, 'pdp')
+      })
       this.initPayInfoFromRuntime('pdp')
     } else {
       wx.showToast({ title: '暂无测试结果', icon: 'none' })
@@ -71,7 +76,10 @@ Page({
           const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
           const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
           const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
-          this.setData({ result: withPercentagesInt(data) })
+          this.setData({
+            result: withPercentagesInt(data),
+            typeSummaryLine: getTypeOnly(data, 'pdp')
+          })
           const payInfo = {
             requiresPayment: needPaymentToUnlock,
             isPaid,
@@ -138,19 +146,19 @@ Page({
   },
 
   onShareAppMessage() {
-    const result = this.data.result
+    const line = this.data.typeSummaryLine || this.data.result?.description?.type || ''
     const { getSharePathByScope } = require('../../utils/share')
     return {
-      title: `我的PDP类型是${result?.description?.type}${result?.description?.emoji}，来测测你的吧！`,
+      title: `我的PDP类型是${line}，来测测你的吧！`,
       path: getSharePathByScope('/pages/index/index')
     }
   },
 
   onShareTimeline() {
-    const result = this.data.result
+    const line = this.data.typeSummaryLine || this.data.result?.description?.type || ''
     const { buildShareQuery } = require('../../utils/share')
     return {
-      title: `我的PDP类型是${result?.description?.type}${result?.description?.emoji}，来测测你的吧！`,
+      title: `我的PDP类型是${line}，来测测你的吧！`,
       query: buildShareQuery()
     }
   }

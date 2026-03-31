@@ -1,6 +1,5 @@
 /**
- * 仅从服务端拉取启用题库（/api/test/questions），无本地题目保底。
- * enterpriseId：未传时与 test/submit 一致，见 enterpriseContext.getEnterpriseIdForApiPayload()
+ * 仅从服务端拉取启用题库，无本地题目保底。
  */
 const { requestPromise } = require('./request')
 
@@ -12,11 +11,6 @@ function getAppSafe() {
   }
 }
 
-/**
- * Fisher-Yates：打乱题目顺序，并随机每题选项顺序（深拷贝）
- * @param {Array} questions
- * @returns {Array}
- */
 function shuffleQuestions(questions) {
   const arr = (questions || []).map(q => ({
     ...q,
@@ -29,10 +23,6 @@ function shuffleQuestions(questions) {
   return arr
 }
 
-/**
- * @param {{ enterpriseId?: number|null }} opts
- * @returns {number|null}
- */
 function resolveEnterpriseIdForQuestionBank(opts) {
   const o = opts || {}
   if (Object.prototype.hasOwnProperty.call(o, 'enterpriseId')) {
@@ -69,11 +59,6 @@ function applyDrawCountAfterShuffle(questions) {
   return questions.slice(0, n)
 }
 
-/**
- * @param {'mbti'|'disc'|'pdp'} type
- * @param {number|null|undefined} enterpriseId
- * @returns {Promise<Array>}
- */
 function fetchQuestionBank(type, enterpriseId) {
   const q = [`type=${encodeURIComponent(type)}`]
   if (enterpriseId != null && Number(enterpriseId) > 0) {
@@ -96,11 +81,6 @@ function fetchQuestionBank(type, enterpriseId) {
   })
 }
 
-/**
- * @param {'mbti'|'disc'|'pdp'} type
- * @param {{ enterpriseId?: number|null }} opts
- * @returns {Promise<Array>} 乱序后的题目；接口无题或失败则 reject
- */
 function loadQuestions(type, opts = {}) {
   const enterpriseId = resolveEnterpriseIdForQuestionBank(opts)
   return fetchQuestionBank(type, enterpriseId).then((list) => {

@@ -40,10 +40,10 @@
               <div class="ud-quick-stats__tile"><el-icon><Aim /></el-icon>{{ shortOrDash(user.mbtiType) }}</div>
             </el-tooltip>
             <el-tooltip content="PDP" placement="top">
-              <div class="ud-quick-stats__tile"><el-icon><TrendCharts /></el-icon>{{ shortOrDash(user.pdpType, 4) }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><TrendCharts /></el-icon>{{ shortOrDash(user.pdpType, 16) }}</div>
             </el-tooltip>
             <el-tooltip content="DISC" placement="top">
-              <div class="ud-quick-stats__tile"><el-icon><PieChart /></el-icon>{{ shortOrDash(user.discType, 3) }}</div>
+              <div class="ud-quick-stats__tile"><el-icon><PieChart /></el-icon>{{ shortOrDash(user.discType, 16) }}</div>
             </el-tooltip>
           </div>
           <div class="ud-dimension-tags" v-if="profileTags.length">

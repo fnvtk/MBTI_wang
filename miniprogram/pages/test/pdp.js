@@ -1,19 +1,23 @@
 // pages/test/pdp.js
-const { pdpQuestions, shuffleQuestions } = require('../../utils/questions')
+const { loadQuestions } = require('../../utils/questionBank')
 const { pdpDescriptions } = require('../../utils/descriptions')
 const app = getApp()
 
+const PDP_TIME_SEC = 15 * 60
+
 Page({
   data: {
+    loading: true,
     questions: [],
     currentIndex: 0,
     currentQuestion: null,
     answers: {},
     selectedAnswer: null,
-    total: pdpQuestions.length,
+    total: 0,
     answeredCount: 0,
     progress: 0,
-    timeRemaining: 15 * 60,
+    timeRemaining: PDP_TIME_SEC,
+    _initialSeconds: PDP_TIME_SEC,
     formatTime: '15:00',
     isSubmitting: false
   },
@@ -21,10 +25,31 @@ Page({
   timer: null,
 
   onLoad() {
-    const questions = shuffleQuestions(pdpQuestions)
-    this.setData({ questions, currentQuestion: questions[0] })
-    try { require('../../utils/analytics').track('test_start', { type: 'pdp', total: questions.length }) } catch (e) {}
-    this.startTimer()
+    loadQuestions('pdp', {})
+      .then((questions) => {
+        if (!questions.length) {
+          wx.showToast({ title: '暂无题目', icon: 'none' })
+          this.setData({ loading: false })
+          return
+        }
+        this.setData({
+          loading: false,
+          questions,
+          currentQuestion: questions[0],
+          total: questions.length,
+          timeRemaining: PDP_TIME_SEC,
+          _initialSeconds: PDP_TIME_SEC,
+          formatTime: '15:00'
+        })
+        try {
+          require('../../utils/analytics').track('test_start', { type: 'pdp', total: questions.length })
+        } catch (e) {}
+        this.startTimer()
+      })
+      .catch((err) => {
+        this.setData({ loading: false })
+        wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
+      })
   },
 
   onUnload() {
@@ -151,7 +176,7 @@ Page({
       dominantType,
       secondaryType,
       description: pdpDescriptions[dominantType],
-      testDuration: 15 * 60 - this.data.timeRemaining,
+      testDuration: (this.data._initialSeconds || PDP_TIME_SEC) - this.data.timeRemaining,
       completedAt: new Date().toISOString(),
       // 便于后端留存完整答题过程
       answers: this.data.answers

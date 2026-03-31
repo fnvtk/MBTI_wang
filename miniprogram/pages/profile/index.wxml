@@ -53,7 +53,7 @@
             <text class="tag-text">{{mbtiType}}</text>
           </view>
           <view class="tag tag-blue" wx:if="{{discType && permDisc}}">
-            <text class="tag-text">{{discType}}型</text>
+            <text class="tag-text">{{discType}}</text>
           </view>
           <view class="tag tag-orange" wx:if="{{pdpType && permPdp}}">
             <text class="tag-text">{{pdpType}}</text>
@@ -79,56 +79,56 @@
           <text class="depth-header-chevron">›</text>
         </view>
       </view>
-      <scroll-view wx:if="{{showLatestTestCards}}" scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
+      <scroll-view wx:if="{{showLatestTestRow}}" scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
         <view class="cards-row cards-row--in-card">
-          <view class="result-card card-purple" bindtap="viewMBTI" wx:if="{{permMbti && mbtiType}}">
+          <view class="result-card card-purple {{mbtiType ? '' : 'result-card--placeholder'}}" bindtap="viewMBTI" wx:if="{{permMbti}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-purple">
               <text class="card-icon">🧠</text>
             </view>
             <text class="card-label">MBTI性格</text>
-            <text class="card-value">{{mbtiType}}</text>
-            <text class="card-time">{{mbtiTime}}</text>
+            <text class="card-value">{{mbtiType || '未测评'}}</text>
+            <text class="card-time">{{mbtiTime || '—'}}</text>
           </view>
-          <view class="result-card card-orange" bindtap="viewPDP" wx:if="{{permPdp && pdpType}}">
+          <view class="result-card card-orange {{pdpType ? '' : 'result-card--placeholder'}}" bindtap="viewPDP" wx:if="{{permPdp}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-orange">
               <text class="card-icon">🦁</text>
             </view>
             <text class="card-label">PDP行为</text>
-            <text class="card-value">{{pdpType}}</text>
-            <text class="card-time">{{pdpTime}}</text>
+            <text class="card-value">{{pdpType || '未测评'}}</text>
+            <text class="card-time">{{pdpTime || '—'}}</text>
           </view>
-          <view class="result-card card-blue" bindtap="viewDISC" wx:if="{{permDisc && discType}}">
+          <view class="result-card card-blue {{discType ? '' : 'result-card--placeholder'}}" bindtap="viewDISC" wx:if="{{permDisc}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-blue">
               <text class="card-icon">📊</text>
             </view>
             <text class="card-label">DISC测评</text>
-            <text class="card-value">{{discType + '型'}}</text>
-            <text class="card-time">{{discTime}}</text>
+            <text class="card-value">{{discType || '未测评'}}</text>
+            <text class="card-time">{{discTime || '—'}}</text>
           </view>
-          <view class="result-card card-teal" bindtap="viewGallup" wx:if="{{!reviewMode && permFace && (gallupPreview || aiType)}}">
+          <view class="result-card card-teal {{(gallupPreview || aiType) ? '' : 'result-card--placeholder'}}" bindtap="viewGallup" wx:if="{{!reviewMode && permFace}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-teal">
               <text class="card-icon">⭐</text>
             </view>
             <text class="card-label">盖洛普优势</text>
-            <text class="card-value card-value--small">{{gallupPreview || '见面相报告'}}</text>
-            <text class="card-time">{{aiTime}}</text>
+            <text class="card-value card-value--small">{{gallupPreview || (aiType ? '见面相报告' : '未测评')}}</text>
+            <text class="card-time">{{aiTime || '—'}}</text>
           </view>
-          <view class="result-card card-rose" bindtap="viewAI" wx:if="{{!reviewMode && permFace && aiType}}">
+          <view class="result-card card-rose {{aiType ? '' : 'result-card--placeholder'}}" bindtap="viewAI" wx:if="{{!reviewMode && permFace}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-rose">
               <text class="card-icon">👁️</text>
             </view>
             <text class="card-label">面相分析</text>
-            <text class="card-value">{{aiType}}</text>
-            <text class="card-time">{{aiTime}}</text>
+            <text class="card-value">{{aiType || '未测评'}}</text>
+            <text class="card-time">{{aiTime || '—'}}</text>
           </view>
         </view>
       </scroll-view>
-      <view wx:if="{{showLatestTestCards}}" class="depth-empty-hint depth-empty-hint--compact">
+      <view wx:if="{{showLatestTestRow}}" class="depth-empty-hint depth-empty-hint--compact">
         <text>点击卡片查看详情；右上方可查看全部测试记录。</text>
       </view>
       <view class="depth-inner-divider"></view>

@@ -47,8 +47,8 @@ App({
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
-    apiBase: 'https://mbtiapi.quwanzhi.com',
-    //apiBase: 'http://mbti.com',
+    //apiBase: 'https://mbtiapi.quwanzhi.com',
+    apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数

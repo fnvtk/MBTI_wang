@@ -3,6 +3,17 @@ const app = getApp()
 const { getTypeOnly } = require('../../utils/resultFormat')
 const { request } = require('../../utils/request')
 
+/** recent 单条：优先用 resultMeta 与结果页一致的「双项」文案 */
+function summaryFromRecentRecord(rec, testType) {
+  if (!rec) return ''
+  const meta = rec.resultMeta
+  if (meta && typeof meta === 'object') {
+    const t = getTypeOnly(meta, testType)
+    if (t) return t
+  }
+  return String(rec.resultText || '').trim()
+}
+
 Page({
   data: {
     hasLogin: false,
@@ -47,19 +58,18 @@ Page({
     permPdp: true,
     permDisc: true,
     permDistribution: true,
-    /** 最新测试横滑区：仅有已出结果的卡片时才显示，避免禁权或未测评占位 */
-    showLatestTestCards: false,
+    /** 最新测试横滑区：有问卷/面相权限即显示；无记录时卡片灰阶占位，不隐藏 */
+    showLatestTestRow: false,
     /** 用户卡片下性格标签：在「当前权限下无任何问卷结果」时显示灰色提示 */
     showEmptyPersonalityTags: true
   },
 
-  _computeShowLatestTestCards(d) {
+  _computeShowLatestTestRow(d) {
     const rm = !!(d.reviewMode)
-    if (d.permMbti && d.mbtiType) return true
-    if (d.permPdp && d.pdpType) return true
-    if (d.permDisc && d.discType) return true
-    if (!rm && d.permFace && (d.gallupPreview || d.aiType)) return true
-    return false
+    if (rm) {
+      return !!(d.permMbti || d.permPdp || d.permDisc)
+    }
+    return !!(d.permMbti || d.permPdp || d.permDisc || d.permFace)
   },
 
   _computeShowEmptyPersonalityTags(d) {
@@ -83,7 +93,7 @@ Page({
     const d = { ...this.data, ...next }
     this.setData({
       ...next,
-      showLatestTestCards: this._computeShowLatestTestCards(d),
+      showLatestTestRow: this._computeShowLatestTestRow(d),
       showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
     })
   },
@@ -203,8 +213,7 @@ Page({
         const { records = {}, totalCount = 0 } = payload.data
         const r = records
 
-        // DISC resultText 后端已含「型」，type badge 只显示字母，去掉「型」
-        const discType = r.disc ? r.disc.resultText.replace(/型$/, '') : ''
+        const discType = summaryFromRecentRecord(r.disc, 'disc')
 
         const gallupPreview = (r.ai && r.ai.gallupPreview) ? String(r.ai.gallupPreview) : ''
         const patch = {
@@ -212,7 +221,7 @@ Page({
           hasResults:   !!(r.mbti || r.disc || r.pdp || r.ai),
           mbtiType:     r.mbti ? r.mbti.resultText : '',
           discType,
-          pdpType:      r.pdp  ? r.pdp.resultText  : '',
+          pdpType:      summaryFromRecentRecord(r.pdp, 'pdp'),
           aiType:       r.ai   ? r.ai.resultText   : '',
           gallupPreview,
           mbtiTime:     r.mbti ? r.mbti.testTime : '',
@@ -227,7 +236,7 @@ Page({
         const d = { ...this.data, ...patch }
         this.setData({
           ...patch,
-          showLatestTestCards: this._computeShowLatestTestCards(d),
+          showLatestTestRow: this._computeShowLatestTestRow(d),
           showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
         })
       },
@@ -303,7 +312,7 @@ Page({
     const d = { ...this.data, ...patch }
     this.setData({
       ...patch,
-      showLatestTestCards: this._computeShowLatestTestCards(d),
+      showLatestTestRow: this._computeShowLatestTestRow(d),
       showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
     })
   },

@@ -1,20 +1,24 @@
 // pages/test/mbti.js - MBTI测试页面逻辑（与微信端对齐：最后一题必提交结果）
-const { mbtiQuestions, shuffleQuestions } = require('../../utils/questions')
+const { loadQuestions } = require('../../utils/questionBank')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const payment = require('../../utils/payment')
 const app = getApp()
 
+const MBTI_TIME_SEC = 30 * 60 // 30 分钟
+
 Page({
   data: {
+    loading: true,
     questions: [],
     currentIndex: 0,
     currentQuestion: null,
     answers: {},
     selectedAnswer: null,
-    total: mbtiQuestions.length,
+    total: 0,
     answeredCount: 0,
     progress: 0,
-    timeRemaining: 30 * 60,
+    timeRemaining: MBTI_TIME_SEC,
+    _initialSeconds: MBTI_TIME_SEC,
     formatTime: '30:00',
     isSubmitting: false,
     canAccess: false
@@ -23,17 +27,34 @@ Page({
   timer: null,
 
   onLoad() {
-    const questions = shuffleQuestions(mbtiQuestions)
-    const total = questions.length
-    this.setData({
-      questions,
-      currentQuestion: questions[0],
-      canAccess: true,
-      total,
-      progress: total ? Math.round((1 / total) * 100) : 0
-    })
-    try { require('../../utils/analytics').track('test_start', { type: 'mbti', total }) } catch (e) {}
-    this.startTimer()
+    loadQuestions('mbti', {})
+      .then((questions) => {
+        const total = questions.length
+        if (!total) {
+          tt.showToast({ title: '暂无题目', icon: 'none' })
+          this.setData({ loading: false })
+          return
+        }
+        this.setData({
+          loading: false,
+          questions,
+          currentQuestion: questions[0],
+          canAccess: true,
+          total,
+          progress: Math.round((1 / total) * 100),
+          timeRemaining: MBTI_TIME_SEC,
+          _initialSeconds: MBTI_TIME_SEC,
+          formatTime: '30:00'
+        })
+        try {
+          require('../../utils/analytics').track('test_start', { type: 'mbti', total })
+        } catch (e) {}
+        this.startTimer()
+      })
+      .catch((err) => {
+        this.setData({ loading: false })
+        tt.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
+      })
   },
 
   checkAccess() {
@@ -186,7 +207,7 @@ Page({
     const resultData = {
       ...result,
       answers: this.data.answers,
-      testDuration: 30 * 60 - this.data.timeRemaining,
+      testDuration: (this.data._initialSeconds || MBTI_TIME_SEC) - this.data.timeRemaining,
       completedAt: new Date().toISOString(),
       timestamp: new Date().toISOString()
     }

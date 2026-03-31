@@ -5,7 +5,7 @@
       <view class="type-card">
         <view class="type-header">
           <text class="type-label">PDP性格类型</text>
-          <text class="type-value">{{result.description.type || result.dominantType}}{{result.description.emoji || ''}}</text>
+          <text class="type-value">{{typeSummaryLine}}</text>
           <text class="type-title" tt:if="{{result.description.title}}">{{result.description.title}}</text>
           <text class="type-description" tt:if="{{result.description.description}}">{{result.description.description}}</text>
         </view>

@@ -1,6 +1,8 @@
 <?php
 namespace app\controller\admin\concern;
 
+use app\common\PdpDiscResultText;
+
 /**
  * 从测试记录数组中解析 MBTI / DISC / PDP / 人脸子类型（与 AppUser 逻辑一致）
  */
@@ -69,6 +71,10 @@ trait ExtractsTestResults
             }
 
             if ($targetType === 'disc') {
+                $two = PdpDiscResultText::discTopTwo($dec);
+                if ($two !== '') {
+                    return $two;
+                }
                 $desc = $dec['description']['type'] ?? null;
                 if (is_string($desc) && $desc !== '') {
                     return $desc;
@@ -81,6 +87,10 @@ trait ExtractsTestResults
             }
 
             if ($targetType === 'pdp') {
+                $two = PdpDiscResultText::pdpTopTwo($dec);
+                if ($two !== '') {
+                    return $two;
+                }
                 $desc = $dec['description']['type'] ?? null;
                 if (is_string($desc) && $desc !== '') {
                     return $desc;

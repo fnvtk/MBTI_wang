@@ -5,7 +5,7 @@
       <view class="type-card">
         <view class="type-header">
           <text class="type-label">您的DISC性格类型</text>
-          <text class="type-value">{{result.dominantType}}{{result.secondaryType ? ' + ' + result.secondaryType : ''}}</text>
+          <text class="type-value">{{typeSummaryLine}}</text>
           <text class="type-description" wx:if="{{result.description && result.description.description}}">{{result.description.description}}</text>
         </view>
 

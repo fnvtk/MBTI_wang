@@ -2,8 +2,10 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\common\PdpDiscResultText;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
+use app\model\Question as QuestionModel;
 use app\model\UserProfile as UserProfileModel;
 use think\facade\Db;
 use think\facade\Request;
@@ -144,20 +146,33 @@ class Test extends BaseController
                     ], $paymentFields);
                     break;
                 case 'disc':
-                    $discType = is_array($data) ? ($data['dominantType'] ?? $data['disc'] ?? '未知') : '未知';
+                    $discTxt = '未知';
+                    if (is_array($data)) {
+                        $discTxt = PdpDiscResultText::discTopTwo($data);
+                        if ($discTxt === '') {
+                            $fallback = $data['dominantType'] ?? $data['disc'] ?? '未知';
+                            $discTxt = (is_string($fallback) || is_numeric($fallback) ? (string) $fallback : '未知') . '型';
+                        }
+                    }
                     $list[] = array_merge([
                         'id'        => $id,
                         'type'      => 'disc',
                         'key'       => 'disc_' . $id,
                         'emoji'     => '📊',
                         'typeName'  => 'DISC性格测试',
-                        'resultText'=> (is_string($discType) || is_numeric($discType) ? (string) $discType : '未知') . '型',
+                        'resultText'=> $discTxt,
                         'testTime'  => $timeLabel,
                         'data'      => null,
                     ], $paymentFields);
                     break;
                 case 'pdp':
-                    $primary = is_array($data) ? ($data['description']['type'] ?? $data['pdp'] ?? '未知') : '未知';
+                    $primary = '未知';
+                    if (is_array($data)) {
+                        $primary = PdpDiscResultText::pdpTopTwo($data);
+                        if ($primary === '') {
+                            $primary = (string) ($data['description']['type'] ?? $data['pdp'] ?? '未知');
+                        }
+                    }
                     $emoji = (is_array($data) && isset($data['description']['emoji'])) ? $data['description']['emoji'] : '🦁';
                     $list[] = array_merge([
                         'id'        => $id,
@@ -338,6 +353,36 @@ class Test extends BaseController
     }
 
     /**
+     * 解析 test_results.resultData：支持 JSON 字符串、已解码的 array、包在 result 键里的结构
+     *
+     * @param mixed $raw
+     * @return array<string,mixed>
+     */
+    protected function decodeResultDataPayload($raw): array
+    {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+        if (is_array($raw)) {
+            $data = $raw;
+        } elseif (is_string($raw)) {
+            $decoded = json_decode(trim($raw), true);
+            $data = is_array($decoded) ? $decoded : [];
+        } else {
+            return [];
+        }
+        if (isset($data['result']) && is_array($data['result'])) {
+            $inner = $data['result'];
+            if (isset($inner['percentages']) || isset($inner['scores']) || isset($inner['dominantType'])
+                || isset($inner['description']) || isset($inner['mbtiType'])) {
+                $data = array_merge($data, $inner);
+            }
+        }
+
+        return $data;
+    }
+
+    /**
      * 格式化单条记录为 recent 接口返回结构
      */
     protected function _formatRecentRow(array $row): array
@@ -345,11 +390,7 @@ class Test extends BaseController
         $testType  = $row['testType'] ?? '';
         $createdAt = $row['createdAt'] ?? null;
         $raw = $row['resultData'] ?? ($row['result'] ?? null);
-        $data = [];
-        if ($raw !== null && $raw !== '') {
-            $decoded = json_decode($raw, true);
-            $data = is_array($decoded) ? $decoded : [];
-        }
+        $data = $this->decodeResultDataPayload($raw);
 
         $resultText = '';
         $emoji      = '';
@@ -363,13 +404,19 @@ class Test extends BaseController
                 $typeName   = 'MBTI性格';
                 break;
             case 'disc':
-                $dominantType = $data['dominantType'] ?? $data['disc'] ?? '未知';
-                $resultText = $dominantType . '型';
-                $emoji      = '📊';
-                $typeName   = 'DISC测评';
+                $resultText = PdpDiscResultText::discTopTwo($data);
+                if ($resultText === '') {
+                    $dominantType = $data['dominantType'] ?? $data['disc'] ?? '未知';
+                    $resultText = (is_string($dominantType) || is_numeric($dominantType) ? (string) $dominantType : '未知') . '型';
+                }
+                $emoji    = '📊';
+                $typeName = 'DISC测评';
                 break;
             case 'pdp':
-                $resultText = $data['description']['type'] ?? $data['pdp'] ?? '未知';
+                $resultText = PdpDiscResultText::pdpTopTwo($data);
+                if ($resultText === '') {
+                    $resultText = $data['description']['type'] ?? $data['pdp'] ?? '未知';
+                }
                 $emoji      = $data['description']['emoji'] ?? '🦁';
                 $typeName   = 'PDP行为';
                 break;
@@ -397,6 +444,28 @@ class Test extends BaseController
             }
         }
 
+        // 小程序「最新测试」：始终附带 resultMeta（便于前端 getTypeOnly；避免仅 resultText 旧格式）
+        $resultMeta = null;
+        if ($testType === 'disc') {
+            $resultMeta = [
+                'scores'        => $data['scores'] ?? null,
+                'percentages'   => $data['percentages'] ?? null,
+                'dominantType'  => $data['dominantType'] ?? null,
+                'secondaryType' => $data['secondaryType'] ?? null,
+                'description'   => $data['description'] ?? null,
+                'disc'          => $data['disc'] ?? null,
+            ];
+        } elseif ($testType === 'pdp') {
+            $resultMeta = [
+                'scores'        => $data['scores'] ?? null,
+                'percentages'   => $data['percentages'] ?? null,
+                'dominantType'  => $data['dominantType'] ?? null,
+                'secondaryType' => $data['secondaryType'] ?? null,
+                'description'   => $data['description'] ?? null,
+                'pdp'           => $data['pdp'] ?? null,
+            ];
+        }
+
         $out = [
             'id'              => (int) $row['id'],
             'testType'        => ($testType === 'face') ? 'ai' : $testType,
@@ -409,6 +478,9 @@ class Test extends BaseController
         ];
         if ($gallupPreview !== '') {
             $out['gallupPreview'] = $gallupPreview;
+        }
+        if ($resultMeta !== null) {
+            $out['resultMeta'] = $resultMeta;
         }
 
         return $out;
@@ -801,6 +873,91 @@ class Test extends BaseController
             ->find();
 
         return $out;
+    }
+
+    /**
+     * 小程序拉取做题题库（仅启用题）：企业本题库有题则用企业，否则用超管 enterpriseId 为空
+     * GET /api/test/questions?type=mbti|disc|pdp&enterpriseId=可选
+     */
+    public function questions()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || ($user['source'] ?? '') !== 'wechat') {
+            return error('未登录', 401);
+        }
+
+        $type = (string) Request::param('type', '');
+        if (!in_array($type, ['mbti', 'disc', 'pdp'], true)) {
+            return error('type 须为 mbti、disc 或 pdp', 400);
+        }
+
+        $rawEid = Request::param('enterpriseId', null);
+        $enterpriseId = null;
+        if ($rawEid !== null && $rawEid !== '') {
+            $enterpriseId = (int) $rawEid;
+            if ($enterpriseId <= 0) {
+                $enterpriseId = null;
+            }
+        }
+
+        $resolvedEnterpriseId = null;
+        if ($enterpriseId !== null) {
+            $enterpriseQuestionCount       = QuestionModel::where('enterpriseId', $enterpriseId)
+                ->where('type', $type)
+                ->where('status', 1)
+                ->count();
+            if ($enterpriseQuestionCount > 0) {
+                $resolvedEnterpriseId = $enterpriseId;
+            }
+        }
+
+        $query = QuestionModel::where('type', $type)->where('status', 1);
+        if ($resolvedEnterpriseId !== null) {
+            $query->where('enterpriseId', $resolvedEnterpriseId);
+        } else {
+            $query->whereNull('enterpriseId');
+        }
+
+        $list = $query->order('sort', 'asc')
+            ->order('id', 'asc')
+            ->field('id,question,options,dimension')
+            ->select()
+            ->toArray();
+
+        foreach ($list as &$item) {
+            if (isset($item['options']) && is_object($item['options'])) {
+                $item['options'] = json_decode(json_encode($item['options']), true);
+            }
+            if (isset($item['options']) && is_array($item['options']) && !empty($item['options']) && !isset($item['options'][0])) {
+                $item['options'] = array_values($item['options']);
+            }
+            if (!isset($item['options']) || !is_array($item['options'])) {
+                $item['options'] = [];
+            }
+            $item['id'] = (int) ($item['id'] ?? 0);
+            foreach ($item['options'] as &$opt) {
+                if (!is_array($opt)) {
+                    continue;
+                }
+                if (!isset($opt['value']) && isset($opt['label'])) {
+                    $opt['value'] = $opt['label'];
+                }
+                if (!isset($opt['text']) && isset($opt['label'])) {
+                    $opt['text'] = $opt['label'];
+                }
+            }
+            unset($opt);
+            if ($type !== 'mbti') {
+                unset($item['dimension']);
+            }
+        }
+        unset($item);
+
+        return success([
+            'list'                  => $list,
+            'resolvedEnterpriseId'  => $resolvedEnterpriseId,
+            'usingSuperAdminBank'   => $resolvedEnterpriseId === null,
+        ]);
     }
 }
 

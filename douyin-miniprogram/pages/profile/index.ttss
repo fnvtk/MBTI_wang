@@ -458,6 +458,14 @@ page {
   letter-spacing: -1rpx;
 }
 
+.result-card .card-value {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  line-height: 1.2;
+}
+
 .card-purple .card-value { color: #7C3AED; }
 .card-blue .card-value   { color: #2563EB; }
 .card-orange .card-value { color: #D97706; }

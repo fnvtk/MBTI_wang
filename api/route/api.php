@@ -49,6 +49,8 @@ Route::group('api', function () {
     Route::get('test/recent', 'api.Test/recent');
     // 单条测试详情
     Route::get('test/detail', 'api.Test/detail');
+    // 启用题库（企业有则用企业，否则超管）
+    Route::get('test/questions', 'api.Test/questions');
     // 提交测试结果（MBTI/DISC/PDP 等）
     Route::post('test/submit', 'api.Test/submit');
     // 简历综合分析（基于人脸/MBTI/PDP/DISC 最近一次结果）
