@@ -19,15 +19,16 @@
       <text class="question-text">{{currentQuestion.question}}</text>
       <view class="options-container">
       <view 
-        class="option-item {{selectedAnswer === option.value ? 'selected' : ''}}"
+        class="option-item {{answers[currentQuestion.id] === option.value ? 'selected' : ''}}"
         wx:for="{{currentQuestion.options}}"
         wx:for-item="option"
-        wx:key="value"
+        wx:for-index="optIdx"
+        wx:key="optIdx"
         bindtap="selectAnswer"
         data-value="{{option.value}}"
       >
-        <view class="radio-button {{selectedAnswer === option.value ? 'checked' : ''}}">
-          <view wx:if="{{selectedAnswer === option.value}}" class="radio-inner"></view>
+        <view class="radio-button {{answers[currentQuestion.id] === option.value ? 'checked' : ''}}">
+          <view wx:if="{{answers[currentQuestion.id] === option.value}}" class="radio-inner"></view>
         </view>
         <text class="option-text">{{option.text}}</text>
       </view>

@@ -225,31 +225,6 @@
   letter-spacing: 1rpx;
 }
 
-.phone-auth-section {
-  padding: 24rpx 24rpx 0;
-  display: flex;
-  flex-direction: column;
-  gap: 16rpx;
-}
-
-.phone-auth-tip {
-  font-size: 26rpx;
-  color: #4b5563;
-}
-
-.phone-auth-btn {
-  height: 80rpx;
-  line-height: 80rpx;
-  border-radius: 40rpx;
-  background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
-  color: #ffffff;
-  font-size: 28rpx;
-}
-
-.phone-auth-btn::after {
-  border: none;
-}
-
 .capture-button {
   width: 100%;
   max-width: 100%;

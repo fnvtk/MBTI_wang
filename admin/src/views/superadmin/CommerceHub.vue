@@ -27,7 +27,8 @@
         orders-api-path="/superadmin/orders"
       />
       <Finance v-if="activeTab === 'finance'" embedded />
-      <Pricing v-if="activeTab === 'pricing'" embedded enterprise-procurement-only />
+      <!-- 与独立「全局定价」一致：含个人版价格 + 深度服务左右栏（个人/企业） -->
+      <Pricing v-if="activeTab === 'pricing'" embedded />
     </div>
   </div>
 </template>

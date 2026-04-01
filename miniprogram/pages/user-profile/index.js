@@ -45,7 +45,7 @@ Page({
     const gender = (userInfo.gender !== undefined && userInfo.gender !== null) ? Number(userInfo.gender) : 0
     const genderText = this._genderText(gender)
     const genderIndex = Math.min(Math.max(0, gender), 2)
-    const phone = userInfo.phone || ''
+    const phone = (userInfo.phone || userInfo.phoneNumber || '').trim()
 
     const { avatarLetter, avatarBgColor } = this._avatarFromNickname(nickname || '我')
 
@@ -123,7 +123,8 @@ Page({
       return
     }
     bindPhoneByCode(code).then((user) => {
-      this.setData({ phone: user.phone || '' })
+      const phone = ((user && (user.phone || user.phoneNumber)) || '').trim()
+      this.setData({ phone })
     }).catch(() => {})
   },
 
@@ -153,7 +154,28 @@ Page({
     this.setData({ gender, genderIndex: idx, genderText })
   },
 
+  /** 保存前校验：头像、昵称、手机号均必填（与页面提示及后端门禁一致） */
+  _validateRequiredForSave() {
+    const avatar = (this.data.avatar || '').trim()
+    const nickname = (this.data.nickname || '').trim()
+    const phone = (this.data.phone || this.data.userInfo?.phone || this.data.userInfo?.phoneNumber || '').trim()
+    const missing = []
+    if (!avatar) missing.push('头像')
+    if (!nickname) missing.push('昵称')
+    if (!phone) missing.push('手机号')
+    if (missing.length === 0) return ''
+    return missing.length === 1
+      ? (missing[0] === '头像' ? '请先上传头像' : missing[0] === '昵称' ? '请填写昵称' : '请先授权绑定手机号')
+      : `请完善：${missing.join('、')}`
+  },
+
   onSave() {
+    const tip = this._validateRequiredForSave()
+    if (tip) {
+      wx.showToast({ title: tip, icon: 'none' })
+      return
+    }
+
     const { nickname, birthday, gender, userInfo } = this.data
     const profile = {}
     const origNickname = (userInfo?.nickname || userInfo?.nickName || '').trim()

@@ -21,6 +21,19 @@ function isProfileComplete() {
 }
 
 /**
+ * 与后端 Test::isWechatProfileComplete 一致：昵称、头像、手机号均必填时才解锁完整报告
+ */
+function isReportProfileComplete() {
+  const app = getApp()
+  const user = app.globalData.userInfo || wx.getStorageSync('userInfo')
+  if (!user) return false
+  const phone = (user.phone || user.phoneNumber || '').trim()
+  const nickname = (user.nickname || user.nickName || user.username || '').trim()
+  const avatar = (user.avatar || user.avatarUrl || '').trim()
+  return nickname.length > 0 && avatar.length > 0 && phone.length > 0
+}
+
+/**
  * 若资料未完善则跳转到个人资料页，需登录
  * @returns {boolean} true=已完善可继续，false=已跳转
  */
@@ -112,5 +125,6 @@ module.exports = {
   hasPhone,
   bindPhoneByCode,
   isProfileComplete,
+  isReportProfileComplete,
   ensureProfileCompleteAndRedirect,
 }

@@ -11,7 +11,7 @@ function toIntPercent(value) {
 const PDP_EN_TO_CN = {
   Tiger: '老虎型',
   Peacock: '孔雀型',
-  Koala: '考拉型',
+  Koala: '无尾熊型',
   Owl: '猫头鹰型',
   Chameleon: '变色龙型'
 }
@@ -206,7 +206,7 @@ function formatTestSummary(data, testType) {
     const label = two || ((typeof desc === 'string' && desc) ? desc : (data.dominantType || data.pdp || ''))
     const pct = data.percentages
     if (pct && typeof pct === 'object') {
-      const names = { Tiger: '老虎', Peacock: '孔雀', Owl: '猫头鹰', Koala: '考拉', Chameleon: '变色龙' }
+      const names = { Tiger: '老虎', Peacock: '孔雀', Owl: '猫头鹰', Koala: '无尾熊', Chameleon: '变色龙' }
       const parts = []
       for (const [key, name] of Object.entries(names)) {
         const v = pct[key] != null ? pct[key] : pct[key.toLowerCase()]

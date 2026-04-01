@@ -47,6 +47,61 @@
           </div>
         </div>
 
+        <div v-if="activeTab === 'cunkebao'" class="tab-content" v-loading="cunkebaoLoading">
+          <div class="content-header">
+            <h3>存客宝 Key</h3>
+            <p class="content-description">
+              按测评类型配置企业版与个人版 Key（人脸、MBTI、DISC、PDP 各自独立），数据仅保存在当前企业维度；留空表示未配置。下方「上报时机」对上述四类均生效：免费测评完成后即上报；若该类型标价需付费，可选付款后才上报或测试完即上报。
+            </p>
+          </div>
+          <div class="form-section">
+            <div
+              v-for="row in cunkebaoRows"
+              :key="row.key"
+              class="cunkebao-type-block"
+            >
+              <div class="cunkebao-section-title">{{ row.label }}</div>
+              <div class="cunkebao-two-col">
+                <div class="form-item">
+                  <label>企业版 Key</label>
+                  <el-input
+                    v-model="cunkebaoKeys[row.key].enterprise"
+                    clearable
+                    :placeholder="`请输入 ${row.label} 企业版 Key`"
+                    class="w-full"
+                  />
+                </div>
+                <div class="form-item">
+                  <label>个人版 Key</label>
+                  <el-input
+                    v-model="cunkebaoKeys[row.key].personal"
+                    clearable
+                    :placeholder="`请输入 ${row.label} 个人版 Key`"
+                    class="w-full"
+                  />
+                </div>
+              </div>
+              <div class="cunkebao-timing-row">
+                <label>上报时机</label>
+                <el-switch
+                  v-model="cunkebaoKeys[row.key].reportTiming"
+                  active-value="after_test"
+                  inactive-value="after_paid"
+                  active-text="测试完即上报"
+                  inactive-text="付款后才上报"
+                  inline-prompt
+                  style="--el-switch-on-color: #7c3aed; --el-switch-off-color: #909399"
+                />
+              </div>
+            </div>
+            <div class="save-actions">
+              <el-button type="primary" color="#7c3aed" class="save-btn" :loading="cunkebaoSaving" @click="saveCunkebaoKeys">
+                保存存客宝 Key
+              </el-button>
+            </div>
+          </div>
+        </div>
+
         <div v-if="activeTab === 'account'" class="tab-content">
           <div class="content-header">
             <h3>管理员账号设置</h3>
@@ -115,7 +170,7 @@ import { request } from '@/utils/request'
 import { getAdminRole } from '@/utils/authStorage'
 import Finance from './Finance.vue'
 
-const TAB_IDS = ['account', 'features', 'finance'] as const
+const TAB_IDS = ['account', 'features', 'cunkebao', 'finance'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -129,10 +184,19 @@ const loading = ref(false)
 
 const isEnterpriseAdmin = () => getAdminRole() === 'enterprise_admin'
 
+/** 企业后台可操作存客宝 Key 的账号（企业管理员或已绑定企业的 admin） */
+const canConfigureCunkebaoKeys = () => {
+  const r = getAdminRole()
+  return r === 'enterprise_admin' || r === 'admin'
+}
+
 const tabs = computed(() => {
   const rows: { label: string; value: TabId }[] = [{ label: '账号设置', value: 'account' }]
   if (isEnterpriseAdmin()) {
     rows.push({ label: '功能开关', value: 'features' })
+  }
+  if (canConfigureCunkebaoKeys()) {
+    rows.push({ label: '存客宝key', value: 'cunkebao' })
   }
   rows.push({ label: '企业余额', value: 'finance' })
   return rows
@@ -142,6 +206,8 @@ const applyRouteTab = () => {
   const t = route.query.tab
   if (typeof t === 'string' && isTabId(t)) {
     if (t === 'features' && !isEnterpriseAdmin()) {
+      activeTab.value = 'account'
+    } else if (t === 'cunkebao' && !canConfigureCunkebaoKeys()) {
       activeTab.value = 'account'
     } else {
       activeTab.value = t
@@ -187,6 +253,68 @@ const permLoading = ref(false)
 const permSaving = ref(false)
 const adminPermsCeiling = ref<Record<string, boolean>>(defaultAdminPermissions())
 const adminPerms = reactive<Record<string, boolean>>(defaultAdminPermissions())
+
+type CunkebaoKeyScope = 'face' | 'pdp' | 'disc' | 'mbti'
+
+const cunkebaoRows: { key: CunkebaoKeyScope; label: string }[] = [
+  { key: 'face', label: '人脸测试' },
+  { key: 'pdp', label: 'PDP' },
+  { key: 'disc', label: 'DISC' },
+  { key: 'mbti', label: 'MBTI' }
+]
+
+const cunkebaoKeys = reactive<Record<CunkebaoKeyScope, { enterprise: string; personal: string; reportTiming: string }>>({
+  face: { enterprise: '', personal: '', reportTiming: 'after_paid' },
+  pdp: { enterprise: '', personal: '', reportTiming: 'after_paid' },
+  disc: { enterprise: '', personal: '', reportTiming: 'after_paid' },
+  mbti: { enterprise: '', personal: '', reportTiming: 'after_paid' }
+})
+
+const cunkebaoLoading = ref(false)
+const cunkebaoSaving = ref(false)
+
+const loadCunkebaoKeys = async () => {
+  if (!canConfigureCunkebaoKeys()) return
+  cunkebaoLoading.value = true
+  try {
+    const res: any = await request.get('/admin/settings/cunkebao-keys')
+    if (res.code === 200 && res.data?.cunkebaoKeys && typeof res.data.cunkebaoKeys === 'object') {
+      const ck = res.data.cunkebaoKeys
+      cunkebaoRows.forEach(({ key }) => {
+        const row = ck[key]
+        if (row && typeof row === 'object') {
+          cunkebaoKeys[key].enterprise = String(row.enterprise ?? '')
+          cunkebaoKeys[key].personal = String(row.personal ?? '')
+          cunkebaoKeys[key].reportTiming = row.reportTiming === 'after_test' ? 'after_test' : 'after_paid'
+        }
+      })
+    }
+  } catch (e: any) {
+    console.error(e)
+    ElMessage.error(e?.message || '加载存客宝 Key 失败')
+  } finally {
+    cunkebaoLoading.value = false
+  }
+}
+
+const saveCunkebaoKeys = async () => {
+  if (!canConfigureCunkebaoKeys()) return
+  cunkebaoSaving.value = true
+  try {
+    const res: any = await request.put('/admin/settings/cunkebao-keys', {
+      cunkebaoKeys: { ...cunkebaoKeys }
+    })
+    if (res.code === 200) {
+      ElMessage.success('存客宝 Key 已保存')
+    } else {
+      ElMessage.error(res.message || res.msg || '保存失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    cunkebaoSaving.value = false
+  }
+}
 
 const visibleAdminPermItems = computed(() =>
   permItems.filter((p) => adminPermsCeiling.value[p.key] !== false)
@@ -287,6 +415,9 @@ watch(
     if (tab === 'features' && isEnterpriseAdmin()) {
       loadAdminPermissions()
     }
+    if (tab === 'cunkebao' && canConfigureCunkebaoKeys()) {
+      loadCunkebaoKeys()
+    }
   }
 )
 
@@ -295,6 +426,9 @@ onMounted(() => {
   loadSettings()
   if (activeTab.value === 'features' && isEnterpriseAdmin()) {
     loadAdminPermissions()
+  }
+  if (activeTab.value === 'cunkebao' && canConfigureCunkebaoKeys()) {
+    loadCunkebaoKeys()
   }
 })
 </script>
@@ -328,6 +462,49 @@ onMounted(() => {
   font-size: 13px;
   color: #6b7280;
   margin: 0;
+}
+
+.cunkebao-type-block {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #f3f4f6;
+
+  &:last-of-type {
+    border-bottom: none;
+    margin-bottom: 8px;
+  }
+}
+
+.cunkebao-section-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 14px;
+}
+
+.cunkebao-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.cunkebao-timing-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+
+  > label {
+    font-size: 13px;
+    color: #374151;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .cunkebao-two-col {
+    grid-template-columns: 1fr;
+  }
 }
 
 .perm-admin-row {

@@ -2,6 +2,12 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { getTypeOnly } = require('../../utils/resultFormat')
+const { isReportProfileComplete } = require('../../utils/phoneAuth.js')
+
+function toProfileLockedDisc(full) {
+  if (!full) return full
+  return { dominantType: full.dominantType || full.disc || '', locked: true }
+}
 
 function toIntPercent(v) {
   if (v == null) return 0
@@ -28,10 +34,10 @@ Page({
     /** 主+次高权重展示（如 S+I型），与接口摘要一致 */
     typeSummaryLine: '',
     typeList: [
-      { type: 'D', label: 'D型 - 支配型', colorClass: 'fill-d' },
-      { type: 'I', label: 'I型 - 影响型', colorClass: 'fill-i' },
-      { type: 'S', label: 'S型 - 稳健型', colorClass: 'fill-s' },
-      { type: 'C', label: 'C型 - 谨慎型', colorClass: 'fill-c' }
+      { type: 'D', label: 'D型 - 力量', colorClass: 'fill-d' },
+      { type: 'I', label: 'I型 - 活跃', colorClass: 'fill-i' },
+      { type: 'S', label: 'S型 - 和平', colorClass: 'fill-s' },
+      { type: 'C', label: 'C型 - 完美', colorClass: 'fill-c' }
     ],
     payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 },
     testResultId: null,
@@ -46,10 +52,11 @@ Page({
       this.loadDetail(id)
       return
     }
-    const result = wx.getStorageSync('discResult')
-    if (result) {
-      const r = withPercentagesInt(result)
-      this.setData({ result: r, typeSummaryLine: getTypeOnly(result, 'disc') })
+    const raw = wx.getStorageSync('discResult')
+    if (raw) {
+      const gated = isReportProfileComplete() ? raw : toProfileLockedDisc(raw)
+      const r = withPercentagesInt(gated)
+      this.setData({ result: r, typeSummaryLine: getTypeOnly(gated, 'disc') })
       this.initPayInfoFromRuntime('disc')
     } else {
       wx.showToast({ title: '暂无测试结果', icon: 'none' })
@@ -93,6 +100,19 @@ Page({
       fail: () => wx.showToast({ title: '网络错误', icon: 'none' }),
       complete: () => wx.hideLoading()
     })
+  },
+
+  onShow() {
+    if (this.data.testResultId) return
+    const raw = wx.getStorageSync('discResult')
+    if (!raw) return
+    const gated = isReportProfileComplete() ? raw : toProfileLockedDisc(raw)
+    const r = withPercentagesInt(gated)
+    this.setData({ result: r, typeSummaryLine: getTypeOnly(gated, 'disc') })
+  },
+
+  goCompleteProfile() {
+    wx.navigateTo({ url: '/pages/user-profile/index' })
   },
 
   initPayInfoFromRuntime(testType) {

@@ -1,7 +1,12 @@
 // pages/result/mbti.js - MBTI结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, isReportProfileComplete } = require('../../utils/phoneAuth.js')
+
+function toProfileLockedMbti(full) {
+  if (!full) return full
+  return { mbtiType: full.mbtiType || full.mbti || '', locked: true }
+}
 
 Page({
   data: {
@@ -35,8 +40,9 @@ Page({
       return
     }
 
-    const result = wx.getStorageSync('mbtiResult')
-    if (result) {
+    const raw = wx.getStorageSync('mbtiResult')
+    if (raw) {
+      const result = isReportProfileComplete() ? raw : toProfileLockedMbti(raw)
       this.applyResult(result)
       this.initPayInfoFromRuntime('mbti')
     } else {
@@ -47,6 +53,16 @@ Page({
 
   onShow() {
     this.setData({ hasPhone: hasPhone() })
+    if (this.data.testResultId) return
+    const raw = wx.getStorageSync('mbtiResult')
+    if (raw) {
+      const result = isReportProfileComplete() ? raw : toProfileLockedMbti(raw)
+      this.applyResult(result)
+    }
+  },
+
+  goCompleteProfile() {
+    wx.navigateTo({ url: '/pages/user-profile/index' })
   },
 
   loadDetail(id) {

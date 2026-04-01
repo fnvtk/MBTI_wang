@@ -178,6 +178,8 @@
                   fit="cover"
                   class="ud-photo-gallery__thumb"
                   :preview-src-list="facePhotos"
+                  :initial-index="idx"
+                  preview-teleported
                 />
               </div>
               <div v-else class="ud-empty-hint">暂无人脸分析照片</div>
@@ -218,6 +220,8 @@ import {
   RadarComponent
 } from 'echarts/components'
 import VChart from 'vue-echarts'
+import { discTopTwoLabel, discCompactLabel } from '@/utils/discDisplay'
+import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
 
 use([CanvasRenderer, RadarChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent])
 
@@ -327,6 +331,8 @@ function extractTestSummary(test: any): string {
   const type = (test?.testType || '').toLowerCase()
   if (type === 'mbti') return String(data.mbtiType ?? data.type ?? data.result ?? '')
   if (type === 'disc') {
+    const two = discTopTwoLabel(data)
+    if (two) return two
     const desc = data.description?.type
     if (typeof desc === 'string' && desc) return desc
     if (data.dominantType) return String(data.dominantType) + '型'
@@ -452,7 +458,7 @@ const PDP_LABELS: Record<string, string> = {
   Tiger: '虎',
   Peacock: '孔雀',
   Owl: '猫头鹰',
-  Koala: '考拉',
+  Koala: '无尾熊',
   Chameleon: '变色龙'
 }
 
@@ -464,7 +470,7 @@ const pdpRadarOption = computed(() => {
   if (vals.every(v => v === 0)) {
     const dom = String(p.dominantType ?? p.description?.type ?? '')
     if (!dom) return null
-    const idx = ['老虎', '孔雀', '猫头鹰', '考拉', '变色龙'].findIndex(x => dom.includes(x))
+    const idx = ['老虎', '孔雀', '猫头鹰', '无尾熊', '考拉', '变色龙'].findIndex(x => dom.includes(x))
     if (idx < 0) return null
     const v2 = [15, 15, 15, 15, 15]
     v2[idx] = 55
@@ -500,10 +506,10 @@ const discRadarOption = computed(() => {
     color: ['#2563eb'],
     radar: {
       indicator: [
-        { name: 'D', max: 100 },
-        { name: 'I', max: 100 },
-        { name: 'S', max: 100 },
-        { name: 'C', max: 100 }
+        { name: discCompactLabel('D'), max: 100 },
+        { name: discCompactLabel('I'), max: 100 },
+        { name: discCompactLabel('S'), max: 100 },
+        { name: discCompactLabel('C'), max: 100 }
       ],
       radius: 58,
       axisName: { fontSize: 11, color: '#6b7280' }
@@ -535,8 +541,8 @@ const roleFitList = computed(() => {
 
 const facePhotos = computed(() => {
   const f = latestFace.value
-  const urls = f?.photoUrls
-  return Array.isArray(urls) ? urls : []
+  const detail = f ? buildFaceDetailFromParsed(f) : null
+  return detail?.photos?.length ? detail.photos : []
 })
 
 function testIcon(testType: string) {

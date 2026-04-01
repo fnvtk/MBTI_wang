@@ -339,7 +339,10 @@
                   :key="key"
                   class="disc-bar-row"
                 >
-                  <span class="disc-bar-label">{{ key }}</span>
+                  <span class="disc-bar-label">
+                    <span class="disc-bar-letter" :class="'disc-bar-letter-' + key.toLowerCase()">{{ key }}</span>
+                    <span class="disc-bar-cn">{{ discStyleName(key) }}</span>
+                  </span>
                   <div class="disc-bar-track">
                     <div
                       class="disc-bar-fill"
@@ -416,13 +419,19 @@
         <div v-else-if="(currentTestType === 'face' || currentTestType === 'ai') && faceDetail" class="detail-section test-detail-face">
           <div class="face-layout">
             <div class="face-left" v-if="faceDetail.photos && faceDetail.photos.length">
-              <div class="face-photos">
+              <div
+                class="face-photos"
+                :class="'face-photos--' + Math.min(faceDetail.photos.length, 3)"
+              >
                 <el-image
                   v-for="(url, idx) in faceDetail.photos"
                   :key="url + idx"
                   :src="url"
-                  fit="contain"
+                  fit="cover"
                   :preview-src-list="faceDetail.photos"
+                  :initial-index="idx"
+                  preview-teleported
+                  class="face-photo-thumb"
                 />
               </div>
             </div>
@@ -439,15 +448,15 @@
                 <div class="test-detail-block flex-1" v-if="faceDetail.disc">
                   <h4 class="detail-subtitle">AI 识别 DISC</h4>
                   <p class="test-desc">
-                    主类型：<strong class="text-primary">{{ faceDetail.disc.primary }}</strong>
-                    <span v-if="faceDetail.disc.secondary" class="text-secondary">，次：{{ faceDetail.disc.secondary }}</span>
+                    主类型：<strong class="text-primary">{{ faceDiscDisplayLabel(faceDetail.disc.primary) }}</strong>
+                    <span v-if="faceDetail.disc.secondary" class="text-secondary">，次：{{ faceDiscDisplayLabel(faceDetail.disc.secondary) }}</span>
                   </p>
                 </div>
                 <div class="test-detail-block flex-1" v-if="faceDetail.pdp">
                   <h4 class="detail-subtitle">AI 识别 PDP</h4>
                   <p class="test-desc">
-                    主类型：<strong class="text-primary">{{ faceDetail.pdp.primary }}</strong>
-                    <span v-if="faceDetail.pdp.secondary" class="text-secondary">，次：{{ faceDetail.pdp.secondary }}</span>
+                    主类型：<strong class="text-primary">{{ facePdpDisplayLabel(faceDetail.pdp.primary) }}</strong>
+                    <span v-if="faceDetail.pdp.secondary" class="text-secondary">，次：{{ facePdpDisplayLabel(faceDetail.pdp.secondary) }}</span>
                   </p>
                 </div>
               </div>
@@ -713,10 +722,10 @@
         <!-- 通用补充说明（人脸/AI 已在上方分块展示，避免重复堆砌） -->
         <div
           class="detail-section"
-          v-if="currentTestType !== 'resume' && currentTestType !== 'face' && currentTestType !== 'ai' && currentTestDescription"
+          v-if="currentTestType !== 'resume' && currentTestType !== 'face' && currentTestType !== 'ai' && supplementaryNote"
         >
           <h4 class="detail-subtitle">补充说明</h4>
-          <p class="test-desc">{{ currentTestDescription }}</p>
+          <p class="test-desc">{{ supplementaryNote }}</p>
         </div>
       </template>
     </el-dialog>
@@ -728,8 +737,9 @@ import { ref, computed, onMounted } from 'vue'
 import { Download, Search, View, UserFilled, User, OfficeBuilding, DataLine } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
-import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
+import { buildFaceDetailFromParsed, faceDiscDisplayLabel, facePdpDisplayLabel } from '@/utils/faceResultDetail'
 import { parseTestResultPayload } from '@/utils/testResultParse'
+import { discTopTwoLabel, discStyleSubtitle, discStyleName } from '@/utils/discDisplay'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
@@ -898,6 +908,8 @@ function extractTestSummary(test: any): string {
   }
 
   if (type === 'disc') {
+    const two = discTopTwoLabel(data)
+    if (two) return two
     const desc = data.description?.type
     if (typeof desc === 'string' && desc) return desc
     if (data.dominantType) return String(data.dominantType) + '型'
@@ -950,9 +962,11 @@ const discDetail = computed(() => {
   if (!parsed || currentTestType.value !== 'disc') return null
   const desc = parsed.description || {}
   const percentages = parsed.percentages || {}
+  const typeLine = discTopTwoLabel(parsed) || String(desc.type ?? currentTestSummary.value ?? '')
+  const titleLine = discStyleSubtitle(parsed) || String(desc.title ?? '')
   return {
-    type: desc.type ?? currentTestSummary.value,
-    title: desc.title ?? '',
+    type: typeLine,
+    title: titleLine,
     description: desc.description ?? '',
     strengths: Array.isArray(desc.strengths) ? desc.strengths : [],
     weaknesses: Array.isArray(desc.weaknesses) ? desc.weaknesses : [],
@@ -980,6 +994,26 @@ const pdpDetail = computed(() => {
     weaknesses: Array.isArray(desc.weaknesses) ? desc.weaknesses : [],
     careers: Array.isArray(desc.careers) ? desc.careers : []
   }
+})
+
+/** 与主卡片简介重复时不展示「补充说明」块 */
+const supplementaryNote = computed(() => {
+  const t = String(currentTestDescription.value || '').trim()
+  if (!t) return ''
+  const typ = (currentTestType.value || '').toLowerCase()
+  if (typ === 'disc' && discDetail.value) {
+    const main = String(discDetail.value.description || '').trim()
+    if (main && main === t) return ''
+  }
+  if (typ === 'mbti' && mbtiDetail.value) {
+    const main = String(mbtiDetail.value.description || '').trim()
+    if (main && main === t) return ''
+  }
+  if (typ === 'pdp' && pdpDetail.value) {
+    const main = String(pdpDetail.value.description || '').trim()
+    if (main && main === t) return ''
+  }
+  return t
 })
 
 const faceDetail = computed(() => {
@@ -1696,12 +1730,18 @@ onMounted(() => {
   margin-top: 8px;
 }
 
+.test-detail-disc .test-detail-main-card {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
 .test-detail-main-left {
   flex: 1;
 }
 
 .test-detail-main-right {
-  width: 260px;
+  width: min(100%, 300px);
+  min-width: 0;
   flex-shrink: 0;
 }
 
@@ -1732,9 +1772,17 @@ onMounted(() => {
 }
 
 .disc-type-badge {
-  @extend .mbti-type-badge;
-  background-color: #fee2e2;
-  color: #b91c1c;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background-color: #eef2ff;
+  color: #4f46e5;
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 4px;
+  border: 1px solid #e0e7ff;
 }
 
 .disc-title {
@@ -1754,20 +1802,60 @@ onMounted(() => {
   margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
 }
 
 .disc-bar-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  min-height: 22px;
 }
 
 .disc-bar-label {
-  width: 16px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  min-width: 72px;
+}
+
+.disc-bar-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 800;
+  line-height: 1;
+  color: #fff;
+}
+
+.disc-bar-letter-d {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+}
+
+.disc-bar-letter-i {
+  background: linear-gradient(135deg, #fbbf24 0%, #eab308 100%);
+}
+
+.disc-bar-letter-s {
+  background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+}
+
+.disc-bar-letter-c {
+  background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+}
+
+.disc-bar-cn {
+  font-size: 12px;
+  font-weight: 500;
   color: #4b5563;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .disc-bar-track {
@@ -1882,36 +1970,53 @@ onMounted(() => {
 }
 
 .face-left {
-  width: 280px;
+  width: min(100%, 340px);
   flex-shrink: 0;
   position: sticky;
   top: 0;
+  align-self: flex-start;
   height: fit-content;
 }
 
 .face-photos {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  gap: 8px;
+  width: 100%;
 
-  :deep(.el-image) {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  :deep(.face-photo-thumb.el-image) {
+    display: block;
     width: 100%;
+    aspect-ratio: 3 / 4;
+    max-height: 220px;
     border-radius: 8px;
     overflow: hidden;
     background: #f1f5f9;
+    cursor: zoom-in;
   }
 
-  :deep(.el-image__inner) {
-    display: block;
-    max-width: 100%;
-    max-height: min(65vh, 560px);
-    width: auto !important;
-    height: auto !important;
-    object-fit: contain;
+  :deep(.face-photo-thumb .el-image__inner) {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover;
   }
+
+  :deep(.face-photo-thumb .el-image__error) {
+    min-height: 120px;
+    font-size: 12px;
+  }
+}
+
+.face-photos--1 {
+  grid-template-columns: 1fr;
+  max-width: 280px;
+}
+
+.face-photos--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.face-photos--3 {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .face-right {

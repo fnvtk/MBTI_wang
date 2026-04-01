@@ -66,12 +66,5 @@
       </view>
     </view>
   </view>
-
-  <view class="phone-auth-section" tt:if="{{needPhoneAuth}}">
-    <text class="phone-auth-tip">为保障服务与联系，请先授权手机号。</text>
-    <button class="phone-auth-btn" open-type="getPhoneNumber" bindgetphonenumber="onGetPhoneNumber">
-      授权手机号后继续拍摄
-    </button>
-  </view>
 </view>
 </view>

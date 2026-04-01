@@ -61,9 +61,9 @@ class Settings extends BaseController
                 'defaultEnterpriseId' => null,
             ];
             $systemOut = $systemDefault;
-            if ($systemConfig && !empty($systemConfig->value)) {
+            if ($systemConfig && $systemConfig->value !== null && $systemConfig->value !== '') {
                 $raw = $systemConfig->value;
-                $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+                $decoded = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : null);
                 if (is_array($decoded)) {
                     $systemOut = array_merge($systemDefault, $decoded);
                 }
@@ -84,6 +84,16 @@ class Settings extends BaseController
             }
             $systemOut['maintenanceMode'] = $maint;
 
+            // 与前端 el-option 的 number value 对齐，避免类型不一致导致下拉不反显
+            if (array_key_exists('defaultEnterpriseId', $systemOut)) {
+                $de = $systemOut['defaultEnterpriseId'];
+                if ($de === '' || $de === null || (int) $de <= 0) {
+                    $systemOut['defaultEnterpriseId'] = null;
+                } else {
+                    $systemOut['defaultEnterpriseId'] = (int) $de;
+                }
+            }
+
             return success([
                 'system' => $systemOut,
                 'reviewMode' => ['enabled' => $maint],
@@ -94,7 +104,7 @@ class Settings extends BaseController
                     'newEnterpriseNotify' => true
                 ],
                 'prompts' => $promptsConfig && !empty($promptsConfig->value) ? $promptsConfig->value : [
-                    'faceAnalyze' => '{"mbti":"四字母如INTJ","pdp":"老虎/孔雀/考拉/猫头鹰/变色龙其一","disc":"D/I/S/C其一","overview":"一段50字以内的综合描述","faceAnalysis":"面相特点简短描述"}',
+                    'faceAnalyze' => '{"mbti":"四字母如INTJ","pdp":"老虎/孔雀/无尾熊/猫头鹰/变色龙其一","disc":"D/I/S/C其一","overview":"一段50字以内的综合描述","faceAnalysis":"面相特点简短描述"}',
                     'reportSummary' => ''
                 ],
                 'reportRequiresPayment' => $reportRequiresPaymentConfig && !empty($reportRequiresPaymentConfig->value) ? $reportRequiresPaymentConfig->value : ['face' => 1, 'mbti' => 0, 'disc' => 0, 'pdp' => 0],

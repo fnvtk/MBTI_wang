@@ -35,9 +35,11 @@ class SystemConfig extends Model
         'updatedAt' => 'integer',
     ];
 
-    // JSON字段自动转换
-    protected $json = ['value'];
-
+    /**
+     * 注意：不要同时声明 $json = ['value'] 与下面的 set/getValueAttr。
+     * Think 会对 JSON 字段再编码一次，导致入库后结构损坏，部分键（如 defaultEnterpriseId）丢失或读不出。
+     * 统一由修改器负责数组 ⇄ JSON 字符串。
+     */
     /**
      * 配置值修改器（自动转换为JSON）
      */

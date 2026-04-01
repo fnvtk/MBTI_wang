@@ -10,7 +10,7 @@ class PdpDiscResultText
     private const PDP_EN_TO_CN = [
         'Tiger'     => '老虎型',
         'Peacock'   => '孔雀型',
-        'Koala'     => '考拉型',
+        'Koala'     => '无尾熊型',
         'Owl'       => '猫头鹰型',
         'Chameleon' => '变色龙型',
     ];

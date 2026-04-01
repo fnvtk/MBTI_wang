@@ -1,6 +1,6 @@
 // pages/index/camera.js - 拍照页，拍完后上传到服务器再跳转结果页
 const app = getApp()
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
 function _auditFlag() {
   return !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
@@ -13,7 +13,6 @@ Page({
     guideTexts: ['请正对镜头', '请向左转45°', '请向右转45°'],
     guideText: '请正对镜头',
     uploading: false,
-    needPhoneAuth: false,
     aiAnalysisText: '分析',
     reviewMode: true
   },
@@ -90,7 +89,6 @@ Page({
     if (this.data.photos.length < 3) {
       this.initCameraContext()
     }
-    this.setData({ needPhoneAuth: !hasPhone() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
       this.setData({ aiAnalysisText: tc.aiAnalysisText })
@@ -195,11 +193,6 @@ Page({
   // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
   completeCapture() {
     if (!ensureProfileCompleteAndRedirect()) return
-    if (!hasPhone()) {
-      tt.showToast({ title: '请先授权手机号', icon: 'none' })
-      this.setData({ needPhoneAuth: true })
-      return
-    }
     const photos = this.data.photos
     if (!photos || photos.length === 0) {
       tt.showToast({ title: '请先拍摄照片', icon: 'none' })

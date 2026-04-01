@@ -185,6 +185,7 @@
               <div class="form-item form-item-full">
                 <label class="form-label">小程序默认企业</label>
                 <el-select
+                  :key="'default-enterprise-select-' + enterpriseSelectRenderKey"
                   v-model="systemConfig.defaultEnterpriseId"
                   class="form-input w-full"
                   placeholder="不设置则小程序无带参入口时不回落企业"
@@ -408,7 +409,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   Setting,
@@ -499,6 +500,8 @@ const systemConfig = reactive({
 
 /** 下拉：企业管理中的企业列表 */
 const enterpriseOptions = ref<Array<{ id: number; name: string }>>([])
+/** 与选项加载顺序配合，避免 el-select 在 options 为空时绑定值导致刷新后不显示 */
+const enterpriseSelectRenderKey = ref(0)
 
 // 超管凭据
 const credentials = reactive({
@@ -519,7 +522,7 @@ const textConfig = reactive({
 
 // 提示词配置（faceAnalyze 只存 JSON 返回模板，由后端与固定前缀拼接）
 const promptsConfig = reactive<Record<string, string>>({
-  faceAnalyze: '{"mbti":"四字母如INTJ","pdp":"老虎/孔雀/考拉/猫头鹰/变色龙其一","disc":"D/I/S/C其一","overview":"一段50字以内的综合描述","faceAnalysis":"面相特点简短描述"}',
+  faceAnalyze: '{"mbti":"四字母如INTJ","pdp":"老虎/孔雀/无尾熊/猫头鹰/变色龙其一","disc":"D/I/S/C其一","overview":"一段50字以内的综合描述","faceAnalysis":"面相特点简短描述"}',
   reportSummary: '',
 })
 
@@ -536,6 +539,8 @@ const loadSettings = async () => {
         const de = response.data.system.defaultEnterpriseId
         systemConfig.defaultEnterpriseId =
           de != null && de !== '' && Number(de) > 0 ? Number(de) : null
+        await nextTick()
+        enterpriseSelectRenderKey.value++
       }
       // 加载小程序文案配置
       if (response.data.textConfig && typeof response.data.textConfig === 'object') {
@@ -579,10 +584,11 @@ async function loadEnterpriseOptions() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   applyRouteTab()
-  loadSettings()
-  loadEnterpriseOptions()
+  // 必须先加载下拉选项，再灌入 defaultEnterpriseId，否则 el-select 刷新后无法反显已选企业
+  await loadEnterpriseOptions()
+  await loadSettings()
 })
 
 // 保存配置
@@ -608,6 +614,23 @@ const handleSave = async (section: string) => {
           textConfig
         })
         if (response.code === 200) {
+          // 后端返回的是合并后的 system JSON（与 GET 中 system 字段结构一致）
+          const saved = response.data
+          if (saved && typeof saved === 'object') {
+            Object.assign(systemConfig, {
+              siteName: saved.siteName ?? systemConfig.siteName,
+              siteDescription: saved.siteDescription ?? systemConfig.siteDescription,
+              miniprogramName: saved.miniprogramName ?? systemConfig.miniprogramName,
+              maintenanceMode: !!saved.maintenanceMode,
+              maxTestsPerDay: Number(saved.maxTestsPerDay ?? systemConfig.maxTestsPerDay),
+              trialTestCount: Number(saved.trialTestCount ?? systemConfig.trialTestCount)
+            })
+            const de = saved.defaultEnterpriseId
+            systemConfig.defaultEnterpriseId =
+              de != null && de !== '' && Number(de) > 0 ? Number(de) : null
+            await nextTick()
+            enterpriseSelectRenderKey.value++
+          }
           ElMessage.success('系统配置已保存')
           saveSuccess.value = section
           setTimeout(() => {

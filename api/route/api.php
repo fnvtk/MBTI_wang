@@ -138,6 +138,8 @@ Route::group('api/v1/admin', function () {
     Route::get('settings/poster', 'admin.Settings/getPosterConfig');
     Route::put('settings/poster', 'admin.Settings/updatePosterConfig');
     Route::get('settings/fonts', 'admin.Settings/getFonts');
+    Route::get('settings/cunkebao-keys', 'admin.Settings/getCunkebaoKeys');
+    Route::put('settings/cunkebao-keys', 'admin.Settings/updateCunkebaoKeys');
     Route::put('settings/credentials', 'admin.Settings/updateCredentials');
     Route::get('settings', 'admin.Settings/index');
 

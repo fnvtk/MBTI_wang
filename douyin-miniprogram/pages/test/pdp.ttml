@@ -19,15 +19,16 @@
       <text class="question-text">{{currentQuestion.question}}</text>
       <view class="options-container">
       <view 
-        class="option-item {{selectedAnswer === option.value ? 'selected' : ''}}"
+        class="option-item {{answers[currentQuestion.id] === option.value ? 'selected' : ''}}"
         tt:for="{{currentQuestion.options}}"
         tt:for-item="option"
-        tt:key="value"
+        tt:for-index="optIdx"
+        tt:key="optIdx"
         bindtap="selectAnswer"
         data-value="{{option.value}}"
       >
-        <view class="radio-button {{selectedAnswer === option.value ? 'checked' : ''}}">
-          <view tt:if="{{selectedAnswer === option.value}}" class="radio-inner"></view>
+        <view class="radio-button {{answers[currentQuestion.id] === option.value ? 'checked' : ''}}">
+          <view tt:if="{{answers[currentQuestion.id] === option.value}}" class="radio-inner"></view>
         </view>
         <text class="option-text">{{option.text}}</text>
       </view>

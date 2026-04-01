@@ -16,7 +16,7 @@
   </view>
 
   <!-- 结果显示 -->
-  <block tt:if="{{!loading || error || content}}">
+  <block tt:if="{{!loading || error || content || profileGate}}">
 
     <!-- 页面顶部 Hero -->
     <view class="hero-banner {{error ? 'hero-error' : 'hero-success'}}">
@@ -50,8 +50,17 @@
       </view>
     </view>
 
+    <view class="card pay-gate-card" tt:if="{{profileGate && (!payInfo.requiresPayment || payInfo.isPaid) && !error}}">
+      <text class="pay-gate-icon">📝</text>
+      <text class="pay-gate-title">完善资料后查看完整报告</text>
+      <text class="pay-gate-desc">请补全头像、昵称并绑定手机号\n即可查看简历综合分析全文</text>
+      <view class="pay-gate-btn" bindtap="goCompleteProfile">
+        <text class="pay-gate-btn-text">去完善资料</text>
+      </view>
+    </view>
+
     <!-- 成功内容：分块卡片展示 -->
-    <block tt:if="{{content && sections.length > 0 && !payInfo.requiresPayment}}">
+    <block tt:if="{{content && sections.length > 0 && !payInfo.requiresPayment && !profileGate}}">
       <view class="card section-card" tt:for="{{sections}}" tt:key="index">
         <view class="section-header">
           <text class="section-icon">{{item.icon}}</text>
@@ -64,17 +73,17 @@
     </block>
 
     <!-- 兜底显示：解析失败时显示原始内容 -->
-    <view class="card" tt:if="{{content && sections.length === 0 && !payInfo.requiresPayment}}">
+    <view class="card" tt:if="{{content && sections.length === 0 && !payInfo.requiresPayment && !profileGate}}">
       <text class="card-title">综合分析综评</text>
       <text class="card-text content-text">{{content}}</text>
     </view>
 
     <!-- 操作按钮 -->
     <view class="action-section" tt:if="{{!loading || error}}">
-      <button class="btn btn-primary" open-type="share" tt:if="{{!payInfo.requiresPayment && content}}">
+      <button class="btn btn-primary" open-type="share" tt:if="{{!payInfo.requiresPayment && !profileGate && content}}">
         <text class="btn-text">分享分析报告</text>
       </button>
-      <view class="btn btn-outline" bindtap="fetchResumeAnalysis" tt:if="{{!loading && content && !payInfo.requiresPayment}}">
+      <view class="btn btn-outline" bindtap="fetchResumeAnalysis" tt:if="{{!loading && content && !payInfo.requiresPayment && !profileGate}}">
         <text class="btn-text-outline">重新分析生成</text>
       </view>
       <view class="btn btn-outline" bindtap="goHome">

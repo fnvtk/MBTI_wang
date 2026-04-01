@@ -171,7 +171,7 @@ Page({
   finishTest() {
     const q = this.data.currentQuestion
     if (!q) return
-    if (this.data.answers[q.id] == null && this.data.selectedAnswer == null) {
+    if (this.data.answers[q.id] == null) {
       wx.showToast({ title: '请先选择一项', icon: 'none' })
       return
     }

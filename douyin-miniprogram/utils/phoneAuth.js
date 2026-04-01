@@ -93,9 +93,15 @@ function bindPhoneByCode(code) {
   })
 }
 
+/** 与后端 Test::isWechatProfileComplete 一致（抖音侧已实现为头像+昵称+手机） */
+function isReportProfileComplete() {
+  return isProfileComplete()
+}
+
 module.exports = {
   hasPhone,
   bindPhoneByCode,
   isProfileComplete,
+  isReportProfileComplete,
   ensureProfileCompleteAndRedirect,
 }

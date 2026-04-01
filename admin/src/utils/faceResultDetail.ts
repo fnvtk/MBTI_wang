@@ -2,6 +2,8 @@
  * 人脸 / AI 分析结果：与微信小程序 pages/index/result 展示字段对齐，供后台「测试详情」使用
  */
 
+import { discStyleName } from './discDisplay'
+
 export interface FaceFeatureItem {
   label: string
   description: string
@@ -40,26 +42,72 @@ export interface FaceDetailView {
   careers: string[]
 }
 
-function collectPhotoUrls(parsed: Record<string, any>): string[] {
-  const out: string[] = []
+function normalizeImageUrl(s: string): string | null {
+  let t = s.trim()
+  if (!t) return null
+  if (t.startsWith('//')) t = 'https:' + t
+  if (t.startsWith('http://') || t.startsWith('https://')) return t
+  return null
+}
+
+function collectPhotoUrlsFromObject(obj: Record<string, any> | null | undefined, out: string[]): void {
+  if (!obj || typeof obj !== 'object') return
+
   const pushUrl = (s: string) => {
-    const t = s.trim()
-    if (t && (t.startsWith('http://') || t.startsWith('https://'))) out.push(t)
+    const n = normalizeImageUrl(s)
+    if (n) out.push(n)
   }
+
   const pushArr = (v: unknown) => {
+    if (v == null) return
+    if (typeof v === 'string') {
+      const t = v.trim()
+      if (t.startsWith('[')) {
+        try {
+          const arr = JSON.parse(t) as unknown
+          pushArr(arr)
+        } catch {
+          /* ignore */
+        }
+      }
+      return
+    }
     if (!Array.isArray(v)) return
     for (const x of v) {
       if (typeof x === 'string') pushUrl(x)
+      else if (x && typeof x === 'object' && !Array.isArray(x)) {
+        const o = x as Record<string, unknown>
+        const u = o.url ?? o.src ?? o.imageUrl
+        if (typeof u === 'string') pushUrl(u)
+      }
     }
   }
-  pushArr(parsed.photoUrls)
-  pushArr(parsed.photos)
-  pushArr(parsed.imageUrls)
+
+  pushArr(obj.photoUrls)
+  pushArr(obj.photos)
+  pushArr(obj.imageUrls)
   for (const k of ['photoUrl', 'imageUrl', 'faceImageUrl'] as const) {
-    const u = parsed[k]
+    const u = obj[k]
     if (typeof u === 'string') pushUrl(u)
   }
-  return [...new Set(out)]
+}
+
+function collectPhotoUrls(parsed: Record<string, any>): string[] {
+  const out: string[] = []
+  collectPhotoUrlsFromObject(parsed, out)
+  const inner = parsed?.result
+  if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+    collectPhotoUrlsFromObject(inner as Record<string, any>, out)
+  }
+  // 保序去重（仅去掉完全相同的 URL，不误删带不同签名的地址）
+  const seen = new Set<string>()
+  const deduped: string[] = []
+  for (const u of out) {
+    if (seen.has(u)) continue
+    seen.add(u)
+    deduped.push(u)
+  }
+  return deduped
 }
 
 function isPlaceholderTitle(s: string): boolean {
@@ -202,4 +250,23 @@ export function buildFaceDetailFromParsed(parsed: Record<string, any> | null | u
     resumeHighlights: String(parsed.resumeHighlights ?? ''),
     careers: strArr(parsed.careers)
   }
+}
+
+/** 面相报告 DISC：S → S（和平） */
+export function faceDiscDisplayLabel(raw: string | undefined | null): string {
+  if (raw == null || raw === '') return ''
+  const s = String(raw).trim()
+  const noXing = s.replace(/型$/u, '').trim()
+  const ch = noXing.charAt(0).toUpperCase()
+  if (ch && ['D', 'I', 'S', 'C'].includes(ch)) {
+    const cn = discStyleName(ch)
+    if (cn) return `${ch}（${cn}）`
+  }
+  return s
+}
+
+/** 面相报告 PDP：考拉 → 无尾熊（与其它端展示一致） */
+export function facePdpDisplayLabel(raw: string | undefined | null): string {
+  if (raw == null || raw === '') return ''
+  return String(raw).trim().replace(/考拉/g, '无尾熊')
 }

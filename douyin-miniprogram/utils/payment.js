@@ -3,6 +3,12 @@
 // 后端需实现 /api/payment/create 返回 { order_id, order_token } 用于 tt.pay
 
 const app = getApp()
+const { getEnterpriseIdForApiPayload } = require('./enterpriseContext.js')
+
+function enterpriseIdForOrder() {
+  const eid = getEnterpriseIdForApiPayload()
+  return eid != null && Number(eid) > 0 ? Number(eid) : 0
+}
 
 /**
  * 生成订单号
@@ -105,6 +111,7 @@ function douyinPay(options) {
             if (payRes.code === 0) {
               pollOrderStatus(orderId, 5, 1000, (ok, order) => {
                 if (ok) {
+                  try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
                   try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                   tt.showToast({
                     title: '支付成功',
@@ -132,6 +139,7 @@ function douyinPay(options) {
             } else if (payRes.code === 9) {
               pollOrderStatus(orderId, 5, 1500, (ok, order) => {
                 if (ok) {
+                  try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
                   tt.showToast({ title: '支付成功', icon: 'success', duration: 2000 })
                   success && success({ payRes, order })
                 } else {
@@ -240,6 +248,37 @@ function pollOrderStatus(orderId, maxAttempts = 5, intervalMs = 1000, done) {
   tick()
 }
 
+/**
+ * 测评类付费（人脸/MBTI/PDP/DISC）支付确认成功后上报存客宝线索；KEY 由后端按企业 cunkebao_keys 解析
+ */
+function reportCrmTestPaymentAfterSuccess(productType, testResultId, contextEnterpriseId) {
+  const types = { face: true, mbti: true, disc: true, pdp: true }
+  if (!types[productType]) return
+  const token = tt.getStorageSync('token')
+  if (!token) return
+  const base = (app.globalData && app.globalData.apiBase) ? String(app.globalData.apiBase).replace(/\/$/, '') : ''
+  if (!base) return
+  tt.request({
+    url: `${base}/api/crm/report`,
+    method: 'POST',
+    header: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    data: {
+      testType: productType,
+      testResultId: testResultId || 0,
+      contextEnterpriseId: contextEnterpriseId != null ? Number(contextEnterpriseId) : 0
+    },
+    success(res) {
+      console.log('[CRM] 测评付费线索', res.data)
+    },
+    fail(err) {
+      console.warn('[CRM] 测评付费线索请求失败', err)
+    }
+  })
+}
+
 function purchaseVIP(vipType, success, fail) {
   const prices = {
     month: 1990,
@@ -340,6 +379,7 @@ function purchaseByPricing(productType, description, extra, maybeFail) {
     description,
     productType,
     testResultId,
+    enterpriseId: enterpriseIdForOrder(),
     success,
     fail
   })

@@ -175,6 +175,115 @@ class Settings extends BaseController
     }
 
     /**
+     * 存客宝 Key 默认结构（人脸/MBTI/PDP/DISC × 企业版与个人版）
+     */
+    private static function defaultCunkebaoKeysStructure(): array
+    {
+        $blank = ['enterprise' => '', 'personal' => '', 'reportTiming' => 'after_paid'];
+
+        return [
+            'face' => $blank,
+            'pdp'  => $blank,
+            'disc' => $blank,
+            'mbti' => $blank,
+        ];
+    }
+
+    /**
+     * @param mixed $raw 已解码的配置或 null
+     */
+    private static function normalizeCunkebaoKeysPayload($raw): array
+    {
+        $out = self::defaultCunkebaoKeysStructure();
+        if (!is_array($raw)) {
+            return $out;
+        }
+        foreach (array_keys($out) as $type) {
+            if (!isset($raw[$type]) || !is_array($raw[$type])) {
+                continue;
+            }
+            $row = $raw[$type];
+            $out[$type]['enterprise']   = isset($row['enterprise']) ? trim((string) $row['enterprise']) : '';
+            $out[$type]['personal']     = isset($row['personal']) ? trim((string) $row['personal']) : '';
+            $out[$type]['reportTiming'] = in_array($row['reportTiming'] ?? '', ['after_paid', 'after_test'], true)
+                ? $row['reportTiming']
+                : 'after_paid';
+        }
+
+        return $out;
+    }
+
+    /**
+     * JWT 中的企业 ID（企业管理员必有关联企业）
+     */
+    private function adminBoundEnterpriseId($user): int
+    {
+        if (!is_array($user)) {
+            return 0;
+        }
+        $eid = (int) ($user['enterpriseId'] ?? $user['enterprise_id'] ?? 0);
+
+        return $eid > 0 ? $eid : 0;
+    }
+
+    /**
+     * GET /api/v1/admin/settings/cunkebao-keys
+     * 按当前管理员所属企业读取（system_config.enterprise_id = 企业 ID）
+     */
+    public function getCunkebaoKeys()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+        $eid = $this->adminBoundEnterpriseId($user);
+        if ($eid <= 0) {
+            return error('当前账号未关联企业，无法配置存客宝 Key', 403);
+        }
+
+        $row = self::getConfig('cunkebao_keys', $eid, false);
+
+        return success([
+            'cunkebaoKeys' => self::normalizeCunkebaoKeysPayload($row),
+        ]);
+    }
+
+    /**
+     * PUT /api/v1/admin/settings/cunkebao-keys
+     */
+    public function updateCunkebaoKeys()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+        $eid = $this->adminBoundEnterpriseId($user);
+        if ($eid <= 0) {
+            return error('当前账号未关联企业，无法配置存客宝 Key', 403);
+        }
+
+        $raw = $this->request->getContent();
+        $input = $raw ? json_decode($raw, true) : [];
+        if (!is_array($input)) {
+            $input = [];
+        }
+        $payload = $input['cunkebaoKeys'] ?? [];
+        if (!is_array($payload)) {
+            return error('存客宝 Key 格式错误', 400);
+        }
+
+        $sanitized = self::normalizeCunkebaoKeysPayload($payload);
+
+        try {
+            self::saveConfig('cunkebao_keys', $sanitized, $eid, '存客宝 Key（本企业 · 人脸/MBTI/PDP/DISC）');
+
+            return success($sanitized, '存客宝 Key 已保存');
+        } catch (\Exception $e) {
+            return error('保存失败：' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * 安全解码 JSON（处理可能的多重编码）
      */
     private static function decodeJsonSafe($raw): ?array

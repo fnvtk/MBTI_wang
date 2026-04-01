@@ -28,8 +28,9 @@ function getEffectiveEnterpriseId() {
 /**
  * 提交给后端的 enterpriseId（analyze、test/submit、支付创建订单、简历分析等）
  * - 个人版 Tab（appScope=personal）：仅传递「本次入口携带的 eid」（enterpriseIdFromScene），
- *   不因「已绑定企业」或「超管默认企业」带参，避免个人入口却走企业定价/落库企业字段。
+ *   不因「已绑定企业」或 runtime 默认企业带参，避免客户端误把个人页当成强制企业入口。
  * - 企业版（appScope=enterprise）：与 getEffectiveEnterpriseId 一致。
+ * - 未传 enterpriseId 时，后端 Test::submit / Analyze 会按「绑定企业 → 系统默认企业」回落并写入 test_results.enterpriseId。
  * @returns {number|null}
  */
 function getEnterpriseIdForApiPayload() {

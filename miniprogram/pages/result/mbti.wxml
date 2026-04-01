@@ -42,7 +42,17 @@
           </view>
         </view>
 
-        <view class="dimensions-section" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <view class="paywall-card" wx:elif="{{result && result.locked}}">
+          <view class="paywall-content">
+            <text class="paywall-fake-title">完整报告需完善资料</text>
+            <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整性格分析。</text>
+            <button class="paywall-btn" bindtap="goCompleteProfile">
+              <text class="paywall-btn-main">去完善资料</text>
+            </button>
+          </view>
+        </view>
+
+        <view class="dimensions-section" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
           <view class="dimension-item" wx:for="{{dimensions}}" wx:key="key">
             <view class="dimension-labels">
               <text class="label-left">{{item.left}}</text>
@@ -59,7 +69,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
         <text class="card-title">性格特征分析</text>
         <view class="trait-section">
           <text class="trait-title">优势</text>
@@ -86,7 +96,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" wx:if="{{(!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
+      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
         <text class="card-title">人际关系分析</text>
         <text class="relationship-text">{{mbtiDesc.relationships}}</text>
       </view>

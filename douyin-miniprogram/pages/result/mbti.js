@@ -1,7 +1,12 @@
 // pages/result/mbti.js - MBTI结果页（支持付费墙 + 历史详情拉取）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { hasPhone, bindPhoneByCode, isReportProfileComplete } = require('../../utils/phoneAuth.js')
+
+function toProfileLockedMbti(full) {
+  if (!full) return full
+  return { mbtiType: full.mbtiType || full.mbti || '', locked: true }
+}
 
 Page({
   data: {
@@ -35,8 +40,9 @@ Page({
       return
     }
 
-    const result = tt.getStorageSync('mbtiResult')
-    if (result) {
+    const raw = tt.getStorageSync('mbtiResult')
+    if (raw) {
+      const result = isReportProfileComplete() ? raw : toProfileLockedMbti(raw)
       this.applyResult(result)
       this.initPayInfoFromRuntime('mbti')
     } else {
@@ -46,8 +52,17 @@ Page({
   },
 
   onShow() {
-    if (!ensureProfileCompleteAndRedirect()) return
     this.setData({ hasPhone: hasPhone() })
+    if (this.data.testResultId) return
+    const raw = tt.getStorageSync('mbtiResult')
+    if (raw) {
+      const result = isReportProfileComplete() ? raw : toProfileLockedMbti(raw)
+      this.applyResult(result)
+    }
+  },
+
+  goCompleteProfile() {
+    tt.navigateTo({ url: '/pages/user-profile/index' })
   },
 
   loadDetail(id) {
@@ -159,7 +174,6 @@ Page({
 
   // 付费解锁按钮：就地触发微信手机号授权，然后调用 unlockFullReport
   onGetPhoneNumberForMbtiPay(e) {
-    if (!ensureProfileCompleteAndRedirect()) return
     const { code, errMsg } = e.detail || {}
     if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
       if (!hasPhone()) {

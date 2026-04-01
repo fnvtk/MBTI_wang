@@ -303,8 +303,8 @@
 .report-gate-cta-wrap {
   width: 100%;
   box-sizing: border-box;
-  /* 占遮罩层约一半高度，保证内部 flex 垂直居中真正留白上下对称 */
-  height: 48%;
+  /* 遮挡/雾面展示区占 report-gate 整体的 55%，与渐变分层一致 */
+  height: 55%;
   min-height: 400rpx;
   max-height: 640rpx;
   display: flex;
@@ -323,14 +323,14 @@
   top: 0;
   bottom: 0;
   pointer-events: none;
-  /* 约前 50% 区域保持清晰预览，以下渐强变白 */
+  /* 约前 45% 清晰预览；以下 55% 为渐强遮罩展示区 */
   background: linear-gradient(
     180deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0) 50%,
-    rgba(255, 255, 255, 0.2) 52%,
-    rgba(255, 255, 255, 0.55) 68%,
-    rgba(255, 255, 255, 0.82) 88%,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0.2) 48%,
+    rgba(255, 255, 255, 0.55) 64%,
+    rgba(255, 255, 255, 0.82) 85%,
     rgba(255, 255, 255, 0.92) 100%
   );
 }

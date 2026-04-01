@@ -2,6 +2,16 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { getTypeOnly } = require('../../utils/resultFormat')
+const { isReportProfileComplete } = require('../../utils/phoneAuth.js')
+
+function toProfileLockedPdp(full) {
+  if (!full) return full
+  const desc = full.description || {}
+  return {
+    description: { type: desc.type || '', emoji: desc.emoji || '' },
+    locked: true
+  }
+}
 
 const PDP_KEYS = ['Tiger', 'Peacock', 'Koala', 'Owl', 'Chameleon']
 
@@ -28,7 +38,7 @@ Page({
     typeList: [
       { type: 'Tiger', emoji: '🐅', label: '老虎型', colorClass: 'fill-tiger' },
       { type: 'Peacock', emoji: '🦚', label: '孔雀型', colorClass: 'fill-peacock' },
-      { type: 'Koala', emoji: '🐨', label: '考拉型', colorClass: 'fill-koala' },
+      { type: 'Koala', emoji: '🐨', label: '无尾熊型', colorClass: 'fill-koala' },
       { type: 'Owl', emoji: '🦉', label: '猫头鹰型', colorClass: 'fill-owl' },
       { type: 'Chameleon', emoji: '🦎', label: '变色龙型', colorClass: 'fill-chameleon' }
     ],
@@ -93,6 +103,21 @@ Page({
       fail: () => tt.showToast({ title: '网络错误', icon: 'none' }),
       complete: () => tt.hideLoading()
     })
+  },
+
+  onShow() {
+    if (this.data.testResultId) return
+    const raw = tt.getStorageSync('pdpResult')
+    if (!raw) return
+    const gated = isReportProfileComplete() ? raw : toProfileLockedPdp(raw)
+    this.setData({
+      result: withPercentagesInt(gated),
+      typeSummaryLine: getTypeOnly(gated, 'pdp')
+    })
+  },
+
+  goCompleteProfile() {
+    tt.navigateTo({ url: '/pages/user-profile/index' })
   },
 
   initPayInfoFromRuntime(testType) {

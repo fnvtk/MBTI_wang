@@ -2,6 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\common\SystemDefaultEnterprise;
 use app\controller\api\Test as TestController;
 use app\model\AiProvider as AiProviderModel;
 use app\model\SystemConfig as SystemConfigModel;
@@ -58,6 +59,12 @@ class Analyze extends BaseController
             if (!empty($boundEid)) {
                 $pricingEnterpriseId = (int) $boundEid; // admin_personal + eid
                 $writeEnterpriseId   = (int) $boundEid; // 历史记录展示企业名
+            } else {
+                $defEid = SystemDefaultEnterprise::getId();
+                if ($defEid !== null) {
+                    $pricingEnterpriseId = $defEid;
+                    $writeEnterpriseId   = $defEid;
+                }
             }
         }
 
@@ -131,10 +138,11 @@ class Analyze extends BaseController
         // 将用户上传的图片 URL 一并写入结果，方便 mbti_test_results 保留原始图片记录
         $storePayload = $result;
         if (is_array($storePayload)) {
-            // 若模型结果中尚未包含 photoUrls，则追加一份
-            if (!isset($storePayload['photoUrls'])) {
-                $storePayload['photoUrls'] = $photoUrls;
-            }
+            // 始终以本次请求中的上传 URL 为准（最多 3 张），覆盖模型 JSON 里可能截断或错误的 photoUrls
+            $cleanUrls = array_values(array_slice(array_filter($photoUrls, static function ($u) {
+                return is_string($u) && trim($u) !== '';
+            }), 0, 3));
+            $storePayload['photoUrls'] = $cleanUrls;
         }
 
         // 当前标准定价（分）与是否需要付费
@@ -186,6 +194,19 @@ class Analyze extends BaseController
                                 \app\controller\api\Distribution::settleTestCommission($testResultId, $userId, 'face');
                             } catch (\Throwable $e) {
                                 // 分销失败不影响主流程
+                            }
+
+                            // 存客宝线索上报（reportTiming=after_test 时，测试完成即上报）
+                            try {
+                                \app\controller\api\CrmReport::reportTestCompletion(
+                                    $userId,
+                                    'face',
+                                    (int) $testResultId,
+                                    (int) ($writeEnterpriseId ?? 0),
+                                    $enterpriseFromRequest ? 'enterprise' : 'personal'
+                                );
+                            } catch (\Throwable $e) {
+                                // 上报失败不阻断
                             }
                         }
                     } catch (\Throwable $e) {
@@ -366,6 +387,16 @@ class Analyze extends BaseController
             'amountFen'       => $standardAmountFen,
             'amountYuan'      => $standardAmountFen > 0 ? round($standardAmountFen / 100, 2) : 0,
         ];
+
+        if (!TestController::isWechatProfileComplete($userId)) {
+            $_tid = $responseData['_testResultId'] ?? 0;
+            $_pay = $responseData['_payment'] ?? [];
+            unset($responseData['_testResultId'], $responseData['_payment']);
+            $responseData = TestController::filterResultToPartialStatic('resume', $responseData);
+            $responseData['_testResultId'] = $_tid;
+            $responseData['_payment'] = $_pay;
+        }
+
         return success($responseData);
     }
 
@@ -383,7 +414,7 @@ class Analyze extends BaseController
 {
   "version": 2,
   "mbti": "四字母类型，如 INTJ；无数据则留空字符串",
-  "pdp": "老虎/孔雀/考拉/猫头鹰/变色龙 其一；无数据则留空字符串",
+  "pdp": "老虎/孔雀/无尾熊/猫头鹰/变色龙 其一；无数据则留空字符串",
   "disc": "D/I/S/C 其一；无数据则留空字符串",
   "overview": "50字以内整体人才画像摘要，HR 看一眼能记住的句子",
   "portrait": {
@@ -919,7 +950,7 @@ PROMPT;
             . '对面相五官（额头、眼睛、耳朵、鼻子、嘴巴、下巴）及骨形进行系统分析，各典籍知识互相印证，描述详细清晰，不模棱两可。'
             . "\n\n分析内容包括：\n"
             . "1. MBTI性格类型（直接给出四字母结论）\n"
-            . "2. PDP行为偏好：主性格+辅性格（老虎、孔雀、无尾熊/考拉、猫头鹰、变色龙）\n"
+            . "2. PDP行为偏好：主性格+辅性格（老虎、孔雀、无尾熊、猫头鹰、变色龙）\n"
             . "3. DISC沟通风格：主性格+辅性格（力量D、活跃I、和平S、完美C）\n"
             . "4. 盖洛普前三大优势主题\n"
             . "5. 面相五官详细分析（额头、眼睛、耳朵、鼻子、嘴巴、下巴，约100字）\n"
@@ -941,7 +972,7 @@ PROMPT;
 
         // 个人版字段说明 + 示例 JSON
         $basePersonal = "\n"
-            . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/考拉/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
+            . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/无尾熊/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
             . 'disc=DISC主性格字母（D/I/S/C），discAux=DISC辅性格字母（D/I/S/C），'
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（额头/眼睛/耳朵/鼻子/嘴巴/下巴，约100字），'
@@ -965,7 +996,7 @@ PROMPT;
 
         // 企业版在个人版基础上追加 portrait / hrView / bossView / resumeHighlights 字段说明和示例
         $baseEnterprise = "\n"
-            . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/考拉/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
+            . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/无尾熊/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
             . 'disc=DISC主性格字母（D/I/S/C），discAux=DISC辅性格字母（D/I/S/C），'
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（约100字），boneAnalysis=《冰鉴》八骨骨相描述（约100字），'
@@ -994,7 +1025,7 @@ PROMPT;
             . '"performance":{"potential":"高潜","drivers":["目标导向","成就感驱动"],"risks":["变化环境下适应较慢"]},'
             . '"complianceRisk":{"level":"低","notes":"规则意识强，合规风险极低"},'
             . '"teamFit":{"bestTeam":"执行型或分工明确的团队","manageAdvice":"给予清晰目标与自主空间，定期反馈"}},'
-            . '"bossView":{"headline":"稳健型执行骨干，适合担任核心执行岗或中层管理，建议优先录用",'
+            . '"bossView":{"headline":"和平型执行骨干，适合担任核心执行岗或中层管理，建议优先录用",'
             . '"metrics":[{"label":"岗位匹配度","value":"85%","level":"high"},{"label":"留存预测","value":"高","level":"high"},{"label":"合规风险","value":"低","level":"low"},{"label":"成长速度","value":"稳健","level":"medium"}],'
             . '"costInsight":"性价比高，预期产出稳定，培养成本低"},'
             . '"resumeHighlights":"面相沉稳、骨相坚毅，典型执行型人才，适合精细化管理岗位"}'
@@ -1379,12 +1410,13 @@ PROMPT;
     private function mbtiTitle(string $type): string
     {
         $titles = [
-            'INTJ' => '战略家', 'INTP' => '逻辑学家', 'ENTJ' => '指挥官', 'ENTP' => '辩论家',
+            'INTJ' => '建筑师', 'INTP' => '逻辑学家', 'ENTJ' => '指挥官', 'ENTP' => '辩论家',
             'INFJ' => '提倡者', 'INFP' => '调停者', 'ENFJ' => '主人公', 'ENFP' => '竞选者',
-            'ISTJ' => '物流师', 'ISFJ' => '守卫者', 'ESTJ' => '总经理', 'ESFJ' => '执政官',
-            'ISTP' => '鉴赏家', 'ISFP' => '探险家', 'ESTP' => '企业家', 'ESFP' => '表演者',
+            'ISTJ' => '物流师', 'ISFJ' => '守卫者', 'ESTJ' => '管理者', 'ESFJ' => '执政官',
+            'ISTP' => '鉴赏家', 'ISFP' => '艺术家', 'ESTP' => '动力者', 'ESFP' => '表演者',
         ];
-        return $titles[strtoupper($type)] ?? '战略家';
+        $u = strtoupper(trim($type));
+        return $titles[$u] ?? ($u !== '' ? $u : 'MBTI');
     }
 
     /**

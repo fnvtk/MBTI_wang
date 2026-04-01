@@ -20,7 +20,8 @@ Page({
       amountYuan: 0
     },
     testResultId: 0,
-    paying: false
+    paying: false,
+    profileGate: false
   },
 
   onLoad(options) {
@@ -35,8 +36,19 @@ Page({
     }
   },
 
+  onShow() {
+    const id = this.data.testResultId
+    if (id && this.data.profileGate) {
+      this.loadFromHistory(String(id))
+    }
+  },
+
+  goCompleteProfile() {
+    tt.navigateTo({ url: '/pages/user-profile/index' })
+  },
+
   loadFromHistory(id) {
-    this.setData({ loading: true, error: '', content: '', sections: [], resumeData: null })
+    this.setData({ loading: true, error: '', content: '', sections: [], resumeData: null, profileGate: false })
     const apiBase = (app.globalData && app.globalData.apiBase) || tt.getStorageSync('apiBase') || ''
     const token = (app.globalData && app.globalData.token) || tt.getStorageSync('token') || ''
     tt.request({
@@ -52,30 +64,43 @@ Page({
           // 兼容：历史数据可能是字符串，或包在 content 里的 JSON 字符串
           data = this.normalizeStructuredData(data)
 
+          const profileIncomplete = payload.profileIncomplete === true
+          const locked = !!(data && data.locked)
           const structured = !!data && data._structured === true
+
+          const requiresPayment = !!payload.requiresPayment
+          const isPaid = !!payload.isPaid
+          const amountYuan = payload.paidAmount ? payload.paidAmount / 100 : 0
+          const payWall = requiresPayment && !isPaid
+          const profileGate = !payWall && (profileIncomplete || locked)
 
           let content = ''
           let sections = []
+          let resumeData = null
 
-          if (structured) {
+          if (payWall || profileGate) {
+            content = ''
+            sections = []
+            resumeData = null
+          } else if (structured) {
             const built = this.buildSectionsFromStructured(data)
             content = built.content
             sections = built.sections
+            resumeData = data
           } else {
             const raw = data.content || ''
             content = raw
             sections = this.parseContent(raw)
           }
-          const requiresPayment = !!payload.requiresPayment
-          const isPaid = !!payload.isPaid
-          const amountYuan = payload.paidAmount ? payload.paidAmount / 100 : 0
+
           this.setData({
             loading: false,
             testResultId: payload.id || parseInt(id) || 0,
-            content: (!requiresPayment || isPaid) ? content : '',
-            sections: (!requiresPayment || isPaid) ? sections : [],
-            resumeData: structured ? data : null,
-            payInfo: { requiresPayment: requiresPayment && !isPaid, isPaid, amountYuan }
+            content,
+            sections,
+            resumeData,
+            profileGate,
+            payInfo: { requiresPayment: payWall, isPaid, amountYuan }
           })
         } else {
           this.setData({ loading: false, error: '加载历史记录失败，请返回重试。' })
@@ -145,15 +170,23 @@ Page({
             // 兼容：API 直接返回结构化对象，或把 JSON 放在 content 里
             d = this.normalizeStructuredData(d)
 
+            const locked = !!(d && d.locked)
             const structured = !!d && d._structured === true
 
             let content = ''
             let sections = []
+            let resumeData = null
+            let profileGate = false
 
-            if (structured) {
+            if (requiresPayment) {
+              profileGate = false
+            } else if (locked) {
+              profileGate = true
+            } else if (structured) {
               const built = this.buildSectionsFromStructured(d)
               content = built.content
               sections = built.sections
+              resumeData = d
             } else {
               const raw = d.content || ''
               content = raw || '分析已完成，但未返回可展示的内容。'
@@ -166,7 +199,8 @@ Page({
               testResultId: resultId,
               content: requiresPayment ? '' : content,
               sections: requiresPayment ? [] : sections,
-              resumeData: structured ? d : null,
+              resumeData,
+              profileGate,
               payInfo: { requiresPayment, isPaid: !requiresPayment, amountYuan }
             })
           } else {

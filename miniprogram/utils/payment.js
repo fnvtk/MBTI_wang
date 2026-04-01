@@ -130,6 +130,7 @@ function wxPay(options) {
             // 支付成功后轮询后端订单状态 3~5 次，确保通过微信订单查询接口确认成功
             pollOrderStatus(orderId, 5, 1000, (ok, order) => {
               if (ok) {
+                try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
                 try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                 wx.showToast({
                   title: '支付成功',
@@ -264,6 +265,35 @@ function pollOrderStatus(orderId, maxAttempts = 5, intervalMs = 1000, done) {
   }
 
   tick()
+}
+
+/**
+ * 测评类付费（人脸/MBTI/PDP/DISC）支付确认成功后上报存客宝线索；KEY 由后端按企业 cunkebao_keys 解析（对齐深度服务「完成付款」）
+ */
+function reportCrmTestPaymentAfterSuccess(productType, testResultId, contextEnterpriseId) {
+  const types = { face: true, mbti: true, disc: true, pdp: true }
+  if (!types[productType]) return
+  const token = wx.getStorageSync('token')
+  if (!token) return
+  wx.request({
+    url: `${paymentApiBase()}/api/crm/report`,
+    method: 'POST',
+    header: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    data: {
+      testType: productType,
+      testResultId: testResultId || 0,
+      contextEnterpriseId: contextEnterpriseId != null ? Number(contextEnterpriseId) : 0
+    },
+    success(res) {
+      console.log('[CRM] 测评付费线索', res.data)
+    },
+    fail(err) {
+      console.warn('[CRM] 测评付费线索请求失败', err)
+    }
+  })
 }
 
 /**

@@ -25,7 +25,17 @@
           </view>
         </view>
 
-        <view class="scores-section" tt:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+        <view class="paywall-card" tt:elif="{{result && result.locked}}">
+          <view class="paywall-content">
+            <text class="paywall-fake-title">完整报告需完善资料</text>
+            <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整 DISC 报告。</text>
+            <view class="paywall-btn" bindtap="goCompleteProfile">
+              <text class="paywall-btn-main">去完善资料</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="scores-section" tt:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
           <text class="section-title">DISC得分详情</text>
           <view class="score-item" tt:for="{{typeList}}" tt:key="type">
             <view class="score-header">
@@ -39,7 +49,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" tt:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+      <view class="analysis-card" tt:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
         <text class="card-title">主要性格特征分析</text>
         <view class="trait-section">
           <text class="trait-title">优势</text>
@@ -57,7 +67,7 @@
         </view>
       </view>
 
-      <view class="analysis-card" tt:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
+      <view class="analysis-card" tt:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
         <text class="card-title">职业匹配度分析</text>
         <view class="career-item" tt:for="{{result.description.careers}}" tt:key="*this">
           <view class="career-dot"></view>

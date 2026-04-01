@@ -1,6 +1,6 @@
 // pages/index/camera.js - 拍照页，拍完后上传到服务器再跳转结果页
 const app = getApp()
-const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+const { ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
 
 Page({
   data: {
@@ -9,7 +9,6 @@ Page({
     guideTexts: ['请正对镜头', '请向左转45°', '请向右转45°'],
     guideText: '请正对镜头',
     uploading: false,
-    needPhoneAuth: false,
     aiAnalysisText: '分析',
     reviewMode: true
   },
@@ -104,30 +103,6 @@ Page({
     }
   },
 
-  // 本页就地授权手机号
-  onGetPhoneNumber(e) {
-    const { code, errMsg } = e.detail || {}
-    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
-      wx.showToast({ title: '需要授权手机号才能继续', icon: 'none' })
-      return
-    }
-    if (!code && !hasPhone()) {
-      wx.showToast({ title: '获取手机号失败', icon: 'none' })
-      return
-    }
-    if (!code && hasPhone()) {
-      // 已有手机号，无需重复请求
-      this.setData({ needPhoneAuth: false })
-      return
-    }
-    bindPhoneByCode(code).then(() => {
-      this.setData({ needPhoneAuth: false })
-    }).catch(() => {
-      // 失败时保持 needPhoneAuth 为 true，等待用户重新授权
-      this.setData({ needPhoneAuth: !hasPhone() })
-    })
-  },
-
   // 拍照
   takePhoto() {
     if (this.data.photos.length >= 3) {
@@ -201,11 +176,6 @@ Page({
 
   // 完成拍照：先上传 3 张图到服务器，拿到 URL 后再跳转结果页
   completeCapture() {
-    if (!hasPhone()) {
-      wx.showToast({ title: '请先授权手机号', icon: 'none' })
-      this.setData({ needPhoneAuth: true })
-      return
-    }
     const photos = this.data.photos
     if (!photos || photos.length === 0) {
       wx.showToast({ title: '请先拍摄照片', icon: 'none' })

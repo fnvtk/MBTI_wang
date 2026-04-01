@@ -513,7 +513,7 @@ class PosterService
         self::drawRoundedRect($img, $cx - 80, 150, 65, 24, 8, imagecolorallocatealpha($img, 255, 255, 255, 50));
         self::drawRoundedRect($img, $cx + 5, 150, 65, 24, 8, imagecolorallocatealpha($img, 255, 255, 255, 50));
         self::drawText($img, $cx - 70, 155, 'INTJ', $primary, 10);
-        self::drawText($img, $cx - 45, 155, '战略家', $gray, 10);
+        self::drawText($img, $cx - 45, 155, '建筑师', $gray, 10);
         self::drawText($img, $cx + 15, 155, 'PDP', $secondary, 10);
         self::drawText($img, $cx + 40, 155, '猫头鹰', $gray, 10);
 

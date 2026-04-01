@@ -22,7 +22,8 @@ function getEffectiveEnterpriseId() {
 }
 
 /**
- * 与微信 miniprogram/utils/enterpriseContext.getEnterpriseIdForApiPayload 一致
+ * 与微信 miniprogram/utils/enterpriseContext.getEnterpriseIdForApiPayload 一致。
+ * 个人版无 scene 时返回 null；后端 submit / analyze 会用绑定企业或系统默认企业落库。
  */
 function getEnterpriseIdForApiPayload() {
   const app = getApp()

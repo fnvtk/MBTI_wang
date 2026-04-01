@@ -2,6 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\common\SystemDefaultEnterprise;
 use app\common\PdpDiscResultText;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
@@ -118,7 +119,7 @@ class Test extends BaseController
                     if ($needPayUnlock || $profileIncomplete) {
                         $data = self::filterFaceResultToPreview($data);
                     }
-                } elseif ($requiresPayment && !$isPaid) {
+                } elseif ($needPayUnlock || $profileIncomplete) {
                     $data = $this->filterResultToPartial($testType, $data);
                 }
             }
@@ -392,6 +393,22 @@ class Test extends BaseController
         $raw = $row['resultData'] ?? ($row['result'] ?? null);
         $data = $this->decodeResultDataPayload($raw);
 
+        $userIdRow = (int) ($row['userId'] ?? 0);
+        $profileIncomplete = $userIdRow > 0 && !self::isWechatProfileComplete($userIdRow);
+        $requiresPayment = (int) ($row['requiresPayment'] ?? 0);
+        $isPaid = (int) ($row['isPaid'] ?? 0);
+        $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
+        $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+        if ($data !== []) {
+            if (in_array($testType, ['face', 'ai'], true)) {
+                if ($needPayUnlock || $profileIncomplete) {
+                    $data = self::filterFaceResultToPreview($data);
+                }
+            } elseif ($needPayUnlock || $profileIncomplete) {
+                $data = $this->filterResultToPartial($testType, $data);
+            }
+        }
+
         $resultText = '';
         $emoji      = '';
         $typeName   = '';
@@ -534,7 +551,7 @@ class Test extends BaseController
                 if ($needPaymentToUnlock || $profileIncomplete) {
                     $data = self::filterFaceResultToPreview($data);
                 }
-            } elseif ($needPaymentToUnlock) {
+            } elseif ($needPaymentToUnlock || $profileIncomplete) {
                 $data = $this->filterResultToPartial($testType, $data);
             }
         }
@@ -549,6 +566,7 @@ class Test extends BaseController
             'paidAmount'          => $paidAmount,
             'amountYuan'          => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
             'needPaymentToUnlock'=> $needPaymentToUnlock,
+            'profileIncomplete'   => $profileIncomplete,
             'orderId'             => isset($row['orderId']) ? (int) $row['orderId'] : null,
             'paidAt'              => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
         ]);
@@ -618,6 +636,13 @@ class Test extends BaseController
                 if (!empty($boundEid)) {
                     $pricingEnterpriseId = (int) $boundEid; // admin_personal + eid
                     $writeEnterpriseId   = (int) $boundEid; // 历史记录展示企业名
+                } else {
+                    // 主入口无参数且未绑定企业：回落超管配置的默认企业（与个人版 getEnterpriseIdForApiPayload 不传参一致，由服务端统一落库）
+                    $defEid = SystemDefaultEnterprise::getId();
+                    if ($defEid !== null) {
+                        $pricingEnterpriseId = $defEid;
+                        $writeEnterpriseId   = $defEid;
+                    }
                 }
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
@@ -655,6 +680,19 @@ class Test extends BaseController
                     \app\controller\api\Distribution::settleTestCommission($id, $userId, $testType);
                 } catch (\Throwable $e) {
                     // 佣金结算失败不阻断测试保存
+                }
+
+                // 存客宝线索：MBTI/DISC/PDP 等问卷与人脸一致——免费(requiresPayment=0)测完即报；需付费则按企业后台「上报时机」
+                try {
+                    \app\controller\api\CrmReport::reportTestCompletion(
+                        $userId,
+                        $testType,
+                        (int) $id,
+                        (int) ($writeEnterpriseId ?? 0),
+                        $enterpriseId !== null ? 'enterprise' : 'personal'
+                    );
+                } catch (\Throwable $e) {
+                    // 上报失败不阻断
                 }
             }
         } catch (\Throwable $e) {
@@ -720,12 +758,13 @@ class Test extends BaseController
     }
 
     /**
-     * 未付费时只返回部分数据（完整数据需付费解锁）
+     * 问卷/简历类：未付费或资料未完善时只返回部分数据（与实例方法 filterResultToPartial 一致）
+     *
      * @param string $testType
-     * @param array|null $data 原始 resultData
-     * @return array|null 脱敏后的数据
+     * @param array|null $data
+     * @return array|null
      */
-    protected function filterResultToPartial(string $testType, $data)
+    public static function filterResultToPartialStatic(string $testType, $data)
     {
         if (!is_array($data)) {
             return $data;
@@ -748,7 +787,30 @@ class Test extends BaseController
                 'locked'       => true,
             ];
         }
+        if ($testType === 'resume') {
+            $preview = '';
+            if (!empty($data['content']) && is_string($data['content'])) {
+                $preview = self::truncatePreviewText(strip_tags($data['content']), 72);
+            } elseif (!empty($data['overview']) && is_string($data['overview'])) {
+                $preview = self::truncatePreviewText(strip_tags($data['overview']), 72);
+            }
+
+            return [
+                'locked'      => true,
+                'content'     => $preview,
+                '_structured' => false,
+            ];
+        }
+
         return $data;
+    }
+
+    /**
+     * 未付费时只返回部分数据（完整数据需付费解锁）
+     */
+    protected function filterResultToPartial(string $testType, $data)
+    {
+        return self::filterResultToPartialStatic($testType, $data);
     }
 
     /**
