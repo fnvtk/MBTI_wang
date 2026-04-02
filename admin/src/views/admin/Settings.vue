@@ -44,61 +44,42 @@
                 </el-button>
               </div>
             </template>
-          </div>
-        </div>
-
-        <div v-if="activeTab === 'cunkebao'" class="tab-content" v-loading="cunkebaoLoading">
-          <div class="content-header">
-            <h3>存客宝 Key</h3>
-            <p class="content-description">
-              按测评类型配置企业版与个人版 Key（人脸、MBTI、DISC、PDP 各自独立），数据仅保存在当前企业维度；留空表示未配置。下方「上报时机」对上述四类均生效：免费测评完成后即上报；若该类型标价需付费，可选付款后才上报或测试完即上报。
-            </p>
-          </div>
-          <div class="form-section">
-            <div
-              v-for="row in cunkebaoRows"
-              :key="row.key"
-              class="cunkebao-type-block"
-            >
-              <div class="cunkebao-section-title">{{ row.label }}</div>
-              <div class="cunkebao-two-col">
-                <div class="form-item">
-                  <label>企业版 Key</label>
+            <template v-if="canConfigureCunkebaoKeys()">
+              <div class="cunkebao-embed-section" v-loading="cunkebaoLoading">
+                <div class="cunkebao-embed-header">
+                  <h4 class="cunkebao-embed-title">存客宝线索（测评）</h4>
+                  <p class="hint-muted cunkebao-embed-desc">
+                    人脸、MBTI、DISC、PDP 共用一把 Key，仅本企业有效；留空表示不启用。上报时机对全部测评生效。
+                  </p>
+                </div>
+                <div class="form-item cunkebao-key-row">
+                  <label>存客宝 Key</label>
                   <el-input
-                    v-model="cunkebaoKeys[row.key].enterprise"
+                    v-model="cunkebaoUnified.apiKey"
                     clearable
-                    :placeholder="`请输入 ${row.label} 企业版 Key`"
+                    placeholder="请输入存客宝场景 Key"
                     class="w-full"
                   />
                 </div>
-                <div class="form-item">
-                  <label>个人版 Key</label>
-                  <el-input
-                    v-model="cunkebaoKeys[row.key].personal"
-                    clearable
-                    :placeholder="`请输入 ${row.label} 个人版 Key`"
-                    class="w-full"
+                <div class="cunkebao-timing-row">
+                  <label>上报时机</label>
+                  <el-switch
+                    v-model="cunkebaoUnified.reportTiming"
+                    active-value="after_test"
+                    inactive-value="after_paid"
+                    active-text="测试完即上报"
+                    inactive-text="付款后才上报"
+                    inline-prompt
+                    style="--el-switch-on-color: #7c3aed; --el-switch-off-color: #909399"
                   />
                 </div>
+                <div class="save-actions">
+                  <el-button type="primary" color="#7c3aed" class="save-btn" :loading="cunkebaoSaving" @click="saveCunkebaoKeys">
+                    保存存客宝设置
+                  </el-button>
+                </div>
               </div>
-              <div class="cunkebao-timing-row">
-                <label>上报时机</label>
-                <el-switch
-                  v-model="cunkebaoKeys[row.key].reportTiming"
-                  active-value="after_test"
-                  inactive-value="after_paid"
-                  active-text="测试完即上报"
-                  inactive-text="付款后才上报"
-                  inline-prompt
-                  style="--el-switch-on-color: #7c3aed; --el-switch-off-color: #909399"
-                />
-              </div>
-            </div>
-            <div class="save-actions">
-              <el-button type="primary" color="#7c3aed" class="save-btn" :loading="cunkebaoSaving" @click="saveCunkebaoKeys">
-                保存存客宝 Key
-              </el-button>
-            </div>
+            </template>
           </div>
         </div>
 
@@ -170,7 +151,7 @@ import { request } from '@/utils/request'
 import { getAdminRole } from '@/utils/authStorage'
 import Finance from './Finance.vue'
 
-const TAB_IDS = ['account', 'features', 'cunkebao', 'finance'] as const
+const TAB_IDS = ['account', 'features', 'finance'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -192,11 +173,8 @@ const canConfigureCunkebaoKeys = () => {
 
 const tabs = computed(() => {
   const rows: { label: string; value: TabId }[] = [{ label: '账号设置', value: 'account' }]
-  if (isEnterpriseAdmin()) {
+  if (isEnterpriseAdmin() || canConfigureCunkebaoKeys()) {
     rows.push({ label: '功能开关', value: 'features' })
-  }
-  if (canConfigureCunkebaoKeys()) {
-    rows.push({ label: '存客宝key', value: 'cunkebao' })
   }
   rows.push({ label: '企业余额', value: 'finance' })
   return rows
@@ -204,10 +182,12 @@ const tabs = computed(() => {
 
 const applyRouteTab = () => {
   const t = route.query.tab
+  if (typeof t === 'string' && t === 'cunkebao') {
+    activeTab.value = 'features'
+    return
+  }
   if (typeof t === 'string' && isTabId(t)) {
-    if (t === 'features' && !isEnterpriseAdmin()) {
-      activeTab.value = 'account'
-    } else if (t === 'cunkebao' && !canConfigureCunkebaoKeys()) {
+    if (t === 'features' && !isEnterpriseAdmin() && !canConfigureCunkebaoKeys()) {
       activeTab.value = 'account'
     } else {
       activeTab.value = t
@@ -254,20 +234,11 @@ const permSaving = ref(false)
 const adminPermsCeiling = ref<Record<string, boolean>>(defaultAdminPermissions())
 const adminPerms = reactive<Record<string, boolean>>(defaultAdminPermissions())
 
-type CunkebaoKeyScope = 'face' | 'pdp' | 'disc' | 'mbti'
-
-const cunkebaoRows: { key: CunkebaoKeyScope; label: string }[] = [
-  { key: 'face', label: '人脸测试' },
-  { key: 'pdp', label: 'PDP' },
-  { key: 'disc', label: 'DISC' },
-  { key: 'mbti', label: 'MBTI' }
-]
-
-const cunkebaoKeys = reactive<Record<CunkebaoKeyScope, { enterprise: string; personal: string; reportTiming: string }>>({
-  face: { enterprise: '', personal: '', reportTiming: 'after_paid' },
-  pdp: { enterprise: '', personal: '', reportTiming: 'after_paid' },
-  disc: { enterprise: '', personal: '', reportTiming: 'after_paid' },
-  mbti: { enterprise: '', personal: '', reportTiming: 'after_paid' }
+/** 测评类存客宝：共用一对 Key + 统一上报时机 */
+const cunkebaoUnified = reactive({
+  enterprise: '',
+  personal: '',
+  reportTiming: 'after_paid' as 'after_paid' | 'after_test'
 })
 
 const cunkebaoLoading = ref(false)
@@ -280,14 +251,8 @@ const loadCunkebaoKeys = async () => {
     const res: any = await request.get('/admin/settings/cunkebao-keys')
     if (res.code === 200 && res.data?.cunkebaoKeys && typeof res.data.cunkebaoKeys === 'object') {
       const ck = res.data.cunkebaoKeys
-      cunkebaoRows.forEach(({ key }) => {
-        const row = ck[key]
-        if (row && typeof row === 'object') {
-          cunkebaoKeys[key].enterprise = String(row.enterprise ?? '')
-          cunkebaoKeys[key].personal = String(row.personal ?? '')
-          cunkebaoKeys[key].reportTiming = row.reportTiming === 'after_test' ? 'after_test' : 'after_paid'
-        }
-      })
+      cunkebaoUnified.apiKey = String(ck.apiKey ?? '')
+      cunkebaoUnified.reportTiming = ck.reportTiming === 'after_test' ? 'after_test' : 'after_paid'
     }
   } catch (e: any) {
     console.error(e)
@@ -302,7 +267,7 @@ const saveCunkebaoKeys = async () => {
   cunkebaoSaving.value = true
   try {
     const res: any = await request.put('/admin/settings/cunkebao-keys', {
-      cunkebaoKeys: { ...cunkebaoKeys }
+      cunkebaoKeys: { ...cunkebaoUnified }
     })
     if (res.code === 200) {
       ElMessage.success('存客宝 Key 已保存')
@@ -412,11 +377,13 @@ watch(
 watch(
   () => activeTab.value,
   (tab) => {
-    if (tab === 'features' && isEnterpriseAdmin()) {
-      loadAdminPermissions()
-    }
-    if (tab === 'cunkebao' && canConfigureCunkebaoKeys()) {
-      loadCunkebaoKeys()
+    if (tab === 'features') {
+      if (isEnterpriseAdmin()) {
+        loadAdminPermissions()
+      }
+      if (canConfigureCunkebaoKeys()) {
+        loadCunkebaoKeys()
+      }
     }
   }
 )
@@ -424,11 +391,13 @@ watch(
 onMounted(() => {
   applyRouteTab()
   loadSettings()
-  if (activeTab.value === 'features' && isEnterpriseAdmin()) {
-    loadAdminPermissions()
-  }
-  if (activeTab.value === 'cunkebao' && canConfigureCunkebaoKeys()) {
-    loadCunkebaoKeys()
+  if (activeTab.value === 'features') {
+    if (isEnterpriseAdmin()) {
+      loadAdminPermissions()
+    }
+    if (canConfigureCunkebaoKeys()) {
+      loadCunkebaoKeys()
+    }
   }
 })
 </script>
@@ -464,28 +433,25 @@ onMounted(() => {
   margin: 0;
 }
 
-.cunkebao-type-block {
-  margin-bottom: 28px;
-  padding-bottom: 20px;
-  border-bottom: 1px solid #f3f4f6;
-
-  &:last-of-type {
-    border-bottom: none;
-    margin-bottom: 8px;
-  }
+.cunkebao-embed-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
 }
 
-.cunkebao-section-title {
-  font-size: 15px;
+.cunkebao-embed-title {
+  margin: 0 0 8px 0;
+  font-size: 16px;
   font-weight: 600;
   color: #111827;
-  margin-bottom: 14px;
 }
 
-.cunkebao-two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
+.cunkebao-embed-desc {
+  margin: 0 0 16px 0;
+}
+
+.cunkebao-key-row {
+  max-width: 560px;
 }
 
 .cunkebao-timing-row {
@@ -498,12 +464,6 @@ onMounted(() => {
     font-size: 13px;
     color: #374151;
     white-space: nowrap;
-  }
-}
-
-@media (max-width: 900px) {
-  .cunkebao-two-col {
-    grid-template-columns: 1fr;
   }
 }
 

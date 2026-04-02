@@ -175,22 +175,18 @@ class Settings extends BaseController
     }
 
     /**
-     * 存客宝 Key 默认结构（人脸/MBTI/PDP/DISC × 企业版与个人版）
+     * 存客宝默认结构（测评线索共用一个 Key + 上报时机）
      */
     private static function defaultCunkebaoKeysStructure(): array
     {
-        $blank = ['enterprise' => '', 'personal' => '', 'reportTiming' => 'after_paid'];
-
         return [
-            'face' => $blank,
-            'pdp'  => $blank,
-            'disc' => $blank,
-            'mbti' => $blank,
+            'apiKey'       => '',
+            'reportTiming' => 'after_paid',
         ];
     }
 
     /**
-     * @param mixed $raw 已解码的配置或 null
+     * @param mixed $raw 已解码的配置或 null（单 Key；兼容旧版 enterprise/personal 及按题型分栏）
      */
     private static function normalizeCunkebaoKeysPayload($raw): array
     {
@@ -198,16 +194,54 @@ class Settings extends BaseController
         if (!is_array($raw)) {
             return $out;
         }
-        foreach (array_keys($out) as $type) {
+
+        $rtIn = static function ($v) use (&$out): void {
+            $rt = (string) ($v ?? '');
+            if (in_array($rt, ['after_paid', 'after_test'], true)) {
+                $out['reportTiming'] = $rt;
+            }
+        };
+
+        // 新版：apiKey + reportTiming
+        if (array_key_exists('apiKey', $raw)) {
+            $out['apiKey'] = isset($raw['apiKey']) ? trim((string) $raw['apiKey']) : '';
+            $rtIn($raw['reportTiming'] ?? '');
+
+            return $out;
+        }
+
+        // 上一版：enterprise / personal 合二为一（优先企业栏）
+        if (array_key_exists('enterprise', $raw) || array_key_exists('personal', $raw)) {
+            $e = isset($raw['enterprise']) ? trim((string) $raw['enterprise']) : '';
+            $p = isset($raw['personal']) ? trim((string) $raw['personal']) : '';
+            $out['apiKey'] = $e !== '' ? $e : $p;
+            $rtIn($raw['reportTiming'] ?? '');
+
+            return $out;
+        }
+
+        // 旧版：按题型分栏
+        $types = ['face', 'pdp', 'disc', 'mbti'];
+        foreach ($types as $type) {
             if (!isset($raw[$type]) || !is_array($raw[$type])) {
                 continue;
             }
             $row = $raw[$type];
-            $out[$type]['enterprise']   = isset($row['enterprise']) ? trim((string) $row['enterprise']) : '';
-            $out[$type]['personal']     = isset($row['personal']) ? trim((string) $row['personal']) : '';
-            $out[$type]['reportTiming'] = in_array($row['reportTiming'] ?? '', ['after_paid', 'after_test'], true)
-                ? $row['reportTiming']
-                : 'after_paid';
+            if ($out['apiKey'] === '' && isset($row['enterprise'])) {
+                $x = trim((string) $row['enterprise']);
+                if ($x !== '') {
+                    $out['apiKey'] = $x;
+                }
+            }
+            if ($out['apiKey'] === '' && isset($row['personal'])) {
+                $x = trim((string) $row['personal']);
+                if ($x !== '') {
+                    $out['apiKey'] = $x;
+                }
+            }
+            if ((string) ($row['reportTiming'] ?? '') === 'after_test') {
+                $out['reportTiming'] = 'after_test';
+            }
         }
 
         return $out;
@@ -275,7 +309,7 @@ class Settings extends BaseController
         $sanitized = self::normalizeCunkebaoKeysPayload($payload);
 
         try {
-            self::saveConfig('cunkebao_keys', $sanitized, $eid, '存客宝 Key（本企业 · 人脸/MBTI/PDP/DISC）');
+            self::saveConfig('cunkebao_keys', $sanitized, $eid, '存客宝 Key（本企业 · 测评类共用）');
 
             return success($sanitized, '存客宝 Key 已保存');
         } catch (\Exception $e) {

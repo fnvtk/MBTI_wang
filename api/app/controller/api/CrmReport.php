@@ -139,17 +139,15 @@ class CrmReport extends BaseController
             return null;
         }
 
-        $testScope = '';
         $trEnterpriseId = 0;
 
         if ($testResultId > 0) {
             $tr = Db::name('test_results')
                 ->where('id', $testResultId)
                 ->where('userId', $userId)
-                ->field('enterpriseId,testScope')
+                ->field('enterpriseId')
                 ->find();
             if ($tr) {
-                $testScope = (string) ($tr['testScope'] ?? 'personal');
                 $trEnterpriseId = (int) ($tr['enterpriseId'] ?? 0);
             }
         }
@@ -159,32 +157,15 @@ class CrmReport extends BaseController
             $configEid = (int) (Db::name('wechat_users')->where('id', $userId)->value('enterpriseId') ?? 0);
         }
 
-        $useEnterpriseColumn = ($testScope === 'enterprise')
-            || ($testScope === '' && $contextEnterpriseId > 0);
-
-        $col = $useEnterpriseColumn ? 'enterprise' : 'personal';
-        $key = self::readCunkebaoCellWithFallback($configEid, $testType, $col);
+        $key = self::readSingleCunkebaoApiKeyWithFallback($configEid);
 
         return $key !== '' ? $key : null;
     }
 
     /**
-     * 读取某企业 cunkebao_keys 中一格；为空时再读 enterprise_id=0 全局行
+     * 读取企业 cunkebao_keys：单 apiKey；兼容旧版 enterprise/personal 及按题型分栏
      */
-    private static function readCunkebaoCellWithFallback(int $enterpriseId, string $testType, string $col): string
-    {
-        $v = self::readCunkebaoCell($enterpriseId, $testType, $col);
-        if ($v !== '') {
-            return $v;
-        }
-        if ($enterpriseId > 0) {
-            $v = self::readCunkebaoCell(0, $testType, $col);
-        }
-
-        return $v;
-    }
-
-    private static function readCunkebaoCell(int $enterpriseId, string $testType, string $col): string
+    private static function readSingleCunkebaoApiKey(int $enterpriseId): string
     {
         $row = Db::name('system_config')
             ->where('key', 'cunkebao_keys')
@@ -194,11 +175,45 @@ class CrmReport extends BaseController
             return '';
         }
         $decoded = is_string($row['value']) ? json_decode($row['value'], true) : $row['value'];
-        if (!is_array($decoded) || !isset($decoded[$testType][$col])) {
+        if (!is_array($decoded)) {
             return '';
         }
+        if (array_key_exists('apiKey', $decoded)) {
+            return trim((string) ($decoded['apiKey'] ?? ''));
+        }
+        if (array_key_exists('enterprise', $decoded) || array_key_exists('personal', $decoded)) {
+            $e = trim((string) ($decoded['enterprise'] ?? ''));
+            $p = trim((string) ($decoded['personal'] ?? ''));
 
-        return trim((string) $decoded[$testType][$col]);
+            return $e !== '' ? $e : $p;
+        }
+        foreach (['face', 'mbti', 'pdp', 'disc'] as $t) {
+            if (!isset($decoded[$t]) || !is_array($decoded[$t])) {
+                continue;
+            }
+            $rowT = $decoded[$t];
+            foreach (['enterprise', 'personal'] as $col) {
+                $v = trim((string) ($rowT[$col] ?? ''));
+                if ($v !== '') {
+                    return $v;
+                }
+            }
+        }
+
+        return '';
+    }
+
+    private static function readSingleCunkebaoApiKeyWithFallback(int $enterpriseId): string
+    {
+        $v = self::readSingleCunkebaoApiKey($enterpriseId);
+        if ($v !== '') {
+            return $v;
+        }
+        if ($enterpriseId > 0) {
+            $v = self::readSingleCunkebaoApiKey(0);
+        }
+
+        return $v;
     }
 
     private static function testTypeSiteTag(string $testType): string
@@ -352,13 +367,12 @@ class CrmReport extends BaseController
 
             // 未配置付费（免费）：测试完成即上报（与「没付款可直接调用」一致）
             // 若需付费：仅当后台为「测试完即上报」时在提交后上报；「付款后才上报」则等支付成功后再走前端/接口
-            $timing = self::readReportTiming($enterpriseId, $testType);
+            $timing = self::readReportTiming($enterpriseId);
             if ($requiresPayment === 1 && $timing !== 'after_test') {
                 return;
             }
 
-            $col = ($testScope === 'enterprise') ? 'enterprise' : 'personal';
-            $apiKey = self::readCunkebaoCellWithFallback($enterpriseId, $testType, $col);
+            $apiKey = self::readSingleCunkebaoApiKeyWithFallback($enterpriseId);
             if ($apiKey === '') {
                 return;
             }
@@ -382,22 +396,22 @@ class CrmReport extends BaseController
     }
 
     /**
-     * 读取某企业某测评类型的 reportTiming（after_paid / after_test）
+     * 读取企业 reportTiming（after_paid / after_test），测评类共用
      */
-    private static function readReportTiming(int $enterpriseId, string $testType): string
+    private static function readReportTiming(int $enterpriseId): string
     {
-        $val = self::readReportTimingFromRow($enterpriseId, $testType);
+        $val = self::readReportTimingFromRow($enterpriseId);
         if ($val !== '') {
             return $val;
         }
         if ($enterpriseId > 0) {
-            $val = self::readReportTimingFromRow(0, $testType);
+            $val = self::readReportTimingFromRow(0);
         }
 
         return $val !== '' ? $val : 'after_paid';
     }
 
-    private static function readReportTimingFromRow(int $enterpriseId, string $testType): string
+    private static function readReportTimingFromRow(int $enterpriseId): string
     {
         $row = Db::name('system_config')
             ->where('key', 'cunkebao_keys')
@@ -407,12 +421,34 @@ class CrmReport extends BaseController
             return '';
         }
         $decoded = is_string($row['value']) ? json_decode($row['value'], true) : $row['value'];
-        if (!is_array($decoded) || !isset($decoded[$testType]['reportTiming'])) {
+        if (!is_array($decoded)) {
             return '';
         }
-        $t = (string) $decoded[$testType]['reportTiming'];
+        if (isset($decoded['reportTiming'])) {
+            $t = (string) $decoded['reportTiming'];
 
-        return in_array($t, ['after_paid', 'after_test'], true) ? $t : '';
+            return in_array($t, ['after_paid', 'after_test'], true) ? $t : '';
+        }
+        foreach (['face', 'mbti', 'pdp', 'disc'] as $tKey) {
+            if (!isset($decoded[$tKey]['reportTiming'])) {
+                continue;
+            }
+            $t = (string) $decoded[$tKey]['reportTiming'];
+            if ($t === 'after_test') {
+                return 'after_test';
+            }
+        }
+        foreach (['face', 'mbti', 'pdp', 'disc'] as $tKey) {
+            if (!isset($decoded[$tKey]['reportTiming'])) {
+                continue;
+            }
+            $t = (string) $decoded[$tKey]['reportTiming'];
+            if (in_array($t, ['after_paid', 'after_test'], true)) {
+                return $t;
+            }
+        }
+
+        return '';
     }
 
     /**
