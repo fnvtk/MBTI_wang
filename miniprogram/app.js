@@ -68,6 +68,11 @@ App({
     // 记录场景值供埋点使用
     this.globalData.scene = launchOptions && launchOptions.scene ? launchOptions.scene : ''
 
+    try {
+      const { mergeThirdPartyFromQuery } = require('./utils/thirdPartyContext.js')
+      mergeThirdPartyFromQuery((launchOptions && launchOptions.query) || {})
+    } catch (e) {}
+
     // 加载本地存储的数据
     this.loadStoredData()
 
@@ -223,12 +228,21 @@ App({
             const eid = getEffectiveEnterpriseId()
             if (eid) loginData.enterpriseId = eid
           } catch (e) {}
+          try {
+            const { getThirdPartyForLoginBody } = require('./utils/thirdPartyContext.js')
+            Object.assign(loginData, getThirdPartyForLoginBody())
+          } catch (e) {}
           wx.request({
             url,
             method: 'POST',
             header: { 'Content-Type': 'application/json' },
             data: loginData,
             success: (response) => {
+              if (response.statusCode === 200 && response.data && response.data.code === 409 && response.data.message) {
+                try {
+                  wx.showToast({ title: String(response.data.message), icon: 'none', duration: 3000 })
+                } catch (e) {}
+              }
               if (response.statusCode === 200 && response.data && response.data.code === 200) {
                 const data = response.data.data || {}
                 const { token, user } = data

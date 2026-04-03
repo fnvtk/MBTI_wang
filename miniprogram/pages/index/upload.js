@@ -19,7 +19,10 @@ Page({
     aiAnalysisText: '分析'
   },
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {
       this.setData({ aiAnalysisText: tc.aiAnalysisText })

@@ -24,7 +24,10 @@ Page({
 
   timer: null,
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
     loadQuestions('disc', {})
       .then((questions) => {
         if (!questions.length) {

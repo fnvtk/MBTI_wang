@@ -48,6 +48,10 @@ Page({
       eid
     })
 
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
+
     if (eid > 0) app.globalData.enterpriseIdFromScene = eid
 
     // 企业版分销绑定：uid > 0 且 eid > 0 时触发

@@ -27,7 +27,7 @@ Page({
     },
     testResultId: null,
     hasReloadedAfterPay: false,
-    hasPhone: false
+    hasPhone: false,
   },
 
   onLoad(options) {

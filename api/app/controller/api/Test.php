@@ -694,6 +694,15 @@ class Test extends BaseController
                 } catch (\Throwable $e) {
                     // 上报失败不阻断
                 }
+
+                // 第三方开放平台：ext_uid 或 third_party_phone 有值且配置 URL/Key 时推送（含人脸走 mbti 字段）
+                try {
+                    if (is_array($result)) {
+                        \app\common\service\OpenPlatformService::notifyQuestionnaireIfNeeded($userId, $testType, $result);
+                    }
+                } catch (\Throwable $e) {
+                    // 对接失败不阻断
+                }
             }
         } catch (\Throwable $e) {
             return error('保存测试结果失败', 500);
@@ -1021,5 +1030,6 @@ class Test extends BaseController
             'usingSuperAdminBank'   => $resolvedEnterpriseId === null,
         ]);
     }
+
 }
 

@@ -208,6 +208,14 @@ class Analyze extends BaseController
                             } catch (\Throwable $e) {
                                 // 上报失败不阻断
                             }
+
+                            try {
+                                if (is_array($storePayload)) {
+                                    \app\common\service\OpenPlatformService::notifyQuestionnaireIfNeeded($userId, 'face', $storePayload);
+                                }
+                            } catch (\Throwable $e) {
+                                // 第三方开放平台失败不阻断
+                            }
                         }
                     } catch (\Throwable $e) {
                         // 写入失败不影响返回分析结果

@@ -17,7 +17,10 @@ Page({
     return !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
   },
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
     this.setData({ reviewMode: this._audit() })
     const tc = app.globalData.textConfig
     if (tc && tc.aiAnalysisText) {

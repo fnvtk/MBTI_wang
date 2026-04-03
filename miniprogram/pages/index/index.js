@@ -75,6 +75,10 @@ Page({
       })
     }
 
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
+
     const uid = parseInt(sceneParams.uid || (options && options.uid) || 0, 10)
     const eid = parseInt(sceneParams.eid || (options && options.eid) || 0, 10)
 

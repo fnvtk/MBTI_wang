@@ -26,7 +26,10 @@ Page({
 
   timer: null,
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
     loadQuestions('mbti', {})
       .then((questions) => {
         const total = questions.length

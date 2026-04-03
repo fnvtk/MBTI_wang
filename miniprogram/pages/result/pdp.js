@@ -44,7 +44,7 @@ Page({
     ],
     payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 },
     testResultId: null,
-    hasReloadedAfterPay: false
+    hasReloadedAfterPay: false,
   },
 
   onLoad(options) {

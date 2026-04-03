@@ -7,6 +7,7 @@ use app\model\WechatUser;
 use app\common\service\JwtService;
 use app\common\service\WechatService;
 use app\common\service\FeishuLeadWebhookService;
+use app\common\service\ThirdPartyChannelService;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -206,35 +207,104 @@ class Auth extends BaseController
 
     /**
      * 微信小程序登录：code 换 openid，查/建用户，返回 token 与用户信息
-     * POST api/auth/wechat  body: { "code": "xxx" }
+     * POST api/auth/wechat  body: { "code", "enterpriseId"?, "thirdParty"?: { "userid","phone","tid" } }
+     * 第三方 phone 命中已有主手机号用户时：不新建行；openid 绑到该用户（详见 ThirdPartyChannelService）
      * @return \think\response\Json
      */
     public function wechatLogin()
     {
-        $code = Request::param('code', '');
+        $rawContent = Request::getContent();
+        $input = [];
+        if ($rawContent !== '') {
+            $input = json_decode($rawContent, true) ?: [];
+        }
+        if ($input === []) {
+            $input = Request::post() ?: Request::param();
+        }
+
+        $code = $input['code'] ?? Request::param('code', '');
         if ($code === '') {
             return error('缺少 code', 400);
         }
+
+        $thirdParty = ThirdPartyChannelService::parseFromRequestArray(is_array($input) ? $input : []);
+        $loginEnterpriseId = isset($input['enterpriseId']) && (int) $input['enterpriseId'] > 0
+            ? (int) $input['enterpriseId']
+            : null;
 
         $session = WechatService::jscode2session($code);
         if (isset($session['errcode']) && $session['errcode'] !== 0) {
             return error($session['errmsg'] ?? '微信登录失败', 400);
         }
 
-        $openid = $session['openid'];
-        //$openid = 'oucCB15WDKCdwfNo-fpyS72iY5IQ';
+        $openid     = $session['openid'];
         $sessionKey = $session['session_key'] ?? '';
-        $unionid = $session['unionid'] ?? null;
+        $unionid    = $session['unionid'] ?? null;
 
-        $wechatUser = Db::name('wechat_users')->where('openid', $openid)->find();
         $now = time();
-        $ip = Request::ip();
+        $ip  = Request::ip();
 
-        $loginEnterpriseId = isset($input['enterpriseId']) && (int) $input['enterpriseId'] > 0
-            ? (int) $input['enterpriseId']
+        $userByOpenid = Db::name('wechat_users')->where('openid', $openid)->find();
+        $phoneNorm    = ThirdPartyChannelService::normalizePhone($thirdParty['phone']);
+        $userByPhone  = $phoneNorm !== null
+            ? ThirdPartyChannelService::findUserByNormalizedPhone($phoneNorm)
             : null;
 
-        if ($wechatUser) {
+        $wechatUser = null;
+
+        if ($userByOpenid && $userByPhone && (int) $userByOpenid['id'] !== (int) $userByPhone['id']) {
+            $b = $userByPhone;
+            $a = $userByOpenid;
+            $bOpenid = trim((string) ($b['openid'] ?? ''));
+            if ($bOpenid !== '') {
+                return error('该手机号已绑定其他微信号，请使用原微信打开', 409);
+            }
+            $orphanOpenid = 'orphan_' . $a['id'] . '_' . $now;
+            if (strlen($orphanOpenid) > 64) {
+                $orphanOpenid = substr($orphanOpenid, 0, 64);
+            }
+            Db::name('wechat_users')->where('id', $a['id'])->update([
+                'openid'    => $orphanOpenid,
+                'updatedAt' => $now,
+            ]);
+            $mergeUpdate = [
+                'openid'      => $openid,
+                'unionid'     => $unionid,
+                'sessionKey'  => $sessionKey,
+                'lastLoginAt' => $now,
+                'lastLoginIp' => $ip,
+                'updatedAt'   => $now,
+            ];
+            $existingEidB = $b['enterpriseId'] ?? null;
+            if (($existingEidB === null || $existingEidB === '' || (int) $existingEidB === 0) && $loginEnterpriseId !== null) {
+                $mergeUpdate['enterpriseId'] = $loginEnterpriseId;
+            }
+            Db::name('wechat_users')->where('id', $b['id'])->update($mergeUpdate);
+            ThirdPartyChannelService::applyToUserId((int) $b['id'], $thirdParty);
+            $wechatUser = Db::name('wechat_users')->where('id', $b['id'])->find();
+        } elseif (!$userByOpenid && $userByPhone) {
+            $b       = $userByPhone;
+            $bOpenid = trim((string) ($b['openid'] ?? ''));
+            if ($bOpenid !== '') {
+                return error('该手机号已绑定其他微信号，请使用原微信打开', 409);
+            }
+            $mergeUpdate = [
+                'openid'      => $openid,
+                'unionid'     => $unionid,
+                'sessionKey'  => $sessionKey,
+                'lastLoginAt' => $now,
+                'lastLoginIp' => $ip,
+                'updatedAt'   => $now,
+            ];
+            $existingEidB = $b['enterpriseId'] ?? null;
+            if (($existingEidB === null || $existingEidB === '' || (int) $existingEidB === 0) && $loginEnterpriseId !== null) {
+                $mergeUpdate['enterpriseId'] = $loginEnterpriseId;
+            }
+            Db::name('wechat_users')->where('id', $b['id'])->update($mergeUpdate);
+            ThirdPartyChannelService::applyToUserId((int) $b['id'], $thirdParty);
+            $wechatUser = Db::name('wechat_users')->where('id', $b['id'])->find();
+        } elseif ($userByOpenid) {
+            $wechatUser = $userByOpenid;
             $updateFields = [
                 'sessionKey'  => $sessionKey,
                 'unionid'     => $unionid,
@@ -242,12 +312,12 @@ class Auth extends BaseController
                 'lastLoginIp' => $ip,
                 'updatedAt'   => $now,
             ];
-            // 老用户未绑定企业时，从本次登录上下文补写
             $existingEid = $wechatUser['enterpriseId'] ?? null;
             if (($existingEid === null || $existingEid === '' || (int) $existingEid === 0) && $loginEnterpriseId !== null) {
                 $updateFields['enterpriseId'] = $loginEnterpriseId;
             }
             Db::name('wechat_users')->where('id', $wechatUser['id'])->update($updateFields);
+            ThirdPartyChannelService::applyToUserId((int) $wechatUser['id'], $thirdParty);
             $wechatUser = Db::name('wechat_users')->where('id', $wechatUser['id'])->find();
         } else {
             $insertData = [
@@ -255,26 +325,28 @@ class Auth extends BaseController
                 'unionid'     => $unionid,
                 'sessionKey'  => $sessionKey,
                 'nickname'    => null,
-                'avatar'     => null,
-                'phone'      => null,
-                'gender'     => 0,
-                'country'    => null,
-                'province'   => null,
-                'city'      => null,
-                'status'    => 1,
+                'avatar'      => null,
+                'phone'       => null,
+                'gender'      => 0,
+                'country'     => null,
+                'province'    => null,
+                'city'        => null,
+                'status'      => 1,
                 'lastLoginAt' => $now,
                 'lastLoginIp' => $ip,
-                'createdAt'  => $now,
-                'updatedAt'  => $now,
+                'createdAt'   => $now,
+                'updatedAt'   => $now,
             ];
             if ($loginEnterpriseId !== null) {
                 $insertData['enterpriseId'] = $loginEnterpriseId;
             }
-            $id = Db::name('wechat_users')->insertGetId($insertData);
+            $id         = Db::name('wechat_users')->insertGetId($insertData);
+            $wechatUser = Db::name('wechat_users')->where('id', $id)->find();
+            ThirdPartyChannelService::applyToUserId((int) $id, $thirdParty);
             $wechatUser = Db::name('wechat_users')->where('id', $id)->find();
         }
 
-        if (($wechatUser['status'] ?? 1) != 1) {
+        if (!$wechatUser || ($wechatUser['status'] ?? 1) != 1) {
             return error('账号已被禁用', 403);
         }
 
@@ -285,7 +357,6 @@ class Auth extends BaseController
         $token = JwtService::generateToken($payload);
 
         $userId = (int) $wechatUser['id'];
-        // 企业绑定取自 wechat_users.enterpriseId（企业分享测试链接时更新，个人分享不更新）
         $enterpriseId = isset($wechatUser['enterpriseId']) && $wechatUser['enterpriseId'] !== '' && $wechatUser['enterpriseId'] !== null
             ? (int) $wechatUser['enterpriseId']
             : null;

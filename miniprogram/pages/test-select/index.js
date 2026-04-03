@@ -9,7 +9,10 @@ Page({
     permDisc: true
   },
 
-  onLoad() {
+  onLoad(options) {
+    try {
+      require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
+    } catch (e) {}
     this._syncPerms()
   },
 
