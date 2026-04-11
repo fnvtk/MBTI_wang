@@ -75,6 +75,16 @@
                   class="w-full"
                 />
               </div>
+              <div class="form-item">
+                <label>SBTI测试价格 (元/次)</label>
+                <el-input-number 
+                  v-model="personal.sbti" 
+                  :min="0" 
+                  :precision="2"
+                  :controls="false"
+                  class="w-full"
+                />
+              </div>
             </div>
             <div class="save-actions">
               <el-button type="primary" color="#ef4444" class="save-btn" @click="savePersonal">
@@ -122,6 +132,16 @@
                 <label>DISC测试价格 (元/次)</label>
                 <el-input-number 
                   v-model="enterprise.disc" 
+                  :min="0" 
+                  :precision="2"
+                  :controls="false"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-item">
+                <label>SBTI测试价格 (元/次)</label>
+                <el-input-number 
+                  v-model="enterprise.sbti" 
                   :min="0" 
                   :precision="2"
                   :controls="false"
@@ -443,7 +463,8 @@ const personal = reactive({
   face: 9.9,
   mbti: 9.9,
   disc: 9.9,
-  pdp: 9.9
+  pdp: 9.9,
+  sbti: 9.9
 })
 
 const enterprise = reactive({
@@ -451,6 +472,7 @@ const enterprise = reactive({
   mbti: 8.0,
   pdp: 8.0,
   disc: 8.0,
+  sbti: 8.0,
   minRecharge: 1000.0
 })
 
@@ -617,6 +639,7 @@ const saveEnterprise = async () => {
         mbti: enterprise.mbti,
         pdp: enterprise.pdp,
         disc: enterprise.disc,
+        sbti: enterprise.sbti,
         minRecharge: enterprise.minRecharge
       }
     })

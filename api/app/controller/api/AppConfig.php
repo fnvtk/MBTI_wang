@@ -103,8 +103,8 @@ class AppConfig extends BaseController
         }
 
         // 报告付费开关：完全根据定价配置判断（价格 > 0 视为需要付费）
-        $reportRequiresPayment = ['face' => 0, 'mbti' => 0, 'disc' => 0, 'pdp' => 0];
-        foreach (['face', 'mbti', 'disc', 'pdp'] as $k) {
+        $reportRequiresPayment = ['face' => 0, 'mbti' => 0, 'disc' => 0, 'pdp' => 0, 'sbti' => 0];
+        foreach (['face', 'mbti', 'disc', 'pdp', 'sbti'] as $k) {
             $key = $k === 'team_analysis' ? 'teamAnalysis' : $k;
             if (isset($pricing[$key]) && (float) $pricing[$key] > 0) {
                 $reportRequiresPayment[$k] = 1;

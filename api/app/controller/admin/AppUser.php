@@ -227,6 +227,7 @@ class AppUser extends BaseController
             $row['mbtiType'] = $this->extractResultType($testsForUser, 'mbti');
             $row['pdpType'] = $this->extractResultType($testsForUser, 'pdp');
             $row['discType'] = $this->extractResultType($testsForUser, 'disc');
+            $row['sbtiType'] = $this->extractResultType($testsForUser, 'sbti');
             $row['faceType'] = $this->extractResultType($testsForUser, 'face');
             $row['faceMbtiType'] = $this->extractFaceSubType($testsForUser, 'mbti');
             $row['faceDiscType'] = $this->extractFaceSubType($testsForUser, 'disc');
@@ -315,6 +316,7 @@ class AppUser extends BaseController
         $data['mbtiType'] = $this->extractResultType($tests, 'mbti');
         $data['pdpType'] = $this->extractResultType($tests, 'pdp');
         $data['discType'] = $this->extractResultType($tests, 'disc');
+        $data['sbtiType'] = $this->extractResultType($tests, 'sbti');
         $data['faceType'] = $this->extractResultType($tests, 'face');
         $data['faceMbtiType'] = $this->extractFaceSubType($tests, 'mbti');
         $data['faceDiscType'] = $this->extractFaceSubType($tests, 'disc');

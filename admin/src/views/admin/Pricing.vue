@@ -42,6 +42,10 @@
                 <label>PDP测试价格 (元/次)</label>
                 <el-input-number v-model="personal.pdp" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>SBTI测试价格 (元/次)</label>
+                <el-input-number v-model="personal.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminPersonalConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
@@ -75,6 +79,10 @@
                 <label>PDP测试价格 (元/次)</label>
                 <el-input-number v-model="enterprise.pdp" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>SBTI测试价格 (元/次)</label>
+                <el-input-number v-model="enterprise.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminEnterpriseConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
@@ -107,8 +115,8 @@ const tabs = [
 ]
 const activeTab = ref('personal')
 
-const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0 })
-const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0 })
+const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
+const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
 
 const loading = ref(false)
 const isUsingSuperAdminPersonalConfig = ref(false)
@@ -161,7 +169,8 @@ const saveEnterprise = async () => {
         face: enterprise.face,
         mbti: enterprise.mbti,
         disc: enterprise.disc,
-        pdp: enterprise.pdp
+        pdp: enterprise.pdp,
+        sbti: enterprise.sbti
       }
     })
     if (response.code === 200) {

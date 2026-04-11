@@ -102,6 +102,29 @@ trait ExtractsTestResults
                 return $this->coerceResultLabel($dec['pdp'] ?? null);
             }
 
+            if ($targetType === 'sbti') {
+                $code = $this->coerceResultLabel($dec['sbtiType'] ?? null);
+                if ($code === '' && isset($dec['finalType']) && is_array($dec['finalType'])) {
+                    $code = $this->coerceResultLabel($dec['finalType']['code'] ?? null);
+                }
+                $cn = '';
+                if (!empty($dec['sbtiCn']) && is_string($dec['sbtiCn'])) {
+                    $cn = trim($dec['sbtiCn']);
+                } elseif (isset($dec['finalType']) && is_array($dec['finalType']) && !empty($dec['finalType']['cn']) && is_string($dec['finalType']['cn'])) {
+                    $cn = trim((string) $dec['finalType']['cn']);
+                }
+                if ($code !== '' && $cn !== '') {
+                    return $code . '（' . $cn . '）';
+                }
+                if ($code !== '') {
+                    return $code;
+                }
+                if ($cn !== '') {
+                    return $cn;
+                }
+                return $this->coerceResultLabel($dec['code'] ?? null);
+            }
+
             $fallback = $this->coerceResultLabel($dec['type'] ?? null);
             if ($fallback !== '') {
                 return $fallback;

@@ -45,6 +45,11 @@
             <el-tooltip content="DISC" placement="top">
               <div class="ud-quick-stats__tile"><el-icon><PieChart /></el-icon>{{ shortOrDash(user.discType, 16) }}</div>
             </el-tooltip>
+            <el-tooltip content="SBTI" placement="top">
+              <div class="ud-quick-stats__tile ud-quick-stats__tile--sbti">
+                <el-icon><Grid /></el-icon>{{ shortOrDash(user.sbtiType, 18) }}
+              </div>
+            </el-tooltip>
           </div>
           <div class="ud-dimension-tags" v-if="profileTags.length">
             <div class="ud-dimension-tags__title">维度标签</div>
@@ -72,6 +77,26 @@
                     <div class="ud-chart-heading"><el-icon><PieChart /></el-icon> DISC</div>
                     <VChart v-if="discRadarOption" class="ud-chart-echart" :option="discRadarOption" autoresize />
                     <div v-else class="ud-chart-placeholder">暂无 DISC 测评</div>
+                  </div>
+                  <div class="ud-chart-panel ud-chart-panel--sbti">
+                    <div class="ud-chart-heading ud-chart-heading--sbti"><el-icon><Grid /></el-icon> SBTI</div>
+                    <VChart
+                      v-if="sbtiRadarOption"
+                      class="ud-chart-echart ud-chart-echart--sbti"
+                      :option="sbtiRadarOption"
+                      autoresize
+                    />
+                    <div
+                      v-else-if="latestSbti"
+                      class="ud-chart-placeholder ud-chart-placeholder--sbti-fallback ud-sbti-placeholder-text"
+                    >
+                      {{ sbtiPanelSummary || '—' }}
+                      <span class="ud-sbti-radar-missing">（无 15 维 rawScores/levels，无法绘图）</span>
+                    </div>
+                    <div v-else class="ud-chart-placeholder">暂无 SBTI 测评</div>
+                    <div v-if="sbtiPanelSummary && sbtiRadarOption" class="ud-chart-footnote ud-chart-footnote--sbti">
+                      {{ sbtiPanelSummary }}
+                    </div>
                   </div>
                 </div>
 
@@ -200,6 +225,7 @@ import {
   DataAnalysis,
   DataLine,
   Document,
+  Grid,
   Key,
   OfficeBuilding,
   Phone,
@@ -222,6 +248,7 @@ import {
 import VChart from 'vue-echarts'
 import { discTopTwoLabel, discCompactLabel } from '@/utils/discDisplay'
 import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
+import { SBTI_RADAR_DIMENSION_ORDER, buildSbtiRadarValues, formatSbtiSummary } from '@/utils/sbtiDisplay'
 
 use([CanvasRenderer, RadarChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent])
 
@@ -315,6 +342,7 @@ function formatTestType(testType: string) {
   if (t === 'pdp') return 'PDP'
   if (t === 'face' || t === 'ai') return '人脸'
   if (t === 'resume') return '简历'
+  if (t === 'sbti') return 'SBTI'
   return testType
 }
 
@@ -349,6 +377,10 @@ function extractTestSummary(test: any): string {
     const c = String(data.content ?? '')
     return c ? c.substring(0, 24).replace(/\n/g, ' ') + (c.length > 24 ? '…' : '') : '简历'
   }
+  if (type === 'sbti') {
+    const line = formatSbtiSummary(data)
+    if (line) return line
+  }
   return String(data.type ?? data.result ?? '')
 }
 
@@ -374,6 +406,33 @@ function latestTest(type: string) {
 const latestMbti = computed(() => parseTestResult(latestTest('mbti')))
 const latestPdp = computed(() => parseTestResult(latestTest('pdp')))
 const latestDisc = computed(() => parseTestResult(latestTest('disc')))
+const latestSbti = computed(() => parseTestResult(latestTest('sbti')))
+const sbtiPanelSummary = computed(() => formatSbtiSummary(latestSbti.value))
+
+const sbtiRadarOption = computed(() => {
+  const p = latestSbti.value
+  if (!p) return null
+  const values = buildSbtiRadarValues(p)
+  if (!values?.length) return null
+  const indicator = SBTI_RADAR_DIMENSION_ORDER.map(code => ({ name: code, max: 100 }))
+  return {
+    color: ['#5a7268'],
+    radar: {
+      indicator,
+      radius: 58,
+      splitNumber: 4,
+      axisName: { fontSize: 9, color: '#5a7268' }
+    },
+    series: [
+      {
+        type: 'radar',
+        data: [{ value: values, name: 'SBTI' }],
+        areaStyle: { opacity: 0.14 }
+      }
+    ],
+    tooltip: { trigger: 'item' }
+  }
+})
 const latestFace = computed(() => parseTestResult(latestTest('face')) || parseTestResult(latestTest('ai')))
 const latestResume = computed(() => parseTestResult(latestTest('resume')))
 
@@ -391,6 +450,7 @@ const profileTags = computed(() => {
   if (u.mbtiType) tags.push('MBTI-' + u.mbtiType)
   if (u.pdpType) tags.push('PDP-' + u.pdpType)
   if (u.discType) tags.push('DISC-' + u.discType)
+  if (u.sbtiType) tags.push('SBTI-' + u.sbtiType)
   if (u.faceMbtiType) tags.push('面相MBTI')
   return tags
 })
@@ -550,6 +610,7 @@ function testIcon(testType: string) {
   if (t === 'mbti') return Aim
   if (t === 'pdp') return TrendCharts
   if (t === 'disc') return PieChart
+  if (t === 'sbti') return Grid
   if (t === 'face' || t === 'ai') return Picture
   if (t === 'resume') return Document
   return DataLine
@@ -560,6 +621,7 @@ function testIconClass(testType: string) {
   if (t === 'mbti') return 'tic-mbti'
   if (t === 'pdp') return 'tic-pdp'
   if (t === 'disc') return 'tic-disc'
+  if (t === 'sbti') return 'tic-sbti'
   if (t === 'face' || t === 'ai') return 'tic-face'
   return 'tic-other'
 }
@@ -679,6 +741,15 @@ function openMail(email: string) {
   }
 }
 
+.ud-quick-stats__tile--sbti {
+  border-color: #dbe8e0;
+  background: #f2f7f3;
+
+  .el-icon {
+    color: #5a7268;
+  }
+}
+
 .ud-dimension-tags {
   margin-top: 12px;
 }
@@ -727,8 +798,14 @@ function openMail(email: string) {
 
 .ud-chart-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+@media (max-width: 1200px) {
+  .ud-chart-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .ud-chart-panel {
@@ -758,6 +835,11 @@ function openMail(email: string) {
   width: 100%;
 }
 
+/* 15 维 SBTI 雷达略增高，轴标签较多 */
+.ud-chart-echart--sbti {
+  height: 200px;
+}
+
 .ud-chart-placeholder {
   height: 120px;
   display: flex;
@@ -765,6 +847,40 @@ function openMail(email: string) {
   justify-content: center;
   font-size: 12px;
   color: #9ca3af;
+}
+
+.ud-chart-placeholder--sbti-fallback {
+  flex-direction: column;
+}
+
+.ud-chart-panel--sbti {
+  background: #f2f7f3;
+  border: 1px solid #e3ebe6;
+}
+
+.ud-chart-heading--sbti .el-icon {
+  color: #5a7268 !important;
+}
+
+.ud-sbti-placeholder-text {
+  font-size: 11px;
+  color: #5a7268;
+  line-height: 1.4;
+  padding: 8px;
+  text-align: center;
+  word-break: break-all;
+}
+
+.ud-sbti-radar-missing {
+  display: block;
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 6px;
+  font-weight: 400;
+}
+
+.ud-chart-footnote--sbti {
+  color: #5a7268;
 }
 
 .ud-chart-footnote {
@@ -951,6 +1067,9 @@ function openMail(email: string) {
 }
 .tic-disc {
   color: #2563eb;
+}
+.tic-sbti {
+  color: #5a7268;
 }
 .tic-face {
   color: #059669;

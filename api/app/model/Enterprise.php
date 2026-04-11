@@ -58,6 +58,7 @@ class Enterprise extends Model
         return [
             'face' => true,
             'mbti' => true,
+            'sbti' => true,
             'pdp'  => true,
             'disc' => true,
             'distribution' => true,

@@ -32,7 +32,7 @@ class Test extends BaseController
             return error('未登录', 401);
         }
 
-        $type     = Request::param('type', 'all');   // all|mbti|disc|pdp|face|ai|resume
+        $type     = Request::param('type', 'all');   // all|mbti|sbti|disc|pdp|face|ai|resume
         $scope    = Request::param('scope', 'all');  // all|personal|enterprise
         $page     = max(1, (int) Request::param('page', 1));
         $pageSize = (int) Request::param('pageSize', 0);
@@ -186,6 +186,27 @@ class Test extends BaseController
                         'data'      => null,
                     ], $paymentFields);
                     break;
+                case 'sbti':
+                    $sbtiTxt = '未知';
+                    if (is_array($data)) {
+                        $sbtiTxt = (string) ($data['sbtiType'] ?? $data['finalType']['code'] ?? $data['code'] ?? '未知');
+                        if (($data['sbtiCn'] ?? '') !== '') {
+                            $sbtiTxt .= '（' . $data['sbtiCn'] . '）';
+                        } elseif (isset($data['finalType']['cn']) && $data['finalType']['cn'] !== '') {
+                            $sbtiTxt .= '（' . $data['finalType']['cn'] . '）';
+                        }
+                    }
+                    $list[] = array_merge([
+                        'id'        => $id,
+                        'type'      => 'sbti',
+                        'key'       => 'sbti_' . $id,
+                        'emoji'     => '🎭',
+                        'typeName'  => 'SBTI 人格测试',
+                        'resultText'=> $sbtiTxt,
+                        'testTime'  => $timeLabel,
+                        'data'      => null,
+                    ], $paymentFields);
+                    break;
                 case 'face':
                 case 'ai':
                     $mbtiShort = '';
@@ -261,7 +282,7 @@ class Test extends BaseController
 
         $allowedAll = $this->wechatAllowedTestTypes($userId);
         // 「我的」卡片不含简历，但 totalCount 与列表需与 history 权限一致
-        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'pdp', 'disc', 'face', 'ai']));
+        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'sbti', 'pdp', 'disc', 'face', 'ai']));
         if ($allowedForRecent === []) {
             return success([
                 'records'    => new \stdClass(),
@@ -291,7 +312,7 @@ class Test extends BaseController
             // face 和 ai 视为同一种类型
             $effectiveType = in_array($type, ['face', 'ai']) ? 'ai' : $type;
             
-            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'disc', 'pdp', 'ai'])) {
+            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'sbti', 'disc', 'pdp', 'ai'])) {
                 $records[$effectiveType] = $this->_formatRecentRow($row);
                 $foundTypes[$effectiveType] = true;
             }
@@ -341,6 +362,9 @@ class Test extends BaseController
         }
         if (!empty($enterprisePerms['disc'])) {
             $allowed[] = 'disc';
+        }
+        if (!empty($enterprisePerms['sbti'])) {
+            $allowed[] = 'sbti';
         }
         if (!empty($enterprisePerms['face']) && !$reviewMode) {
             $allowed[] = 'face';
@@ -437,6 +461,16 @@ class Test extends BaseController
                 $emoji      = $data['description']['emoji'] ?? '🦁';
                 $typeName   = 'PDP行为';
                 break;
+            case 'sbti':
+                $resultText = (string) ($data['sbtiType'] ?? $data['finalType']['code'] ?? '未知');
+                if (!empty($data['sbtiCn'])) {
+                    $resultText .= '（' . $data['sbtiCn'] . '）';
+                } elseif (!empty($data['finalType']['cn'])) {
+                    $resultText .= '（' . $data['finalType']['cn'] . '）';
+                }
+                $emoji    = '🎭';
+                $typeName = 'SBTI';
+                break;
             case 'face':
             case 'ai':
                 $mbtiShort = '';
@@ -480,6 +514,12 @@ class Test extends BaseController
                 'secondaryType' => $data['secondaryType'] ?? null,
                 'description'   => $data['description'] ?? null,
                 'pdp'           => $data['pdp'] ?? null,
+            ];
+        } elseif ($testType === 'sbti') {
+            $resultMeta = [
+                'sbtiType' => $data['sbtiType'] ?? null,
+                'sbtiCn'   => $data['sbtiCn'] ?? null,
+                'levels'   => $data['levels'] ?? null,
             ];
         }
 
@@ -609,7 +649,7 @@ class Test extends BaseController
         }
 
         // 仅允许已知类型，避免脏数据
-        if (!in_array($testType, ['mbti', 'disc', 'pdp', 'face', 'ai'], true)) {
+        if (!in_array($testType, ['mbti', 'sbti', 'disc', 'pdp', 'face', 'ai'], true)) {
             return error('不支持的测试类型', 400);
         }
 
@@ -796,6 +836,13 @@ class Test extends BaseController
                 'locked'       => true,
             ];
         }
+        if ($testType === 'sbti') {
+            return [
+                'sbtiType' => $data['sbtiType'] ?? $data['finalType']['code'] ?? '',
+                'sbtiCn'   => $data['sbtiCn'] ?? $data['finalType']['cn'] ?? '',
+                'locked'   => true,
+            ];
+        }
         if ($testType === 'resume') {
             $preview = '';
             if (!empty($data['content']) && is_string($data['content'])) {
@@ -948,7 +995,7 @@ class Test extends BaseController
 
     /**
      * 小程序拉取做题题库（仅启用题）：企业本题库有题则用企业，否则用超管 enterpriseId 为空
-     * GET /api/test/questions?type=mbti|disc|pdp&enterpriseId=可选
+     * GET /api/test/questions?type=mbti|sbti|disc|pdp&enterpriseId=可选
      */
     public function questions()
     {
@@ -958,8 +1005,8 @@ class Test extends BaseController
         }
 
         $type = (string) Request::param('type', '');
-        if (!in_array($type, ['mbti', 'disc', 'pdp'], true)) {
-            return error('type 须为 mbti、disc 或 pdp', 400);
+        if (!in_array($type, ['mbti', 'sbti', 'disc', 'pdp'], true)) {
+            return error('type 须为 mbti、sbti、disc 或 pdp', 400);
         }
 
         $rawEid = Request::param('enterpriseId', null);
@@ -1018,7 +1065,8 @@ class Test extends BaseController
                 }
             }
             unset($opt);
-            if ($type !== 'mbti') {
+            // MBTI / SBTI 前端组卷与计分依赖 dimension，其余题型不对外返回该字段
+            if (!in_array($type, ['mbti', 'sbti'], true)) {
                 unset($item['dimension']);
             }
         }

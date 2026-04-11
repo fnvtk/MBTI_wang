@@ -68,6 +68,7 @@ class Payment extends BaseController
                 $testTypeMap = [
                     'face'   => 'face',
                     'mbti'   => 'mbti',
+                    'sbti'   => 'sbti',
                     'disc'   => 'disc',
                     'pdp'    => 'pdp',
                     'resume' => 'resume',
@@ -191,6 +192,7 @@ class Payment extends BaseController
                 $testTypeMap = [
                     'face'   => 'face',
                     'mbti'   => 'mbti',
+                    'sbti'   => 'sbti',
                     'disc'   => 'disc',
                     'pdp'    => 'pdp',
                     'resume' => 'resume',
@@ -571,7 +573,7 @@ class Payment extends BaseController
             return;
         }
 
-        if (!in_array($productType, ['face', 'mbti', 'disc', 'pdp', 'resume', 'recharge'], true)) {
+        if (!in_array($productType, ['face', 'mbti', 'sbti', 'disc', 'pdp', 'resume', 'recharge'], true)) {
             return;
         }
 
@@ -665,7 +667,7 @@ class Payment extends BaseController
         $quantity = $quantity > 0 ? $quantity : 1;
 
         // 1）测试类产品：定价配置中为元，转为分（企业用户按企业ID取价）
-        $testProductTypes = ['face', 'mbti', 'disc', 'pdp', 'resume', 'report', 'team_analysis'];
+        $testProductTypes = ['face', 'mbti', 'sbti', 'disc', 'pdp', 'resume', 'report', 'team_analysis'];
         if (in_array($productType, $testProductTypes, true)) {
             $pricingConfig = PricingConfigModel::getByTypeAndEnterprise($pricingType, $pricingEnterpriseId ?? $enterpriseId);
             $config = [];

@@ -22,18 +22,21 @@ Page({
     testCount: 0,
     hasResults: false,
     mbtiType: '',
+    sbtiType: '',
     discType: '',
     pdpType: '',
     aiType: '',
     /** 面相记录中的盖洛普前三摘要（/api/test/recent 或本地 aiResult） */
     gallupPreview: '',
     mbtiTime: '',
+    sbtiTime: '',
     discTime: '',
     pdpTime: '',
     aiTime: '',
     reviewMode: false,
     /** 最近记录的数据库 ID，用于跳转时传参 */
     mbtiResultId: null,
+    sbtiResultId: null,
     discResultId: null,
     pdpResultId: null,
     aiResultId: null,
@@ -55,6 +58,7 @@ Page({
     // 企业功能权限：默认全开（个人版 / 未配置时）
     permFace: true,
     permMbti: true,
+    permSbti: true,
     permPdp: true,
     permDisc: true,
     permDistribution: true,
@@ -67,13 +71,18 @@ Page({
   _computeShowLatestTestRow(d) {
     const rm = !!(d.reviewMode)
     if (rm) {
-      return !!(d.permMbti || d.permPdp || d.permDisc)
+      return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc)
     }
-    return !!(d.permMbti || d.permPdp || d.permDisc || d.permFace)
+    return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc || d.permFace)
   },
 
   _computeShowEmptyPersonalityTags(d) {
-    return !((d.mbtiType && d.permMbti) || (d.discType && d.permDisc) || (d.pdpType && d.permPdp))
+    return !(
+      (d.mbtiType && d.permMbti) ||
+      (d.sbtiType && d.permSbti) ||
+      (d.discType && d.permDisc) ||
+      (d.pdpType && d.permPdp)
+    )
   },
 
   onLoad() {
@@ -85,6 +94,7 @@ Page({
     const next = {
       permFace: !p || p.face !== false,
       permMbti: !p || p.mbti !== false,
+      permSbti: !p || p.sbti !== false,
       permPdp:  !p || p.pdp  !== false,
       permDisc: !p || p.disc !== false,
       permDistribution: !p || p.distribution !== false,
@@ -214,21 +224,25 @@ Page({
         const r = records
 
         const discType = summaryFromRecentRecord(r.disc, 'disc')
+        const sbtiType = summaryFromRecentRecord(r.sbti, 'sbti')
 
         const gallupPreview = (r.ai && r.ai.gallupPreview) ? String(r.ai.gallupPreview) : ''
         const patch = {
           testCount:    totalCount,
-          hasResults:   !!(r.mbti || r.disc || r.pdp || r.ai),
+          hasResults:   !!(r.mbti || r.sbti || r.disc || r.pdp || r.ai),
           mbtiType:     r.mbti ? r.mbti.resultText : '',
+          sbtiType,
           discType,
           pdpType:      summaryFromRecentRecord(r.pdp, 'pdp'),
           aiType:       r.ai   ? r.ai.resultText   : '',
           gallupPreview,
           mbtiTime:     r.mbti ? r.mbti.testTime : '',
+          sbtiTime:     r.sbti ? r.sbti.testTime : '',
           discTime:     r.disc ? r.disc.testTime : '',
           pdpTime:      r.pdp  ? r.pdp.testTime  : '',
           aiTime:       r.ai   ? r.ai.testTime   : '',
           mbtiResultId: r.mbti ? r.mbti.id : null,
+          sbtiResultId: r.sbti ? r.sbti.id : null,
           discResultId: r.disc ? r.disc.id : null,
           pdpResultId:  r.pdp  ? r.pdp.id  : null,
           aiResultId:   r.ai   ? r.ai.id   : null,
@@ -270,6 +284,7 @@ Page({
   /** 降级：从 localStorage 读最近记录（兼容离线或 API 失败） */
   _loadRecentFromStorage() {
     const mbtiResult = wx.getStorageSync('mbtiResult')
+    const sbtiResult = wx.getStorageSync('sbtiResult')
     const discResult = wx.getStorageSync('discResult')
     const pdpResult  = wx.getStorageSync('pdpResult')
     const aiResult   = wx.getStorageSync('aiResult')
@@ -281,6 +296,7 @@ Page({
 
     let testCount = 0
     if (mbtiResult) testCount++
+    if (sbtiResult) testCount++
     if (discResult) testCount++
     if (pdpResult)  testCount++
     if (aiResult)   testCount++
@@ -296,15 +312,18 @@ Page({
       testCount,
       hasResults: testCount > 0,
       mbtiType: mbtiResult ? getTypeOnly(mbtiResult, 'mbti') : '',
+      sbtiType: sbtiResult ? getTypeOnly(sbtiResult, 'sbti') : '',
       discType: discResult ? getTypeOnly(discResult, 'disc') : '',
       pdpType:  pdpResult  ? getTypeOnly(pdpResult,  'pdp')  : '',
       aiType:   aiResult   ? (aiResult.mbti || aiResult.mbtiType || aiResult.type || '') : '',
       gallupPreview,
       mbtiTime: _fmt(mbtiResult && (mbtiResult.createdAt || mbtiResult.timestamp || mbtiResult.testTime)),
+      sbtiTime: _fmt(sbtiResult && (sbtiResult.createdAt || sbtiResult.timestamp || sbtiResult.completedAt || sbtiResult.testTime)),
       discTime: _fmt(discResult && (discResult.createdAt || discResult.timestamp || discResult.testTime)),
       pdpTime:  _fmt(pdpResult  && (pdpResult.createdAt  || pdpResult.timestamp  || pdpResult.testTime)),
       aiTime:   _fmt(aiResult   && (aiResult.createdAt   || aiResult.timestamp   || aiResult.testTime)),
       mbtiResultId: null,
+      sbtiResultId: null,
       discResultId: null,
       pdpResultId:  null,
       aiResultId:   null,
@@ -369,6 +388,11 @@ Page({
     const id = this.data.mbtiResultId
     if (id) wx.navigateTo({ url: `/pages/result/mbti?id=${id}&type=mbti` })
     else wx.navigateTo({ url: '/pages/test/mbti' })
+  },
+  viewSBTI() {
+    const id = this.data.sbtiResultId
+    if (id) wx.navigateTo({ url: `/pages/result/sbti?id=${id}&type=sbti` })
+    else wx.navigateTo({ url: '/pages/test/sbti' })
   },
   viewDISC() {
     const id = this.data.discResultId

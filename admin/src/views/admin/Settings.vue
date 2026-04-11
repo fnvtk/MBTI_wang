@@ -221,13 +221,14 @@ const accountConfig = reactive({
 const permItems = [
   { key: 'face', label: '人脸分析' },
   { key: 'mbti', label: 'MBTI' },
+  { key: 'sbti', label: 'SBTI' },
   { key: 'pdp', label: 'PDP' },
   { key: 'disc', label: 'DISC' },
   { key: 'distribution', label: '分销推广' }
 ] as const
 
 const defaultAdminPermissions = () =>
-  ({ face: true, mbti: true, pdp: true, disc: true, distribution: true }) as Record<string, boolean>
+  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, distribution: true }) as Record<string, boolean>
 
 const permLoading = ref(false)
 const permSaving = ref(false)

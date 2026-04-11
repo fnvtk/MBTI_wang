@@ -15,6 +15,7 @@ Page({
     isEnterprise: false,
     reviewMode: false,
     permMbti: true,
+    permSbti: true,
     permPdp: true,
     permDisc: true,
     permFace: true
@@ -31,18 +32,20 @@ Page({
   _syncPermsAndTab() {
     const p = app.globalData.enterprisePermissions
     const permMbti = !p || p.mbti !== false
+    const permSbti = !p || p.sbti !== false
     const permPdp = !p || p.pdp !== false
     const permDisc = !p || p.disc !== false
     const permFace = !p || p.face !== false
     const reviewMode = !!app.globalData.reviewMode
-    const names = { all: '', mbti: 'MBTI', pdp: 'PDP', disc: 'DISC', ai: '面相', resume: '简历' }
+    const names = { all: '', mbti: 'MBTI', sbti: 'SBTI', pdp: 'PDP', disc: 'DISC', ai: '面相', resume: '简历' }
     let { activeTab } = this.data
     if (activeTab === 'mbti' && !permMbti) activeTab = 'all'
+    if (activeTab === 'sbti' && !permSbti) activeTab = 'all'
     if (activeTab === 'pdp' && !permPdp) activeTab = 'all'
     if (activeTab === 'disc' && !permDisc) activeTab = 'all'
     if (activeTab === 'ai' && (!permFace || reviewMode)) activeTab = 'all'
     this.setData({
-      permMbti, permPdp, permDisc, permFace, reviewMode,
+      permMbti, permSbti, permPdp, permDisc, permFace, reviewMode,
       activeTab,
       tabName: names[activeTab] || ''
     })
@@ -138,8 +141,8 @@ Page({
   },
 
   formatList(rawList) {
-    const typeNames = { mbti: 'MBTI性格测试', disc: 'DISC性格测试', pdp: 'PDP行为偏好测试', ai: '面相分析', resume: '简历综合分析' }
-    const emojis    = { mbti: '🧠', disc: '📊', pdp: '🦁', ai: '👁️', resume: '📋' }
+    const typeNames = { mbti: 'MBTI性格测试', sbti: 'SBTI性格测试', disc: 'DISC性格测试', pdp: 'PDP行为偏好测试', ai: '面相分析', resume: '简历综合分析' }
+    const emojis    = { mbti: '🧠', sbti: '🎭', disc: '📊', pdp: '🦁', ai: '👁️', resume: '📋' }
 
     return rawList.map((item, idx) => {
       if (item.typeName) {
@@ -162,13 +165,27 @@ Page({
 
   // 本地缓存回退
   loadFromStorage() {
-    const { permMbti, permPdp, permDisc, permFace, reviewMode } = this.data
+    const { permMbti, permSbti, permPdp, permDisc, permFace, reviewMode } = this.data
     const mbtiResult = wx.getStorageSync('mbtiResult')
+    const sbtiResult = wx.getStorageSync('sbtiResult')
     const discResult = wx.getStorageSync('discResult')
     const pdpResult  = wx.getStorageSync('pdpResult')
     const aiResult   = wx.getStorageSync('aiResult')
     const list = []
     if (mbtiResult && permMbti) list.push({ type: 'mbti', key: 'mbti', emoji: '🧠', typeName: 'MBTI性格测试', resultText: mbtiResult.mbtiType || '未知', testTime: this.formatTime(mbtiResult.timestamp), data: mbtiResult })
+    if (sbtiResult && permSbti) {
+      const rt = sbtiResult.sbtiType || (sbtiResult.finalType && sbtiResult.finalType.code) || '未知'
+      const cn = sbtiResult.sbtiCn || (sbtiResult.finalType && sbtiResult.finalType.cn) || ''
+      list.push({
+        type: 'sbti',
+        key: 'sbti',
+        emoji: '🎭',
+        typeName: 'SBTI性格测试',
+        resultText: cn ? `${rt}（${cn}）` : rt,
+        testTime: this.formatTime(sbtiResult.timestamp || sbtiResult.completedAt),
+        data: sbtiResult
+      })
+    }
     if (pdpResult && permPdp)  list.push({ type: 'pdp',  key: 'pdp',  emoji: pdpResult.description?.emoji || '🦁', typeName: 'PDP行为偏好测试', resultText: pdpResult.description?.type || '未知', testTime: this.formatTime(pdpResult.timestamp || pdpResult.completedAt), data: pdpResult })
     if (discResult && permDisc) list.push({ type: 'disc', key: 'disc', emoji: '📊', typeName: 'DISC性格测试', resultText: (discResult.dominantType || '未知') + '型', testTime: this.formatTime(discResult.timestamp || discResult.completedAt), data: discResult })
     if (aiResult && permFace && !reviewMode) list.push({ type: 'ai', key: 'ai', emoji: '👁️', typeName: '面相分析', resultText: aiResult.mbti || '未知', testTime: this.formatTime(aiResult.timestamp || aiResult.completedAt), data: aiResult })
@@ -177,7 +194,7 @@ Page({
 
   changeTab(e) {
     const tab = e.currentTarget.dataset.tab
-    const names = { all: '', mbti: 'MBTI', pdp: 'PDP', disc: 'DISC', ai: '面相', resume: '简历' }
+    const names = { all: '', mbti: 'MBTI', sbti: 'SBTI', pdp: 'PDP', disc: 'DISC', ai: '面相', resume: '简历' }
     this.setData({ activeTab: tab, tabName: names[tab] || '' })
     this.loadAll()
   },
@@ -198,6 +215,7 @@ Page({
     const id   = e.currentTarget.dataset.id
     const routes = {
       mbti:   '/pages/result/mbti',
+      sbti:   '/pages/result/sbti',
       disc:   '/pages/result/disc',
       pdp:    '/pages/result/pdp',
       ai:     '/pages/index/result',
@@ -213,6 +231,7 @@ Page({
   goToTest() {
     const routes = {
       mbti:   '/pages/test/mbti',
+      sbti:   '/pages/test/sbti',
       disc:   '/pages/test/disc',
       pdp:    '/pages/test/pdp',
       ai:     '/pages/index/camera',

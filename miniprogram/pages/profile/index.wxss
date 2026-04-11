@@ -228,6 +228,15 @@ custom-tab-bar {
   color: #D97706;
 }
 
+/* SBTI 主题 #f2f7f3 + 强调 #5a7268 */
+.tag-sbti {
+  background: #f2f7f3;
+  border: 1rpx solid #dce8e0;
+}
+.tag-sbti .tag-text {
+  color: #5a7268;
+}
+
 .tag-gray {
   background: #F3F4F6;
 }
@@ -431,6 +440,7 @@ custom-tab-bar {
 }
 
 .card-purple .card-deco { background: #DDD6FE; }
+.card-sbti .card-deco  { background: #c5d4cc; }
 .card-blue .card-deco   { background: #BFDBFE; }
 .card-orange .card-deco { background: #FDE68A; }
 .card-rose .card-deco   { background: #FECDD3; }
@@ -446,6 +456,7 @@ custom-tab-bar {
 }
 
 .card-icon-purple { background: #EDE9FE; }
+.card-icon-sbti  { background: #f2f7f3; border: 1rpx solid #dce8e0; }
 .card-icon-blue   { background: #DBEAFE; }
 .card-icon-orange { background: #FEF3C7; }
 .card-icon-rose   { background: #FFE4E6; }
@@ -477,6 +488,7 @@ custom-tab-bar {
 }
 
 .card-purple .card-value { color: #7C3AED; }
+.card-sbti .card-value  { color: #5a7268; }
 .card-blue .card-value   { color: #2563EB; }
 .card-orange .card-value { color: #D97706; }
 .card-rose .card-value   { color: #E11D48; }
@@ -612,7 +624,7 @@ custom-tab-bar {
 
 .menu-icon-red    { background: #FEF2F2; }
 .menu-icon-indigo { background: #EEF2FF; }
-.menu-icon-amber  { background: #FFFBEB; }
+.menu-icon-test-select  { background: #eef2ff; }
 .menu-icon-emerald { background: #ECFDF5; }
 .menu-icon-purple { background: #EDE9FE; }
 

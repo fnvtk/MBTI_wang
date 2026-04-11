@@ -136,8 +136,8 @@ class Question extends BaseController
         }
 
         // 验证类型
-        if (!in_array($data['type'], ['mbti', 'disc', 'pdp'])) {
-            return error('题目类型必须是 mbti、disc 或 pdp', 400);
+        if (!in_array($data['type'], ['mbti', 'sbti', 'disc', 'pdp'])) {
+            return error('题目类型必须是 mbti、sbti、disc 或 pdp', 400);
         }
 
         // 验证选项格式
@@ -145,9 +145,9 @@ class Question extends BaseController
             return error('选项必须是数组格式', 400);
         }
 
-        // MBTI类型需要dimension字段
-        if ($data['type'] === 'mbti' && empty($data['dimension'])) {
-            return error('MBTI类型题目必须指定维度（EI/SN/TF/JP）', 400);
+        // MBTI / SBTI 需 dimension
+        if (in_array($data['type'], ['mbti', 'sbti'], true) && empty($data['dimension'])) {
+            return error($data['type'] === 'sbti' ? 'SBTI 题目必须指定维度（如 S1、DG1）' : 'MBTI类型题目必须指定维度（EI/SN/TF/JP）', 400);
         }
 
         // 设置超管题库标识（enterpriseId = NULL）
@@ -187,8 +187,8 @@ class Question extends BaseController
         $data = Request::only(['type', 'question', 'options', 'dimension', 'sort', 'status']);
 
         // 验证类型
-        if (isset($data['type']) && !in_array($data['type'], ['mbti', 'disc', 'pdp'])) {
-            return error('题目类型必须是 mbti、disc 或 pdp', 400);
+        if (isset($data['type']) && !in_array($data['type'], ['mbti', 'sbti', 'disc', 'pdp'])) {
+            return error('题目类型必须是 mbti、sbti、disc 或 pdp', 400);
         }
 
         // 验证选项格式
@@ -196,9 +196,9 @@ class Question extends BaseController
             return error('选项必须是数组格式', 400);
         }
 
-        // MBTI类型需要dimension字段
-        if (($data['type'] ?? $question->type) === 'mbti' && empty($data['dimension'] ?? $question->dimension)) {
-            return error('MBTI类型题目必须指定维度（EI/SN/TF/JP）', 400);
+        $effType = $data['type'] ?? $question->type;
+        if (in_array($effType, ['mbti', 'sbti'], true) && empty($data['dimension'] ?? $question->dimension)) {
+            return error($effType === 'sbti' ? 'SBTI 题目必须指定维度' : 'MBTI类型题目必须指定维度（EI/SN/TF/JP）', 400);
         }
 
         // 更新题目
@@ -267,16 +267,15 @@ class Question extends BaseController
                 }
 
                 // 验证类型
-                if (!in_array($q['type'], ['mbti', 'disc', 'pdp'])) {
+                if (!in_array($q['type'], ['mbti', 'sbti', 'disc', 'pdp'])) {
                     $failCount++;
-                    $errors[] = "第" . ($index + 1) . "题：题目类型必须是 mbti、disc 或 pdp";
+                    $errors[] = "第" . ($index + 1) . "题：题目类型必须是 mbti、sbti、disc 或 pdp";
                     continue;
                 }
 
-                // MBTI类型需要dimension字段
-                if ($q['type'] === 'mbti' && empty($q['dimension'])) {
+                if (in_array($q['type'], ['mbti', 'sbti'], true) && empty($q['dimension'])) {
                     $failCount++;
-                    $errors[] = "第" . ($index + 1) . "题：MBTI类型题目必须指定维度";
+                    $errors[] = "第" . ($index + 1) . "题：MBTI/SBTI 题目必须指定维度";
                     continue;
                 }
 

@@ -329,6 +329,42 @@
           </div>
         </div>
 
+        <!-- SBTI 图文详情 -->
+        <div v-else-if="currentTestType === 'sbti' && sbtiDetail" class="detail-section test-detail-sbti">
+          <div class="test-detail-main-card test-detail-main-card--sbti">
+            <div class="test-detail-main-left">
+              <div class="sbti-type-line">
+                <span class="sbti-code-badge">{{ sbtiDetail.code || '—' }}</span>
+                <span v-if="sbtiDetail.cn" class="sbti-cn">· {{ sbtiDetail.cn }}</span>
+              </div>
+              <p v-if="sbtiDetail.intro" class="sbti-intro">{{ sbtiDetail.intro }}</p>
+              <p v-if="sbtiDetail.desc" class="sbti-long-desc">{{ sbtiDetail.desc }}</p>
+            </div>
+            <div v-if="sbtiDetail.imageUrl" class="test-detail-sbti-right">
+              <el-image
+                class="sbti-result-img"
+                :src="sbtiDetail.imageUrl"
+                fit="contain"
+                referrerpolicy="no-referrer"
+              >
+                <template #error>
+                  <div class="sbti-img-fallback">{{ sbtiDetail.summaryLine }}</div>
+                </template>
+              </el-image>
+            </div>
+          </div>
+          <div v-if="sbtiDetail.levelsList?.length" class="test-detail-grid">
+            <div class="test-detail-block">
+              <h4 class="detail-subtitle">15 维等级</h4>
+              <div class="sbti-level-tags">
+                <el-tag v-for="row in sbtiDetail.levelsList" :key="row.key" size="small" class="sbti-level-tag">
+                  {{ row.key }}：{{ row.val }}<template v-if="row.raw != null"> · {{ row.raw }}分</template>
+                </el-tag>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- AI 人脸分析 图文详情 -->
         <div v-else-if="(currentTestType === 'face' || currentTestType === 'ai') && faceDetail" class="detail-section test-detail-face">
           <div class="face-layout">
@@ -643,7 +679,13 @@
 
         <div
           class="detail-section"
-          v-if="currentTestType !== 'resume' && currentTestType !== 'face' && currentTestType !== 'ai' && supplementaryNote"
+          v-if="
+            currentTestType !== 'resume' &&
+            currentTestType !== 'face' &&
+            currentTestType !== 'ai' &&
+            currentTestType !== 'sbti' &&
+            supplementaryNote
+          "
         >
           <h4 class="detail-subtitle">补充说明</h4>
           <p class="test-desc">{{ supplementaryNote }}</p>
@@ -661,6 +703,7 @@ import { request } from '@/utils/request'
 import { buildFaceDetailFromParsed, faceDiscDisplayLabel, facePdpDisplayLabel } from '@/utils/faceResultDetail'
 import { parseTestResultPayload } from '@/utils/testResultParse'
 import { discTopTwoLabel, discStyleSubtitle, discStyleName } from '@/utils/discDisplay'
+import { formatSbtiSummary, getSbtiCode, getSbtiCn, sbtiTypeImageUrl } from '@/utils/sbtiDisplay'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
 
 const loading = ref(false)
@@ -760,6 +803,7 @@ function formatTestType(testType: string) {
   if (t === 'pdp') return 'PDP'
   if (t === 'face' || t === 'ai') return 'AI 人脸分析'
   if (t === 'resume') return '简历综合分析'
+  if (t === 'sbti') return 'SBTI'
   return testType
 }
 
@@ -799,6 +843,11 @@ function extractTestSummary(test: any): string {
   if (type === 'resume') {
     const c = String(data.content ?? '')
     return c ? c.substring(0, 30).replace(/\n/g, ' ') + (c.length > 30 ? '...' : '') : '简历综合分析'
+  }
+
+  if (type === 'sbti') {
+    const line = formatSbtiSummary(data)
+    if (line) return line
   }
 
   return String(data.type ?? data.result ?? '')
@@ -865,6 +914,37 @@ const pdpDetail = computed(() => {
   }
 })
 
+const sbtiDetail = computed(() => {
+  const parsed = currentTestParsed.value
+  if (!parsed || currentTestType.value !== 'sbti') return null
+  const code = getSbtiCode(parsed)
+  const cn = getSbtiCn(parsed)
+  const ft = parsed.finalType && typeof parsed.finalType === 'object' ? parsed.finalType : null
+  const intro = String(parsed.intro ?? ft?.intro ?? '')
+  const desc = String(parsed.desc ?? ft?.desc ?? '')
+  const levels = parsed.levels && typeof parsed.levels === 'object' ? parsed.levels : {}
+  const rawScores = parsed.rawScores && typeof parsed.rawScores === 'object' ? parsed.rawScores : {}
+  const levelsList = Object.entries(levels).map(([key, val]) => {
+    const r = (rawScores as Record<string, unknown>)[key]
+    let raw: number | null = null
+    if (r != null && r !== '') {
+      const n = Number(r)
+      if (Number.isFinite(n)) raw = n
+    }
+    return { key, val: String(val), raw }
+  })
+  const imageUrl = sbtiTypeImageUrl(code)
+  return {
+    code,
+    cn,
+    intro,
+    desc,
+    levelsList,
+    imageUrl,
+    summaryLine: formatSbtiSummary(parsed)
+  }
+})
+
 const supplementaryNote = computed(() => {
   const t = String(currentTestDescription.value || '').trim()
   if (!t) return ''
@@ -879,6 +959,10 @@ const supplementaryNote = computed(() => {
   }
   if (typ === 'pdp' && pdpDetail.value) {
     const main = String(pdpDetail.value.description || '').trim()
+    if (main && main === t) return ''
+  }
+  if (typ === 'sbti' && sbtiDetail.value) {
+    const main = String(sbtiDetail.value.desc || '').trim()
     if (main && main === t) return ''
   }
   return t
@@ -913,6 +997,11 @@ function extractTestDescription(parsed: any, testType: string): string {
 
   if (t === 'disc' || t === 'pdp') {
     return String(parsed.description?.description ?? '')
+  }
+
+  if (t === 'sbti') {
+    const ft = parsed.finalType && typeof parsed.finalType === 'object' ? parsed.finalType : null
+    return String(parsed.desc ?? ft?.desc ?? '')
   }
 
   if (t === 'face' || t === 'ai') {
@@ -957,6 +1046,7 @@ function normalizeDetailUser(payload: any) {
     merged.mbtiType = merged.mbtiType ?? user.mbtiType
     merged.pdpType = merged.pdpType ?? user.pdpType
     merged.discType = merged.discType ?? user.discType
+    merged.sbtiType = merged.sbtiType ?? user.sbtiType
     merged.faceType = merged.faceType ?? user.faceType
     return merged
   }
@@ -1352,6 +1442,80 @@ onMounted(() => {
   width: min(100%, 300px);
   min-width: 0;
   flex-shrink: 0;
+}
+
+.test-detail-main-card--sbti {
+  background-color: #f2f7f3;
+  border: 1px solid #e3ebe6;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.sbti-type-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.sbti-code-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #e8efe9;
+  color: #5a7268;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.sbti-cn {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374c40;
+}
+
+.sbti-intro {
+  font-size: 13px;
+  color: #5a7268;
+  margin: 0 0 8px;
+}
+
+.sbti-long-desc {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.test-detail-sbti-right {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.sbti-result-img {
+  width: 160px;
+  height: 160px;
+}
+
+.sbti-img-fallback {
+  font-size: 12px;
+  color: #5a7268;
+  padding: 8px;
+  line-height: 1.4;
+}
+
+.sbti-level-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sbti-level-tag {
+  --el-tag-bg-color: #f2f7f3;
+  --el-tag-border-color: #dbe8e0;
+  --el-tag-text-color: #5a7268;
 }
 
 .mbti-type-badge {

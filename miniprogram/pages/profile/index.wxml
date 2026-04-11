@@ -52,6 +52,9 @@
           <view class="tag tag-purple" wx:if="{{mbtiType && permMbti}}">
             <text class="tag-text">{{mbtiType}}</text>
           </view>
+          <view class="tag tag-sbti" wx:if="{{sbtiType && permSbti}}">
+            <text class="tag-text">{{sbtiType}}</text>
+          </view>
           <view class="tag tag-blue" wx:if="{{discType && permDisc}}">
             <text class="tag-text">{{discType}}</text>
           </view>
@@ -89,6 +92,15 @@
             <text class="card-label">MBTI性格</text>
             <text class="card-value">{{mbtiType || '未测评'}}</text>
             <text class="card-time">{{mbtiTime || '—'}}</text>
+          </view>
+          <view class="result-card card-sbti {{sbtiType ? '' : 'result-card--placeholder'}}" bindtap="viewSBTI" wx:if="{{permSbti}}">
+            <view class="card-deco"></view>
+            <view class="card-icon-wrap card-icon-sbti">
+              <text class="card-icon">🎭</text>
+            </view>
+            <text class="card-label">SBTI</text>
+            <text class="card-value">{{sbtiType || '未测评'}}</text>
+            <text class="card-time">{{sbtiTime || '—'}}</text>
           </view>
           <view class="result-card card-orange {{pdpType ? '' : 'result-card--placeholder'}}" bindtap="viewPDP" wx:if="{{permPdp}}">
             <view class="card-deco"></view>
@@ -133,7 +145,7 @@
       </view>
       <view class="depth-inner-divider"></view>
       <view class="menu-item menu-item--flat" bindtap="goToTestSelect">
-        <view class="menu-icon-wrap menu-icon-amber">
+        <view class="menu-icon-wrap menu-icon-test-select">
           <text class="menu-icon">🧠</text>
         </view>
         <view class="menu-content">

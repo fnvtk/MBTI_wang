@@ -36,7 +36,7 @@ class Finance extends BaseController
             $baseOrderQuery = Db::name('orders')
                 ->where('enterpriseId', $enterpriseId)
                 ->whereIn('status', ['paid', 'completed'])
-                ->whereIn('productType', ['face', 'mbti', 'disc', 'pdp']);
+                ->whereIn('productType', ['face', 'mbti', 'sbti', 'disc', 'pdp']);
 
             $totalIncomeFen = (int) ((clone $baseOrderQuery)->sum('amount') ?? 0);
             $todayIncomeFen = (int) ((clone $baseOrderQuery)->where('payTime', '>=', $todayStart)->sum('amount') ?? 0);

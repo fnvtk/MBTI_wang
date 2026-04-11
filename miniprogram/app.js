@@ -57,6 +57,7 @@ App({
     unlockedTests: [],
     // 测试结果缓存
     mbtiResult: null,
+    sbtiResult: null,
     discResult: null,
     pdpResult: null,
     aiResult: null,
@@ -204,6 +205,7 @@ App({
     
     // 测试结果
     this.globalData.mbtiResult = wx.getStorageSync('mbtiResult') || null
+    this.globalData.sbtiResult = wx.getStorageSync('sbtiResult') || null
     this.globalData.discResult = wx.getStorageSync('discResult') || null
     this.globalData.pdpResult = wx.getStorageSync('pdpResult') || null
     this.globalData.aiResult = wx.getStorageSync('aiResult') || null

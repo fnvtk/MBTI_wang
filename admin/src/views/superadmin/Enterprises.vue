@@ -917,12 +917,13 @@ const statusOptions = [
 const permItems = [
   { key: 'face', label: '人脸分析' },
   { key: 'mbti', label: 'MBTI' },
+  { key: 'sbti', label: 'SBTI' },
   { key: 'pdp', label: 'PDP' },
   { key: 'disc', label: 'DISC' },
   { key: 'distribution', label: '分销' },
 ]
 
-const defaultPermissions = () => ({ face: true, mbti: true, pdp: true, disc: true, distribution: true })
+const defaultPermissions = () => ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, distribution: true })
 
 /** 列表/展示：超管授权上限（兼容未返回 permissionsCeiling 的旧接口） */
 const permCeilingVal = (row: Record<string, any>, key: string) => {

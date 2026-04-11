@@ -10,6 +10,9 @@
         <view wx:if="{{permMbti}}" class="tab-item {{activeTab === 'mbti' ? 'active' : ''}}" bindtap="changeTab" data-tab="mbti">
           <text class="tab-text">MBTI</text>
         </view>
+        <view wx:if="{{permSbti}}" class="tab-item {{activeTab === 'sbti' ? 'active' : ''}}" bindtap="changeTab" data-tab="sbti">
+          <text class="tab-text">SBTI</text>
+        </view>
         <view wx:if="{{permPdp}}" class="tab-item {{activeTab === 'pdp' ? 'active' : ''}}" bindtap="changeTab" data-tab="pdp">
           <text class="tab-text">PDP</text>
         </view>

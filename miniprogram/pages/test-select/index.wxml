@@ -1,4 +1,4 @@
-<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / PDP / DISC）-->
+<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / SBTI / PDP / DISC）-->
 <view class="container">
   <view class="card intro-card">
     <text class="intro-title">选择一项详细性格测试</text>
@@ -12,6 +12,17 @@
     <view class="entry-content">
       <text class="entry-name">MBTI 性格测试</text>
       <text class="entry-brief">16型人格 · 发现你的认知与决策风格</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goSBTI" wx:if="{{permSbti}}">
+    <view class="entry-icon-wrap sbti">
+      <text class="entry-emoji">🎭</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">SBTI 性格测试</text>
+      <text class="entry-brief">15 维等级匹配 · 闸口题（与标准计分一致）</text>
     </view>
     <text class="entry-arrow">→</text>
   </view>

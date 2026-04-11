@@ -1,0 +1,54 @@
+<!--pages/test/sbti.wxml - SBTI 测试（闸口题由逻辑动态插入）-->
+<view class="test-page">
+  <view wx:if="{{loading}}" class="test-loading">
+    <text class="test-loading-text">加载题目…</text>
+  </view>
+  <block wx:elif="{{currentQuestion}}">
+  <view class="progress-section">
+    <view class="progress-info">
+      <text class="question-count">问题 {{currentIndex + 1}}/{{total}}</text>
+      <text class="time-remaining">剩余时间: {{formatTime}}</text>
+    </view>
+    <view class="progress-bar-container">
+      <view class="progress-bar" style="width: {{progress}}%"></view>
+    </view>
+  </view>
+
+  <view class="content-area">
+    <view class="question-card">
+      <text class="question-text">{{currentQuestion.question}}</text>
+      <view class="options-container">
+      <view 
+        class="option-item {{answers[currentQuestion.id] === option.value ? 'selected' : ''}}"
+        wx:for="{{currentQuestion.options}}"
+        wx:for-item="option"
+        wx:for-index="optIdx"
+        wx:key="optIdx"
+        bindtap="selectAnswer"
+        data-value="{{option.value}}"
+      >
+        <view class="radio-button {{answers[currentQuestion.id] === option.value ? 'checked' : ''}}">
+          <view wx:if="{{answers[currentQuestion.id] === option.value}}" class="radio-inner"></view>
+        </view>
+        <text class="option-text">{{option.text}}</text>
+      </view>
+      </view>
+    </view>
+    <view wx:if="{{currentIndex === total - 1}}" class="last-hint">
+      <text class="last-hint-text">最后一题：选择后约 0.3 秒自动跳转结果页；若未跳转，请点右下角「查看结果」。</text>
+    </view>
+  </view>
+
+  <view class="footer-buttons">
+    <view class="nav-button secondary {{currentIndex === 0 ? 'disabled' : ''}}" bindtap="prevQuestion">
+      <text class="button-text">上一题</text>
+    </view>
+    <view wx:if="{{currentIndex < total - 1}}" class="nav-button secondary" bindtap="nextQuestion">
+      <text class="button-text">跳过</text>
+    </view>
+    <view wx:else class="nav-button primary {{isSubmitting ? 'disabled' : ''}}" bindtap="finishTest">
+      <text class="button-text button-text-on-primary">{{isSubmitting ? '正在生成…' : '查看结果'}}</text>
+    </view>
+  </view>
+  </block>
+</view>

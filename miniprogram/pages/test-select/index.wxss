@@ -66,6 +66,11 @@
   background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(139, 92, 246, 0.2) 100%);
 }
 
+.entry-icon-wrap.sbti {
+  background: linear-gradient(135deg, #f2f7f3 0%, #dce8e0 100%);
+  border: 1rpx solid #c5d4cc;
+}
+
 .entry-icon-wrap.pdp {
   background: linear-gradient(135deg, rgba(230, 57, 70, 0.12) 0%, rgba(255, 107, 157, 0.15) 100%);
 }

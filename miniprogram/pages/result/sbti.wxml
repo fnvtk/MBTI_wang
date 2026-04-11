@@ -1,0 +1,110 @@
+<!--pages/result/sbti.wxml-->
+<view class="result-page">
+  <scroll-view class="content-scroll" scroll-y>
+    <view class="content-container">
+
+      <!-- 主类型卡片：有图且图加载成功时隐藏顶部三行（与图内文案重复）；无图/失败/加载中仍显示 -->
+      <view class="card main-type-card">
+        <view
+          class="type-header-text-fallback"
+          wx:if="{{!typeImageUrl || typeImageLoadFailed || !typeImageLoaded}}"
+        >
+          <text class="section-label">你的人格类型是:</text>
+          <view class="type-title-area">
+            <text class="type-main-cn">{{result.sbtiCn}}</text>
+            <text class="type-main-code">{{result.sbtiType}}</text>
+          </view>
+        </view>
+        <image
+          class="type-avatar-image"
+          src="{{typeImageUrl}}"
+          mode="widthFix"
+          show-menu-by-longpress="{{true}}"
+          bindload="onTypeImageLoad"
+          binderror="onTypeImageError"
+          wx:if="{{typeImageUrl && !typeImageLoadFailed}}"
+        />
+        <view class="type-avatar-fallback" wx:if="{{!typeImageUrl || typeImageLoadFailed}}">
+          <text>{{result.sbtiType}}</text>
+        </view>
+        <text class="type-intro">{{result.intro}}</text>
+      </view>
+
+      <!-- 你的主类型卡片 -->
+      <view class="card your-main-type-card">
+        <text class="card-title">你的主类型</text>
+        <view class="main-type-summary">
+          <text class="main-type-text">{{result.sbtiType}} ({{result.sbtiCn}})</text>
+          <text class="main-type-desc">维度命中度较高，当前结果可视为你的第一人格画像。</text>
+        </view>
+        <view class="match-info">
+          <text class="match-percent">匹配度 {{result.matchPercent}}%</text>
+          <text class="match-dim">精准命中 {{result.hitDimCount}}/15 维</text>
+        </view>
+      </view>
+
+      <!-- 付费墙（完整报告部分） -->
+      <view class="card paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+        <view class="paywall-content">
+          <view class="paywall-blur">
+            <text class="paywall-fake-title">完整维度解读</text>
+            <text class="paywall-fake-line">• 15 维等级说明</text>
+            <text class="paywall-fake-line">• 匹配度与兜底说明</text>
+          </view>
+          <view class="paywall-mask"></view>
+          <button
+            class="paywall-btn"
+            wx:if="{{!hasPhone}}"
+            open-type="getPhoneNumber"
+            bindgetphonenumber="onGetPhoneNumberForSbtiPay"
+          >
+            <text class="paywall-btn-main">解锁完整报告</text>
+            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+          </button>
+          <button
+            class="paywall-btn"
+            wx:elif="{{hasPhone}}"
+            bindtap="unlockFullReport"
+          >
+            <text class="paywall-btn-main">解锁完整报告</text>
+            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+          </button>
+        </view>
+      </view>
+
+      <!-- 强制完善资料卡片 -->
+      <view class="card paywall-card" wx:elif="{{result && result.locked}}">
+        <view class="paywall-content">
+          <text class="paywall-fake-title">完整报告需完善资料</text>
+          <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整解读。</text>
+          <button class="paywall-btn" bindtap="goCompleteProfile">
+            <text class="paywall-btn-main">去完善资料</text>
+          </button>
+        </view>
+      </view>
+
+      <view wx:if="{{!result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <!-- 人格描述 -->
+        <view class="card description-card">
+          <text class="card-title">人格描述</text>
+          <text class="description-text">{{result.desc}}</text>
+        </view>
+
+        <!-- 十五维度详解 -->
+        <view class="card dimension-detail-card">
+          <text class="card-title">十五维度详解</text>
+          <view class="dim-list">
+            <view class="dim-item" wx:for="{{dimExplainList}}" wx:key="dim">
+              <view class="dim-header">
+                <text class="dim-name">{{item.name}}</text>
+                <text class="dim-score">{{item.level}} / 6分<text wx:if="{{item.raw != null && item.raw !== ''}}"> · {{item.raw}}分</text></text>
+              </view>
+              <text class="dim-text">{{item.text}}</text>
+            </view>
+          </view>
+        </view>
+
+      </view>
+    </view>
+  </scroll-view>
+</view>

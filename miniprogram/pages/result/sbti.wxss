@@ -1,0 +1,270 @@
+/* pages/result/sbti.wxss */
+.result-page {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f2f7f3;
+}
+
+.content-scroll {
+  width: 100%;
+  height: 100vh;
+}
+
+.content-container {
+  padding: 32rpx;
+  padding-bottom: 64rpx;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 48rpx;
+  margin-bottom: 32rpx;
+  box-shadow: 0 4rpx 12rpx rgba(45, 61, 53, 0.06);
+  border: 1rpx solid #dce8e0;
+}
+
+.card-title {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 24rpx;
+}
+
+/* 主类型卡片 */
+.main-type-card {
+  text-align: center;
+}
+
+.section-label {
+  display: block;
+  font-size: 28rpx;
+  color: #6b7f72;
+  margin-bottom: 16rpx;
+}
+
+.type-title-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.type-main-cn {
+  font-size: 64rpx;
+  font-weight: bold;
+  color: #374151;
+  line-height: 1.2;
+}
+
+.type-main-code {
+  font-size: 36rpx;
+  font-weight: 500;
+  color: #5a7268;
+  margin-top: 8rpx;
+}
+
+.type-avatar-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 20rpx;
+  margin: 0 auto;
+  background-color: #f7fcf9;
+}
+
+.type-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80%;
+  aspect-ratio: 1;
+  border-radius: 20rpx;
+  margin: 24rpx auto;
+  box-sizing: border-box;
+  background-color: #f7fcf9;
+  border: 1rpx solid #e3ebe6;
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #5a7268;
+}
+
+.type-intro {
+  display: block;
+  font-size: 28rpx;
+  color: #666;
+  line-height: 1.6;
+  margin-top: 24rpx;
+}
+
+/* 你的主类型卡片 */
+.your-main-type-card {
+  text-align: center;
+}
+
+.main-type-summary {
+  margin-bottom: 24rpx;
+}
+
+.main-type-text {
+  display: block;
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.main-type-desc {
+  display: block;
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+}
+
+.match-info {
+  display: flex;
+  justify-content: center;
+  gap: 32rpx;
+  margin-bottom: 0;
+}
+
+.match-percent,
+.match-dim {
+  font-size: 28rpx;
+  color: #5a7268;
+  font-weight: 500;
+}
+
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  padding: 28rpx;
+  border-radius: 16rpx;
+  margin-bottom: 20rpx;
+  border: none;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* 消除微信 button 伪元素自带边框 */
+.btn::after {
+  border: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #5a7268 0%, #6f8a7e 100%);
+  box-shadow: 0 8rpx 24rpx rgba(90, 114, 104, 0.28);
+}
+
+.btn-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #fff;
+}
+
+/* 付费墙 */
+.paywall-card {
+  margin-top: 24rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+.paywall-content { position: relative; min-height: 360rpx; }
+.paywall-blur {
+  padding: 32rpx 24rpx 200rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(6rpx);
+}
+.paywall-mask {
+  position: absolute;
+  left: 0; top: 0; right: 0; bottom: 0;
+  border-radius: 24rpx;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.28) 38%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
+  pointer-events: none;
+}
+.paywall-fake-title { display: block; font-size: 30rpx; font-weight: 600; color: #444; margin-bottom: 16rpx; }
+.paywall-fake-line { display: block; font-size: 26rpx; color: #888; line-height: 1.8; }
+.paywall-btn {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  bottom: 132rpx;
+  z-index: 3;
+  padding: 20rpx 0;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #5a7268 0%, #6f8a7e 100%);
+  box-shadow: 0 8rpx 24rpx rgba(90, 114, 104, 0.28);
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12rpx;
+}
+.paywall-btn-main { font-size: 30rpx; color: #fff; font-weight: 600; }
+.paywall-btn-price { font-size: 24rpx; color: #dce8e0; }
+
+/* 人格描述卡片 */
+.description-card .description-text {
+  font-size: 28rpx;
+  color: #333;
+  line-height: 1.7;
+  white-space: pre-wrap; /* 保持后端返回的换行 */
+}
+
+/* 十五维度详解：白底卡片 + 左标题 / 右「H / 6分」+ 灰说明（与定稿稿式一致） */
+.dimension-detail-card .dim-list {
+  margin-top: 8rpx;
+}
+
+.dim-item {
+  background-color: #fff;
+  border: 1rpx solid #e8e8e8;
+  border-radius: 16rpx;
+  padding: 28rpx 24rpx;
+  margin-bottom: 20rpx;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+}
+
+.dim-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16rpx;
+  margin-bottom: 12rpx;
+}
+
+.dim-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.35;
+}
+
+.dim-score {
+  flex-shrink: 0;
+  font-size: 28rpx;
+  color: #5a7268;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.dim-text {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+  font-weight: 400;
+  line-height: 1.65;
+}

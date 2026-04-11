@@ -3,7 +3,7 @@
     <div v-if="!embedded" class="page-header">
       <div class="header-left">
         <h2>题库管理</h2>
-        <p class="subtitle">管理全局题库，包括 MBTI、DISC、PDP 三套测试题库</p>
+        <p class="subtitle">管理全局题库，包括 MBTI、SBTI、DISC、PDP 四套测试题库</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" @click="refresh">
@@ -154,6 +154,7 @@
         <el-form-item label="题型" v-if="!isEditing">
           <el-radio-group v-model="editForm.type">
             <el-radio-button value="mbti">MBTI</el-radio-button>
+            <el-radio-button value="sbti">SBTI</el-radio-button>
             <el-radio-button value="disc">DISC</el-radio-button>
             <el-radio-button value="pdp">PDP</el-radio-button>
           </el-radio-group>
@@ -167,6 +168,11 @@
             <el-option label="SN（感觉直觉）" value="SN" />
             <el-option label="TF（思考情感）" value="TF" />
             <el-option label="JP（判断感知）" value="JP" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="所属维度" v-else-if="editForm.type === 'sbti'">
+          <el-select v-model="editForm.dimension" placeholder="请选择 SBTI 维度" filterable>
+            <el-option v-for="d in sbtiDimensionValues" :key="d" :label="d" :value="d" />
           </el-select>
         </el-form-item>
         <el-form-item label="选项">
@@ -211,7 +217,7 @@
           <p class="stat">{{ bank.resourceStat }}</p>
         </div>
       </div>
-      <p class="res-tip">提示：导入格式为 JSON 数组，每题包含 id、question、options 字段。MBTI 还需包含 dimension 字段（EI/SN/TF/JP）。</p>
+      <p class="res-tip">提示：导入格式为 JSON 数组，每题包含 id、question、options 字段。MBTI 需 dimension（EI/SN/TF/JP）；SBTI 需 dimension（如 S1、DG1、DG2 等）。</p>
     </div>
   </div>
 </template>
@@ -219,10 +225,15 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, Cpu, Aim, MagicStick, Upload, Download, CircleCheck, Search, View, InfoFilled, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Refresh, Cpu, Aim, MagicStick, ChatDotRound, Upload, Download, CircleCheck, Search, View, InfoFilled, Plus, Edit, Delete } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
+
+/** SBTI 题库维度（与入库脚本一致） */
+const sbtiDimensionValues = [
+  'S1', 'S2', 'S3', 'E1', 'E2', 'E3', 'A1', 'A2', 'A3', 'Ac1', 'Ac2', 'Ac3', 'So1', 'So2', 'So3', 'DG1', 'DG2'
+] as const
 
 const search = ref('')
 const fileInput = ref<HTMLInputElement>()
@@ -286,6 +297,21 @@ const questionBanks = reactive([
       'PDP Professional DynaMetric 30题',
       '5种动物特质评估'
     ],
+    resourceStat: '当前: 0题',
+    questions: [] as any[]
+  },
+  {
+    type: 'sbti',
+    name: 'SBTI',
+    desc: '15 维等级 + 闸口题',
+    count: 0,
+    color: 'amber',
+    icon: ChatDotRound,
+    dimensions: [] as string[],
+    lastUpdate: '',
+    fileSize: '0KB',
+    resourceName: 'SBTI 标准题库',
+    resources: ['维度：S/E/A/Ac/So + DG1/DG2', '与 aisbti 公开页计分一致'],
     resourceStat: '当前: 0题',
     questions: [] as any[]
   }
@@ -398,8 +424,8 @@ const loadQuestions = async () => {
         bank.count = response.data.total || 0
         bank.resourceStat = `当前: ${bank.count}题`
         
-        // 计算维度统计（仅MBTI）
-        if (selectedBank.value === 'mbti') {
+        // 计算维度统计（MBTI / SBTI）
+        if (selectedBank.value === 'mbti' || selectedBank.value === 'sbti') {
           const dimensionCounts: Record<string, number> = {}
           questions.forEach((q: any) => {
             if (q.dimension) {
@@ -472,8 +498,8 @@ const handleImport = async (event: Event) => {
           status: item.status !== undefined ? item.status : 1
         }
         
-        // MBTI类型需要dimension
-        if (selectedBank.value === 'mbti') {
+        // MBTI / SBTI 需要 dimension
+        if (selectedBank.value === 'mbti' || selectedBank.value === 'sbti') {
           question.dimension = item.dimension || ''
         }
         
@@ -569,7 +595,7 @@ const handleValidate = () => {
         errors.push(`第${index + 1}题：选项为空`)
       }
       
-      if (selectedBank.value === 'mbti' && !q.dimension) {
+      if ((selectedBank.value === 'mbti' || selectedBank.value === 'sbti') && !q.dimension) {
         isValid = false
         errors.push(`第${index + 1}题：缺少维度信息`)
       }
@@ -664,6 +690,10 @@ const saveQuestion = async () => {
     ElMessage.error('选项文字不能为空')
     return
   }
+  if ((editForm.type === 'mbti' || editForm.type === 'sbti') && !String(editForm.dimension || '').trim()) {
+    ElMessage.error('请选择所属维度')
+    return
+  }
   saving.value = true
   try {
     const payload: any = {
@@ -672,7 +702,7 @@ const saveQuestion = async () => {
       options: editForm.options,
       sort: editForm.sort
     }
-    if (editForm.type === 'mbti') payload.dimension = editForm.dimension
+    if (editForm.type === 'mbti' || editForm.type === 'sbti') payload.dimension = editForm.dimension
 
     if (isEditing.value) {
       await request.put(`/superadmin/questions/${editForm.id}`, payload)
@@ -733,11 +763,13 @@ const deleteQuestion = async (q: any) => {
   }
 }
 
+/* 卡片均分：大屏四等分，中屏两等分，小屏单列 */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 24px;
+  align-items: stretch;
 }
 
 .test-type-card {
@@ -791,6 +823,7 @@ const deleteQuestion = async (q: any) => {
         &.purple { background-color: #faf5ff; color: #a855f7; }
         &.blue { background-color: #eff6ff; color: #3b82f6; }
         &.green { background-color: #f0fdf4; color: #22c55e; }
+        &.amber { background-color: #fffbeb; color: #d97706; }
       }
 
       .text {
@@ -853,6 +886,10 @@ const deleteQuestion = async (q: any) => {
 
 .green-text {
   color: #22c55e;
+}
+
+.amber-text {
+  color: #d97706;
 }
 
 .content-card {
@@ -1035,9 +1072,10 @@ const deleteQuestion = async (q: any) => {
 
   .res-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 16px;
     margin-bottom: 16px;
+    align-items: stretch;
   }
 
   .res-card {
@@ -1048,6 +1086,7 @@ const deleteQuestion = async (q: any) => {
     &.purple { background-color: #faf5ff; border-color: #e9d5ff; }
     &.blue { background-color: #eff6ff; border-color: #dbeafe; }
     &.green { background-color: #f0fdf4; border-color: #bbf7d0; }
+    &.amber { background-color: #fffbeb; border-color: #fde68a; }
 
     .name {
       font-size: 15px;
@@ -1110,8 +1149,16 @@ const deleteQuestion = async (q: any) => {
   margin-right: 4px;
 }
 
-@media (max-width: 1200px) {
-  .stats-grid, .res-grid {
+@media (max-width: 1024px) {
+  .stats-grid,
+  .resources .res-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .stats-grid,
+  .resources .res-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -466,6 +466,13 @@ function purchasePdpTest(arg1, arg2) {
   purchaseByPricing('pdp', 'PDP动物性格测试付费版', { testResultId, success, fail })
 }
 
+// SBTI 测试付费版
+function purchaseSbtiTest(arg1, arg2) {
+  const opts = typeof arg1 === 'function' || arg1 == null ? { success: arg1, fail: arg2 } : (arg1 || {})
+  const { testResultId, success, fail } = opts
+  purchaseByPricing('sbti', 'SBTI 性格测试付费版', { testResultId, success, fail })
+}
+
 // 简历综合分析付费版（支持 purchaseResumeAnalysis({ testResultId, success, fail })）
 function purchaseResumeAnalysis(arg1, arg2) {
   const opts = typeof arg1 === 'function' || arg1 == null ? { success: arg1, fail: arg2 } : (arg1 || {})
@@ -672,6 +679,7 @@ module.exports = {
   purchaseMbtiTest,
   purchaseDiscTest,
   purchasePdpTest,
+  purchaseSbtiTest,
   purchaseResumeAnalysis,
   purchaseFullReport,
   purchaseTeamAnalysis,

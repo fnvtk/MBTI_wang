@@ -134,7 +134,7 @@ class CrmReport extends BaseController
         int $testResultId,
         int $contextEnterpriseId
     ): ?string {
-        $allowed = ['face', 'mbti', 'pdp', 'disc'];
+        $allowed = ['face', 'mbti', 'sbti', 'pdp', 'disc'];
         if (!in_array($testType, $allowed, true)) {
             return null;
         }
@@ -187,7 +187,7 @@ class CrmReport extends BaseController
 
             return $e !== '' ? $e : $p;
         }
-        foreach (['face', 'mbti', 'pdp', 'disc'] as $t) {
+        foreach (['face', 'mbti', 'sbti', 'pdp', 'disc'] as $t) {
             if (!isset($decoded[$t]) || !is_array($decoded[$t])) {
                 continue;
             }
@@ -221,6 +221,7 @@ class CrmReport extends BaseController
         $map = [
             'face' => 'AI人脸性格分析',
             'mbti' => 'MBTI性格测试',
+            'sbti' => 'SBTI人格测试',
             'pdp'  => 'PDP动物性格测试',
             'disc' => 'DISC行为风格测试',
         ];
@@ -275,6 +276,14 @@ class CrmReport extends BaseController
                 $t = $data['mbtiType'] ?? $data['mbti'] ?? '';
 
                 return is_string($t) ? trim($t) : '';
+            case 'sbti':
+                $code = (string) ($data['sbtiType'] ?? $data['finalType']['code'] ?? '');
+                $cn = (string) ($data['sbtiCn'] ?? $data['finalType']['cn'] ?? '');
+                if ($code === '') {
+                    return '';
+                }
+
+                return $cn !== '' ? $code . '（' . $cn . '）' : $code;
             case 'face':
                 $fa = $data['faceAnalysis'] ?? '';
                 if (is_string($fa) && $fa !== '') {
@@ -350,7 +359,7 @@ class CrmReport extends BaseController
         string $testScope = 'personal'
     ): void {
         try {
-            $allowed = ['face', 'mbti', 'pdp', 'disc'];
+            $allowed = ['face', 'mbti', 'sbti', 'pdp', 'disc'];
             if (!in_array($testType, $allowed, true) || $userId <= 0 || $testResultId <= 0) {
                 return;
             }
@@ -429,7 +438,7 @@ class CrmReport extends BaseController
 
             return in_array($t, ['after_paid', 'after_test'], true) ? $t : '';
         }
-        foreach (['face', 'mbti', 'pdp', 'disc'] as $tKey) {
+        foreach (['face', 'mbti', 'sbti', 'pdp', 'disc'] as $tKey) {
             if (!isset($decoded[$tKey]['reportTiming'])) {
                 continue;
             }
@@ -438,7 +447,7 @@ class CrmReport extends BaseController
                 return 'after_test';
             }
         }
-        foreach (['face', 'mbti', 'pdp', 'disc'] as $tKey) {
+        foreach (['face', 'mbti', 'sbti', 'pdp', 'disc'] as $tKey) {
             if (!isset($decoded[$tKey]['reportTiming'])) {
                 continue;
             }
@@ -515,7 +524,7 @@ class CrmReport extends BaseController
         // 一次查出所有相关类型的最新记录（按时间倒序）
         $rows = Db::name('test_results')
             ->where('userId', $userId)
-            ->whereIn('testType', ['mbti', 'disc', 'pdp'])
+            ->whereIn('testType', ['mbti', 'sbti', 'disc', 'pdp'])
             ->field('testType, resultData, createdAt')
             ->order('createdAt', 'desc')
             ->select()
@@ -544,6 +553,12 @@ class CrmReport extends BaseController
                 case 'pdp':
                     $val = $data['description']['type'] ?? $data['pdp'] ?? '';
                     if ($val !== '') $found['pdp'] = (string) $val;
+                    break;
+                case 'sbti':
+                    $val = $data['sbtiType'] ?? $data['finalType']['code'] ?? '';
+                    if ($val !== '') {
+                        $found['sbti'] = (string) $val;
+                    }
                     break;
             }
         }

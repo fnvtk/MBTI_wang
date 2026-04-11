@@ -112,6 +112,7 @@
 }
 
 .icon-mbti { background-color: #f3e8ff; }
+.icon-sbti { background-color: #f2f7f3; border: 1rpx solid #dce8e0; }
 .icon-pdp { background-color: #dbeafe; }
 .icon-disc { background-color: #dcfce7; }
 .icon-ai { background-color: #fce7f3; }
@@ -151,6 +152,9 @@
 
 .badge-mbti { background-color: #f3e8ff; }
 .badge-mbti .badge-text { color: #7c3aed; }
+
+.badge-sbti { background-color: #f2f7f3; }
+.badge-sbti .badge-text { color: #5a7268; }
 
 .badge-pdp { background-color: #dbeafe; }
 .badge-pdp .badge-text { color: #2563eb; }

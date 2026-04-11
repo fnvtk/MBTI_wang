@@ -227,6 +227,18 @@ function formatTestSummary(data, testType) {
     return label || ''
   }
 
+  if (t === 'sbti') {
+    const code = data.sbtiType || data.finalType?.code || ''
+    const cn = data.sbtiCn || data.finalType?.cn || ''
+    const sim = data.bestNormal != null ? data.bestNormal.similarity : null
+    if (code && cn) {
+      return sim != null && Number.isFinite(Number(sim))
+        ? `${code}（${cn}） 匹配${toIntPercent(sim)}%`
+        : `${code}（${cn}）`
+    }
+    return String(code || cn || '')
+  }
+
   return ''
 }
 
@@ -255,6 +267,12 @@ function getTypeOnly(data, testType) {
       return PDP_EN_TO_CN[k] || k
     }
     return String(data.pdp ?? '')
+  }
+  if (t === 'sbti') {
+    const cn = data.sbtiCn || data.finalType?.cn || ''
+    const code = data.sbtiType || data.finalType?.code || ''
+    if (cn && code) return `${code}（${cn}）`
+    return String(cn || code || '')
   }
   return ''
 }

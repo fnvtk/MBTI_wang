@@ -70,7 +70,7 @@ function applyDrawCountAfterShuffle(questions) {
 }
 
 /**
- * @param {'mbti'|'disc'|'pdp'} type
+ * @param {'mbti'|'sbti'|'disc'|'pdp'} type
  * @param {number|null|undefined} enterpriseId
  * @returns {Promise<Array>}
  */
@@ -97,7 +97,7 @@ function fetchQuestionBank(type, enterpriseId) {
 }
 
 /**
- * @param {'mbti'|'disc'|'pdp'} type
+ * @param {'mbti'|'sbti'|'disc'|'pdp'} type
  * @param {{ enterpriseId?: number|null }} opts
  * @returns {Promise<Array>} 乱序后的题目；接口无题或失败则 reject
  */

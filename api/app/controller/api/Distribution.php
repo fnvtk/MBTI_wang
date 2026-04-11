@@ -867,7 +867,9 @@ class Distribution extends BaseController
 
         $inviteeId    = (int) $order['userId'];
         $orderAmount  = (int) $order['amount'];
-        $enterpriseId = !empty($order['enterpriseId']) ? (int) $order['enterpriseId'] : null;
+        // 订单所属企业（资金应从该账户扣，不因绑定回退 personal 而丢失）
+        $orderEnterpriseId = !empty($order['enterpriseId']) ? (int) $order['enterpriseId'] : null;
+        $enterpriseId = $orderEnterpriseId;
         $scope        = $enterpriseId ? 'enterprise' : 'personal';
         $now          = time();
 
@@ -887,7 +889,7 @@ class Distribution extends BaseController
             ->find();
 
         // 【第二步】回退匹配：精确未命中时，查找任意有效的 personal 绑定
-        // 跨 scope 场景（如企业版订单但推荐人仅持有 personal 绑定），以个人版配置+平台资金结算
+        // 跨 scope 时仍用 personal 佣金配置，但资金仍从订单 enterpriseId 扣（见 distribution-design 2.2）
         $fallbackScope        = $scope;
         $fallbackEnterpriseId = $enterpriseId;
         if (!$binding && $scope === 'enterprise') {
@@ -902,9 +904,12 @@ class Distribution extends BaseController
             return;
         }
 
-        // 实际用于结算的 scope/enterpriseId（可能已回退为 personal）
+        // 实际用于结算的 scope/绑定侧 enterprise（可能已回退为 personal 且为 null）
         $scope        = $fallbackScope;
         $enterpriseId = $fallbackEnterpriseId;
+        // 扣款企业：始终为订单上的企业；佣金配置优先用订单企业读 testSettings
+        $billingEnterpriseId = $orderEnterpriseId;
+        $configEnterpriseId  = $orderEnterpriseId !== null ? $orderEnterpriseId : $enterpriseId;
 
         $inviterId = (int) $binding['inviterId'];
 
@@ -916,7 +921,7 @@ class Distribution extends BaseController
         } catch (\Throwable $e) {}
 
         // 读取佣金配置（优先 per-test testSettings，回退全局）
-        list($rate, $amountFen) = self::getTestCommissionConfig($testType, $scope, $enterpriseId);
+        list($rate, $amountFen) = self::getTestCommissionConfig($testType, $scope, $configEnterpriseId);
         $commissionFen = 0;
         if ($amountFen > 0) {
             $commissionFen = $amountFen;
@@ -940,10 +945,10 @@ class Distribution extends BaseController
         try {
             $commissionStatus = 'pending';
 
-            if ($enterpriseId) {
-                // 企业上下文：优先从企业余额扣款，余额不足则冻结
+            if ($billingEnterpriseId) {
+                // 企业订单：从订单所属企业余额扣款，余额不足则冻结
                 $enterprise = Db::name('enterprises')
-                    ->where('id', $enterpriseId)
+                    ->where('id', $billingEnterpriseId)
                     ->field('id, balance')
                     ->lock(true)
                     ->find();
@@ -954,14 +959,14 @@ class Distribution extends BaseController
                     // 余额充足，直接结算
                     $newBalanceFen = $balanceFen - $commissionFen;
                     Db::name('enterprises')
-                        ->where('id', $enterpriseId)
+                        ->where('id', $billingEnterpriseId)
                         ->update([
                             'balance'   => $newBalanceFen,
                             'updatedAt' => $now,
                         ]);
 
                     Db::name('finance_records')->insert([
-                        'enterpriseId'  => $enterpriseId,
+                        'enterpriseId'  => $billingEnterpriseId,
                         'type'          => 'consume',
                         'amount'        => $commissionFen,
                         'balanceBefore' => $balanceFen,
@@ -1004,7 +1009,7 @@ class Distribution extends BaseController
                 'agentId'       => $inviterId,
                 'orderId'       => $orderId,
                 'scope'         => $scope,
-                'enterpriseId'  => $enterpriseId,
+                'enterpriseId'  => $billingEnterpriseId,
                 'inviterId'     => $inviterId,
                 'inviteeId'     => $inviteeId,
                 'bindingId'     => (int) $binding['id'],
@@ -1300,6 +1305,7 @@ class Distribution extends BaseController
         $map = [
             'face' => '人脸',
             'mbti' => 'MBTI',
+            'sbti' => 'SBTI',
             'disc' => 'DISC',
             'pdp' => 'PDP',
         ];
@@ -1330,7 +1336,7 @@ class Distribution extends BaseController
     public static function settleTestCommission(int $testResultId, int $inviteeId, string $testType): void
     {
         // 仅支持指定测试类型
-        $allowedTypes = ['face', 'mbti', 'disc', 'pdp'];
+        $allowedTypes = ['face', 'mbti', 'sbti', 'disc', 'pdp'];
         // face/ai 统一归类为 face
         $normalizedType = ($testType === 'ai') ? 'face' : $testType;
         if (!in_array($normalizedType, $allowedTypes, true)) {
