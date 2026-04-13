@@ -342,6 +342,7 @@ const withdrawFee = ref(0)
 const testTypeItems = [
   { key: 'face',   label: '人脸分析' },
   { key: 'mbti',   label: 'MBTI 测试' },
+  { key: 'sbti',   label: 'SBTI 测试' },
   { key: 'disc',   label: 'DISC 测试' },
   { key: 'pdp',    label: 'PDP 测试' },
 ]
@@ -350,6 +351,7 @@ const makeDefaultTs = (): TestSetting => ({ enabled: true, commissionType: 'rati
 const testSettings = reactive<Record<string, TestSetting>>({
   face:  makeDefaultTs(),
   mbti:  makeDefaultTs(),
+  sbti:  makeDefaultTs(),
   disc:  makeDefaultTs(),
   pdp:   makeDefaultTs(),
 })

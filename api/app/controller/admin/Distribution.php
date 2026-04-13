@@ -685,9 +685,9 @@ class Distribution extends BaseController
                 $settings = $default;
             }
 
-            // 附加前端可读的 commissionAmount（元）
+            // 附加前端可读的 commissionAmount（元）；合并默认键，兼容旧库缺少 sbti 等字段
             $settings['testSettings'] = self::appendTestSettingsAmount(
-                $settings['testSettings'] ?? $tsDefault
+                array_merge($tsDefault, $settings['testSettings'] ?? [])
             );
 
             return success($settings);
@@ -753,7 +753,7 @@ class Distribution extends BaseController
     private static function defaultTestSettings(): array
     {
         $item = ['enabled' => true, 'commissionType' => 'ratio', 'commissionRate' => 90, 'commissionAmountFen' => 0, 'noPayment' => false];
-        return ['face' => $item, 'mbti' => $item, 'disc' => $item, 'pdp' => $item];
+        return ['face' => $item, 'mbti' => $item, 'sbti' => $item, 'disc' => $item, 'pdp' => $item];
     }
 
     private static function sanitizeTestSettings($raw): array
@@ -834,6 +834,7 @@ class Distribution extends BaseController
         $totals = [
             'face'  => 0,
             'mbti'  => 0,
+            'sbti'  => 0,
             'disc'  => 0,
             'pdp'   => 0,
             'other' => 0,
@@ -856,6 +857,7 @@ class Distribution extends BaseController
         return [
             ['label' => '人脸分析', 'value' => round($totals['face']  / 100, 2)],
             ['label' => 'MBTI',     'value' => round($totals['mbti']  / 100, 2)],
+            ['label' => 'SBTI',     'value' => round($totals['sbti']  / 100, 2)],
             ['label' => 'DISC',     'value' => round($totals['disc']  / 100, 2)],
             ['label' => 'PDP',      'value' => round($totals['pdp']   / 100, 2)],
             ['label' => '其他',     'value' => round($totals['other'] / 100, 2)],
@@ -868,7 +870,7 @@ class Distribution extends BaseController
         if ($normalized === 'ai') {
             return 'face';
         }
-        if (in_array($normalized, ['face', 'mbti', 'disc', 'pdp'], true)) {
+        if (in_array($normalized, ['face', 'mbti', 'sbti', 'disc', 'pdp'], true)) {
             return $normalized;
         }
         return 'other';
@@ -879,6 +881,7 @@ class Distribution extends BaseController
         $map = [
             'face'  => '人脸',
             'mbti'  => 'MBTI',
+            'sbti'  => 'SBTI',
             'disc'  => 'DISC',
             'pdp'   => 'PDP',
             'other' => '其他',

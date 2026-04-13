@@ -329,7 +329,9 @@ class Distribution extends BaseController
             }
             $settings['minWithdraw'] = round((float)($settings['minWithdrawFen'] ?? 100) / 100, 2);
             $settings['maxWithdraw'] = ($max = (int)($settings['maxWithdrawFen'] ?? 0)) > 0 ? round($max / 100, 2) : 0;
-            $settings['testSettings'] = self::appendTestSettingsAmount($settings['testSettings'] ?? self::defaultTestSettings());
+            $settings['testSettings'] = self::appendTestSettingsAmount(
+                array_merge(self::defaultTestSettings(), $settings['testSettings'] ?? [])
+            );
             return success($settings);
         } catch (\Exception $e) {
             return error('获取配置失败：' . $e->getMessage(), 500);
@@ -397,7 +399,7 @@ class Distribution extends BaseController
     private static function defaultTestSettings(): array
     {
         $item = ['enabled' => true, 'commissionType' => 'ratio', 'commissionRate' => 90, 'commissionAmountFen' => 0, 'noPayment' => false];
-        return ['face' => $item, 'mbti' => $item, 'disc' => $item, 'pdp' => $item];
+        return ['face' => $item, 'mbti' => $item, 'sbti' => $item, 'disc' => $item, 'pdp' => $item];
     }
 
     private static function sanitizeTestSettings($raw): array
