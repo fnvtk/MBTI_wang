@@ -602,6 +602,7 @@ const handleSave = async (section: string) => {
           maintenanceMode: !!systemConfig.maintenanceMode
         })
         if (response.code === 200) {
+          await loadSettings()
           ElMessage.success(systemConfig.maintenanceMode ? '审核模式已开启，小程序将隐藏AI功能' : '审核模式已关闭，AI功能已恢复')
           saveSuccess.value = section
           setTimeout(() => { saveSuccess.value = null }, 3000)

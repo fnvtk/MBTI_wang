@@ -65,15 +65,11 @@ class PricingConfig extends Model
      *
      * personal（个人版）优先级：
      *   1. admin_personal + enterpriseId（企业专属管理端配置，有 eid 时）
-     *   2. admin_personal + null（通用管理端配置）
-     *   3. 任意一条 admin_personal（兜底：只要管理端配过就不走超管）
-     *   4. personal + null（超管全局，仅在管理端完全未配置时使用）
+     *   2. personal + null（超管全局，仅未绑定企业或该企业未配置时使用）
      *
      * enterprise（企业版）优先级：
      *   1. admin_enterprise + enterpriseId（有 eid 时）
-     *   2. admin_enterprise + null（通用管理端企业配置）
-     *   3. 任意一条 admin_enterprise
-     *   4. enterprise + null（超管全局兜底）
+     *   2. enterprise + null（超管全局兜底）
      *
      * @param string $type personal|enterprise|deep
      * @param int|null $enterpriseId 有则优先读该企业专属配置
@@ -86,12 +82,6 @@ class PricingConfig extends Model
                 $row = self::where('type', 'admin_personal')->where('enterpriseId', $enterpriseId)->find();
                 if ($row) return $row;
             }
-            // 通用管理端个人配置（admin_personal + null）
-            $row = self::where('type', 'admin_personal')->whereNull('enterpriseId')->find();
-            if ($row) return $row;
-            // 任意管理端个人配置（兜底：管理端配过就不走超管）
-            $row = self::where('type', 'admin_personal')->order('id', 'asc')->find();
-            if ($row) return $row;
             // 超管全局个人定价（最后兜底，仅管理端完全未配置时使用）
             return self::where('type', 'personal')->whereNull('enterpriseId')->find();
         }
@@ -100,12 +90,6 @@ class PricingConfig extends Model
                 $row = self::where('type', 'admin_enterprise')->where('enterpriseId', $enterpriseId)->find();
                 if ($row) return $row;
             }
-            // 通用管理端企业配置（admin_enterprise + null）
-            $row = self::where('type', 'admin_enterprise')->whereNull('enterpriseId')->find();
-            if ($row) return $row;
-            // 任意管理端企业配置（兜底）
-            $row = self::where('type', 'admin_enterprise')->order('id', 'asc')->find();
-            if ($row) return $row;
             return self::where('type', 'enterprise')->whereNull('enterpriseId')->find();
         }
         if ($type === 'deep') {

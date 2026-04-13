@@ -101,7 +101,7 @@ class Finance extends BaseController
                 $direction = $type === 'consume' ? 'out' : 'in';
                 $description = (string) ($row['description'] ?? '');
                 $typeLabel = $type === 'consume'
-                    ? '佣金扣减'
+                    ? (strpos($description, '平台扣费：') === 0 ? '平台扣费' : '佣金扣减')
                     : (strpos($description, '企业余额充值') !== false ? '余额充值' : ($orderId > 0 ? '测试收入' : '余额充值'));
 
                 return [

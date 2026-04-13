@@ -61,19 +61,19 @@ class Settings extends BaseController
                 'defaultEnterpriseId' => null,
             ];
             $systemOut = $systemDefault;
+            // 仅当 system 行「未包含」maintenanceMode 键时，才用旧表 review_mode 回退（否则关闭审核后会被 review_mode.enabled 再次顶成「已开启」）
+            $hasMaintenanceKeyInSystem = false;
             if ($systemConfig && $systemConfig->value !== null && $systemConfig->value !== '') {
                 $raw = $systemConfig->value;
                 $decoded = is_array($raw) ? $raw : (is_string($raw) ? json_decode($raw, true) : null);
                 if (is_array($decoded)) {
+                    $hasMaintenanceKeyInSystem = array_key_exists('maintenanceMode', $decoded);
                     $systemOut = array_merge($systemDefault, $decoded);
                 }
             }
-            // 审核模式唯一口径：system.maintenanceMode（布尔）。兼容旧版 review_mode.enabled
-            $maint = false;
-            if (isset($systemOut['maintenanceMode'])) {
-                $maint = (bool) $systemOut['maintenanceMode'];
-            }
-            if (!$maint && $reviewModeConfig && !empty($reviewModeConfig->value)) {
+            // 审核模式：system.maintenanceMode 为唯一口径；兼容旧数据仅在没有该键时读 review_mode.enabled
+            $maint = (bool) ($systemOut['maintenanceMode'] ?? false);
+            if (!$hasMaintenanceKeyInSystem && !$maint && $reviewModeConfig && !empty($reviewModeConfig->value)) {
                 $rv = $reviewModeConfig->value;
                 if (is_string($rv)) {
                     $rv = json_decode($rv, true);
@@ -186,6 +186,21 @@ class Settings extends BaseController
             }
             $config->value = array_merge($oldArr, $data);
             $config->save();
+
+            // 与旧版 review_mode 行同步，避免库内 enabled=true 与 system.maintenanceMode=false 并存
+            if (array_key_exists('maintenanceMode', $data)) {
+                $rmRow = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
+                if ($rmRow) {
+                    $rv = $rmRow->value;
+                    $rv = is_array($rv) ? $rv : (is_string($rv) ? (json_decode($rv, true) ?: []) : []);
+                    if (!is_array($rv)) {
+                        $rv = [];
+                    }
+                    $rv['enabled'] = !empty($data['maintenanceMode']);
+                    $rmRow->value = $rv;
+                    $rmRow->save();
+                }
+            }
 
             // 更新站点信息
             $this->updateSiteInfo($data);
@@ -527,6 +542,18 @@ class Settings extends BaseController
             $oldArr['maintenanceMode'] = (bool) $on;
             $config->value = $oldArr;
             $config->save();
+
+            $rmRow = SystemConfigModel::where('key', 'review_mode')->where('enterprise_id', 0)->find();
+            if ($rmRow) {
+                $rv = $rmRow->value;
+                $rv = is_array($rv) ? $rv : (is_string($rv) ? (json_decode($rv, true) ?: []) : []);
+                if (!is_array($rv)) {
+                    $rv = [];
+                }
+                $rv['enabled'] = (bool) $on;
+                $rmRow->value = $rv;
+                $rmRow->save();
+            }
 
             return success([
                 'maintenanceMode' => (bool) $on,

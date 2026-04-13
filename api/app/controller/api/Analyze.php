@@ -2,7 +2,7 @@
 namespace app\controller\api;
 
 use app\BaseController;
-use app\common\SystemDefaultEnterprise;
+use app\common\service\EnterpriseBillingService;
 use app\controller\api\Test as TestController;
 use app\model\AiProvider as AiProviderModel;
 use app\model\SystemConfig as SystemConfigModel;
@@ -51,7 +51,7 @@ class Analyze extends BaseController
         // 三个变量各司其职（同 Test::submit 逻辑）：
         // $enterpriseId        —— 仅企业测试（请求体传入）才非 null，决定走 admin_enterprise 定价
         // $pricingEnterpriseId —— 个人测试时从 wechat_users 取，走 admin_personal + eid 定价
-        // $writeEnterpriseId   —— 写入 test_results.enterpriseId（企业测试 or 绑定企业都记录）
+        // $writeEnterpriseId   —— 写入 test_results.enterpriseId（仅企业测试或真实绑定企业时记录）
         $pricingEnterpriseId = $enterpriseId;
         $writeEnterpriseId   = $enterpriseId;
         if ($enterpriseId === null && $earlyUserId > 0) {
@@ -59,12 +59,6 @@ class Analyze extends BaseController
             if (!empty($boundEid)) {
                 $pricingEnterpriseId = (int) $boundEid; // admin_personal + eid
                 $writeEnterpriseId   = (int) $boundEid; // 历史记录展示企业名
-            } else {
-                $defEid = SystemDefaultEnterprise::getId();
-                if ($defEid !== null) {
-                    $pricingEnterpriseId = $defEid;
-                    $writeEnterpriseId   = $defEid;
-                }
             }
         }
 
@@ -188,6 +182,11 @@ class Analyze extends BaseController
                                         'updatedAt'    => $now,
                                     ]);
                                 }
+                            }
+                            try {
+                                EnterpriseBillingService::chargePlatformFeeForTestResult($testResultId, 'face', $writeEnterpriseId);
+                            } catch (\Throwable $e) {
+                                // 平台费扣款失败不阻断主流程
                             }
                             // 面相分析由本接口直接写入 test_results，也要补触发测试完成佣金
                             try {
@@ -375,6 +374,11 @@ class Analyze extends BaseController
                             'updatedAt'    => $now,
                         ]);
                     }
+                }
+                try {
+                    EnterpriseBillingService::chargePlatformFeeForTestResult($testResultId, 'resume', $enterpriseId > 0 ? $enterpriseId : null);
+                } catch (\Throwable $e) {
+                    // 平台费扣款失败不阻断主流程
                 }
             }
         } catch (\Throwable $e) {

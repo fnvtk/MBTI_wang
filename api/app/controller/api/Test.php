@@ -2,8 +2,8 @@
 namespace app\controller\api;
 
 use app\BaseController;
-use app\common\SystemDefaultEnterprise;
 use app\common\PdpDiscResultText;
+use app\common\service\EnterpriseBillingService;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\Question as QuestionModel;
@@ -668,7 +668,7 @@ class Test extends BaseController
             // 三个变量各司其职：
             // $enterpriseId        —— 仅企业测试（请求体传入）才非 null，决定走 admin_enterprise 定价
             // $pricingEnterpriseId —— 个人测试时从 wechat_users 取，走 admin_personal + eid 定价
-            // $writeEnterpriseId   —— 写入 test_results.enterpriseId（企业测试 or 绑定企业都记录）
+            // $writeEnterpriseId   —— 写入 test_results.enterpriseId（仅企业测试或真实绑定企业时记录）
             $pricingEnterpriseId = $enterpriseId;
             $writeEnterpriseId   = $enterpriseId;
             if ($enterpriseId === null) {
@@ -676,13 +676,6 @@ class Test extends BaseController
                 if (!empty($boundEid)) {
                     $pricingEnterpriseId = (int) $boundEid; // admin_personal + eid
                     $writeEnterpriseId   = (int) $boundEid; // 历史记录展示企业名
-                } else {
-                    // 主入口无参数且未绑定企业：回落超管配置的默认企业（与个人版 getEnterpriseIdForApiPayload 不传参一致，由服务端统一落库）
-                    $defEid = SystemDefaultEnterprise::getId();
-                    if ($defEid !== null) {
-                        $pricingEnterpriseId = $defEid;
-                        $writeEnterpriseId   = $defEid;
-                    }
                 }
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
@@ -714,6 +707,12 @@ class Test extends BaseController
                             'updatedAt'    => $now,
                         ]);
                     }
+                }
+                // 已绑定企业时，独立按超管企业版单价扣平台费，与用户实付分列记账。
+                try {
+                    EnterpriseBillingService::chargePlatformFeeForTestResult($id, $testType, $writeEnterpriseId);
+                } catch (\Throwable $e) {
+                    // 平台费扣款失败不阻断主流程
                 }
                 // 测试完成佣金结算（无需付款，异步不影响主流程）
                 try {
