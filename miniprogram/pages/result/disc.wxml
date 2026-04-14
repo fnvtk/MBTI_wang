@@ -1,7 +1,7 @@
 <!--pages/result/disc.wxml - DISC结果（按旧版模板重构）-->
 <view class="result-page">
-  <scroll-view class="content-scroll" scroll-y>
-    <view class="content-container">
+  <scroll-view class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}}" scroll-y>
+    <view class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}}">
       <view class="type-card">
         <view class="type-header">
           <text class="type-label">您的DISC性格类型</text>
@@ -25,7 +25,7 @@
           </view>
         </view>
 
-        <view class="paywall-card" wx:elif="{{result && result.locked}}">
+        <view class="paywall-card" wx:elif="{{result && result.locked && !fromShare}}">
           <view class="paywall-content">
             <text class="paywall-fake-title">完整报告需完善资料</text>
             <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整 DISC 报告。</text>
@@ -88,4 +88,7 @@
       </view> -->
     </view>
   </scroll-view>
+  <view class="result-share-footer" wx:if="{{fromShare}}">
+    <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+  </view>
 </view>

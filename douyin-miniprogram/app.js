@@ -368,13 +368,18 @@ App({
     tt.setStorageSync(key, result)
     this.globalData[key] = result
 
-    if (this.globalData.token) {
-      const scope = this.globalData.appScope || 'personal'
-      const storedUser = tt.getStorageSync('userInfo') || null
-      const enterpriseId =
-        scope === 'enterprise'
-          ? (this.globalData.enterpriseIdFromScene || (this.globalData.userInfo && this.globalData.userInfo.enterpriseId) || (storedUser && storedUser.enterpriseId) || null)
-          : null
+    if (!this.globalData.token) {
+      return Promise.resolve({})
+    }
+
+    const scope = this.globalData.appScope || 'personal'
+    const storedUser = tt.getStorageSync('userInfo') || null
+    const enterpriseId =
+      scope === 'enterprise'
+        ? (this.globalData.enterpriseIdFromScene || (this.globalData.userInfo && this.globalData.userInfo.enterpriseId) || (storedUser && storedUser.enterpriseId) || null)
+        : null
+
+    return new Promise((resolve) => {
       tt.request({
         url: `${this.globalData.apiBase}/api/test/submit`,
         method: 'POST',
@@ -390,9 +395,17 @@ App({
           enterpriseId: enterpriseId || undefined,
           testDuration: result.testDuration || 0,
           timestamp: new Date().toISOString()
-        }
+        },
+        success: (res) => {
+          if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data && typeof res.data.data === 'object') {
+            resolve(res.data.data)
+          } else {
+            resolve({})
+          }
+        },
+        fail: () => resolve({})
       })
-    }
+    })
   },
 
   getTestResult(type) {

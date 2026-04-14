@@ -28,12 +28,28 @@ Page({
     const fileUrl = options.fileUrl ? decodeURIComponent(options.fileUrl) : ''
     this.setData({ fileUrl })
 
-    // 从历史记录进入：直接读已存的数据，不重新生成
-    if (options.id && options.type === 'resume') {
-      this.loadFromHistory(options.id)
-    } else {
-      this.fetchResumeAnalysis()
+    const run = () => {
+      if (options.id && options.type === 'resume') {
+        this.loadFromHistory(options.id)
+      } else {
+        this.fetchResumeAnalysis()
+      }
     }
+
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({
+            loading: false,
+            error: '请先登录后查看报告；若已登录请下拉重试或返回重进。'
+          })
+          return
+        }
+        run()
+      })
+      .catch(() => {
+        this.setData({ loading: false, error: '登录失败，请返回重试。' })
+      })
   },
 
   onShow() {

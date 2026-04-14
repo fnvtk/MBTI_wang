@@ -48,8 +48,8 @@ Page({
   },
 
   onLoad(options) {
-    const id = options && options.id
-    const type = options && options.type
+    const id = options && options.id != null && options.id !== '' ? String(options.id) : ''
+    const type = options && options.type ? String(options.type).toLowerCase() : ''
     if (id && type === 'pdp') {
       this.setData({ testResultId: id })
       this.loadDetail(id)

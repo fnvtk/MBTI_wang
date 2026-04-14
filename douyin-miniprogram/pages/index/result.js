@@ -106,8 +106,6 @@ Page({
 
   onLoad(options) {
     this._payInfoSetByDetail = false
-    const id = options && options.id
-    const type = options && options.type
 
     // 同步审核模式
     this.setData({ reviewMode: !!app.globalData.reviewMode })
@@ -136,55 +134,95 @@ Page({
       }).catch(() => {})
     }
 
-    // 从历史记录进入：根据ID从后端读取数据库中的结果
-    if (id && type === 'ai') {
-      const token = app.globalData.token || tt.getStorageSync('token')
-      const apiBase = app.globalData.apiBase
-      if (!token || !apiBase) {
-        tt.showToast({ title: '未登录，无法读取历史记录', icon: 'none' })
+    const idStr = options && options.id != null && options.id !== '' ? String(options.id) : ''
+    const st = options && options.st ? String(options.st).trim() : ''
+    const rawType = options && options.type ? String(options.type).toLowerCase() : ''
+    const faceType = rawType || (idStr ? 'ai' : '')
+
+    if (idStr && (faceType === 'ai' || faceType === 'face')) {
+      this.setData({ testResultId: idStr })
+      this.loadFaceRecordById(idStr, st, faceType)
+      return
+    }
+
+    if (idStr) {
+      tt.showToast({ title: '链接参数无效', icon: 'none' })
+      setTimeout(() => tt.navigateBack(), 1500)
+      return
+    }
+
+    this.startAnalysis()
+  },
+
+  loadFaceRecordById(id, st, typeParam) {
+    const apiBase = app.globalData?.apiBase || ''
+    if (!apiBase) {
+      tt.showToast({ title: '配置异常', icon: 'none' })
+      return
+    }
+    const token = app.globalData.token || tt.getStorageSync('token') || ''
+
+    const applyPayload = (payload) => {
+      tt.hideLoading()
+      const apiData = payload.data || payload
+      this.initPayInfoFromRuntime(!!payload.requiresPayment, !!payload.isPaid, payload)
+      this.processResult(apiData)
+    }
+
+    const loadDetailAuthed = () => {
+      if (!token) {
+        tt.hideLoading()
+        tt.showToast({ title: '未登录，无法查看该记录', icon: 'none' })
         setTimeout(() => tt.navigateBack(), 1500)
         return
       }
-
-      tt.showLoading({ title: '加载历史记录...' })
+      tt.showLoading({ title: '加载中...' })
       tt.request({
         url: `${apiBase}/api/test/detail`,
         method: 'GET',
-        header: {
-          'Authorization': `Bearer ${token}`
-        },
+        header: { Authorization: `Bearer ${token}` },
         data: { id },
         success: (res) => {
-          tt.hideLoading()
-          if (res.statusCode === 200 && res.data && res.data.data) {
-            const payload = res.data.data
-            const apiData = payload.data || payload
-            // 历史详情场景下，记录当前测试记录ID
-            this.setData({ testResultId: id })
-            // 先确定付费状态（设置 _payInfoSetByDetail 标记），再渲染结果
-            // 避免 processResult 内部异步拉全局配置覆盖掉数据库级别的付费判定
-            this.initPayInfoFromRuntime(
-              !!payload.requiresPayment,
-              !!payload.isPaid,
-              payload
-            )
-            this.processResult(apiData)
+          if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data) {
+            applyPayload(res.data.data)
           } else {
+            tt.hideLoading()
             tt.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
             setTimeout(() => tt.navigateBack(), 1500)
           }
         },
         fail: () => {
           tt.hideLoading()
-          tt.showToast({ title: '网络错误，加载失败', icon: 'none' })
+          tt.showToast({ title: '网络错误', icon: 'none' })
           setTimeout(() => tt.navigateBack(), 1500)
         }
       })
-      return
     }
 
-    // 正常从拍照流程进入：调用 /api/analyze
-    this.startAnalysis()
+    tt.showLoading({ title: '加载中...' })
+    const data = {
+      id: String(id),
+      type: typeParam === 'face' ? 'face' : 'ai'
+    }
+    if (st) data.st = st
+
+    tt.request({
+      url: `${apiBase}/api/test/share-detail`,
+      method: 'GET',
+      data,
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data) {
+          applyPayload(res.data.data)
+          return
+        }
+        tt.hideLoading()
+        loadDetailAuthed()
+      },
+      fail: () => {
+        tt.hideLoading()
+        loadDetailAuthed()
+      }
+    })
   },
 
   onShow() {
@@ -606,7 +644,14 @@ Page({
     const r = this.data.result
     const rm = this.data.reviewMode
     const t = rm ? '测试结果' : (this.data.aiAnalysisText || '分析')
-    const { getSharePathByScope } = require('../../utils/share')
+    const { getResultSharePath, getSharePathByScope } = require('../../utils/share')
+    const tid = this.data.testResultId
+    if (tid) {
+      return {
+        title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
+        path: getResultSharePath('/pages/index/result', { id: tid, type: 'ai' })
+      }
+    }
     return {
       title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
       path: getSharePathByScope('/pages/index/index')
@@ -617,10 +662,11 @@ Page({
     const r = this.data.result
     const rm = this.data.reviewMode
     const t = rm ? '测试结果' : (this.data.aiAnalysisText || '分析')
-    const { buildShareQuery } = require('../../utils/share')
+    const { getResultShareTimelineQuery, buildShareQuery } = require('../../utils/share')
+    const tid = this.data.testResultId
     return {
       title: `${t}：我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
-      query: buildShareQuery()
+      query: tid ? getResultShareTimelineQuery({ id: tid, type: 'ai' }) : buildShareQuery()
     }
   }
 })

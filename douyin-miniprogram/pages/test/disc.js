@@ -25,8 +25,17 @@ Page({
   timer: null,
 
   onLoad() {
-    loadQuestions('disc', {})
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false })
+          tt.showToast({ title: '登录失败，请重试', icon: 'none' })
+          return Promise.reject(new Error('login'))
+        }
+        return loadQuestions('disc', {})
+      })
       .then((questions) => {
+        if (!questions) return
         if (!questions.length) {
           tt.showToast({ title: '暂无题目', icon: 'none' })
           this.setData({ loading: false })
@@ -47,6 +56,7 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
+        if (err && err.message === 'login') return
         this.setData({ loading: false })
         tt.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
       })
@@ -179,9 +189,16 @@ Page({
     tt.setStorageSync('discResult', resultData)
     try { require('../../utils/analytics').track('test_complete', { type: 'disc', result: dominantType, duration: resultData.testDuration }) } catch (e) {}
     if (app && typeof app.saveTestResult === 'function') {
-      app.saveTestResult('disc', resultData)
+      app.saveTestResult('disc', resultData).then((extra) => {
+        const rid = extra && extra.id
+        if (rid) {
+          tt.redirectTo({ url: `/pages/result/disc?id=${rid}&type=disc` })
+        } else {
+          tt.redirectTo({ url: '/pages/result/disc' })
+        }
+      })
+    } else {
+      tt.redirectTo({ url: '/pages/result/disc' })
     }
-
-    tt.redirectTo({ url: '/pages/result/disc' })
   }
 })

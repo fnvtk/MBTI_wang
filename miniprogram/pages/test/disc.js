@@ -28,8 +28,17 @@ Page({
     try {
       require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
     } catch (e) {}
-    loadQuestions('disc', {})
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false })
+          wx.showToast({ title: '登录失败，请重试', icon: 'none' })
+          return Promise.reject(new Error('login'))
+        }
+        return loadQuestions('disc', {})
+      })
       .then((questions) => {
+        if (!questions) return
         if (!questions.length) {
           wx.showToast({ title: '暂无题目', icon: 'none' })
           this.setData({ loading: false })
@@ -53,6 +62,7 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
+        if (err && err.message === 'login') return
         this.setData({ loading: false })
         wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
       })
@@ -189,10 +199,17 @@ Page({
     wx.setStorageSync('discResult', resultData)
     try { require('../../utils/analytics').track('test_complete', { type: 'disc', result: dominantType, duration: resultData.testDuration }) } catch (e) {}
     if (app && typeof app.saveTestResult === 'function') {
-      app.saveTestResult('disc', resultData)
+      app.saveTestResult('disc', resultData).then((extra) => {
+        const rid = extra && extra.id
+        if (rid) {
+          wx.redirectTo({ url: `/pages/result/disc?id=${rid}&type=disc` })
+        } else {
+          wx.redirectTo({ url: '/pages/result/disc' })
+        }
+      })
+    } else {
+      wx.redirectTo({ url: '/pages/result/disc' })
     }
-
-    wx.redirectTo({ url: '/pages/result/disc' })
   },
 
   onShareAppMessage() {

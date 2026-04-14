@@ -47,8 +47,8 @@ App({
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
     // API基础地址（开发时用本地，生产环境替换为实际域名）
-    apiBase: 'https://mbtiapi.quwanzhi.com',
-    //apiBase: 'http://mbti.com',
+    //apiBase: 'https://mbtiapi.quwanzhi.com',
+    apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数
@@ -418,16 +418,19 @@ App({
     })
   },
 
-    // 保存测试结果
+    // 保存测试结果（同步服务端后 resolve { id, testType }，用于结果页 URL 与分享）
   saveTestResult(type, result) {
     const { getEnterpriseIdForApiPayload } = require('./utils/enterpriseContext.js')
     const key = `${type}Result`
     wx.setStorageSync(key, result)
     this.globalData[key] = result
-    
-    // 同步到服务器（需携带 token，后端从 JWT 解析 userId）
-    if (this.globalData.token) {
-      const enterpriseId = getEnterpriseIdForApiPayload()
+
+    if (!this.globalData.token) {
+      return Promise.resolve({})
+    }
+
+    const enterpriseId = getEnterpriseIdForApiPayload()
+    return new Promise((resolve) => {
       wx.request({
         url: `${this.globalData.apiBase}/api/test/submit`,
         method: 'POST',
@@ -443,9 +446,17 @@ App({
           enterpriseId: enterpriseId != null ? enterpriseId : undefined,
           testDuration: result.testDuration || 0,
           timestamp: new Date().toISOString()
-        }
+        },
+        success: (res) => {
+          if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data && typeof res.data.data === 'object') {
+            resolve(res.data.data)
+          } else {
+            resolve({})
+          }
+        },
+        fail: () => resolve({})
       })
-    }
+    })
   },
 
   // 获取测试结果

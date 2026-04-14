@@ -29,12 +29,29 @@ Page({
     const fileUrl = options.fileUrl ? decodeURIComponent(options.fileUrl) : ''
     this.setData({ fileUrl })
 
-    // 从历史记录进入：直接读已存的数据，不重新生成
-    if (options.id && options.type === 'resume') {
-      this.loadFromHistory(options.id)
-    } else {
-      this.fetchResumeAnalysis()
+    const run = () => {
+      if (options.id && options.type === 'resume') {
+        this.loadFromHistory(options.id)
+      } else {
+        this.fetchResumeAnalysis()
+      }
     }
+
+    // 分享直达：需 token 调 detail / analyze，等静默登录完成再请求，避免白屏
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({
+            loading: false,
+            error: '请先登录后查看报告；若已登录请下拉重试或返回重进。'
+          })
+          return
+        }
+        run()
+      })
+      .catch(() => {
+        this.setData({ loading: false, error: '登录失败，请返回重试。' })
+      })
   },
 
   onShow() {

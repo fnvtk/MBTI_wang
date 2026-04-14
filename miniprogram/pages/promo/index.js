@@ -34,12 +34,24 @@ Page({
   },
 
   onLoad() {
-    this.loadStats()
-    this.loadBindings(true)
+    // 分享直达时 silentLogin 可能未完成，先 ensureLogin 再拉推广数据，避免 401 空白
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          wx.showToast({ title: '请先登录后查看推广中心', icon: 'none' })
+          return
+        }
+        this.loadStats()
+        this.loadBindings(true)
+      })
+      .catch(() => {
+        wx.showToast({ title: '登录失败，请重试', icon: 'none' })
+      })
   },
 
   onShow() {
-    this.loadStats()
+    const token = app.globalData.token || wx.getStorageSync('token')
+    if (token) this.loadStats()
   },
 
   /** 加载推广统计数据 */

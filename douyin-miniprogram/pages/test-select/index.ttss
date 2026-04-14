@@ -35,6 +35,17 @@
   line-height: 1.6;
 }
 
+.perm-disabled-hint {
+  text-align: center;
+  padding: 32rpx;
+}
+
+.perm-disabled-text {
+  font-size: 28rpx;
+  color: #888;
+  line-height: 1.6;
+}
+
 /* 入口卡片（与 result 页 next-btn 同色系） */
 .entry-card {
   display: flex;

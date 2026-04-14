@@ -108,8 +108,6 @@ Page({
 
   onLoad(options) {
     this._payInfoSetByDetail = false
-    const id = options && options.id
-    const type = options && options.type
 
     // 加载文案配置（分析中提示、报告标题等）
     const tc = app.globalData.textConfig
@@ -135,55 +133,101 @@ Page({
       }).catch(() => {})
     }
 
-    // 从历史记录进入：根据ID从后端读取数据库中的结果
-    if (id && type === 'ai') {
-      const token = app.globalData.token || wx.getStorageSync('token')
-      const apiBase = app.globalData.apiBase
-      if (!token || !apiBase) {
-        wx.showToast({ title: '未登录，无法读取历史记录', icon: 'none' })
+    const idStr = options && options.id != null && options.id !== '' ? String(options.id) : ''
+    const st = options && options.st ? String(options.st).trim() : ''
+    const rawType = options && options.type ? String(options.type).toLowerCase() : ''
+    // 人脸记录在库中可能是 face 或 ai；仅 id 时默认识别为人脸报告（兼容旧分享）
+    const faceType = rawType || (idStr ? 'ai' : '')
+
+    // 带记录 id：只读库展示，禁止落入 startAnalysis 造成「二次分析」
+    if (idStr && (faceType === 'ai' || faceType === 'face')) {
+      this.setData({ testResultId: idStr })
+      this.loadFaceRecordById(idStr, st, faceType)
+      return
+    }
+
+    if (idStr) {
+      wx.showToast({ title: '链接参数无效', icon: 'none' })
+      setTimeout(() => wx.navigateBack(), 1500)
+      return
+    }
+
+    // 无 id：正常从拍照流程进入，调用 /api/analyze
+    this.startAnalysis()
+  },
+
+  /**
+   * 加载人脸报告：优先免登录 share-detail（好友分享），失败且已登录再 detail
+   */
+  loadFaceRecordById(id, st, typeParam) {
+    const apiBase = app.globalData?.apiBase || ''
+    if (!apiBase) {
+      wx.showToast({ title: '配置异常', icon: 'none' })
+      return
+    }
+    const token = app.globalData.token || wx.getStorageSync('token') || ''
+
+    const applyPayload = (payload) => {
+      wx.hideLoading()
+      const apiData = payload.data || payload
+      this.initPayInfoFromRuntime(!!payload.requiresPayment, !!payload.isPaid, payload)
+      this.processResult(apiData)
+    }
+
+    const loadDetailAuthed = () => {
+      if (!token) {
+        wx.hideLoading()
+        wx.showToast({ title: '未登录，无法查看该记录', icon: 'none' })
         setTimeout(() => wx.navigateBack(), 1500)
         return
       }
-
-      wx.showLoading({ title: '加载历史记录...' })
+      wx.showLoading({ title: '加载中...' })
       wx.request({
         url: `${apiBase}/api/test/detail`,
         method: 'GET',
-        header: {
-          'Authorization': `Bearer ${token}`
-        },
+        header: { Authorization: `Bearer ${token}` },
         data: { id },
         success: (res) => {
-          wx.hideLoading()
-          if (res.statusCode === 200 && res.data && res.data.data) {
-            const payload = res.data.data
-            const apiData = payload.data || payload
-            // 历史详情场景下，记录当前测试记录ID
-            this.setData({ testResultId: id })
-            // 先确定付费状态（设置 _payInfoSetByDetail 标记），再渲染结果
-            // 避免 processResult 内部异步拉全局配置覆盖掉数据库级别的付费判定
-            this.initPayInfoFromRuntime(
-              !!payload.requiresPayment,
-              !!payload.isPaid,
-              payload
-            )
-            this.processResult(apiData)
+          if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data) {
+            applyPayload(res.data.data)
           } else {
+            wx.hideLoading()
             wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
             setTimeout(() => wx.navigateBack(), 1500)
           }
         },
         fail: () => {
           wx.hideLoading()
-          wx.showToast({ title: '网络错误，加载失败', icon: 'none' })
+          wx.showToast({ title: '网络错误', icon: 'none' })
           setTimeout(() => wx.navigateBack(), 1500)
         }
       })
-      return
     }
 
-    // 正常从拍照流程进入：调用 /api/analyze
-    this.startAnalysis()
+    wx.showLoading({ title: '加载中...' })
+    const data = {
+      id: String(id),
+      type: typeParam === 'face' ? 'face' : 'ai'
+    }
+    if (st) data.st = st
+
+    wx.request({
+      url: `${apiBase}/api/test/share-detail`,
+      method: 'GET',
+      data,
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data) {
+          applyPayload(res.data.data)
+          return
+        }
+        wx.hideLoading()
+        loadDetailAuthed()
+      },
+      fail: () => {
+        wx.hideLoading()
+        loadDetailAuthed()
+      }
+    })
   },
 
   onShow() {
@@ -631,7 +675,14 @@ Page({
   onShareAppMessage() {
     const r = this.data.result
     const t = this.data.aiAnalysisText || '智能分析'
-    const { getSharePathByScope } = require('../../utils/share')
+    const { getResultSharePath, getSharePathByScope } = require('../../utils/share')
+    const tid = this.data.testResultId
+    if (tid) {
+      return {
+        title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
+        path: getResultSharePath('/pages/index/result', { id: tid, type: 'ai' })
+      }
+    }
     return {
       title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
       path: getSharePathByScope('/pages/index/index')
@@ -641,7 +692,14 @@ Page({
   onShareTimeline() {
     const r = this.data.result
     const t = this.data.aiAnalysisText || '智能分析'
-    const { buildShareQuery } = require('../../utils/share')
+    const { getResultShareTimelineQuery, buildShareQuery } = require('../../utils/share')
+    const tid = this.data.testResultId
+    if (tid) {
+      return {
+        title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
+        query: getResultShareTimelineQuery({ id: tid, type: 'ai' })
+      }
+    }
     return {
       title: `${t}我是${r?.mbti} ${r?.pdpEmoji}${r?.pdp}型，来测测你的！`,
       query: buildShareQuery()

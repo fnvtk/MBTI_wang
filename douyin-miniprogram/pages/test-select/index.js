@@ -6,10 +6,12 @@ Page({
     permFace: true,
     permMbti: true,
     permPdp: true,
-    permDisc: true
+    permDisc: true,
+    allTestsDisabled: false
   },
 
   onLoad() {
+    app.ensureLogin().catch(() => {})
     this._syncPerms()
   },
 
@@ -19,11 +21,16 @@ Page({
 
   _syncPerms() {
     const p = app.globalData.enterprisePermissions
+    const permFace = !p || p.face !== false
+    const permMbti = !p || p.mbti !== false
+    const permPdp = !p || p.pdp !== false
+    const permDisc = !p || p.disc !== false
     this.setData({
-      permFace: !p || p.face !== false,
-      permMbti: !p || p.mbti !== false,
-      permPdp:  !p || p.pdp  !== false,
-      permDisc: !p || p.disc !== false
+      permFace,
+      permMbti,
+      permPdp,
+      permDisc,
+      allTestsDisabled: p && !permMbti && !permPdp && !permDisc
     })
   },
 

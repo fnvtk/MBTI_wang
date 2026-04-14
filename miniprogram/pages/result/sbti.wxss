@@ -15,6 +15,15 @@
   padding-bottom: 64rpx;
 }
 
+/* 底部固定「我也要测试」时，为滚动内容预留空间（按钮约 96rpx + 安全区） */
+.content-container--with-fixed-footer {
+  padding-bottom: calc(64rpx + 120rpx + env(safe-area-inset-bottom));
+}
+
+.content-scroll--with-fixed-footer {
+  height: 100vh;
+}
+
 .card {
   background-color: #fff;
   border-radius: 24rpx;
@@ -267,4 +276,41 @@
   color: #6b7280;
   font-weight: 400;
   line-height: 1.65;
+}
+
+/* 分享落地：底部固定条 */
+.result-share-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #f2f7f3;
+  box-shadow: 0 -8rpx 24rpx rgba(45, 61, 53, 0.08);
+}
+
+/* 与 SBTI 答题页主按钮（pages/test/sbti）主题绿一致 */
+.result-share-footer-btn {
+  width: 100% !important;
+  box-sizing: border-box;
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-height: 96rpx;
+  line-height: 96rpx;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #5a7268 0%, #6f8a7e 100%);
+  border: none;
+  box-shadow: 0 8rpx 24rpx rgba(90, 114, 104, 0.28);
+}
+
+.result-share-footer-btn::after {
+  border: none;
 }

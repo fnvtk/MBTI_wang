@@ -34,12 +34,23 @@ Page({
   },
 
   onLoad() {
-    this.loadStats()
-    this.loadBindings(true)
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          tt.showToast({ title: '请先登录后查看推广中心', icon: 'none' })
+          return
+        }
+        this.loadStats()
+        this.loadBindings(true)
+      })
+      .catch(() => {
+        tt.showToast({ title: '登录失败，请重试', icon: 'none' })
+      })
   },
 
   onShow() {
-    this.loadStats()
+    const token = app.globalData.token || tt.getStorageSync('token')
+    if (token) this.loadStats()
   },
 
   /** 加载推广统计数据 */

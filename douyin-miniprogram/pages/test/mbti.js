@@ -27,8 +27,17 @@ Page({
   timer: null,
 
   onLoad() {
-    loadQuestions('mbti', {})
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false })
+          tt.showToast({ title: '登录失败，请重试', icon: 'none' })
+          return Promise.reject(new Error('login'))
+        }
+        return loadQuestions('mbti', {})
+      })
       .then((questions) => {
+        if (!questions) return
         const total = questions.length
         if (!total) {
           tt.showToast({ title: '暂无题目', icon: 'none' })
@@ -52,6 +61,7 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
+        if (err && err.message === 'login') return
         this.setData({ loading: false })
         tt.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
       })
@@ -213,10 +223,14 @@ Page({
     }
     tt.setStorageSync('mbtiResult', resultData)
     try { require('../../utils/analytics').track('test_complete', { type: 'mbti', result: result.mbtiType, confidence: result.confidence, duration: resultData.testDuration }) } catch (e) {}
-    app.saveTestResult('mbti', resultData)
 
-    tt.redirectTo({
-      url: '/pages/result/mbti'
+    app.saveTestResult('mbti', resultData).then((extra) => {
+      const rid = extra && extra.id
+      if (rid) {
+        tt.redirectTo({ url: `/pages/result/mbti?id=${rid}&type=mbti` })
+      } else {
+        tt.redirectTo({ url: '/pages/result/mbti' })
+      }
     })
   },
 

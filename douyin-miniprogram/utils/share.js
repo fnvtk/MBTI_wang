@@ -40,4 +40,44 @@ function getSharePathByScope(personalBasePath) {
   return getSharePath(base)
 }
 
-module.exports = { buildShareQuery, getSharePath, getSharePathByScope }
+/** 测试结果页分享：id + type + fs=1 + 邀请参数 */
+function getResultSharePath(resultPagePath, opts) {
+  const id = opts && opts.id
+  const type = opts && opts.type
+  if (!id || !type) {
+    return getSharePathByScope('/pages/index/index')
+  }
+  const q =
+    'id=' +
+    encodeURIComponent(String(id)) +
+    '&type=' +
+    encodeURIComponent(String(type)) +
+    '&fs=1'
+  const inv = buildShareQuery()
+  return inv ? resultPagePath + '?' + q + '&' + inv : resultPagePath + '?' + q
+}
+
+/** 单页模式 / 部分场景分享用 query：id + type + fs=1 + 邀请参数 */
+function getResultShareTimelineQuery(opts) {
+  const id = opts && opts.id
+  const type = opts && opts.type
+  if (!id || !type) {
+    return buildShareQuery()
+  }
+  const base =
+    'id=' +
+    encodeURIComponent(String(id)) +
+    '&type=' +
+    encodeURIComponent(String(type)) +
+    '&fs=1'
+  const inv = buildShareQuery()
+  return inv ? base + '&' + inv : base
+}
+
+module.exports = {
+  buildShareQuery,
+  getSharePath,
+  getSharePathByScope,
+  getResultSharePath,
+  getResultShareTimelineQuery
+}

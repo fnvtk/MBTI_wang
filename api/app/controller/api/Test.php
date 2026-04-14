@@ -581,14 +581,17 @@ class Test extends BaseController
     }
 
     /**
-     * 通过分享链接查看测试结果（无需登录，凭 st 校验防篡改）
-     * GET /api/test/share-detail?id=123&st=...
+     * 通过分享链接查看测试结果（无需登录）
+     * - 推荐：GET /api/test/share-detail?id=123&type=sbti（type 与库中 testType 一致即可）
+     * - 兼容旧链：GET ...&st=...（凭 st 校验，可不传 type）
      */
     public function shareDetail()
     {
         $id = (int) Request::param('id', 0);
         $st = trim((string) Request::param('st', ''));
-        if ($id <= 0 || $st === '') {
+        $typeParam = trim((string) Request::param('type', ''));
+
+        if ($id <= 0) {
             return error('缺少参数', 400);
         }
 
@@ -597,16 +600,23 @@ class Test extends BaseController
             return error('记录不存在', 404);
         }
 
-        if (!$this->verifyShareToken($row, $st)) {
-            return error('分享链接无效或已失效', 403);
-        }
-
-        $testType = (string) ($row['testType'] ?? '');
-        if ($testType === 'resume') {
+        $rowTestType = (string) ($row['testType'] ?? '');
+        if ($rowTestType === 'resume') {
             return error('该类型不支持分享查看', 403);
         }
 
-        $out = $this->buildTestDetailPayload($row);
+        if ($st !== '') {
+            if (!$this->verifyShareToken($row, $st)) {
+                return error('分享链接无效或已失效', 403);
+            }
+        } else {
+            if (!$this->shareDetailTypeMatchesRow($typeParam, $rowTestType)) {
+                return error('参数不匹配', 400);
+            }
+        }
+
+        // 分享落地：访客不应因「答题人资料未完善」看到截断结果，也不应引导访客去完善自己的资料
+        $out = $this->buildTestDetailPayload($row, true);
 
         return success(array_merge($out, [
             'shareToken' => $this->computeShareToken($row),
@@ -614,9 +624,32 @@ class Test extends BaseController
     }
 
     /**
-     * 与 detail 接口一致的详情结构（data 为结果 JSON）
+     * 公开分享（无 st）时校验 URL 的 type 与记录 testType 一致，避免串页
      */
-    protected function buildTestDetailPayload(array $row): array
+    protected function shareDetailTypeMatchesRow(string $typeParam, string $rowTestType): bool
+    {
+        $a = strtolower(trim($typeParam));
+        $b = strtolower(trim($rowTestType));
+        if ($a === '' || $b === '') {
+            return false;
+        }
+        if ($a === $b) {
+            return true;
+        }
+        // 人脸：库内可能是 face 或 ai
+        if (($a === 'ai' || $a === 'face') && ($b === 'ai' || $b === 'face')) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * 与 detail 接口一致的详情结构（data 为结果 JSON）
+     *
+     * @param bool $forShareViewer true=分享链接打开（/api/test/share-detail）：不因答题人资料未完善而截断结果；未付费仍按定价截断
+     */
+    protected function buildTestDetailPayload(array $row, bool $forShareViewer = false): array
     {
         $raw = $row['resultData'] ?? ($row['result'] ?? null);
         $data = null;
@@ -631,15 +664,16 @@ class Test extends BaseController
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
         $subjectUserId = (int) ($row['userId'] ?? 0);
         $profileIncomplete = $subjectUserId > 0 ? !self::isWechatProfileComplete($subjectUserId) : false;
+        $applyProfileGate = $profileIncomplete && !$forShareViewer;
 
         if ($data !== null && is_array($data)) {
             if (in_array($testType, ['face', 'ai'], true)) {
                 $eid = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : 0;
                 $data = self::stripFaceAiSbtiIfEnterpriseDisabled($data, $eid > 0 ? $eid : null);
-                if ($needPaymentToUnlock || $profileIncomplete) {
+                if ($needPaymentToUnlock || $applyProfileGate) {
                     $data = self::filterFaceResultToPreview($data);
                 }
-            } elseif ($needPaymentToUnlock || $profileIncomplete) {
+            } elseif ($needPaymentToUnlock || $applyProfileGate) {
                 $data = $this->filterResultToPartial($testType, $data);
             }
         }
@@ -654,7 +688,7 @@ class Test extends BaseController
             'paidAmount'           => $paidAmount,
             'amountYuan'           => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
             'needPaymentToUnlock'  => $needPaymentToUnlock,
-            'profileIncomplete'    => $profileIncomplete,
+            'profileIncomplete'    => $forShareViewer ? false : $profileIncomplete,
             'orderId'              => isset($row['orderId']) ? (int) $row['orderId'] : null,
             'paidAt'               => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
         ];
@@ -813,7 +847,11 @@ class Test extends BaseController
             return error('保存测试结果失败', 500);
         }
 
-        return success(null, '提交成功');
+        // 返回记录 id，供小程序结果页带参跳转与分享（shareToken 由 /api/test/detail 下发）
+        return success([
+            'id'       => (int) $id,
+            'testType' => $testType,
+        ], '提交成功');
     }
 
     /**

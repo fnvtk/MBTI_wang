@@ -1,3 +1,4 @@
+const app = getApp()
 const { getApiBase } = require('../../utils/request')
 
 Page({
@@ -8,7 +9,18 @@ Page({
   },
 
   onLoad() {
-    this.loadPoster()
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false, loadingText: '请先登录后生成海报' })
+          tt.showToast({ title: '请先登录', icon: 'none' })
+          return
+        }
+        this.loadPoster()
+      })
+      .catch(() => {
+        this.setData({ loading: false, loadingText: '登录失败，请重试' })
+      })
   },
 
   /** 从后端接口下载完整合成海报 */

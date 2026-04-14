@@ -8,11 +8,18 @@
     "miniprogram": {
       "list": [
         {
+          "name": "分享的测试数据",
+          "pathName": "pages/result/sbti",
+          "query": "id=6229&type=sbti&uid=24&fs=1",
+          "scene": null,
+          "launchMode": "default"
+        },
+        {
           "name": "MBTI",
           "pathName": "pages/test/mbti",
           "query": "phone=18649947301",
-          "scene": null,
-          "launchMode": "default"
+          "launchMode": "default",
+          "scene": null
         },
         {
           "name": "pages/enterprise/index",

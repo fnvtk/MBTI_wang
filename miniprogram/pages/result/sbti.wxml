@@ -1,7 +1,7 @@
 <!--pages/result/sbti.wxml-->
 <view class="result-page">
-  <scroll-view class="content-scroll" scroll-y>
-    <view class="content-container">
+  <scroll-view class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}}" scroll-y>
+    <view class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}}">
 
       <!-- 主类型卡片：有图且图加载成功时隐藏顶部三行（与图内文案重复）；无图/失败/加载中仍显示 -->
       <view class="card main-type-card">
@@ -72,8 +72,8 @@
         </view>
       </view>
 
-      <!-- 强制完善资料卡片 -->
-      <view class="card paywall-card" wx:elif="{{result && result.locked}}">
+      <!-- 强制完善资料卡片（分享落地 fromShare 不展示，避免引导访客完善自己的资料） -->
+      <view class="card paywall-card" wx:elif="{{result && result.locked && !fromShare}}">
         <view class="paywall-content">
           <text class="paywall-fake-title">完整报告需完善资料</text>
           <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整解读。</text>
@@ -107,4 +107,7 @@
       </view>
     </view>
   </scroll-view>
+  <view class="result-share-footer" wx:if="{{fromShare}}">
+    <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+  </view>
 </view>

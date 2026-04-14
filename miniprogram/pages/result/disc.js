@@ -43,18 +43,24 @@ Page({
     testResultId: null,
     shareToken: '',
     hasReloadedAfterPay: false,
+    fromShare: false
   },
 
   onLoad(options) {
-    const id = options && options.id
-    const type = options && options.type
+    const fromShareFs =
+      options && (String(options.fs) === '1' || options.from === 'share')
+    const id = options && options.id != null && options.id !== '' ? String(options.id) : ''
+    const st = options && options.st ? String(options.st).trim() : ''
+    const type = options && options.type ? String(options.type).toLowerCase() : ''
+
     if (id && type === 'disc') {
-      this.setData({ testResultId: id })
-      if (options.st) {
-        this.loadShareDetail(id, options.st)
-      } else {
-        this.loadDetail(id)
-      }
+      this.setData({ testResultId: id, fromShare: !!fromShareFs })
+      this.loadShareDetail(id, st, 'disc')
+      return
+    }
+    if (id && st) {
+      this.setData({ testResultId: id, fromShare: true })
+      this.loadShareDetail(id, st, '')
       return
     }
     const raw = wx.getStorageSync('discResult')
@@ -86,7 +92,11 @@ Page({
       isPaid,
       amountYuan: needPaymentToUnlock ? amountYuan : 0
     }
-    this.setData({ payInfo })
+    const patch = { payInfo }
+    if (payload.id != null && payload.id !== '') {
+      patch.testResultId = String(payload.id)
+    }
+    this.setData(patch)
   },
 
   loadDetail(id) {
@@ -111,14 +121,17 @@ Page({
     })
   },
 
-  loadShareDetail(id, st) {
+  loadShareDetail(id, st, testType) {
     const apiBase = app.globalData?.apiBase || ''
     if (!apiBase) { wx.showToast({ title: '配置异常', icon: 'none' }); return }
+    const data = { id: String(id) }
+    if (st) data.st = st
+    if (testType) data.type = testType
     wx.showLoading({ title: '加载中...' })
     wx.request({
       url: `${apiBase}/api/test/share-detail`,
       method: 'GET',
-      data: { id, st },
+      data,
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.code === 200) {
           this.applyDetailPayload(res.data.data || {})
@@ -185,6 +198,10 @@ Page({
     wx.navigateTo({ url: '/pages/test/disc' })
   },
 
+  goWantTest() {
+    wx.navigateTo({ url: '/pages/test/disc' })
+  },
+
   goHome() {
     const scope = (getApp().globalData && getApp().globalData.appScope) || 'personal'
     if (scope === 'enterprise') {
@@ -201,8 +218,7 @@ Page({
       title: `我的DISC类型是${result?.dominantType}型（${result?.description?.title}），来测测你的吧！`,
       path: getResultSharePath('/pages/result/disc', {
         id: this.data.testResultId,
-        type: 'disc',
-        shareToken: this.data.shareToken
+        type: 'disc'
       })
     }
   },
@@ -214,8 +230,7 @@ Page({
       title: `我的DISC类型是${result?.dominantType}型（${result?.description?.title}），来测测你的吧！`,
       query: getResultShareTimelineQuery({
         id: this.data.testResultId,
-        type: 'disc',
-        shareToken: this.data.shareToken
+        type: 'disc'
       })
     }
   }

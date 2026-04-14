@@ -30,8 +30,18 @@ Page({
     try {
       require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
     } catch (e) {}
-    loadQuestions('mbti', {})
+    // 分享直达本页时 silentLogin 可能尚未完成，须先 ensureLogin 再拉题，否则 401 → 白屏
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false })
+          wx.showToast({ title: '登录失败，请重试', icon: 'none' })
+          return Promise.reject(new Error('login'))
+        }
+        return loadQuestions('mbti', {})
+      })
       .then((questions) => {
+        if (!questions) return
         const total = questions.length
         if (!total) {
           wx.showToast({ title: '暂无题目', icon: 'none' })
@@ -58,6 +68,7 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
+        if (err && err.message === 'login') return
         this.setData({ loading: false })
         wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
       })
@@ -229,11 +240,15 @@ Page({
       timestamp: new Date().toISOString()
     }
     wx.setStorageSync('mbtiResult', resultData)
-    app.saveTestResult('mbti', resultData)
     try { require('../../utils/analytics').track('test_complete', { type: 'mbti', result: result.mbtiType, confidence: result.confidence, duration: resultData.testDuration }) } catch (e) {}
 
-    wx.redirectTo({
-      url: '/pages/result/mbti'
+    app.saveTestResult('mbti', resultData).then((extra) => {
+      const rid = extra && extra.id
+      if (rid) {
+        wx.redirectTo({ url: `/pages/result/mbti?id=${rid}&type=mbti` })
+      } else {
+        wx.redirectTo({ url: '/pages/result/mbti' })
+      }
     })
   },
 

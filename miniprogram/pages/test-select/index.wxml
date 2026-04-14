@@ -48,4 +48,8 @@
     </view>
     <text class="entry-arrow">→</text>
   </view>
+
+  <view class="card perm-disabled-hint" wx:if="{{allTestsDisabled}}">
+    <text class="perm-disabled-text">当前环境下暂未开放问卷测试，请联系管理员或从首页进入。</text>
+  </view>
 </view>

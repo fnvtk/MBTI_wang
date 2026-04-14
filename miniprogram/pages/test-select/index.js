@@ -7,7 +7,9 @@ Page({
     permMbti: true,
     permSbti: true,
     permPdp: true,
-    permDisc: true
+    permDisc: true,
+    /** 四类入口均被企业权限关闭时提示，避免误以为白屏 */
+    allTestsDisabled: false
   },
 
   onLoad(options) {
@@ -17,6 +19,8 @@ Page({
     try {
       wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
     } catch (e) {}
+    // 分享直达时尽早完成静默登录，避免用户点进子页时仍无 token
+    app.ensureLogin().catch(() => {})
     this._syncPerms()
   },
 
@@ -26,12 +30,18 @@ Page({
 
   _syncPerms() {
     const p = app.globalData.enterprisePermissions
+    const permFace = !p || p.face !== false
+    const permMbti = !p || p.mbti !== false
+    const permSbti = !p || p.sbti !== false
+    const permPdp = !p || p.pdp !== false
+    const permDisc = !p || p.disc !== false
     this.setData({
-      permFace: !p || p.face !== false,
-      permMbti: !p || p.mbti !== false,
-      permSbti: !p || p.sbti !== false,
-      permPdp:  !p || p.pdp  !== false,
-      permDisc: !p || p.disc !== false
+      permFace,
+      permMbti,
+      permSbti,
+      permPdp,
+      permDisc,
+      allTestsDisabled: p && !permMbti && !permSbti && !permPdp && !permDisc
     })
   },
 

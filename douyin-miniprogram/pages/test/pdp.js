@@ -25,8 +25,17 @@ Page({
   timer: null,
 
   onLoad() {
-    loadQuestions('pdp', {})
+    app.ensureLogin()
+      .then((ok) => {
+        if (!ok) {
+          this.setData({ loading: false })
+          tt.showToast({ title: '登录失败，请重试', icon: 'none' })
+          return Promise.reject(new Error('login'))
+        }
+        return loadQuestions('pdp', {})
+      })
       .then((questions) => {
+        if (!questions) return
         if (!questions.length) {
           tt.showToast({ title: '暂无题目', icon: 'none' })
           this.setData({ loading: false })
@@ -47,6 +56,7 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
+        if (err && err.message === 'login') return
         this.setData({ loading: false })
         tt.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
       })
@@ -182,9 +192,16 @@ Page({
     tt.setStorageSync('pdpResult', resultData)
     try { require('../../utils/analytics').track('test_complete', { type: 'pdp', result: dominantType, duration: resultData.testDuration }) } catch (e) {}
     if (app && typeof app.saveTestResult === 'function') {
-      app.saveTestResult('pdp', resultData)
+      app.saveTestResult('pdp', resultData).then((extra) => {
+        const rid = extra && extra.id
+        if (rid) {
+          tt.redirectTo({ url: `/pages/result/pdp?id=${rid}&type=pdp` })
+        } else {
+          tt.redirectTo({ url: '/pages/result/pdp' })
+        }
+      })
+    } else {
+      tt.redirectTo({ url: '/pages/result/pdp' })
     }
-
-    tt.redirectTo({ url: '/pages/result/pdp' })
   }
 })
