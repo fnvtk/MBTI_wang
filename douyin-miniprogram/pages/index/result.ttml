@@ -70,7 +70,7 @@
     <!-- 性格类型分析卡片 -->
     <view class="card personality-card" tt:if="{{!hasError}}">
       <text class="card-title">性格类型分析</text>
-      <text class="personality-card-sub">MBTI · PDP · DISC 联合速览</text>
+      <text class="personality-card-sub">MBTI · PDP · DISC · SBTI 联合速览</text>
 
       <view class="personality-type">
         <text class="type-code">{{result.mbti}}</text>
@@ -82,7 +82,7 @@
         <text class="type-desc">{{result.summary}}</text>
       </view>
 
-      <view class="type-details">
+      <view class="type-details type-details--wrap">
         <view class="type-box pdp-box">
           <text class="type-emoji" tt:if="{{result.pdpEmoji}}">{{result.pdpEmoji}}</text>
           <text class="type-label">PDP主性格</text>
@@ -95,14 +95,23 @@
           <text class="type-value">{{result.disc || '--'}}型</text>
           <text class="type-sub" tt:if="{{result.discAux}}">辅助: {{result.discAux}}</text>
         </view>
+        <!-- SBTI：重构为盒子家族成员，占据全宽 -->
+        <view
+          class="type-box sbti-box"
+          tt:if="{{showSbtiFace && (result.sbtiCode || result.sbtiCn)}}"
+        >
+          <text class="type-emoji">✨</text>
+          <text class="type-label">SBTI解读</text>
+          <text class="type-value">{{result.sbtiCode}}（{{result.sbtiCn}}）</text>
+          <text class="type-desc-small">{{result.sbtiMainTypeDesc}}</text>
+        </view>
       </view>
 
       <view class="advantages-box" tt:if="{{result.traits.length > 0}}">
         <text class="advantages-label">主要优势</text>
         <view class="advantages-list">
-          <view class="advantage-item" tt:for="{{result.traits}}" tt:key="*this">
-            <view class="advantage-dot"></view>
-            <text class="advantage-text">{{item}}</text>
+          <view class="advantage-pill" tt:for="{{result.traits}}" tt:key="*this">
+            <text class="advantage-pill-text">{{item}}</text>
           </view>
         </view>
       </view>

@@ -634,6 +634,8 @@ class Test extends BaseController
 
         if ($data !== null && is_array($data)) {
             if (in_array($testType, ['face', 'ai'], true)) {
+                $eid = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : 0;
+                $data = self::stripFaceAiSbtiIfEnterpriseDisabled($data, $eid > 0 ? $eid : null);
                 if ($needPaymentToUnlock || $profileIncomplete) {
                     $data = self::filterFaceResultToPreview($data);
                 }
@@ -949,6 +951,37 @@ class Test extends BaseController
         $phone = trim((string) ($row['phone'] ?? ''));
 
         return $nick !== '' && $avatar !== '' && $phone !== '';
+    }
+
+    /**
+     * 企业关闭 SBTI 权限时，人脸/AI 报告接口不下发 SBTI 相关字段（与小程序 enterprisePermissions.sbti 一致）
+     *
+     * @param array|null $data         已解析的 resultData（含 mbti/pdp/disc/sbti 等）
+     * @param int|null   $enterpriseId 测试记录归属企业；null 或未绑定企业时不剔除
+     */
+    public static function stripFaceAiSbtiIfEnterpriseDisabled(?array $data, ?int $enterpriseId): ?array
+    {
+        if ($data === null || !is_array($data)) {
+            return $data;
+        }
+        if ($enterpriseId === null || $enterpriseId <= 0) {
+            return $data;
+        }
+        try {
+            $ent = Db::name('enterprises')->where('id', $enterpriseId)->field('permissions')->find();
+            if (!$ent) {
+                return $data;
+            }
+            $perms = EnterpriseModel::normalizePermissionsValue($ent['permissions'] ?? null);
+            if (!empty($perms['sbti'])) {
+                return $data;
+            }
+        } catch (\Throwable $e) {
+            return $data;
+        }
+        unset($data['sbti'], $data['sbtiType'], $data['sbtiCn']);
+
+        return $data;
     }
 
     /**

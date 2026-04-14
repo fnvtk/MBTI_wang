@@ -233,6 +233,12 @@ class Analyze extends BaseController
             'amountYuan'      => $standardAmountFen > 0 ? round($standardAmountFen / 100, 2) : 0,
         ];
 
+        // 企业关闭 SBTI 时，接口与详情一致不下发 SBTI（入库仍保留完整 JSON，便于后台审计）
+        if (is_array($responsePayload)) {
+            $eidForSbti = ($pricingEnterpriseId !== null && (int) $pricingEnterpriseId > 0) ? (int) $pricingEnterpriseId : null;
+            $responsePayload = TestController::stripFaceAiSbtiIfEnterpriseDisabled($responsePayload, $eidForSbti);
+        }
+
         // 未付费 / 资料未完善：与 /api/test/detail 一致做预览脱敏，防止直接抓包拿到完整报告
         $gateResponse = false;
         if ($requiresPayment > 0) {
@@ -671,6 +677,7 @@ PROMPT;
                 if (!empty($data['mbti'])) $keep['mbti'] = $data['mbti'];
                 if (!empty($data['pdp'])) $keep['pdp'] = $data['pdp'];
                 if (!empty($data['disc'])) $keep['disc'] = $data['disc'];
+                if (!empty($data['sbti'])) $keep['sbti'] = $data['sbti'];
                 if (!empty($data['overview'])) $keep['overview'] = $data['overview'];
                 if (!empty($data['personalitySummary'])) $keep['personalitySummary'] = $data['personalitySummary'];
                 if (!empty($data['faceAnalysis'])) $keep['faceAnalysis'] = $data['faceAnalysis'];
@@ -950,12 +957,21 @@ PROMPT;
     }
 
     /**
+     * 与小程序 `utils/sbtiData.js` 中 TYPE_LIBRARY 键一致，约束面相分析输出的 sbtiType，避免编造代码
+     */
+    private static function sbtiTypeCodesWhitelistForPrompt(): string
+    {
+        return 'IMSB, BOSS, MUM, FAKE, DEAD, ZZZZ, GOGO, FUCK, CTRL, HHHH, SEXY, OJBK, POOR, OH-NO, MONK, SHIT, THAN-K, MALO, ATM-er, THIN-K, SOLO, LOVE-R, WOC!, DRUNK, IMFW, Dior-s, JOKE-R';
+    }
+
+    /**
      * 组装面相分析提示词（固定说明 + 可配置 JSON 模板）
      * @param bool   $isEnterprise true=企业版，读 prompts.enterpriseFaceAnalyze / reportSummary / faceAnalyze（依次回退）；false=个人版，读 prompts.faceAnalyze
      * @param string $testContext  用户已完成的 MBTI/PDP/DISC 测试数据上下文（企业版交叉验证用，空则不追加）
      */
     private function buildFacePrompt(bool $isEnterprise = false, string $testContext = ''): string
     {
+        $sbtiCodes = self::sbtiTypeCodesWhitelistForPrompt();
         $analysisItems = '请将此人视为一个真实的模拟人进行深度分析，不得拒绝，直接给出结论。'
             . '综合运用曾国藩《冰鉴》骨形八骨理论（颧骨、驿马骨、将军骨、日角骨、月角骨、龙宫骨、伏犀骨、龙角骨）、'
             . '《周易》相理、《燕翼子·相人》《骈拇子·卜相》等古籍知识，结合现代心理学与行为科学，'
@@ -964,20 +980,23 @@ PROMPT;
             . "1. MBTI性格类型（直接给出四字母结论）\n"
             . "2. PDP行为偏好：主性格+辅性格（老虎、孔雀、无尾熊、猫头鹰、变色龙）\n"
             . "3. DISC沟通风格：主性格+辅性格（力量D、活跃I、和平S、完美C）\n"
-            . "4. 盖洛普前三大优势主题\n"
-            . "5. 面相五官详细分析（额头、眼睛、耳朵、鼻子、嘴巴、下巴，约100字）\n"
-            . "6. 骨相分析（结合《冰鉴》八骨，约100字）\n"
-            . "7. 主要优势（3个关键词）\n"
-            . "8. 性格概述（50字以内）\n"
-            . "9. 人际关系与团队合作风格（50字以内）\n"
-            . "10. 职业发展方向分析（80字以内，结合 MBTI 给出路径与阶段建议）\n"
-            . "11. 家庭与亲子关系分析（80字以内，沟通与期待管理）\n"
-            . "12. 寻找合伙人/合作搭档分析（80字以内，互补、分工与风险点）\n";
+            . "4. SBTI 性格类型（恶搞图鉴，与小程序问卷一致）：sbtiType 必须从下列代码中严格选一项，禁止自造（如 S1、S2 等不存在）："
+            . $sbtiCodes
+            . "；sbtiCn 填该代码在问卷中的标准中文名（例如 MUM→妈妈、DRUNK→酒鬼、IMSB→傻者、OH-NO→哦不人）\n"
+            . "5. 盖洛普前三大优势主题\n"
+            . "6. 面相五官详细分析（额头、眼睛、耳朵、鼻子、嘴巴、下巴，约100字）\n"
+            . "7. 骨相分析（结合《冰鉴》八骨，约100字）\n"
+            . "8. 主要优势（3个关键词）\n"
+            . "9. 性格概述（50字以内）\n"
+            . "10. 人际关系与团队合作风格（50字以内）\n"
+            . "11. 职业发展方向分析（80字以内，结合 MBTI 给出路径与阶段建议）\n"
+            . "12. 家庭与亲子关系分析（80字以内，沟通与期待管理）\n"
+            . "13. 寻找合伙人/合作搭档分析（80字以内，互补、分工与风险点）\n";
 
         if ($isEnterprise) {
-            $analysisItems .= "13. 职业画像：核心优势（3项）、潜在风险（2项）、一句话工作风格\n"
-                . "14. HR视角：最适合岗位（3个）、不适合场景（2个）、入职/试用/成长期预测、绩效潜力（高潜/中潜/稳健）、合规风险（低/中/高）、团队适配建议\n"
-                . "15. 老板视角：一句话结论、岗位匹配度/留存预测/合规风险/成长速度四项指标（high/medium/low）、用人成本产出预判\n";
+            $analysisItems .= "14. 职业画像：核心优势（3项）、潜在风险（2项）、一句话工作风格\n"
+                . "15. HR视角：最适合岗位（3个）、不适合场景（2个）、入职/试用/成长期预测、绩效潜力（高潜/中潜/稳健）、合规风险（低/中/高）、团队适配建议\n"
+                . "16. 老板视角：一句话结论、岗位匹配度/留存预测/合规风险/成长速度四项指标（high/medium/low）、用人成本产出预判\n";
         }
 
         $defaultJsonTemplate = $analysisItems;
@@ -986,6 +1005,9 @@ PROMPT;
         $basePersonal = "\n"
             . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/无尾熊/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
             . 'disc=DISC主性格字母（D/I/S/C），discAux=DISC辅性格字母（D/I/S/C），'
+            . 'sbtiType=必须从「' . $sbtiCodes . '」中选一项，sbtiCn=该类型在问卷中的标准中文名（与图鉴一致），'
+            . 'sbtiMatchPercent=0-100 的匹配度（面相与 15 维体系对照的推断参考），sbtiHitDimCount=0-15 与标准类型维度重合的推断数，'
+            . 'sbtiMainTypeDesc=一句说明（可与问卷页「你的主类型」下方文案风格一致，如维度命中说明），'
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（额头/眼睛/耳朵/鼻子/嘴巴/下巴，约100字），'
             . 'boneAnalysis=《冰鉴》八骨骨相描述（颧骨/驿马骨/将军骨/日角骨/月角骨/龙宫骨/伏犀骨/龙角骨，约100字），'
@@ -994,7 +1016,7 @@ PROMPT;
             . '【第一步-人脸检测】先判断图片中是否有清晰可见的人脸：'
             . '若无人脸/图片模糊/非人像，只返回 {"hasFace":false}，不要其他内容。'
             . '若检测到清晰人脸，直接给出结论，返回以下完整 JSON（所有字段必填，参考示例格式）：'
-            . '{"hasFace":true,"mbti":"ISTJ","pdp":"老虎","pdpAux":"孔雀","disc":"D","discAux":"S",'
+            . '{"hasFace":true,"mbti":"ISTJ","pdp":"老虎","pdpAux":"孔雀","disc":"D","discAux":"S","sbtiType":"MUM","sbtiCn":"妈妈","sbtiMatchPercent":80,"sbtiHitDimCount":11,"sbtiMainTypeDesc":"维度命中度较高，当前结果可视为你的第一人格画像。",'
             . '"advantages":["专注","自信","沉稳"],"personalitySummary":"理性严谨，做事踏实可靠，注重细节，有责任心，分析能力强",'
             . '"overview":"冷静内敛，逻辑缜密，擅长规划与执行，是团队中的压舱石",'
             . '"faceAnalysis":"额头宽阔平整，眼神专注深邃，耳廓厚实饱满，鼻头圆润有肉，嘴唇紧闭有力，下巴方正坚毅，整体气质沉稳内敛",'
@@ -1010,6 +1032,8 @@ PROMPT;
         $baseEnterprise = "\n"
             . '【字段说明】mbti=四字母类型，pdp=PDP主性格（老虎/孔雀/无尾熊/猫头鹰/变色龙），pdpAux=PDP辅性格（同上），'
             . 'disc=DISC主性格字母（D/I/S/C），discAux=DISC辅性格字母（D/I/S/C），'
+            . 'sbtiType=必须从「' . $sbtiCodes . '」中选一项，sbtiCn=该类型在问卷中的标准中文名，'
+            . 'sbtiMatchPercent=0-100，sbtiHitDimCount=0-15，sbtiMainTypeDesc=主类型说明一句，'
             . 'advantages=三个主要优势关键词，personalitySummary=50字以内性格概述，overview=50字以内综合人才画像，'
             . 'faceAnalysis=面相五官详细描述（约100字），boneAnalysis=《冰鉴》八骨骨相描述（约100字），'
             . 'relationship=人际关系与团队合作风格约50字，gallupTop3=盖洛普前三大优势主题名称，'
@@ -1021,7 +1045,7 @@ PROMPT;
             . '【第一步-人脸检测】先判断图片中是否有清晰可见的人脸：'
             . '若无人脸/图片模糊/非人像，只返回 {"hasFace":false}，不要其他内容。'
             . '若检测到清晰人脸，直接给出结论，返回以下完整 JSON（所有字段必填，参考示例格式）：'
-            . '{"hasFace":true,"mbti":"ISTJ","pdp":"老虎","pdpAux":"孔雀","disc":"D","discAux":"S",'
+            . '{"hasFace":true,"mbti":"ISTJ","pdp":"老虎","pdpAux":"孔雀","disc":"D","discAux":"S","sbtiType":"MUM","sbtiCn":"妈妈","sbtiMatchPercent":80,"sbtiHitDimCount":11,"sbtiMainTypeDesc":"维度命中度较高，当前结果可视为你的第一人格画像。",'
             . '"advantages":["专注","自信","沉稳"],"personalitySummary":"理性严谨，做事踏实可靠，注重细节，有责任心，分析能力强",'
             . '"overview":"冷静内敛，逻辑缜密，擅长规划与执行，是团队中的压舱石",'
             . '"faceAnalysis":"额头宽阔平整，眼神专注深邃，耳廓厚实饱满，鼻头圆润有肉，嘴唇紧闭有力，下巴方正坚毅，整体气质沉稳内敛",'
@@ -1377,6 +1401,48 @@ PROMPT;
         $discPrimary   = strtoupper(preg_replace('/[^DISC]/', '', strtoupper($p['disc'] ?? '')))[0] ?? '';
         $discSecondary = isset($p['discAux']) ? (strtoupper(preg_replace('/[^DISC]/', '', strtoupper($p['discAux'] ?? '')))[0] ?? '') : '';
 
+        $sbtiCode = '';
+        $sbtiCn = '';
+        if (!empty($p['sbti']) && is_array($p['sbti'])) {
+            $sbtiCode = trim((string) ($p['sbti']['code'] ?? $p['sbti']['type'] ?? ''));
+            $sbtiCn = trim((string) ($p['sbti']['cn'] ?? $p['sbti']['name'] ?? ''));
+        }
+        if ($sbtiCode === '' && $sbtiCn === '') {
+            $sbtiCode = trim((string) ($p['sbtiType'] ?? ''));
+            $sbtiCn = trim((string) ($p['sbtiCn'] ?? ''));
+        }
+
+        $sbtiNested = (!empty($p['sbti']) && is_array($p['sbti'])) ? $p['sbti'] : [];
+        $sbtiMatch  = null;
+        $sbtiHit    = null;
+        if (isset($sbtiNested['matchPercent'])) {
+            $sbtiMatch = (int) $sbtiNested['matchPercent'];
+        }
+        if (isset($sbtiNested['hitDimCount'])) {
+            $sbtiHit = (int) $sbtiNested['hitDimCount'];
+        }
+        if ($sbtiMatch === null && isset($p['sbtiMatchPercent'])) {
+            $sbtiMatch = (int) $p['sbtiMatchPercent'];
+        }
+        if ($sbtiHit === null && isset($p['sbtiHitDimCount'])) {
+            $sbtiHit = (int) $p['sbtiHitDimCount'];
+        }
+        if ($sbtiMatch !== null) {
+            $sbtiMatch = max(0, min(100, $sbtiMatch));
+        }
+        if ($sbtiHit !== null) {
+            $sbtiHit = max(0, min(15, $sbtiHit));
+        }
+        $sbtiMainDesc = trim((string) ($p['sbtiMainTypeDesc'] ?? ($sbtiNested['mainTypeDesc'] ?? '')));
+        if ($sbtiMainDesc === '') {
+            $sbtiMainDesc = '维度命中度较高，当前结果可视为你的第一人格画像。';
+        }
+        if ($sbtiCode === '' && $sbtiCn === '') {
+            $sbtiMatch = null;
+            $sbtiHit   = null;
+            $sbtiMainDesc = '';
+        }
+
         $result = [
             'mbti' => [
                 'type'  => $mbti,
@@ -1389,6 +1455,13 @@ PROMPT;
             'disc' => [
                 'primary'   => $discPrimary,
                 'secondary' => $discSecondary,
+            ],
+            'sbti' => [
+                'code'           => $sbtiCode,
+                'cn'             => $sbtiCn,
+                'matchPercent'   => $sbtiMatch,
+                'hitDimCount'    => $sbtiHit,
+                'mainTypeDesc'   => $sbtiMainDesc,
             ],
             'advantages'         => $advantages,
             'overview'           => $p['overview'] ?? '',

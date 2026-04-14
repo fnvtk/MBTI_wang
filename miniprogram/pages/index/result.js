@@ -71,6 +71,9 @@ Page({
       pdpEmoji: '',
       disc: '',
       discAux: '',
+      sbtiCode: '',
+      sbtiCn: '',
+      sbtiMainTypeDesc: '',
       traits: [],
       faceAnalysisText: '',
       boneAnalysisText: '',
@@ -96,6 +99,8 @@ Page({
     // 是否已在本地拥有手机号（决定是否还需要弹出微信手机号授权）
     hasPhone: false,
     isProfileComplete: false,
+    /** 企业后台关闭 SBTI 时不展示人脸报告中的 SBTI（与 enterprisePermissions.sbti 一致） */
+    showSbtiFace: true,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
     aiAnalysisText: '智能分析'
@@ -182,7 +187,13 @@ Page({
   },
 
   onShow() {
-    this.setData({ hasPhone: hasPhone(), isProfileComplete: isProfileComplete() })
+    const ep = app.globalData.enterprisePermissions
+    const showSbtiFace = !ep || ep.sbti !== false
+    this.setData({
+      hasPhone: hasPhone(),
+      isProfileComplete: isProfileComplete(),
+      showSbtiFace
+    })
     const tc = app.globalData.textConfig
     if (tc) {
       this.setData({
@@ -215,7 +226,7 @@ Page({
       '正在识别面部特征...',
       '分析眉眼特征...',
       '结合《冰鉴》分析骨形...',
-      '匹配MBTI/PDP/DISC...',
+      '匹配MBTI/PDP/DISC/SBTI...',
       '生成综合报告...'
     ]
     let progress = 0
@@ -284,6 +295,13 @@ Page({
 
   // 处理API返回结果
   processResult(apiData) {
+    const ep = app.globalData.enterprisePermissions
+    const showSbtiFace = !ep || ep.sbti !== false
+    const sbtiCode = showSbtiFace ? (apiData.sbti?.code || apiData.sbtiType || '') : ''
+    const sbtiCn = showSbtiFace ? (apiData.sbti?.cn || apiData.sbtiCn || '') : ''
+    const sbtiMainTypeDesc = (showSbtiFace && (sbtiCode || sbtiCn))
+      ? (apiData.sbti?.mainTypeDesc || apiData.sbtiMainTypeDesc || '维度命中度较高，当前结果可视为你的第一人格画像。')
+      : ''
     const base = {
       mbti:             apiData.mbti?.type || '',
       title:            apiData.mbti?.title || '',
@@ -293,6 +311,9 @@ Page({
       pdpEmoji:         this.getPDPEmoji(apiData.pdp?.primary),
       disc:             apiData.disc?.primary || '',
       discAux:          apiData.disc?.secondary || '',
+      sbtiCode,
+      sbtiCn,
+      sbtiMainTypeDesc,
       traits:           Array.isArray(apiData.advantages) ? apiData.advantages : [],
       faceAnalysisText: typeof apiData.faceAnalysis === 'string' ? apiData.faceAnalysis : '',
       boneAnalysisText: typeof apiData.boneAnalysis === 'string' ? apiData.boneAnalysis : '',
@@ -321,7 +342,8 @@ Page({
       isAnalyzing: false,
       showResult: true,
       hasError: false,
-      result
+      result,
+      showSbtiFace
     }
 
     // 记录本次测试记录ID（由 /api/analyze 返回）
