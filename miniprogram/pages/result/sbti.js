@@ -52,6 +52,7 @@ Page({
       amountYuan: 0
     },
     testResultId: null,
+    shareToken: '',
     hasReloadedAfterPay: false,
     hasPhone: false
   },
@@ -62,7 +63,11 @@ Page({
 
     if (id && type === 'sbti') {
       this.setData({ testResultId: id })
-      this.loadDetail(id)
+      if (options.st) {
+        this.loadShareDetail(id, options.st)
+      } else {
+        this.loadDetail(id)
+      }
       return
     }
 
@@ -91,6 +96,24 @@ Page({
     wx.navigateTo({ url: '/pages/user-profile/index' })
   },
 
+  applyDetailPayload(payload) {
+    const data = payload.data || payload
+    const isPaid = !!payload.isPaid
+    const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
+    const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
+    const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
+    this.applyResult(data)
+    const payInfo = {
+      requiresPayment: needPaymentToUnlock,
+      isPaid,
+      amountYuan: needPaymentToUnlock ? amountYuan : 0
+    }
+    this.setData({
+      payInfo,
+      shareToken: payload.shareToken || ''
+    })
+  },
+
   loadDetail(id) {
     const apiBase = app.globalData?.apiBase || ''
     const token = app.globalData?.token || wx.getStorageSync('token') || ''
@@ -106,21 +129,32 @@ Page({
       data: { id },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.code === 200) {
-          const payload = res.data.data || {}
-          const data = payload.data || payload
-          const isPaid = !!payload.isPaid
-          const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
-          const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
-          const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
-          this.applyResult(data)
-          const payInfo = {
-            requiresPayment: needPaymentToUnlock,
-            isPaid,
-            amountYuan: needPaymentToUnlock ? amountYuan : 0
-          }
-          this.setData({ payInfo })
+          this.applyDetailPayload(res.data.data || {})
         } else {
           wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
+        }
+      },
+      fail: () => wx.showToast({ title: '网络错误', icon: 'none' }),
+      complete: () => wx.hideLoading()
+    })
+  },
+
+  loadShareDetail(id, st) {
+    const apiBase = app.globalData?.apiBase || ''
+    if (!apiBase) {
+      wx.showToast({ title: '配置异常', icon: 'none' })
+      return
+    }
+    wx.showLoading({ title: '加载中...' })
+    wx.request({
+      url: `${apiBase}/api/test/share-detail`,
+      method: 'GET',
+      data: { id, st },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.code === 200) {
+          this.applyDetailPayload(res.data.data || {})
+        } else {
+          wx.showToast({ title: res.data?.message || '分享链接无效或已失效', icon: 'none' })
         }
       },
       fail: () => wx.showToast({ title: '网络错误', icon: 'none' }),
@@ -239,25 +273,33 @@ Page({
 
   onShareAppMessage() {
     const result = this.data.result
-    const { getSharePathByScope } = require('../../utils/share')
+    const { getResultSharePath } = require('../../utils/share')
     const label = result?.sbtiCn || result?.finalType?.cn || 'SBTI'
     const code = result?.sbtiType || result?.finalType?.code || ''
     const img = this.data.typeImageUrl || '/images/share-mbti.png'
     return {
       title: `我的 SBTI 类型是 ${code}（${label}），来测测你的吧！`,
-      path: getSharePathByScope('/pages/index/index'),
+      path: getResultSharePath('/pages/result/sbti', {
+        id: this.data.testResultId,
+        type: 'sbti',
+        shareToken: this.data.shareToken
+      }),
       imageUrl: img
     }
   },
 
   onShareTimeline() {
     const result = this.data.result
-    const { buildShareQuery } = require('../../utils/share')
+    const { getResultShareTimelineQuery } = require('../../utils/share')
     const label = result?.sbtiCn || result?.finalType?.cn || 'SBTI'
     const code = result?.sbtiType || result?.finalType?.code || ''
     return {
       title: `我的 SBTI 类型是 ${code}（${label}），来测测你的吧！`,
-      query: buildShareQuery()
+      query: getResultShareTimelineQuery({
+        id: this.data.testResultId,
+        type: 'sbti',
+        shareToken: this.data.shareToken
+      })
     }
   }
 })

@@ -47,6 +47,9 @@ Page({
         try {
           require('../../utils/analytics').track('test_start', { type: 'disc', total: questions.length })
         } catch (e) {}
+        try {
+          wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+        } catch (e) {}
         this.startTimer()
       })
       .catch((err) => {
@@ -190,5 +193,21 @@ Page({
     }
 
     wx.redirectTo({ url: '/pages/result/disc' })
+  },
+
+  onShareAppMessage() {
+    const { getSharePath } = require('../../utils/share')
+    return {
+      title: '来测测你的 DISC 性格类型',
+      path: getSharePath('/pages/test/disc')
+    }
+  },
+
+  onShareTimeline() {
+    const { buildShareQuery } = require('../../utils/share')
+    return {
+      title: '来测测你的 DISC 性格类型',
+      query: buildShareQuery()
+    }
   }
 })

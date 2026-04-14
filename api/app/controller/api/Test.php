@@ -573,6 +573,51 @@ class Test extends BaseController
             return error('记录不存在', 404);
         }
 
+        $out = $this->buildTestDetailPayload($row);
+
+        return success(array_merge($out, [
+            'shareToken' => $this->computeShareToken($row),
+        ]));
+    }
+
+    /**
+     * 通过分享链接查看测试结果（无需登录，凭 st 校验防篡改）
+     * GET /api/test/share-detail?id=123&st=...
+     */
+    public function shareDetail()
+    {
+        $id = (int) Request::param('id', 0);
+        $st = trim((string) Request::param('st', ''));
+        if ($id <= 0 || $st === '') {
+            return error('缺少参数', 400);
+        }
+
+        $row = Db::name('test_results')->where('id', $id)->find();
+        if (!$row) {
+            return error('记录不存在', 404);
+        }
+
+        if (!$this->verifyShareToken($row, $st)) {
+            return error('分享链接无效或已失效', 403);
+        }
+
+        $testType = (string) ($row['testType'] ?? '');
+        if ($testType === 'resume') {
+            return error('该类型不支持分享查看', 403);
+        }
+
+        $out = $this->buildTestDetailPayload($row);
+
+        return success(array_merge($out, [
+            'shareToken' => $this->computeShareToken($row),
+        ]));
+    }
+
+    /**
+     * 与 detail 接口一致的详情结构（data 为结果 JSON）
+     */
+    protected function buildTestDetailPayload(array $row): array
+    {
         $raw = $row['resultData'] ?? ($row['result'] ?? null);
         $data = null;
         if ($raw !== null && $raw !== '') {
@@ -583,9 +628,10 @@ class Test extends BaseController
         $isPaid = (int) ($row['isPaid'] ?? 0);
         $paidAmount = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $testType = $row['testType'] ?? '';
-        // 仅当需要付款且未付款且金额>0 时才脱敏；系统设置需付款但金额为0 则直接可查看
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
-        $profileIncomplete = !self::isWechatProfileComplete($userId);
+        $subjectUserId = (int) ($row['userId'] ?? 0);
+        $profileIncomplete = $subjectUserId > 0 ? !self::isWechatProfileComplete($subjectUserId) : false;
+
         if ($data !== null && is_array($data)) {
             if (in_array($testType, ['face', 'ai'], true)) {
                 if ($needPaymentToUnlock || $profileIncomplete) {
@@ -596,20 +642,38 @@ class Test extends BaseController
             }
         }
 
-        return success([
-            'id'                  => $row['id'],
-            'testType'            => $testType,
-            'createdAt'           => $row['createdAt'],
-            'data'                => $data,
-            'requiresPayment'    => $requiresPayment,
-            'isPaid'              => $isPaid,
-            'paidAmount'          => $paidAmount,
-            'amountYuan'          => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
-            'needPaymentToUnlock'=> $needPaymentToUnlock,
-            'profileIncomplete'   => $profileIncomplete,
-            'orderId'             => isset($row['orderId']) ? (int) $row['orderId'] : null,
-            'paidAt'              => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
-        ]);
+        return [
+            'id'                   => $row['id'],
+            'testType'             => $testType,
+            'createdAt'            => $row['createdAt'],
+            'data'                 => $data,
+            'requiresPayment'      => $requiresPayment,
+            'isPaid'               => $isPaid,
+            'paidAmount'           => $paidAmount,
+            'amountYuan'           => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
+            'needPaymentToUnlock'  => $needPaymentToUnlock,
+            'profileIncomplete'    => $profileIncomplete,
+            'orderId'              => isset($row['orderId']) ? (int) $row['orderId'] : null,
+            'paidAt'               => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
+        ];
+    }
+
+    protected function computeShareToken(array $row): string
+    {
+        $secret = (string) env('SHARE_LINK_SECRET', env('WECHAT_APP_SECRET', 'mbti-share-link-change-me'));
+        $payload = (string) ($row['id'] ?? 0) . '|' . (string) ($row['userId'] ?? 0) . '|' . (string) ($row['createdAt'] ?? 0);
+
+        return substr(hash_hmac('sha256', $payload, $secret), 0, 32);
+    }
+
+    protected function verifyShareToken(array $row, string $token): bool
+    {
+        $token = trim($token);
+        if ($token === '' || strlen($token) !== 32) {
+            return false;
+        }
+
+        return hash_equals($this->computeShareToken($row), $token);
     }
 
     /**

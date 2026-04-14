@@ -52,6 +52,9 @@ Page({
         try {
           require('../../utils/analytics').track('test_start', { type: 'mbti', total })
         } catch (e) {}
+        try {
+          wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+        } catch (e) {}
         this.startTimer()
       })
       .catch((err) => {
@@ -279,6 +282,22 @@ Page({
       dimensionScores,
       confidence,
       description: mbtiDescriptions[mbtiType] || {}
+    }
+  },
+
+  onShareAppMessage() {
+    const { getSharePath } = require('../../utils/share')
+    return {
+      title: '来测测你的 MBTI 性格类型',
+      path: getSharePath('/pages/test/mbti')
+    }
+  },
+
+  onShareTimeline() {
+    const { buildShareQuery } = require('../../utils/share')
+    return {
+      title: '来测测你的 MBTI 性格类型',
+      query: buildShareQuery()
     }
   }
 })

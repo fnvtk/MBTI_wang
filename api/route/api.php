@@ -23,6 +23,8 @@ Route::group('api', function () {
     Route::post('analyze', 'api.Analyze/index');
     // 小程序埋点批量上报（无需登录；带 token 时关联 user_id）
     Route::post('analytics/events', 'api.Analytics/batch');
+    // 好友打开分享卡片：凭 st 校验查看他人测试结果（无需登录）
+    Route::get('test/share-detail', 'api.Test/shareDetail');
 })->middleware('cors');
 
 // 前端需要认证的API路由

@@ -57,4 +57,54 @@ function getSharePathByScope(personalBasePath) {
   return getSharePath(base)
 }
 
-module.exports = { buildShareQuery, getSharePath, getSharePathByScope }
+/**
+ * 分享「测试结果页」：必须带 id、type、st（后端下发的 shareToken），否则好友无法打开详情
+ * @param {string} resultPagePath 如 /pages/result/mbti
+ * @param {{ id: string|number, type: string, shareToken: string }} opts
+ */
+function getResultSharePath(resultPagePath, opts) {
+  const id = opts && opts.id
+  const type = opts && opts.type
+  const shareToken = opts && opts.shareToken
+  if (!id || !type || !shareToken) {
+    return getSharePathByScope('/pages/index/index')
+  }
+  const q =
+    'id=' +
+    encodeURIComponent(String(id)) +
+    '&type=' +
+    encodeURIComponent(String(type)) +
+    '&st=' +
+    encodeURIComponent(String(shareToken))
+  const inv = buildShareQuery()
+  return inv ? resultPagePath + '?' + q + '&' + inv : resultPagePath + '?' + q
+}
+
+/**
+ * 朋友圈分享 query（不含 ?）
+ */
+function getResultShareTimelineQuery(opts) {
+  const id = opts && opts.id
+  const type = opts && opts.type
+  const shareToken = opts && opts.shareToken
+  if (!id || !type || !shareToken) {
+    return buildShareQuery()
+  }
+  const base =
+    'id=' +
+    encodeURIComponent(String(id)) +
+    '&type=' +
+    encodeURIComponent(String(type)) +
+    '&st=' +
+    encodeURIComponent(String(shareToken))
+  const inv = buildShareQuery()
+  return inv ? base + '&' + inv : base
+}
+
+module.exports = {
+  buildShareQuery,
+  getSharePath,
+  getSharePathByScope,
+  getResultSharePath,
+  getResultShareTimelineQuery
+}

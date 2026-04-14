@@ -14,6 +14,9 @@ Page({
     try {
       require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
     } catch (e) {}
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {}
     this._syncPerms()
   },
 
@@ -46,5 +49,21 @@ Page({
 
   goDISC() {
     wx.navigateTo({ url: '/pages/test/disc' })
+  },
+
+  onShareAppMessage() {
+    const { getSharePath } = require('../../utils/share')
+    return {
+      title: '4 大详细性格测试，来测测你的性格类型',
+      path: getSharePath('/pages/test-select/index')
+    }
+  },
+
+  onShareTimeline() {
+    const { buildShareQuery } = require('../../utils/share')
+    return {
+      title: '4 大详细性格测试，来测测你的性格类型',
+      query: buildShareQuery()
+    }
   }
 })

@@ -56,6 +56,9 @@ Page({
         try {
           require('../../utils/analytics').track('test_start', { type: 'sbti', total })
         } catch (e) {}
+        try {
+          wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+        } catch (e) {}
         this.startTimer()
       })
       .catch((err) => {
@@ -245,5 +248,21 @@ Page({
     wx.redirectTo({
       url: '/pages/result/sbti'
     })
+  },
+
+  onShareAppMessage() {
+    const { getSharePath } = require('../../utils/share')
+    return {
+      title: '来测测你的 SBTI 类型',
+      path: getSharePath('/pages/test/sbti')
+    }
+  },
+
+  onShareTimeline() {
+    const { buildShareQuery } = require('../../utils/share')
+    return {
+      title: '来测测你的 SBTI 类型',
+      query: buildShareQuery()
+    }
   }
 })

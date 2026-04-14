@@ -44,6 +44,7 @@ Page({
     ],
     payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 },
     testResultId: null,
+    shareToken: '',
     hasReloadedAfterPay: false,
   },
 
@@ -52,7 +53,11 @@ Page({
     const type = options && options.type
     if (id && type === 'pdp') {
       this.setData({ testResultId: id })
-      this.loadDetail(id)
+      if (options.st) {
+        this.loadShareDetail(id, options.st)
+      } else {
+        this.loadDetail(id)
+      }
       return
     }
     const result = wx.getStorageSync('pdpResult')
@@ -68,6 +73,25 @@ Page({
     }
   },
 
+  applyDetailPayload(payload) {
+    const data = payload.data || payload
+    const isPaid = !!payload.isPaid
+    const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
+    const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
+    const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
+    this.setData({
+      result: withPercentagesInt(data),
+      typeSummaryLine: getTypeOnly(data, 'pdp'),
+      shareToken: payload.shareToken || ''
+    })
+    const payInfo = {
+      requiresPayment: needPaymentToUnlock,
+      isPaid,
+      amountYuan: needPaymentToUnlock ? amountYuan : 0
+    }
+    this.setData({ payInfo })
+  },
+
   loadDetail(id) {
     const apiBase = app.globalData?.apiBase || ''
     const token = app.globalData?.token || wx.getStorageSync('token') || ''
@@ -80,24 +104,29 @@ Page({
       data: { id },
       success: (res) => {
         if (res.statusCode === 200 && res.data && res.data.code === 200) {
-          const payload = res.data.data || {}
-          const data = payload.data || payload
-          const isPaid = !!payload.isPaid
-          const paidAmount = payload.paidAmount != null ? Number(payload.paidAmount) : 0
-          const amountYuan = payload.amountYuan != null ? Number(payload.amountYuan) : (paidAmount > 0 ? paidAmount / 100 : 0)
-          const needPaymentToUnlock = payload.needPaymentToUnlock === true || (!!payload.requiresPayment && !isPaid && paidAmount > 0)
-          this.setData({
-            result: withPercentagesInt(data),
-            typeSummaryLine: getTypeOnly(data, 'pdp')
-          })
-          const payInfo = {
-            requiresPayment: needPaymentToUnlock,
-            isPaid,
-            amountYuan: needPaymentToUnlock ? amountYuan : 0
-          }
-          this.setData({ payInfo })
+          this.applyDetailPayload(res.data.data || {})
         } else {
           wx.showToast({ title: res.data?.message || '加载失败', icon: 'none' })
+        }
+      },
+      fail: () => wx.showToast({ title: '网络错误', icon: 'none' }),
+      complete: () => wx.hideLoading()
+    })
+  },
+
+  loadShareDetail(id, st) {
+    const apiBase = app.globalData?.apiBase || ''
+    if (!apiBase) { wx.showToast({ title: '配置异常', icon: 'none' }); return }
+    wx.showLoading({ title: '加载中...' })
+    wx.request({
+      url: `${apiBase}/api/test/share-detail`,
+      method: 'GET',
+      data: { id, st },
+      success: (res) => {
+        if (res.statusCode === 200 && res.data && res.data.code === 200) {
+          this.applyDetailPayload(res.data.data || {})
+        } else {
+          wx.showToast({ title: res.data?.message || '分享链接无效或已失效', icon: 'none' })
         }
       },
       fail: () => wx.showToast({ title: '网络错误', icon: 'none' }),
@@ -172,19 +201,27 @@ Page({
 
   onShareAppMessage() {
     const line = this.data.typeSummaryLine || this.data.result?.description?.type || ''
-    const { getSharePathByScope } = require('../../utils/share')
+    const { getResultSharePath } = require('../../utils/share')
     return {
       title: `我的PDP类型是${line}，来测测你的吧！`,
-      path: getSharePathByScope('/pages/index/index')
+      path: getResultSharePath('/pages/result/pdp', {
+        id: this.data.testResultId,
+        type: 'pdp',
+        shareToken: this.data.shareToken
+      })
     }
   },
 
   onShareTimeline() {
     const line = this.data.typeSummaryLine || this.data.result?.description?.type || ''
-    const { buildShareQuery } = require('../../utils/share')
+    const { getResultShareTimelineQuery } = require('../../utils/share')
     return {
       title: `我的PDP类型是${line}，来测测你的吧！`,
-      query: buildShareQuery()
+      query: getResultShareTimelineQuery({
+        id: this.data.testResultId,
+        type: 'pdp',
+        shareToken: this.data.shareToken
+      })
     }
   }
 })
