@@ -3,6 +3,7 @@
 
 const app = getApp()
 const { getEnterpriseIdForApiPayload } = require('./enterpriseContext.js')
+const { triggerOrderPaid } = require('./pushHook.js')
 
 function paymentApiBase() {
   const b = (app.globalData && app.globalData.apiBase) ? String(app.globalData.apiBase) : ''
@@ -131,6 +132,7 @@ function wxPay(options) {
             pollOrderStatus(orderId, 5, 1000, (ok, order) => {
               if (ok) {
                 try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
+                try { triggerOrderPaid(orderId) } catch (e) {}
                 try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                 wx.showToast({
                   title: '支付成功',

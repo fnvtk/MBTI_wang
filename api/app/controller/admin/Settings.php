@@ -3,6 +3,7 @@ namespace app\controller\admin;
 
 use app\BaseController;
 use app\common\service\FeishuLeadWebhookService;
+use app\common\service\OutboundPushHookService;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\User as UserModel;
 use think\facade\Request;
@@ -457,6 +458,157 @@ class Settings extends BaseController
             ]);
         }
         return success(null, '已保存');
+    }
+
+    /**
+     * 当前管理员可编辑的作用域：有企业则读写 enterprise_id=本企业，否则读写全平台默认（0，与超管维护同一条）
+     * GET /api/v1/admin/settings/push-hook
+     */
+    public function getPushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+        $eid = $this->resolveAdminPushHookEnterpriseId();
+        $cfg = OutboundPushHookService::getConfig($eid);
+        $events = $cfg['events'] ?? [];
+        if (!is_array($events)) {
+            $events = [];
+        }
+        $enterpriseName = null;
+        if ($eid > 0) {
+            $n = Db::name('enterprises')->where('id', $eid)->value('name');
+            $enterpriseName = ($n !== null && $n !== '') ? (string) $n : null;
+        }
+        return success([
+            'scope'              => $eid > 0 ? 'enterprise' : 'platform',
+            'configEnterpriseId' => $eid,
+            'enterpriseName'     => $enterpriseName,
+            'enabled'            => !empty($cfg['enabled']),
+            'url'                => (string) ($cfg['url'] ?? ''),
+            'secret'             => (string) ($cfg['secret'] ?? ''),
+            'events'             => $events,
+        ]);
+    }
+
+    /**
+     * PUT /api/v1/admin/settings/push-hook
+     */
+    public function updatePushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+        $raw = $this->request->getContent();
+        $input = $raw ? json_decode($raw, true) : [];
+        if (!is_array($input)) {
+            $input = [];
+        }
+        $enabled = !empty($input['enabled']);
+        $url = trim((string) ($input['url'] ?? ''));
+        $secret = (string) ($input['secret'] ?? '');
+        $eventsRaw = $input['events'] ?? null;
+        $events = [];
+        if (is_array($eventsRaw)) {
+            foreach ($eventsRaw as $ev) {
+                $ev = trim((string) $ev);
+                if ($ev !== '') {
+                    $events[] = $ev;
+                }
+            }
+        }
+        if ($enabled && $url !== '' && stripos($url, 'http') !== 0) {
+            return error('URL 须以 http(s) 开头', 400);
+        }
+        $json = json_encode([
+            'enabled' => $enabled,
+            'url'     => $url,
+            'secret'  => $secret,
+            'events'  => $events,
+        ], JSON_UNESCAPED_UNICODE);
+        $now = time();
+        $key = OutboundPushHookService::CONFIG_KEY;
+        $eid = $this->resolveAdminPushHookEnterpriseId();
+        $desc = $eid > 0 ? '通用 HTTP 出站推送 Hook（企业专属）' : '通用 HTTP 出站推送 Hook（全平台默认）';
+        $exists = Db::name('system_config')->where('key', $key)->where('enterprise_id', $eid)->find();
+        if ($exists) {
+            Db::name('system_config')
+                ->where('key', $key)
+                ->where('enterprise_id', $eid)
+                ->update(['value' => $json, 'updatedAt' => $now]);
+        } else {
+            Db::name('system_config')->insert([
+                'key'           => $key,
+                'enterprise_id' => $eid,
+                'value'         => $json,
+                'description'   => $desc,
+                'createdAt'     => $now,
+                'updatedAt'     => $now,
+            ]);
+        }
+        return success(null, '已保存');
+    }
+
+    /**
+     * POST /api/v1/admin/settings/push-hook/test
+     * 向当前解析到的 URL 发送 hook.ping（不写去重表）
+     */
+    public function testPushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+        $ctx = $this->resolveAdminPushHookEnterpriseId();
+        $r = OutboundPushHookService::sendTestPing($ctx);
+
+        return success($r, $r['ok'] ? '测试推送已发出' : ($r['message'] ?? '测试失败'));
+    }
+
+    /**
+     * POST /api/v1/admin/settings/push-hook/test-result
+     * 按真实业务数据重放一条 test.result_completed，支持 force=1 强制清去重。
+     */
+    public function testPushHookTestResult()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
+            return error('无权限访问', 403);
+        }
+
+        $testResultId = (int) Request::param('testResultId', 0);
+        $force = (int) Request::param('force', 0) === 1;
+        $r = OutboundPushHookService::replayTestResultForDebug($testResultId, $force);
+
+        return success($r, $r['message'] ?? ($r['ok'] ? '已重放推送' : '重放失败'));
+    }
+
+    /**
+     * 出站 Hook 可编辑行：JWT 或 users 表解析到的本企业 ID；无企业则为 0（与超管共用全平台默认行）
+     */
+    private function resolveAdminPushHookEnterpriseId(): int
+    {
+        $user = $this->request->user ?? null;
+        if (!$user) {
+            return 0;
+        }
+        $eid = (int) ($user['enterpriseId'] ?? 0);
+        if ($eid > 0) {
+            return $eid;
+        }
+        $adminId = (int) ($user['userId'] ?? 0);
+        if ($adminId > 0) {
+            $v = Db::name('users')->where('id', $adminId)->value('enterpriseId');
+            if ($v !== null && $v !== '') {
+                $x = (int) $v;
+                if ($x > 0) {
+                    return $x;
+                }
+            }
+        }
+        return 0;
     }
 
     /**

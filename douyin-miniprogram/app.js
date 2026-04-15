@@ -364,6 +364,7 @@ App({
   },
 
   saveTestResult(type, result) {
+    const { triggerTestResultCompleted } = require('./utils/pushHook.js')
     const key = `${type}Result`
     tt.setStorageSync(key, result)
     this.globalData[key] = result
@@ -398,7 +399,11 @@ App({
         },
         success: (res) => {
           if (res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data && typeof res.data.data === 'object') {
-            resolve(res.data.data)
+            const extra = res.data.data
+            if (extra && extra.id) {
+              triggerTestResultCompleted(extra.id)
+            }
+            resolve(extra)
           } else {
             resolve({})
           }

@@ -335,6 +335,10 @@
           </el-card>
         </div>
 
+        <div v-if="activeTab === 'pushhook'" class="tab-content">
+          <PushHookConfigPanel api-prefix="/superadmin" />
+        </div>
+
         <!-- 账户安全 -->
         <div v-if="activeTab === 'security'" class="tab-content">
           <el-card shadow="never" class="settings-card">
@@ -417,18 +421,21 @@ import {
   Document,
   ChatDotRound,
   Postcard,
-  Reading
+  Reading,
+  Connection
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import PosterEditor from './PosterEditor.vue'
 import Questions from './Questions.vue'
+import PushHookConfigPanel from '../admin/PushHookConfigPanel.vue'
 
 const TAB_IDS = [
   'review',
   'system',
   'prompts',
   'poster',
+  'pushhook',
   'security',
   'questions'
 ] as const
@@ -449,6 +456,7 @@ const tabs: { label: string; value: TabId; icon: any }[] = [
   { label: '系统配置', value: 'system', icon: Setting },
   { label: '提示词配置', value: 'prompts', icon: ChatDotRound },
   { label: '海报配置', value: 'poster', icon: Postcard },
+  { label: '出站推送', value: 'pushhook', icon: Connection },
   { label: '账户安全', value: 'security', icon: Lock },
   { label: '题库管理', value: 'questions', icon: Reading }
 ]

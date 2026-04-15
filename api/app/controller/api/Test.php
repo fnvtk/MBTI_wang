@@ -842,6 +842,11 @@ class Test extends BaseController
                 } catch (\Throwable $e) {
                     // 对接失败不阻断
                 }
+
+                try {
+                    \app\common\service\OutboundPushHookService::triggerAsyncTestResultCompleted((int) $id);
+                } catch (\Throwable $e) {
+                }
             }
         } catch (\Throwable $e) {
             return error('保存测试结果失败', 500);

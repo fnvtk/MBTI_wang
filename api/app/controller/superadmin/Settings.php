@@ -3,6 +3,7 @@ namespace app\controller\superadmin;
 
 use app\BaseController;
 use app\common\service\FeishuLeadWebhookService;
+use app\common\service\OutboundPushHookService;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\User as UserModel;
 use app\model\Enterprise as EnterpriseModel;
@@ -391,6 +392,122 @@ class Settings extends BaseController
             ]);
         }
         return success(null, '已保存');
+    }
+
+    /**
+     * 通用 HTTP 出站推送 Hook（仅维护全平台默认 enterprise_id=0；企业专属由企业管理端维护）
+     * GET /api/v1/superadmin/settings/push-hook
+     */
+    public function getPushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+        $cfg = OutboundPushHookService::getConfig(0);
+        $events = $cfg['events'] ?? [];
+        if (!is_array($events)) {
+            $events = [];
+        }
+        return success([
+            'scope'              => 'platform',
+            'configEnterpriseId' => 0,
+            'enterpriseName'     => null,
+            'enabled'            => !empty($cfg['enabled']),
+            'url'                => (string) ($cfg['url'] ?? ''),
+            'secret'             => (string) ($cfg['secret'] ?? ''),
+            'events'             => $events,
+        ]);
+    }
+
+    /**
+     * PUT /api/v1/superadmin/settings/push-hook
+     */
+    public function updatePushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+        $raw = $this->request->getContent();
+        $input = $raw ? json_decode($raw, true) : [];
+        if (!is_array($input)) {
+            $input = [];
+        }
+        $enabled = !empty($input['enabled']);
+        $url = trim((string) ($input['url'] ?? ''));
+        $secret = (string) ($input['secret'] ?? '');
+        $eventsRaw = $input['events'] ?? null;
+        $events = [];
+        if (is_array($eventsRaw)) {
+            foreach ($eventsRaw as $ev) {
+                $ev = trim((string) $ev);
+                if ($ev !== '') {
+                    $events[] = $ev;
+                }
+            }
+        }
+        if ($enabled && $url !== '' && stripos($url, 'http') !== 0) {
+            return error('URL 须以 http(s) 开头', 400);
+        }
+        $json = json_encode([
+            'enabled' => $enabled,
+            'url'     => $url,
+            'secret'  => $secret,
+            'events'  => $events,
+        ], JSON_UNESCAPED_UNICODE);
+        $now = time();
+        $key = OutboundPushHookService::CONFIG_KEY;
+        $exists = Db::name('system_config')->where('key', $key)->where('enterprise_id', 0)->find();
+        if ($exists) {
+            Db::name('system_config')
+                ->where('key', $key)
+                ->where('enterprise_id', 0)
+                ->update(['value' => $json, 'updatedAt' => $now]);
+        } else {
+            Db::name('system_config')->insert([
+                'key'           => $key,
+                'enterprise_id' => 0,
+                'value'         => $json,
+                'description'   => '通用 HTTP 出站推送 Hook（全平台默认）',
+                'createdAt'     => $now,
+                'updatedAt'     => $now,
+            ]);
+        }
+        return success(null, '已保存');
+    }
+
+    /**
+     * POST /api/v1/superadmin/settings/push-hook/test
+     * 按全平台默认配置发送 hook.ping（contextEnterpriseId=0）
+     */
+    public function testPushHookConfig()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+        $r = OutboundPushHookService::sendTestPing(0);
+
+        return success($r, $r['ok'] ? '测试推送已发出' : ($r['message'] ?? '测试失败'));
+    }
+
+    /**
+     * POST /api/v1/superadmin/settings/push-hook/test-result
+     * 按真实业务数据重放一条 test.result_completed，支持 force=1 强制清去重。
+     */
+    public function testPushHookTestResult()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+
+        $testResultId = (int) Request::param('testResultId', 0);
+        $force = (int) Request::param('force', 0) === 1;
+        $r = OutboundPushHookService::replayTestResultForDebug($testResultId, $force);
+
+        return success($r, $r['message'] ?? ($r['ok'] ? '已重放推送' : '重放失败'));
     }
 
     /**

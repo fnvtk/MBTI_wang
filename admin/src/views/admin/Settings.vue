@@ -134,6 +134,10 @@
           </div>
         </div>
 
+        <div v-if="activeTab === 'pushhook'" class="tab-content">
+          <PushHookConfigPanel api-prefix="/admin" />
+        </div>
+
         <div v-if="activeTab === 'finance'" class="embed-wrap">
           <Finance embedded />
         </div>
@@ -150,8 +154,9 @@ import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
 import { getAdminRole } from '@/utils/authStorage'
 import Finance from './Finance.vue'
+import PushHookConfigPanel from './PushHookConfigPanel.vue'
 
-const TAB_IDS = ['account', 'features', 'finance'] as const
+const TAB_IDS = ['account', 'pushhook', 'features', 'finance'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -172,7 +177,10 @@ const canConfigureCunkebaoKeys = () => {
 }
 
 const tabs = computed(() => {
-  const rows: { label: string; value: TabId }[] = [{ label: '账号设置', value: 'account' }]
+  const rows: { label: string; value: TabId }[] = [
+    { label: '账号设置', value: 'account' },
+    { label: '出站推送', value: 'pushhook' }
+  ]
   if (isEnterpriseAdmin() || canConfigureCunkebaoKeys()) {
     rows.push({ label: '功能开关', value: 'features' })
   }

@@ -14,6 +14,8 @@ Route::group('api', function () {
     Route::post('auth/refresh', 'api.Auth/refresh');
     // 微信小程序登录
     Route::post('auth/wechat', 'api.Auth/wechatLogin');
+    // 服务内部异步推送入口：主业务 fire-and-forget 调用
+    Route::post('internal/outbound-push/dispatch', 'api.InternalPushHook/dispatch');
 })->middleware('cors');
 
 // 小程序/前端运行配置与面相分析（可选 token）
@@ -73,6 +75,8 @@ Route::group('api', function () {
     Route::post('distribution/withdrawals/query-transfer', 'api.Distribution/queryTransfer');
     Route::get('distribution/qrcode', 'api.Distribution/qrcode');
     Route::get('distribution/poster', 'api.Distribution/poster');
+    // 小程序主动触发出站推送（与主业务接口解耦）
+    Route::post('push-hook/trigger', 'api.PushHook/trigger');
     // 微信商家转账结果回调（无需登录，但需配置到微信商户平台）
     Route::post('wechat/transfer/notify', 'api.WechatTransferNotify/notify')->middleware('cors');
     // 存客宝获客线索上报
@@ -135,6 +139,10 @@ Route::group('api/v1/admin', function () {
     Route::put('pricing', 'admin.Pricing/update');
     
     // 系统设置（普通管理员，子路径放前面避免被 settings 吞掉）
+    Route::get('settings/push-hook', 'admin.Settings/getPushHookConfig');
+    Route::put('settings/push-hook', 'admin.Settings/updatePushHookConfig');
+    Route::post('settings/push-hook/test', 'admin.Settings/testPushHookConfig');
+    Route::post('settings/push-hook/test-result', 'admin.Settings/testPushHookTestResult');
     Route::get('settings/miniprogram', 'admin.Settings/getMiniprogramConfig');
     Route::put('settings/miniprogram', 'admin.Settings/updateMiniprogramConfig');
     Route::get('settings/poster', 'admin.Settings/getPosterConfig');
@@ -238,6 +246,10 @@ Route::group('api/v1/superadmin', function () {
     Route::post('upload/image', 'admin.Upload/image');
 
     // 系统设置（超管专用，子路径放前面避免被 settings 吞掉）
+    Route::get('settings/push-hook', 'superadmin.Settings/getPushHookConfig');
+    Route::put('settings/push-hook', 'superadmin.Settings/updatePushHookConfig');
+    Route::post('settings/push-hook/test', 'superadmin.Settings/testPushHookConfig');
+    Route::post('settings/push-hook/test-result', 'superadmin.Settings/testPushHookTestResult');
     Route::get('settings/fonts', 'superadmin.Settings/getFonts');
     Route::get('settings/poster', 'superadmin.Settings/getPosterConfig');
     Route::put('settings/poster', 'superadmin.Settings/updatePosterConfig');

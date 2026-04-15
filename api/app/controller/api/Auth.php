@@ -7,6 +7,7 @@ use app\model\WechatUser;
 use app\common\service\JwtService;
 use app\common\service\WechatService;
 use app\common\service\FeishuLeadWebhookService;
+use app\common\service\OutboundPushHookService;
 use app\common\service\ThirdPartyChannelService;
 use think\facade\Request;
 use think\facade\Db;
@@ -540,6 +541,10 @@ class Auth extends BaseController
         if (!$hadPhone) {
             try {
                 FeishuLeadWebhookService::onPhoneBound($userId, $phone);
+            } catch (\Throwable $e) {
+            }
+            try {
+                OutboundPushHookService::onPhoneBound($userId, $phone);
             } catch (\Throwable $e) {
             }
         }

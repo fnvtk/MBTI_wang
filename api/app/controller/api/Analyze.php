@@ -215,6 +215,12 @@ class Analyze extends BaseController
                             } catch (\Throwable $e) {
                                 // 第三方开放平台失败不阻断
                             }
+
+                            // 出站 Webhook：与问卷 submit 一致，异步投递内部接口触发 test.result_completed（小程序亦会调 push-hook，去重表防双发）
+                            try {
+                                \app\common\service\OutboundPushHookService::triggerAsyncTestResultCompleted((int) $testResultId);
+                            } catch (\Throwable $e) {
+                            }
                         }
                     } catch (\Throwable $e) {
                         // 写入失败不影响返回分析结果
@@ -396,6 +402,10 @@ class Analyze extends BaseController
             try {
                 \app\controller\api\Distribution::settleTestCommission($testResultId, $userId, 'resume');
             } catch (\Throwable $e) {}
+            try {
+                \app\common\service\OutboundPushHookService::triggerAsyncTestResultCompleted($testResultId);
+            } catch (\Throwable $e) {
+            }
         }
 
         $responseData = $resultStruct;

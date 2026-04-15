@@ -3,6 +3,7 @@ const app = getApp()
 const payment = require('../../utils/payment')
 const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
 const { mbtiDescriptions } = require('../../utils/descriptions')
+const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
 function buildSceneFallback(baseResult) {
   const mbti = baseResult.mbti || ''
@@ -393,6 +394,7 @@ Page({
     // 记录本次测试记录ID（由 /api/analyze 返回）
     if (apiData && apiData._testResultId) {
       updates.testResultId = apiData._testResultId
+      triggerTestResultCompleted(apiData._testResultId)
     }
 
     this.setData(updates)

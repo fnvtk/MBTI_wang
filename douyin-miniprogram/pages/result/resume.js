@@ -1,6 +1,7 @@
 // pages/result/resume.js - 简历综合分析结果页
 const app = getApp()
 const payment = require('../../utils/payment')
+const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
 Page({
   data: {
@@ -182,6 +183,9 @@ Page({
             const requiresPayment = !!p.requiresPayment
             const amountYuan = p.amountYuan || 0
             const resultId = d._testResultId || 0
+            if (resultId) {
+              triggerTestResultCompleted(resultId)
+            }
 
             // 兼容：API 直接返回结构化对象，或把 JSON 放在 content 里
             d = this.normalizeStructuredData(d)

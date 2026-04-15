@@ -11,6 +11,9 @@ class FeishuLeadWebhookService
 {
     public const CONFIG_KEY = 'feishu_lead_webhook';
 
+    /** 去重表 scene：飞书获客（与 OutboundPushHookService::DEDUP_SCENE_OUTBOUND 区分） */
+    private const DEDUP_SCENE = 'feishu_lead';
+
     public static function getConfig(): array
     {
         $def = [
@@ -140,7 +143,10 @@ class FeishuLeadWebhookService
         }
     }
 
-    private static function sourceLabelForOrder(string $productType, string $title, int $amountFen): string
+    /**
+     * 订单来源文案（飞书「来源」与 HTTP 出站 Hook `sourceLabel` 共用）
+     */
+    public static function sourceLabelForOrder(string $productType, string $title, int $amountFen): string
     {
         if ($productType === 'recharge') {
             return '企业余额·充值支付成功';
@@ -148,6 +154,7 @@ class FeishuLeadWebhookService
         $map = [
             'face'          => '面相测试',
             'mbti'          => 'MBTI测试',
+            'sbti'          => 'SBTI测试',
             'disc'          => 'DISC测试',
             'pdp'           => 'PDP测试',
             'resume'        => '简历分析',
@@ -259,7 +266,8 @@ class FeishuLeadWebhookService
     private static function beginDedup(string $dedupKey): bool
     {
         try {
-            Db::name('feishu_lead_dedup')->insert([
+            Db::name('delivery_dedup')->insert([
+                'scene'     => self::DEDUP_SCENE,
                 'dedupKey'  => $dedupKey,
                 'createdAt' => date('Y-m-d H:i:s'),
             ]);
@@ -272,7 +280,10 @@ class FeishuLeadWebhookService
     private static function rollbackDedup(string $dedupKey): void
     {
         try {
-            Db::name('feishu_lead_dedup')->where('dedupKey', $dedupKey)->delete();
+            Db::name('delivery_dedup')
+                ->where('scene', self::DEDUP_SCENE)
+                ->where('dedupKey', $dedupKey)
+                ->delete();
         } catch (\Throwable $e) {
         }
     }

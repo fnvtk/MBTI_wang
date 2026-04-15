@@ -4,6 +4,7 @@
 
 const app = getApp()
 const { getEnterpriseIdForApiPayload } = require('./enterpriseContext.js')
+const { triggerOrderPaid } = require('./pushHook.js')
 
 function enterpriseIdForOrder() {
   const eid = getEnterpriseIdForApiPayload()
@@ -112,6 +113,7 @@ function douyinPay(options) {
               pollOrderStatus(orderId, 5, 1000, (ok, order) => {
                 if (ok) {
                   try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
+                  try { triggerOrderPaid(orderId) } catch (e) {}
                   try { require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount }) } catch (e) {}
                   tt.showToast({
                     title: '支付成功',
@@ -140,6 +142,7 @@ function douyinPay(options) {
               pollOrderStatus(orderId, 5, 1500, (ok, order) => {
                 if (ok) {
                   try { reportCrmTestPaymentAfterSuccess(productType, testResultId, enterpriseId || 0) } catch (e) {}
+                  try { triggerOrderPaid(orderId) } catch (e) {}
                   tt.showToast({ title: '支付成功', icon: 'success', duration: 2000 })
                   success && success({ payRes, order })
                 } else {
