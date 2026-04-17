@@ -1,5 +1,5 @@
 <!--pages/index/index.wxml - 首页-->
-<view class="container" style="padding-top: {{navbarHeight}}px;">
+<view class="container tabbar-pad" style="padding-top: {{navbarHeight}}px;">
   <!-- 自定义导航栏 -->
   <view class="custom-navbar" style="padding-top: {{statusBarHeight}}rpx;">
     <view class="navbar-content">

@@ -11,12 +11,15 @@ build/
 .env
 .env.local
 .env.*.local
+.env.local.merge
+.env.bak.*
 
 # 日志与运行时
 *.log
 api/runtime/log/
 api/runtime/cache/
 api/runtime/temp/
+api/runtime/dev-*.pid
 
 # IDE
 .idea/

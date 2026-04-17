@@ -1,28 +1,65 @@
-// 自定义 tabBar（不使用微信内置）：灰线 + 三栏，中间为浮起圆钮
+// 自定义 TabBar：完全由后台配置驱动
+// 数据来源：app.globalData.tabBar.items（GET /api/mp/tabbar）
+// 兜底：若配置缺失，使用默认 4 项（首页·拍摄·神仙AI·我）
+
+const DEFAULT_ITEMS = [
+  { pagePath: 'pages/index/index',   text: '首页',   iconKey: 'home',    iconUrl: '', highlight: false },
+  { pagePath: 'pages/index/camera',  text: '拍摄',   iconKey: 'camera',  iconUrl: '', highlight: true  },
+  { pagePath: 'pages/ai-chat/index', text: '神仙AI', iconKey: 'ai',      iconUrl: '/images/shenxian-oldman-circle.png', highlight: false },
+  { pagePath: 'pages/profile/index', text: '我',     iconKey: 'profile', iconUrl: '', highlight: false }
+]
+
 Component({
   data: {
     selected: 0,
-    /** 审核模式 */
     reviewMode: false,
-    /** 为 true 时隐藏中间「拍摄」：审核模式 或 企业权限关闭 face */
     hideMiddleFab: false,
-    list: [
-      { pagePath: '/pages/index/index', text: '首页', textKey: 'home', icon: 'home' },
-      { pagePath: '/pages/index/camera', text: '拍摄', textKey: 'camera', icon: 'camera' },
-      { pagePath: '/pages/profile/index', text: '我的', textKey: 'profile', icon: 'user' }
-    ]
+    items: [],
   },
+
   lifetimes: {
     attached() {
-      this.updateSelected()
+      this.refreshFromConfig()
     }
   },
+
   pageLifetimes: {
     show() {
-      this.updateSelected()
+      this.refreshFromConfig()
     }
   },
+
   methods: {
+    refreshFromConfig() {
+      try {
+        const app = getApp() || {}
+        const gd = app.globalData || {}
+        const cfg = gd.tabBar && Array.isArray(gd.tabBar.items) ? gd.tabBar.items : null
+        const rawItems = (cfg && cfg.length >= 2) ? cfg.slice() : DEFAULT_ITEMS.slice()
+        const items = rawItems.map((it) => ({
+          ...it,
+          // 仅神仙AI使用指定 logo；其他图标保持后台配置
+          iconUrl: it.iconKey === 'ai' ? '/images/shenxian-oldman-circle.png' : (it.iconUrl || '')
+        }))
+
+        const reviewMode = !!(gd.reviewMode || gd.maintenanceMode)
+        const ep = gd.enterprisePermissions
+        const faceOff = !!(ep && ep.face === false)
+        const hideMiddleFab = reviewMode || faceOff
+
+        // 审核模式 / face 关闭时：隐藏所有 highlight=true 的 Tab
+        const effectiveItems = items.filter(it => !(hideMiddleFab && it.highlight))
+
+        this.setData({
+          items: effectiveItems,
+          reviewMode,
+          hideMiddleFab,
+        }, () => this.updateSelected())
+      } catch (e) {
+        this.setData({ items: DEFAULT_ITEMS, reviewMode: false, hideMiddleFab: false }, () => this.updateSelected())
+      }
+    },
+
     updateSelected() {
       try {
         const pages = getCurrentPages()
@@ -30,35 +67,41 @@ Component({
         const currentPage = pages[pages.length - 1]
         if (!currentPage || !currentPage.route) return
         const url = currentPage.route
-        const gd = getApp().globalData || {}
-        const reviewMode = !!(gd.reviewMode || gd.maintenanceMode)
-        const ep = gd.enterprisePermissions
-        const hideMiddleFab = reviewMode || !!(ep && ep.face === false)
+        const items = this.data.items || []
+
         let selected = 0
-        if (url === 'pages/index/index' || url === 'pages/enterprise/index') {
-          selected = 0
-        } else if (url === 'pages/index/camera') {
-          selected = hideMiddleFab ? 0 : 1
-        } else if (url === 'pages/profile/index') {
-          selected = 2
+        for (let i = 0; i < items.length; i++) {
+          const path = (items[i].pagePath || '').replace(/^\//, '')
+          if (url === path) { selected = i; break }
+          // 企业首页归一到"首页"Tab
+          if (url === 'pages/enterprise/index' && path === 'pages/index/index') { selected = i; break }
+          if (url === 'pages/index/camera' && items[i].highlight) { selected = i; break }
         }
-        this.setData({ selected, reviewMode, hideMiddleFab })
-      } catch (error) {
-        console.error('updateSelected error:', error)
-        this.setData({ selected: 0, reviewMode: false, hideMiddleFab: false })
+        this.setData({ selected })
+      } catch (err) {
+        this.setData({ selected: 0 })
       }
     },
+
     switchTab(e) {
       const index = parseInt(e.currentTarget.dataset.index, 10)
-      let url = e.currentTarget.dataset.path
+      const it = (this.data.items || [])[index]
+      if (!it) return
 
-      const gd = getApp().globalData || {}
-      const faceOff = !!(gd.enterprisePermissions && gd.enterprisePermissions.face === false)
-      if (index === 1 && (!!(gd.reviewMode || gd.maintenanceMode) || faceOff)) {
-        return
+      // 中间浮钮在审核模式下被 refreshFromConfig 过滤掉了，不会到这里
+
+      // 神仙 AI Tab 的轻量埋点
+      if ((it.iconKey === 'ai' || /ai-chat/.test(it.pagePath))) {
+        try {
+          const analytics = require('../utils/analytics.js')
+          if (analytics && typeof analytics.track === 'function') {
+            analytics.track('tap_tab_ai_chat', {})
+          }
+        } catch (e) {}
       }
 
-      if (index === 0) {
+      // 首页点击：企业作用域走企业首页（保留旧行为）
+      if (it.pagePath === 'pages/index/index' || it.iconKey === 'home') {
         try {
           const app = getApp()
           const scope = (app && app.globalData && app.globalData.appScope) || 'personal'
@@ -70,7 +113,14 @@ Component({
         } catch (e) {}
       }
 
-      wx.switchTab({ url })
+      const url = '/' + it.pagePath.replace(/^\//, '')
+      wx.switchTab({
+        url,
+        fail: () => {
+          // 非 tabBar 页面 fallback 到 navigateTo
+          wx.navigateTo({ url })
+        }
+      })
       this.setData({ selected: index })
     }
   }

@@ -61,6 +61,8 @@ class Enterprise extends Model
             'sbti' => true,
             'pdp'  => true,
             'disc' => true,
+            /** 详细测试列表中的「AI 性格测试」聚合入口 */
+            'aiHub' => true,
             'distribution' => true,
         ];
     }

@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:all": "bash ../scripts/dev_start.sh",
+    "dev:daemon": "bash ../scripts/dev_start_daemon.sh",
+    "dev:health": "bash ../scripts/dev_health.sh",
     "build": "vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore"

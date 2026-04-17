@@ -46,9 +46,9 @@ App({
     enterpriseIdFromScene: null,
     // 超管配置的默认企业 ID（无 scene/eid 等入口参数时回落）
     defaultEnterpriseId: null,
-    // API基础地址（开发时用本地，生产环境替换为实际域名）
-    //apiBase: 'https://mbtiapi.quwanzhi.com',
-    apiBase: 'http://mbti.com',
+    // API 基础地址：默认走线上；本机/内网调试可在开发者工具执行
+    // wx.setStorageSync('apiBaseOverride', 'https://你的调试域名') 后重启小程序
+    apiBase: 'https://mbtiapi.quwanzhi.com',
     // VIP信息
     vipInfo: null,
     // 测试次数
@@ -70,6 +70,13 @@ App({
     this.globalData.scene = launchOptions && launchOptions.scene ? launchOptions.scene : ''
 
     try {
+      const ov = wx.getStorageSync('apiBaseOverride')
+      if (ov && typeof ov === 'string' && ov.trim()) {
+        this.globalData.apiBase = ov.trim().replace(/\/$/, '')
+      }
+    } catch (e) {}
+
+    try {
       const { mergeThirdPartyFromQuery } = require('./utils/thirdPartyContext.js')
       mergeThirdPartyFromQuery((launchOptions && launchOptions.query) || {})
     } catch (e) {}
@@ -83,6 +90,14 @@ App({
       analytics.reportAppLaunch(launchOptions)
     } catch (e) {}
 
+    // 先读取缓存的 TabBar 配置，避免首屏 flash（后续拉接口再刷新）
+    try {
+      const cachedTabBar = wx.getStorageSync('tabBarConfig')
+      if (cachedTabBar && Array.isArray(cachedTabBar.items) && cachedTabBar.items.length >= 2) {
+        this.globalData.tabBar = cachedTabBar
+      }
+    } catch (e) {}
+
     // 必须先完成静默登录再拉 runtime：否则无 token 时 enterprisePermissions 永远 null，清除缓存后必现「要二次刷新」
     this.silentLogin()
       .catch(() => {})
@@ -91,6 +106,46 @@ App({
         this._afterRuntimeSynced()
       })
       .catch(() => {})
+
+    // 并行拉取 TabBar 动态配置（不阻塞主流程）
+    this.loadTabBarConfig().catch(() => {})
+  },
+
+  /**
+   * 拉取小程序 TabBar 动态配置（后台可调整顺序/显示）
+   * 写入 globalData.tabBar 并缓存到本地
+   */
+  loadTabBarConfig() {
+    return new Promise((resolve) => {
+      const base = (this.globalData.apiBase || '').replace(/\/$/, '')
+      if (!base) { resolve(null); return }
+      wx.request({
+        url: base + '/api/mp/tabbar',
+        method: 'GET',
+        timeout: 6000,
+        success: (res) => {
+          if (res && res.statusCode === 200 && res.data && res.data.code === 200 && res.data.data) {
+            const cfg = res.data.data
+            if (Array.isArray(cfg.items) && cfg.items.length >= 2) {
+              this.globalData.tabBar = cfg
+              try { wx.setStorageSync('tabBarConfig', cfg) } catch (e) {}
+              try {
+                const pages = getCurrentPages()
+                if (pages && pages.length > 0) {
+                  const top = pages[pages.length - 1]
+                  if (top && typeof top.getTabBar === 'function') {
+                    const tb = top.getTabBar()
+                    if (tb && typeof tb.refreshFromConfig === 'function') tb.refreshFromConfig()
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+          resolve(null)
+        },
+        fail: () => resolve(null)
+      })
+    })
   },
 
   /**
@@ -254,21 +309,28 @@ App({
                 }
                 if (user) {
                   this.globalData.userInfo = user
-                  // 使用微信真实 openid，而不是 wechat_users 表的 id
                   this.globalData.openId = user.openid || user.openId || null
                   wx.setStorageSync('userInfo', user)
                 }
-                // 登录成功后处理分销绑定（若进入时携带了推荐人参数）
                 if (token) {
                   this._tryDistributionBind()
+                  try {
+                    require('./utils/analytics.js').track('login_silent_success', {
+                      userId: user && user.id,
+                      hasEnterprise: !!(user && user.enterpriseId),
+                      invited: !!(this.globalData._pendingInviterId)
+                    })
+                  } catch (e) {}
                 }
                 resolve(!!token)
                 return
               }
+              try { require('./utils/analytics.js').track('login_silent_fail', { reason: 'non_200' }) } catch (e) {}
               resolve(false)
             },
             fail: (err) => {
               console.error('登录请求失败:', err)
+              try { require('./utils/analytics.js').track('login_silent_fail', { reason: 'network' }) } catch (e) {}
               const storedToken = wx.getStorageSync('token')
               const storedUser = wx.getStorageSync('userInfo')
               if (storedToken) {
@@ -282,18 +344,43 @@ App({
             }
           })
         },
-        fail: () => resolve(false)
+        fail: () => {
+          try { require('./utils/analytics.js').track('login_silent_fail', { reason: 'wx_login' }) } catch (e) {}
+          resolve(false)
+        }
       })
     })
   },
 
   /**
    * 确保已登录：有 token 直接 resolve，否则先执行静默登录
+   * 加 15s 超时兜底：若 wx.login / wx.request 卡住，强制 resolve(false)，避免调用方 promise 悬挂
    * @returns {Promise<boolean>} 当前是否有有效登录态
    */
   ensureLogin() {
     if (this.globalData.token) return Promise.resolve(true)
-    return this.silentLogin()
+    return new Promise((resolve) => {
+      let settled = false
+      const timer = setTimeout(() => {
+        if (settled) return
+        settled = true
+        try { require('./utils/analytics.js').track('login_silent_fail', { reason: 'timeout' }) } catch (e) {}
+        resolve(false)
+      }, 15000)
+      this.silentLogin()
+        .then((ok) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          resolve(!!ok)
+        })
+        .catch(() => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          resolve(false)
+        })
+    })
   },
 
   /**

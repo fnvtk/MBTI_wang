@@ -9,6 +9,7 @@ import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import App from './App.vue'
 import router from './router'
 import './assets/main.scss'
+import './assets/admin-theme.css'
 import { migrateLegacyAuthStorage } from '@/utils/authStorage'
 
 migrateLegacyAuthStorage()

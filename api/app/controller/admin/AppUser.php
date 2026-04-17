@@ -31,6 +31,14 @@ class AppUser extends BaseController
         $pageSize = (int) Request::param('pageSize', 20);
         $pageSize = min(max($pageSize, 1), 100);
         $keyword = trim(Request::param('keyword', ''));
+        $coldFaceLevelRaw = Request::param('coldFaceLevel', '');
+        $coldFaceLevels = [];
+        if (is_array($coldFaceLevelRaw)) {
+            $coldFaceLevels = array_values(array_filter(array_map('strval', $coldFaceLevelRaw)));
+        } elseif (is_string($coldFaceLevelRaw) && $coldFaceLevelRaw !== '') {
+            $coldFaceLevels = array_values(array_filter(array_map('trim', explode(',', $coldFaceLevelRaw))));
+        }
+        $coldFaceLevels = array_values(array_intersect($coldFaceLevels, ['cold', 'neutral', 'warm']));
 
         $where = [];
         if ($keyword !== '') {
@@ -71,6 +79,19 @@ class AppUser extends BaseController
             $baseQuery = Db::name('wechat_users')->alias('w')
                 ->join([$poolSql => 'p'], 'w.id = p.userId')
                 ->join([$dedupSql => 'd'], 'w.id = d.mid');
+
+            if (!empty($coldFaceLevels)) {
+                try {
+                    $cfSql = Db::name('user_profile')
+                        ->whereRaw('enterpriseId = ' . $eid)
+                        ->whereIn('coldFaceLevel', $coldFaceLevels)
+                        ->field('userId')
+                        ->buildSql(true);
+                    $baseQuery->join([$cfSql => 'cf'], 'w.id = cf.userId');
+                } catch (\Throwable $e) {
+                    // coldFace 字段不存在时忽略筛选
+                }
+            }
 
             if ($keyword !== '') {
                 $like = '%' . addcslashes($keyword, '%_\\') . '%';
@@ -215,6 +236,31 @@ class AppUser extends BaseController
             } catch (\Throwable $e) {
                 $payStats = [];
             }
+
+            // 冷脸分字段（容错：迁移未执行时 coldFace* 字段缺失，查询异常则视为全空）
+            $coldFaceMap = [];
+            try {
+                $cfQuery = Db::name('user_profile')->where('userId', 'in', $ids);
+                if ($enterpriseId) {
+                    $cfQuery->where('enterpriseId', $enterpriseId);
+                }
+                $cfRows = $cfQuery
+                    ->field('userId, coldFaceScore, coldFaceLevel, coldFaceUpdatedAt')
+                    ->select()
+                    ->toArray();
+                foreach ($cfRows as $r) {
+                    $uid = (int) ($r['userId'] ?? 0);
+                    if ($uid > 0) {
+                        $coldFaceMap[$uid] = [
+                            'score' => isset($r['coldFaceScore']) && $r['coldFaceScore'] !== null ? (int) $r['coldFaceScore'] : null,
+                            'level' => $r['coldFaceLevel'] ?? null,
+                            'updatedAt' => isset($r['coldFaceUpdatedAt']) ? (int) $r['coldFaceUpdatedAt'] : null,
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                $coldFaceMap = [];
+            }
         }
 
         foreach ($list as &$row) {
@@ -236,6 +282,18 @@ class AppUser extends BaseController
             $pay = $payStats[$id] ?? null;
             $row['paidOrders'] = $pay ? (int) ($pay['paidOrders'] ?? 0) : 0;
             $row['totalPaidAmount'] = $pay ? (int) ($pay['totalPaidAmount'] ?? 0) : 0;
+
+            $cf = $coldFaceMap[$id] ?? null;
+            if ((!$cf || $cf['score'] === null) && !empty($testsForUser)) {
+                $calc = $this->calcColdFace($testsForUser);
+                if ($calc) {
+                    $this->writeColdFace((int) $id, $enterpriseId ? (int) $enterpriseId : null, $calc);
+                    $cf = ['score' => $calc['score'], 'level' => $calc['level'], 'updatedAt' => time()];
+                }
+            }
+            $row['coldFaceScore'] = $cf && $cf['score'] !== null ? (int) $cf['score'] : null;
+            $row['coldFaceLevel'] = $cf && !empty($cf['level']) ? (string) $cf['level'] : null;
+            $row['coldFaceUpdatedAt'] = $cf ? ($cf['updatedAt'] ?? null) : null;
         }
 
         return paginate_response($list, $total, $page, $pageSize);
@@ -321,6 +379,35 @@ class AppUser extends BaseController
         $data['faceMbtiType'] = $this->extractFaceSubType($tests, 'mbti');
         $data['faceDiscType'] = $this->extractFaceSubType($tests, 'disc');
         $data['facePdpType'] = $this->extractFaceSubType($tests, 'pdp');
+
+        // 冷脸分字段（详情）
+        $coldFace = null;
+        try {
+            $cfQuery = Db::name('user_profile')->where('userId', $id);
+            if ($enterpriseId) {
+                $cfQuery->where('enterpriseId', $enterpriseId);
+            }
+            $cfRow = $cfQuery->field('coldFaceScore, coldFaceLevel, coldFaceUpdatedAt')->find();
+            if ($cfRow) {
+                $coldFace = [
+                    'score' => $cfRow['coldFaceScore'] !== null ? (int) $cfRow['coldFaceScore'] : null,
+                    'level' => $cfRow['coldFaceLevel'] ?? null,
+                    'updatedAt' => isset($cfRow['coldFaceUpdatedAt']) ? (int) $cfRow['coldFaceUpdatedAt'] : null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            $coldFace = null;
+        }
+        if ((!$coldFace || $coldFace['score'] === null) && !empty($tests)) {
+            $calc = $this->calcColdFace($tests);
+            if ($calc) {
+                $this->writeColdFace((int) $id, $enterpriseId ? (int) $enterpriseId : null, $calc);
+                $coldFace = ['score' => $calc['score'], 'level' => $calc['level'], 'updatedAt' => time()];
+            }
+        }
+        $data['coldFaceScore'] = $coldFace['score'] ?? null;
+        $data['coldFaceLevel'] = $coldFace['level'] ?? null;
+        $data['coldFaceUpdatedAt'] = $coldFace['updatedAt'] ?? null;
 
         return success($data);
     }

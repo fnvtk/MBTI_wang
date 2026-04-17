@@ -1,0 +1,17 @@
+<!--components/result-section-nav/index.wxml-->
+<view class="rsn rsn--{{theme}}" wx:if="{{sections && sections.length}}">
+  <scroll-view class="rsn__scroll" scroll-x enhanced show-scrollbar="{{false}}">
+    <view class="rsn__row">
+      <view
+        class="rsn__chip {{active === item.id ? 'rsn__chip--active' : ''}}"
+        wx:for="{{sections}}"
+        wx:key="id"
+        data-id="{{item.id}}"
+        bindtap="onTap"
+      >
+        <text wx:if="{{item.emoji}}" class="rsn__emoji">{{item.emoji}}</text>
+        <text class="rsn__label">{{item.label}}</text>
+      </view>
+    </view>
+  </scroll-view>
+</view>

@@ -3,11 +3,23 @@ const app = getApp()
 const payment = require('../../utils/payment')
 const { getTypeOnly } = require('../../utils/resultFormat')
 const { isReportProfileComplete } = require('../../utils/phoneAuth.js')
-
-function toProfileLockedDisc(full) {
-  if (!full) return full
-  return { dominantType: full.dominantType || full.disc || '', locked: true }
-}
+const {
+  slicePreviewText,
+  slicePreviewList,
+  openTimelineShareHint
+} = require('../../utils/resultProfileGate.js')
+const {
+  getDiscInsight,
+  getDiscTags,
+  buildDiscDimensions
+} = require('../../utils/discInsights.js')
+const { decorateCareers } = require('../../utils/mbtiInsights.js')
+const {
+  computeJourney,
+  markShared,
+  markCamera
+} = require('../../utils/resultJourneyState.js')
+const resultScrollSync = require('../../utils/resultSectionScrollSync.js')
 
 function toIntPercent(v) {
   if (v == null) return 0
@@ -43,10 +55,53 @@ Page({
     testResultId: null,
     shareToken: '',
     hasReloadedAfterPay: false,
-    fromShare: false
+    fromShare: false,
+    profileGate: false,
+    previewDiscDescription: '',
+    previewDiscStrengths: [],
+    discDimensions: [],
+    discInsight: null,
+    discTags: [],
+    discCareerItems: [],
+    journey: { step1Unlocked: false, step2Unlocked: false, step3Unlocked: false, activeStep: 1 },
+    sectionNav: [
+      { id: 'sec-hero', label: 'DISC 画像', emoji: '🎯' },
+      { id: 'sec-insight', label: '深度洞察', emoji: '🧠' },
+      { id: 'sec-dim', label: '四维得分', emoji: '📊' },
+      { id: 'sec-trait', label: '优势与注意', emoji: '✨' },
+      { id: 'sec-career', label: '职业匹配', emoji: '💼' },
+      { id: 'sec-cta', label: '深度方案', emoji: '💎' }
+    ],
+    scrollTarget: '',
+    activeSection: ''
+  },
+
+  onTapSectionNav(e) {
+    const id = e && e.detail && e.detail.id
+    if (!id) return
+    this.setData({ scrollTarget: '', activeSection: id }, () => {
+      this.setData({ scrollTarget: id })
+    })
+  },
+
+  onSectionScroll(e) {
+    resultScrollSync.onScroll(this, e)
+  },
+
+  _syncJourney() {
+    this.setData({
+      journey: computeJourney({
+        profileGate: !!this.data.profileGate,
+        payRequired: !!(this.data.payInfo && this.data.payInfo.requiresPayment),
+        isPaid: !!(this.data.payInfo && this.data.payInfo.isPaid)
+      })
+    })
   },
 
   onLoad(options) {
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {}
     const fromShareFs =
       options && (String(options.fs) === '1' || options.from === 'share')
     const id = options && options.id != null && options.id !== '' ? String(options.id) : ''
@@ -65,9 +120,9 @@ Page({
     }
     const raw = wx.getStorageSync('discResult')
     if (raw) {
-      const gated = isReportProfileComplete() ? raw : toProfileLockedDisc(raw)
-      const r = withPercentagesInt(gated)
-      this.setData({ result: r, typeSummaryLine: getTypeOnly(gated, 'disc') })
+      const r = withPercentagesInt(raw)
+      this.setData({ result: r, typeSummaryLine: getTypeOnly(raw, 'disc') })
+      this._syncDiscGate()
       this.initPayInfoFromRuntime('disc')
     } else {
       wx.showToast({ title: '暂无测试结果', icon: 'none' })
@@ -87,6 +142,7 @@ Page({
       typeSummaryLine: getTypeOnly(data, 'disc'),
       shareToken: payload.shareToken || ''
     })
+    this._syncDiscGate()
     const payInfo = {
       requiresPayment: needPaymentToUnlock,
       isPaid,
@@ -97,6 +153,7 @@ Page({
       patch.testResultId = String(payload.id)
     }
     this.setData(patch)
+    this._reportPaywallOnce('disc', payInfo)
   },
 
   loadDetail(id) {
@@ -145,16 +202,96 @@ Page({
   },
 
   onShow() {
+    this._syncJourney()
     if (this.data.testResultId) return
     const raw = wx.getStorageSync('discResult')
     if (!raw) return
-    const gated = isReportProfileComplete() ? raw : toProfileLockedDisc(raw)
-    const r = withPercentagesInt(gated)
-    this.setData({ result: r, typeSummaryLine: getTypeOnly(gated, 'disc') })
+    const r = withPercentagesInt(raw)
+    this.setData({ result: r, typeSummaryLine: getTypeOnly(raw, 'disc') })
+    this._syncDiscGate()
+  },
+
+  _syncDiscGate() {
+    const r = this.data.result
+    const fromShare = !!this.data.fromShare
+    const profileGate = !fromShare && !isReportProfileComplete()
+    const desc = (r && r.description) || {}
+    const code = (r && (r.dominantType || r.disc)) || ''
+    this.setData({
+      profileGate,
+      previewDiscDescription: slicePreviewText(desc.description || '', 0.3),
+      previewDiscStrengths: slicePreviewList(desc.strengths || [], 0.3),
+      discDimensions: r ? buildDiscDimensions(r) : [],
+      discInsight: getDiscInsight(code),
+      discTags: getDiscTags(code),
+      discCareerItems: decorateCareers(desc.careers || [])
+    })
+    this._syncJourney()
+  },
+
+  onTapDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service_from_disc', { disc: (this.data.result && (this.data.result.dominantType || this.data.result.disc)) }) } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+
+  onTapPromoCenter() {
+    try { require('../../utils/analytics').track('tap_promo_from_disc', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+
+  onTapReadFull() {
+    try { require('../../utils/analytics').track('tap_read_full', { type: 'disc' }) } catch (e) {}
+    if (this.data.profileGate) {
+      this.goCompleteProfile()
+      return
+    }
+    if (this.data.payInfo.requiresPayment && !this.data.payInfo.isPaid) {
+      this.unlockFullReport()
+      return
+    }
+    wx.showToast({ title: '当前已是完整报告', icon: 'none' })
+  },
+
+  onTapShareMoment() {
+    try { require('../../utils/analytics').track('tap_share_moment', { type: 'disc' }) } catch (e) {}
+    if (!this.data.journey.step1Unlocked) {
+      wx.showToast({ title: '请先解锁全文', icon: 'none' })
+      this.onTapReadFull()
+      return
+    }
+    markShared()
+    this._syncJourney()
+    openTimelineShareHint()
+  },
+
+  onTapFaceCamera() {
+    try { require('../../utils/analytics').track('tap_face_camera', { from: 'disc' }) } catch (e) {}
+    if (!this.data.journey.step2Unlocked) {
+      wx.showToast({ title: '请先分享朋友圈', icon: 'none' })
+      return
+    }
+    markCamera()
+    this._syncJourney()
+    wx.switchTab({ url: '/pages/index/camera' })
+  },
+
+  goReadFullFromShare() {
+    try { require('../../utils/analytics').track('tap_read_full', { type: 'disc', from: 'share' }) } catch (e) {}
+    wx.switchTab({ url: '/pages/profile/index' })
   },
 
   goCompleteProfile() {
+    try { require('../../utils/analytics').track('tap_complete_profile', { from: 'disc' }) } catch (e) {}
     wx.navigateTo({ url: '/pages/user-profile/index' })
+  },
+
+  _reportPaywallOnce(testType, payInfo) {
+    if (!payInfo || !payInfo.requiresPayment || payInfo.isPaid) return
+    if (this._paywallReported) return
+    this._paywallReported = true
+    try {
+      require('../../utils/analytics').track('paywall_view', { type: testType, amountYuan: payInfo.amountYuan })
+    } catch (e) {}
   },
 
   initPayInfoFromRuntime(testType) {
@@ -164,9 +301,10 @@ Page({
         const pricing = cfg.pricing || {}
         const requiresPayment = !!(reportRequires && reportRequires[testType])
         const amountYuan = Number(pricing[testType]) || (requiresPayment ? 1.98 : 0)
-        this.setData({
-          payInfo: { requiresPayment, isPaid: false, amountYuan }
-        })
+        const payInfo = { requiresPayment, isPaid: false, amountYuan }
+        this.setData({ payInfo })
+        this._reportPaywallOnce(testType, payInfo)
+        this._syncJourney()
       })
       .catch(() => this.setData({ payInfo: { requiresPayment: false, isPaid: false, amountYuan: 0 } }))
   },
@@ -174,6 +312,7 @@ Page({
   unlockFullReport() {
     const { payInfo, testResultId, hasReloadedAfterPay } = this.data
     if (!payInfo.requiresPayment || payInfo.isPaid) return
+    try { require('../../utils/analytics').track('tap_unlock_full', { type: 'disc', amountYuan: payInfo.amountYuan }) } catch (e) {}
     app.ensureLogin && app.ensureLogin().then((logged) => {
       if (!logged) { wx.showToast({ title: '请先登录', icon: 'none' }); return }
       payment.purchaseDiscTest({
@@ -181,6 +320,7 @@ Page({
         success: () => {
           wx.showToast({ title: '已解锁完整报告', icon: 'success' })
           this.setData({ 'payInfo.isPaid': true })
+          this._syncJourney()
           if (testResultId && !hasReloadedAfterPay) {
             this.setData({ hasReloadedAfterPay: true })
             setTimeout(() => this.loadDetail(testResultId), 500)

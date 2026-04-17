@@ -3,5 +3,9 @@
   "navigationBarBackgroundColor": "#f2f7f3",
   "navigationBarTextStyle": "black",
   "backgroundColor": "#f2f7f3",
-  "usingComponents": {}
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
+  "usingComponents": {
+    "result-section-nav": "/components/result-section-nav/index"
+  }
 }

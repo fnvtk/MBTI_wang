@@ -14,8 +14,7 @@ Page({
     successModal: {
       visible: false,
       title: '',
-      content: '',
-      wechat: ''
+      content: ''
     }
   },
 
@@ -148,8 +147,7 @@ Page({
         this.setData({ purchasing: false })
         this._reportCrmLead(category, 'buy')
         const successMsg = (category.successMessage || '购买成功！我们的顾问会尽快与您联系，为您提供专属深度解读服务。').trim()
-        const wechat = (category.serviceWechat || '').trim()
-        this._showSuccessModal('购买成功', successMsg, wechat)
+        this._showSuccessModal('购买成功', successMsg)
       },
       fail: () => {
         tt.hideLoading()
@@ -159,27 +157,21 @@ Page({
   },
 
   applyConsult(category) {
-    // serviceWechat 展示给用户，consultWechat 是存客宝 API key
-    const wechat = (category.serviceWechat || '').trim()
-    const apiKey = (category.consultWechat || '').trim()
     const successMsg = (category.successMessage || '感谢您的申请，我们的顾问会尽快与您联系！').trim()
     tt.showLoading({ title: '提交中...', mask: true })
-    if (apiKey) {
-      this._reportCrmLead(category, 'consult')
-    }
-    setTimeout(() => {
+    const done = () => {
       tt.hideLoading()
-      this._showSuccessModal('申请成功', successMsg, wechat)
-    }, 600)
+      this._showSuccessModal('申请成功', successMsg)
+    }
+    this._reportCrmLead(category, 'consult', done)
   },
 
-  _showSuccessModal(title, content, wechat) {
+  _showSuccessModal(title, content) {
     this.setData({
       successModal: {
         visible: true,
         title: title || '成功',
-        content: content || '',
-        wechat: wechat || ''
+        content: content || ''
       }
     })
   },
@@ -190,25 +182,23 @@ Page({
     this.setData({ 'successModal.visible': false })
   },
 
-  copyWechat() {
-    const wechat = this.data.successModal.wechat
-    if (!wechat) return
-    tt.setClipboardData({
-      data: wechat,
-      success: () => tt.showToast({ title: '已复制微信号', icon: 'success' })
-    })
-  },
-
   /**
    * 向后端上报存客宝线索，后端负责签名和调用存客宝 API
-   * @param {Object} category  深度服务类目对象（需含 consultWechat / title）
+   * @param {Object} category  深度服务类目对象（consultWechat 可空，申请咨询时由后端按企业配置回落）
    * @param {string} actionType  'buy'（付款完成）| 'consult'（申请咨询）
+   * @param {Function} [onDone]
    */
-  _reportCrmLead(category, actionType) {
-    const apiKey = category.consultWechat || ''
-    if (!apiKey) return
+  _reportCrmLead(category, actionType, onDone) {
+    const apiKey = (category.consultWechat || '').trim()
     const apiBase = app.globalData.apiBase || ''
-    if (!apiBase) return
+    if (actionType === 'buy' && !apiKey) {
+      if (typeof onDone === 'function') onDone()
+      return
+    }
+    if (!apiBase) {
+      if (typeof onDone === 'function') onDone()
+      return
+    }
 
     const isEnterprise = this.data.activeTab === 'enterprise'
     const source = (isEnterprise ? '企业深度服务' : '个人深度服务') + (category.title ? `-${category.title}` : '')
@@ -226,12 +216,16 @@ Page({
         source,
         remark,
         siteTags: category.title || '',
+        deepConsult: actionType === 'consult',
       },
       success(res) {
         console.log('[CRM] 线索上报结果', res.data)
       },
       fail(err) {
         console.warn('[CRM] 线索上报请求失败', err)
+      },
+      complete() {
+        if (typeof onDone === 'function') onDone()
       },
     })
   },

@@ -222,6 +222,8 @@ Page({
     const amountFen = Math.floor(val * 100)
     this.setData({ withdrawError: '' })
 
+    try { require('../../utils/analytics').track('tap_promo_withdraw', { amountFen }) } catch (e) {}
+
     request({
       url: '/api/distribution/withdraw',
       method: 'POST',
@@ -254,11 +256,13 @@ Page({
 
   /** 生成海报 */
   generatePoster() {
+    try { require('../../utils/analytics').track('tap_promo_poster', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/promo/poster' })
   },
 
   /** 分享到朋友圈：引导用户使用右上角菜单 */
   shareToTimeline() {
+    try { require('../../utils/analytics').track('tap_promo_share', { channel: 'timeline_hint' }) } catch (e) {}
     wx.showToast({ title: '请点击右上角 ··· 选择「分享到朋友圈」', icon: 'none', duration: 2500 })
   },
 

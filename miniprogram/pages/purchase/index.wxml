@@ -10,12 +10,7 @@
     </view>
     <text class="success-dialog-title">{{successModal.title}}</text>
     <text class="success-dialog-content">{{successModal.content}}</text>
-    <view wx:if="{{successModal.wechat}}" class="success-wechat-wrap">
-      <text class="success-wechat-label">客服微信</text>
-      <text class="success-wechat-val">{{successModal.wechat}}</text>
-    </view>
     <view class="success-dialog-btns">
-      <button wx:if="{{successModal.wechat}}" class="success-btn-copy" bindtap="copyWechat">复制微信号</button>
       <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
     </view>
   </view>
@@ -27,9 +22,19 @@
     <text class="loading-text">加载中...</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="purchase-error-state">
+    <view class="purchase-error-ic">⚠️</view>
+    <text class="purchase-error-title">加载失败</text>
+    <text class="purchase-error-msg">{{loadErrorMsg || '网络异常，请检查后重试'}}</text>
+    <view class="purchase-error-btn" bindtap="retryLoad">重新加载</view>
+    <text class="purchase-error-hint">若持续失败，请在微信中关闭小程序后再次打开</text>
+  </view>
+
   <block wx:else>
-    <view class="deep-intro">
-      <text class="deep-intro-text">先选服务类型，查看说明与权益；具体安排可在下一步与顾问沟通确认。</text>
+    <view class="deep-hero">
+      <text class="deep-hero__eyebrow">UNDERSTAND YOURSELF · 了解自己</text>
+      <text class="deep-hero__title">更深入地看见你自己</text>
+      <text class="deep-hero__desc">结合 MBTI / DISC / PDP / SBTI / 面相的综合解读；个人 1v1、团队工作坊、VIP 职业发展三档方案。提交后顾问会主动与你联系。</text>
     </view>
 
     <view class="tabs-container deep-tabs">
@@ -136,12 +141,12 @@
         <text class="safety-text">流程在微信内完成</text>
       </view>
       <view class="safety-item">
-        <text class="safety-icon">✅</text>
-        <text class="safety-text">顾问跟进确认</text>
+        <text class="safety-icon">💼</text>
+        <text class="safety-text">顾问主动联系</text>
       </view>
       <view class="safety-item">
-        <text class="safety-icon">📞</text>
-        <text class="safety-text">支持咨询与售后</text>
+        <text class="safety-icon">🧑‍💼</text>
+        <text class="safety-text">团队成本节约 40%+</text>
       </view>
     </view>
   </block>

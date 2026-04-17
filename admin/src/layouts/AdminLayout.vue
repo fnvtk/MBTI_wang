@@ -86,11 +86,11 @@ const authStore = useAuthStore()
 const sidebarOpen = ref(false)
 
 const navItems = [
-  { path: '/admin/dashboard', icon: DataLine, label: '概览' },
+  { path: '/admin/dashboard', icon: DataLine, label: '企业概览' },
   { path: '/admin/users', icon: User, label: '用户运营' },
   { path: '/admin/orders', icon: ShoppingCart, label: '订单运营' },
   { path: '/admin/distribution', icon: Share, label: '分销推广' },
-  { path: '/admin/settings', icon: Setting, label: '系统设置' },
+  { path: '/admin/settings', icon: Setting, label: '企业设置' },
 ]
 
 const isActive = (path: string) => {

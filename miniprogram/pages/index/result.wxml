@@ -115,21 +115,13 @@
           </view>
         </view>
 
-        <view
-          class="result-cta-questionnaire"
-          hover-class="result-cta-questionnaire--pressed"
-          hover-stay-time="120"
-          bindtap="goToQuestionnaireTest"
-        >
-          <text class="result-cta-questionnaire-text">去做详细性格测试</text>
-        </view>
       </view>
 
       <view
         class="card report-gate-teaser {{(payInfo.requiresPayment && !payInfo.isPaid) ? 'report-gate-teaser--locked' : ''}}"
         wx:if="{{result.summary}}"
       >
-        <text class="card-title">性格概述</text>
+        <text class="card-title">📝 性格概述</text>
         <text class="card-text">{{result.summary}}</text>
       </view>
 
@@ -351,5 +343,51 @@
       </view>
 
     </block>
+
+    <!-- 成交链路已迁至底部固定操作栏 -->
+    <view class="face-journey-deprecated" wx:if="{{false}}">
+      <view class="face-journey__title">
+        <text class="face-journey__title-main">继续下一步</text>
+        <text class="face-journey__title-sub">完整面相 + 性格报告只差两步</text>
+      </view>
+
+      <view class="face-journey-step face-journey-step--purple" bindtap="goToQuestionnaireFromFace">
+        <view class="face-journey-step__no">01</view>
+        <view class="face-journey-step__body">
+          <text class="face-journey-step__title">补做四套性格测评</text>
+          <text class="face-journey-step__desc">MBTI · PDP · DISC · SBTI 各测一次，面相 + 问卷组合才解锁完整人格画像。</text>
+        </view>
+        <text class="face-journey-step__arrow">›</text>
+      </view>
+
+      <view class="face-journey-step face-journey-step--indigo" bindtap="goToDeepServiceFromFace">
+        <view class="face-journey-step__no">02</view>
+        <view class="face-journey-step__body">
+          <text class="face-journey-step__title">升级深度解读方案</text>
+          <text class="face-journey-step__desc">个人深读 / 团队适配 / 企业岗位匹配。综合面相、性格与行为风格出具可落地建议。</text>
+        </view>
+        <text class="face-journey-step__arrow">›</text>
+      </view>
+
+    </view>
+  </view>
+
+  <!-- 固定底部操作栏：三按钮常驻 -->
+  <view class="result-action-bar" wx:if="{{!isAnalyzing && showResult && !hasError}}">
+    <view class="result-action-bar__btn result-action-bar__btn--test" bindtap="goToQuestionnaireFromFace">
+      <text class="result-action-bar__ic">🧠</text>
+      <text class="result-action-bar__label">详细性格测试</text>
+    </view>
+    <view class="result-action-bar__btn result-action-bar__btn--deep" bindtap="goToDeepServiceFromFace">
+      <text class="result-action-bar__ic">💎</text>
+      <text class="result-action-bar__label">找专家·深度解读</text>
+    </view>
+    <button class="result-action-bar__btn result-action-bar__btn--share" open-type="share">
+      <text class="result-action-bar__ic">📣</text>
+      <view class="result-action-bar__share-body">
+        <text class="result-action-bar__label">分享赚</text>
+        <text class="result-action-bar__label-hl">90%</text>
+      </view>
+    </button>
   </view>
 </view>

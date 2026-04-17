@@ -10,7 +10,7 @@
   flex-direction: column;
   box-sizing: border-box;
   /* 底栏 + 中间浮钮留白，避免与主按钮叠在一起 */
-  padding-bottom: calc(168rpx + env(safe-area-inset-bottom) + 48rpx);
+  padding-bottom: calc(168rpx + env(safe-area-inset-bottom) + 78rpx);
 }
 
 /* 背景装饰圆形（与企业版一致） */
@@ -229,7 +229,7 @@
 }
 
 .start-button {
-  margin: 20rpx 40rpx 0;
+  margin: 12rpx 40rpx 24rpx;
   background: linear-gradient(135deg, #e63946 0%, #ff6b9d 100%);
   border-radius: 50rpx;
   padding: 24rpx;

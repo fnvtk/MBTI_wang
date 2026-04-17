@@ -1,0 +1,67 @@
+/* components/result-section-nav/index.wxss */
+.rsn {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.94) 100%);
+  backdrop-filter: saturate(140%) blur(8rpx);
+  border-bottom: 1rpx solid #f1f5f9;
+  padding: 14rpx 8rpx 12rpx;
+}
+
+.rsn__scroll {
+  width: 100%;
+  white-space: nowrap;
+}
+
+.rsn__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 12rpx;
+  padding: 0 12rpx;
+}
+
+.rsn__chip {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6rpx;
+  height: 56rpx;
+  padding: 0 22rpx;
+  border-radius: 28rpx;
+  background: #f1f5f9;
+  border: 1rpx solid transparent;
+  transition: all 0.2s ease;
+}
+
+.rsn__emoji {
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.rsn__label {
+  font-size: 24rpx;
+  font-weight: 500;
+  color: #475569;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.rsn__chip--active {
+  background: #fff;
+  border-color: currentColor;
+  box-shadow: 0 4rpx 12rpx rgba(15, 23, 42, 0.08);
+}
+
+/* 色系：与四测 hero 色对齐 */
+.rsn--purple .rsn__chip--active { color: #6366f1; }
+.rsn--purple .rsn__chip--active .rsn__label { color: #4f46e5; font-weight: 600; }
+
+.rsn--blue .rsn__chip--active { color: #0ea5e9; }
+.rsn--blue .rsn__chip--active .rsn__label { color: #0284c7; font-weight: 600; }
+
+.rsn--orange .rsn__chip--active { color: #f97316; }
+.rsn--orange .rsn__chip--active .rsn__label { color: #ea580c; font-weight: 600; }
+
+.rsn--teal .rsn__chip--active { color: #14b8a6; }
+.rsn--teal .rsn__chip--active .rsn__label { color: #0d9488; font-weight: 600; }

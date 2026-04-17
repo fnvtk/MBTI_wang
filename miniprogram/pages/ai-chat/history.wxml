@@ -1,0 +1,14 @@
+<view class="history-page">
+  <block wx:if="{{list.length > 0}}">
+    <view class="item" wx:for="{{list}}" wx:key="id" bindtap="onOpen" data-id="{{item.id}}">
+      <view class="item-title">{{item.title || '未命名对话'}}</view>
+      <view class="item-meta">
+        <text class="mbti-tag" wx:if="{{item.mbtiType}}">{{item.mbtiType}}</text>
+        <text class="meta">{{item.messageCount || 0}} 条消息</text>
+        <text class="meta">{{item.lastMessageAtStr}}</text>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!hasMore && list.length > 0}}">— 到底啦 —</view>
+  </block>
+  <view class="empty" wx:else>还没有历史对话，快去和神仙 AI 聊聊吧～</view>
+</view>

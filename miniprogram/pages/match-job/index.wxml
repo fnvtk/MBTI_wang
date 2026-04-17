@@ -1,0 +1,150 @@
+<!--pages/match-job/index.wxml 匹配工作：上传简历 + 性格规则 + AI 综合分析-->
+<view class="match-page">
+  <scroll-view class="match-scroll" scroll-y>
+    <view class="match-container">
+
+      <!-- Hero -->
+      <view class="match-hero">
+        <text class="match-hero__eyebrow">MATCH JOB · AI 智能匹配</text>
+        <text class="match-hero__title">简历 + 性格 = 更准的岗位推荐</text>
+        <text class="match-hero__desc">上传你的简历，结合 MBTI / PDP / DISC / SBTI / 面相的性格画像，由 AI 综合分析你最匹配的工作方向。</text>
+      </view>
+
+      <!-- 步骤说明 -->
+      <view class="match-steps">
+        <view class="match-step">
+          <view class="match-step__no">1</view>
+          <view class="match-step__body">
+            <text class="match-step__title">完成性格测评</text>
+            <text class="match-step__desc">至少完成一项（MBTI / PDP / DISC / SBTI / 面相）</text>
+          </view>
+          <text class="match-step__state {{hasAnyTest ? 'match-step__state--done' : ''}}">{{hasAnyTest ? '已完成' : '未开始'}}</text>
+        </view>
+        <view class="match-step">
+          <view class="match-step__no">2</view>
+          <view class="match-step__body">
+            <text class="match-step__title">上传最新简历</text>
+            <text class="match-step__desc">支持 PDF / Word / 图片，最多 10MB</text>
+          </view>
+          <text class="match-step__state {{resumeUrl ? 'match-step__state--done' : ''}}">{{resumeUrl ? '已上传' : '待上传'}}</text>
+        </view>
+        <view class="match-step">
+          <view class="match-step__no">3</view>
+          <view class="match-step__body">
+            <text class="match-step__title">AI 综合分析</text>
+            <text class="match-step__desc">生成岗位匹配度、发展方向与改进建议</text>
+          </view>
+          <text class="match-step__state {{analyzed ? 'match-step__state--done' : ''}}">{{analyzed ? '已生成' : '未生成'}}</text>
+        </view>
+      </view>
+
+      <!-- 我的性格标签 -->
+      <view class="match-card">
+        <view class="match-card__head">
+          <text class="match-card__title">我的性格画像</text>
+          <text class="match-card__sub" wx:if="{{!hasAnyTest}}" bindtap="goToTestSelect">去做测评 ›</text>
+        </view>
+        <view class="match-tags">
+          <view class="match-tag match-tag--mbti" wx:if="{{mbtiType}}">MBTI · {{mbtiType}}</view>
+          <view class="match-tag match-tag--pdp" wx:if="{{pdpType}}">PDP · {{pdpType}}</view>
+          <view class="match-tag match-tag--disc" wx:if="{{discType}}">DISC · {{discType}}</view>
+          <view class="match-tag match-tag--sbti" wx:if="{{sbtiType}}">SBTI · {{sbtiType}}</view>
+          <view class="match-tag match-tag--face" wx:if="{{faceType}}">面相 · {{faceType}}</view>
+          <view class="match-tag match-tag--empty" wx:if="{{!hasAnyTest}}">暂无测评结果</view>
+        </view>
+      </view>
+
+      <!-- 性格→工作规则 -->
+      <view class="match-card" wx:if="{{hasAnyTest}}">
+        <view class="match-card__head">
+          <text class="match-card__title">性格 → 工作匹配规则</text>
+        </view>
+        <view class="match-rule-row" wx:if="{{mbtiType}}">
+          <text class="match-rule-row__key">MBTI {{mbtiType}}</text>
+          <text class="match-rule-row__val">{{mbtiJobHint || '擅长的岗位范围与协作偏好'}}</text>
+        </view>
+        <view class="match-rule-row" wx:if="{{pdpType}}">
+          <text class="match-rule-row__key">PDP {{pdpType}}</text>
+          <text class="match-rule-row__val">{{pdpJobHint || '典型的行为风格与团队角色'}}</text>
+        </view>
+        <view class="match-rule-row" wx:if="{{discType}}">
+          <text class="match-rule-row__key">DISC {{discType}}</text>
+          <text class="match-rule-row__val">{{discJobHint || '沟通与决策的优势方向'}}</text>
+        </view>
+        <view class="match-rule-hint">
+          <text>以上为通用规则，AI 综合分析会结合你的简历给出个性化建议。</text>
+        </view>
+      </view>
+
+      <!-- 上传简历 -->
+      <view class="match-card">
+        <view class="match-card__head">
+          <text class="match-card__title">简历</text>
+          <text class="match-card__sub" wx:if="{{resumeUrl}}" bindtap="previewResume">预览 ›</text>
+        </view>
+        <view class="match-upload" bindtap="chooseResume">
+          <view class="match-upload__icon">{{resumeUrl ? '📄' : '📤'}}</view>
+          <text class="match-upload__title">{{resumeUrl ? (resumeFileName || '已上传简历') : '点击上传 / 替换简历'}}</text>
+          <text class="match-upload__sub">{{resumeUrl ? '可替换上传最新版本' : '支持 PDF / Word / 图片，最多 10MB'}}</text>
+        </view>
+      </view>
+
+      <!-- AI 综合分析结果 -->
+      <view class="match-card" wx:if="{{analyzeResult}}">
+        <view class="match-card__head">
+          <text class="match-card__title">AI 综合分析</text>
+          <text class="match-card__sub" wx:if="{{analyzeResult.score != null}}">匹配度 {{analyzeResult.score}}%</text>
+        </view>
+
+        <view class="match-fit-card" wx:if="{{analyzeResult.fitRoles.length}}">
+          <text class="match-fit-card__title">最匹配的岗位方向</text>
+          <view class="match-fit-list">
+            <view class="match-fit-item" wx:for="{{analyzeResult.fitRoles}}" wx:key="*this">
+              <text class="match-fit-item__no">★</text>
+              <text class="match-fit-item__name">{{item}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.summary}}">
+          <text class="match-block__label">岗位匹配度说明</text>
+          <text class="match-block__text">{{analyzeResult.summary}}</text>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.strengths.length}}">
+          <text class="match-block__label">简历亮点</text>
+          <view class="match-chip-row">
+            <text class="match-chip match-chip--good" wx:for="{{analyzeResult.strengths}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.weaknesses.length}}">
+          <text class="match-block__label">可改进点</text>
+          <view class="match-chip-row">
+            <text class="match-chip match-chip--warn" wx:for="{{analyzeResult.weaknesses}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.advice}}">
+          <text class="match-block__label">下一步建议</text>
+          <text class="match-block__text">{{analyzeResult.advice}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 底部主按钮 -->
+  <view class="match-foot">
+    <button
+      class="match-foot__btn {{(!hasAnyTest || !resumeUrl || analyzing) ? 'match-foot__btn--disabled' : ''}}"
+      bindtap="runAnalyze"
+      disabled="{{!hasAnyTest || !resumeUrl || analyzing}}"
+    >
+      <text wx:if="{{analyzing}}">分析中…</text>
+      <text wx:elif="{{!hasAnyTest}}">请先完成性格测评</text>
+      <text wx:elif="{{!resumeUrl}}">请先上传简历</text>
+      <text wx:else>立即 AI 综合分析</text>
+    </button>
+    <text class="match-foot__tip">分析结果保存在「我的订单」页可随时回看</text>
+  </view>
+</view>

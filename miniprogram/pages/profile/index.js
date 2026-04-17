@@ -65,7 +65,11 @@ Page({
     /** 最新测试横滑区：有问卷/面相权限即显示；无记录时卡片灰阶占位，不隐藏 */
     showLatestTestRow: false,
     /** 用户卡片下性格标签：在「当前权限下无任何问卷结果」时显示灰色提示 */
-    showEmptyPersonalityTags: true
+    showEmptyPersonalityTags: true,
+    /** 我的页底部 Soul 推荐条（超管可配） */
+    profileRecoShow: false,
+    profileRecoSectionLabel: '',
+    profileRecoArticle: null
   },
 
   _computeShowLatestTestRow(d) {
@@ -203,7 +207,70 @@ Page({
     if (token || userInfo) {
       this._loadRecentFromAPI()
       this._loadPromoStats()
+      this._loadProfileRecoTeaser()
+    } else {
+      this.setData({ profileRecoShow: false, profileRecoArticle: null, profileRecoSectionLabel: '' })
     }
+  },
+
+  /** 拉取「我的」页推荐条：与超管 Soul 文章推荐位第 1 篇一致 */
+  _loadProfileRecoTeaser() {
+    const t = Date.now()
+    request({
+      url: `/api/ai/articles/profile-teaser?_t=${t}`,
+      method: 'GET',
+      needAuth: false,
+      success: (res) => {
+        const payload = res && res.data
+        if (!payload || payload.code !== 200 || !payload.data) {
+          this.setData({ profileRecoShow: false, profileRecoArticle: null })
+          return
+        }
+        const d = payload.data
+        const art = d.article && d.article.url ? d.article : null
+        const show = !!(d.enabled && art)
+        this.setData({
+          profileRecoShow: show,
+          profileRecoSectionLabel: (d.sectionLabel && String(d.sectionLabel).trim()) || '推荐阅读',
+          profileRecoArticle: show ? art : null
+        })
+      },
+      fail: () => {
+        this.setData({ profileRecoShow: false, profileRecoArticle: null })
+      }
+    })
+  },
+
+  onTapProfileReco(e) {
+    const { id, url, title } = (e && e.currentTarget && e.currentTarget.dataset) || {}
+    if (!url) return
+    try {
+      require('../../utils/analytics').track('tap_ai_article', {
+        articleId: id,
+        url,
+        title,
+        from: 'profile_teaser'
+      })
+    } catch (err) {}
+    if (id) {
+      request({
+        url: `/api/ai/articles/${id}/click`,
+        method: 'POST',
+        needAuth: false,
+        success() {},
+        fail() {}
+      })
+    }
+    const enc = encodeURIComponent(url)
+    wx.navigateTo({
+      url: `/pages/webview/index?url=${enc}`,
+      fail: () => {
+        wx.setClipboardData({
+          data: url,
+          success: () => wx.showToast({ title: '已复制链接', icon: 'none' })
+        })
+      }
+    })
   },
 
   /** 从 /api/test/recent 拉取各类型最新记录 */
@@ -359,6 +426,14 @@ Page({
     wx.navigateTo({ url: '/pages/history/index' })
   },
   goToUserProfile() { wx.navigateTo({ url: '/pages/user-profile/index' }) },
+  /** 合并后的用户卡片点击：按登录态分发 */
+  onUserCardTap() {
+    if (this.data.hasLogin) {
+      this.goToUserProfile()
+    } else {
+      this.doLogin()
+    }
+  },
   /** 深度服务统一入口（页内 Tab：个人 / 团队与企业） */
   goToDeepService() {
     try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
@@ -376,8 +451,23 @@ Page({
   goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
   goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },
-  goToPromo() { wx.navigateTo({ url: '/pages/promo/index' }) },
-  goToMyResume() { wx.navigateTo({ url: '/pages/enterprise/resume-history' }) },
+  goToPromoWithdrawals() {
+    try { require('../../utils/analytics').track('tap_promo_withdrawals', { from: 'profile' }) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/withdrawals' })
+  },
+  goToPromo() {
+    try { require('../../utils/analytics').track('tap_promo_center', { from: 'profile' }) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+  goToMyResume() {
+    try { require('../../utils/analytics').track('tap_my_resume', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/enterprise/resume-history' })
+  },
+  /** 匹配工作：新入口，跳转匹配工作中间页 */
+  goToMatchJob() {
+    try { require('../../utils/analytics').track('tap_match_job', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/match-job/index' })
+  },
   goToSettings() {
     wx.showToast({ title: '开发中', icon: 'none' })
   },

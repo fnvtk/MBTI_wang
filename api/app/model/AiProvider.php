@@ -42,6 +42,7 @@ class AiProvider extends Model
         'updatedAt'             => 'int',
         'deletedAt'             => 'int',
         'extraConfig'           => 'string',
+        'sortWeight'            => 'int',
     ];
 
     // 自动时间戳（使用驼峰命名，时间戳格式）

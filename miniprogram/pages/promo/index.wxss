@@ -548,3 +548,87 @@ page {
   color: #ffffff;
 }
 
+/* ===== 视觉对齐：推广中心与「我的 · 分润卡」统一紫色品牌渐变 ===== */
+.hero-card {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 55%, #4f46e5 100%) !important;
+  box-shadow: 0 14rpx 36rpx rgba(99, 102, 241, 0.22) !important;
+  border-radius: 32rpx !important;
+  color: #fff !important;
+  position: relative;
+}
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 32rpx;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(255,255,255,0.22) 0 120rpx, transparent 200rpx),
+    radial-gradient(circle at 0% 100%, rgba(255,255,255,0.10) 0 180rpx, transparent 320rpx);
+}
+.hero-card .wallet-icon {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+}
+.hero-card .title-text .label {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+.hero-card .badge .dot {
+  background: #fde047 !important;
+}
+.hero-card .badge-text {
+  color: #fde047 !important;
+}
+.hero-card .amount {
+  color: #ffffff !important;
+}
+.hero-card .amount-sub {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.hero-card .withdraw-btn {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #6366f1 !important;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08) !important;
+  font-weight: 700 !important;
+}
+.hero-card .withdraw-btn.disabled {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: none !important;
+}
+.hero-card .record-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.hero-card .record-link .arrow {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 四格统计 · 卡片化、圆角与阴影对齐 */
+.stats-grid {
+  border-radius: 24rpx !important;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05) !important;
+  border: 1rpx solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+.stats-grid .stat-val {
+  letter-spacing: -0.01em !important;
+}
+.stats-grid .stat-val.highlight {
+  color: #f97316 !important;
+}
+
+/* 卡片外壳统一圆角/阴影 */
+.section.rule-section,
+.section.user-section,
+.menu-card {
+  border-radius: 24rpx !important;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05) !important;
+  border: 1rpx solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+/* 底部提示：品牌色统一 */
+.footer-tip .highlight {
+  color: #6366f1 !important;
+}
+

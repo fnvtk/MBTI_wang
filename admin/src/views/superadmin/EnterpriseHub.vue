@@ -1,24 +1,11 @@
 <template>
-  <div class="enterprise-hub">
-    <div class="hub-header">
-      <h2>企业管理</h2>
-      <p class="hub-subtitle">
-        维护企业档案与平台用户池，对应各企业管理员在「普通管理后台」可见的数据范围。个人侧无企业归属的测试用户在统计与列表中并入「存客宝」。
-      </p>
-    </div>
+  <div class="sa-page enterprise-hub">
+    <SaPageHeader
+      title="企业管理"
+      subtitle="维护企业档案与平台用户池，对应各企业管理员在「普通管理后台」可见的数据范围。个人侧无企业归属的测试用户在统计与列表中并入「存客宝」。"
+    />
 
-    <div class="custom-tabs-container tabs-scroll">
-      <div class="custom-tabs tabs-many">
-        <div
-          v-for="t in innerTabs"
-          :key="t.value"
-          :class="['tab-item', { active: activeTab === t.value }]"
-          @click="selectTab(t.value)"
-        >
-          {{ t.label }}
-        </div>
-      </div>
-    </div>
+    <SaTabs v-model="activeTab" :items="innerTabs" @change="onTabChange" />
 
     <el-alert
       v-if="activeTab === 'users'"
@@ -39,6 +26,9 @@
     <div class="hub-body">
       <Enterprises v-if="activeTab === 'companies'" embedded />
       <Users v-if="activeTab === 'users'" :key="usersRefreshKey" embedded />
+      <SoulArticles v-if="activeTab === 'soulArticles'" />
+      <MpTabBar v-if="activeTab === 'mpTabbar'" />
+      <ProfitRules v-if="activeTab === 'profitRules'" />
     </div>
   </div>
 </template>
@@ -50,8 +40,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { request } from '@/utils/request'
 import Enterprises from './Enterprises.vue'
 import Users from './Users.vue'
+import SoulArticles from './SoulArticles.vue'
+import MpTabBar from './MpTabBar.vue'
+import ProfitRules from './ProfitRules.vue'
+import SaPageHeader from '@/components/superadmin/SaPageHeader.vue'
+import SaTabs from '@/components/superadmin/SaTabs.vue'
 
-const TAB_IDS = ['companies', 'users'] as const
+const TAB_IDS = ['companies', 'users', 'soulArticles', 'mpTabbar', 'profitRules'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -101,7 +96,10 @@ async function runOrphanMigrate() {
 
 const innerTabs: { label: string; value: TabId }[] = [
   { label: '企业列表', value: 'companies' },
-  { label: '用户总览', value: 'users' }
+  { label: '用户总览', value: 'users' },
+  { label: '引流文章', value: 'soulArticles' },
+  { label: '底部菜单', value: 'mpTabbar' },
+  { label: '分账规则', value: 'profitRules' }
 ]
 
 const applyRouteTab = () => {
@@ -113,108 +111,25 @@ const applyRouteTab = () => {
   }
 }
 
-const selectTab = (tab: TabId) => {
-  activeTab.value = tab
+const onTabChange = (tab: TabId) => {
   const q: Record<string, string> = {}
   Object.entries(route.query).forEach(([k, v]) => {
     if (v !== undefined && v !== null && k !== 'tab') {
       q[k] = Array.isArray(v) ? String(v[0]) : String(v)
     }
   })
-  if (tab !== 'companies') {
-    q.tab = tab
-  }
+  if (tab !== 'companies') q.tab = tab
   router.replace({ path: '/superadmin/enterprises', query: Object.keys(q).length ? q : {} })
 }
 
-watch(
-  () => route.query.tab,
-  () => applyRouteTab()
-)
-
-onMounted(() => {
-  applyRouteTab()
-})
+watch(() => route.query.tab, () => applyRouteTab())
+onMounted(() => applyRouteTab())
 </script>
 
-<style scoped lang="scss">
-.enterprise-hub {
-  padding: 24px;
-  min-height: 100vh;
-  background: #f9fafb;
-}
-
-.hub-header {
-  margin-bottom: 20px;
-
-  h2 {
-    margin: 0 0 6px;
-    font-size: 22px;
-    font-weight: 700;
-    color: #111827;
-  }
-
-  .hub-subtitle {
-    margin: 0;
-    font-size: 14px;
-    color: #6b7280;
-  }
-}
-
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  width: 100%;
-
-  &.tabs-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    min-width: min-content;
-
-    &.tabs-many .tab-item {
-      flex: 0 0 auto;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-
-    .tab-item {
-      flex: 1;
-      padding: 8px 18px;
-      font-size: 14px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      white-space: nowrap;
-      text-align: center;
-      transition: all 0.2s;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-      }
-    }
-  }
-}
-
-.hub-body {
-  width: 100%;
-}
-
+<style scoped>
+.hub-body { width: 100%; }
 .migrate-alert {
-  margin-bottom: 16px;
+  margin-bottom: 4px;
 }
 .migrate-text {
   margin: 0 0 10px;

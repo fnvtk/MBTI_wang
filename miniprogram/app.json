@@ -5,6 +5,7 @@
     "pages/index/upload",
     "pages/index/result",
     "pages/test-select/index",
+    "pages/ai-test/index",
     "pages/test/mbti",
     "pages/test/sbti",
     "pages/test/disc",
@@ -25,7 +26,12 @@
     "pages/phone-auth/index",
     "pages/promo/index",
     "pages/promo/poster",
-    "pages/promo/withdrawals"
+    "pages/promo/withdrawals",
+    "pages/match-job/index",
+    "pages/ai-chat/index",
+    "pages/ai-chat/report",
+    "pages/ai-chat/history",
+    "pages/webview/index"
   ],
   "tabBar": {
     "custom": true,
@@ -45,6 +51,12 @@
         "text": "拍摄",
         "iconPath": "images/camera.png",
         "selectedIconPath": "images/camera-active.png"
+      },
+      {
+        "pagePath": "pages/ai-chat/index",
+        "text": "神仙AI",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
       },
       {
         "pagePath": "pages/profile/index",

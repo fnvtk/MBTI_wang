@@ -2,12 +2,115 @@
 namespace app\controller\admin\concern;
 
 use app\common\PdpDiscResultText;
+use think\facade\Db;
 
 /**
  * 从测试记录数组中解析 MBTI / DISC / PDP / 人脸子类型（与 AppUser 逻辑一致）
  */
 trait ExtractsTestResults
 {
+    /**
+     * 基于测试记录推算冷脸分值（0-100）
+     *   -  面相 emotionScore/emotionNeutrality/microExpression 作为主输入
+     *   -  MBTI I/E 作为补充（I 更冷，E 更暖）
+     * 返回 ['score'=>int, 'level'=>'cold|neutral|warm']；如无任何线索返回 null
+     */
+    public function calcColdFace(array $tests): ?array
+    {
+        $score = null; // 0-100
+        $mbtiType = '';
+
+        foreach ($tests as $t) {
+            $type = strtolower($t['testType'] ?? '');
+            $raw = $t['result'] ?? ($t['resultData'] ?? '');
+            if (!is_string($raw) || $raw === '') {
+                continue;
+            }
+            $dec = json_decode($raw, true);
+            if (!is_array($dec)) {
+                continue;
+            }
+
+            if ($type === 'face' && $score === null) {
+                $face = is_array($dec['face'] ?? null) ? $dec['face'] : $dec;
+                $emotion = null;
+                foreach (['coldFaceScore', 'coldScore', 'emotionNeutrality', 'neutrality'] as $k) {
+                    if (isset($face[$k]) && is_numeric($face[$k])) {
+                        $emotion = (float) $face[$k];
+                        break;
+                    }
+                }
+                if ($emotion === null && isset($face['emotionScore']) && is_numeric($face['emotionScore'])) {
+                    // emotionScore 越高越暖 → 冷脸分取反
+                    $emotion = 100 - (float) $face['emotionScore'];
+                }
+                if ($emotion === null && isset($face['microExpression']) && is_array($face['microExpression'])) {
+                    $mx = $face['microExpression'];
+                    $happy = is_numeric($mx['happy'] ?? null) ? (float) $mx['happy'] : 0;
+                    $neutral = is_numeric($mx['neutral'] ?? null) ? (float) $mx['neutral'] : 0;
+                    $total = $happy + $neutral + 1;
+                    $emotion = ($neutral / $total) * 100;
+                }
+                if ($emotion !== null) {
+                    if ($emotion <= 1) {
+                        $emotion = $emotion * 100;
+                    }
+                    $score = max(0, min(100, (int) round($emotion)));
+                }
+            }
+
+            if ($type === 'mbti' && $mbtiType === '') {
+                foreach (['mbtiType', 'type', 'result'] as $k) {
+                    $s = $this->coerceResultLabel($dec[$k] ?? null);
+                    if ($s !== '') {
+                        $mbtiType = strtoupper($s);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($score === null && $mbtiType !== '') {
+            $score = strpos($mbtiType, 'I') === 0 ? 62 : 42;
+        }
+        if ($score === null) {
+            return null;
+        }
+
+        $level = 'neutral';
+        if ($score > 65) {
+            $level = 'cold';
+        } elseif ($score < 35) {
+            $level = 'warm';
+        }
+
+        return ['score' => (int) $score, 'level' => $level];
+    }
+
+    /**
+     * 写回 user_profile 的冷脸字段（存在才更新，否则跳过；失败静默）
+     */
+    protected function writeColdFace(int $userId, ?int $enterpriseId, array $cold): void
+    {
+        if (!isset($cold['score'], $cold['level'])) {
+            return;
+        }
+        try {
+            $query = Db::name('user_profile')->where('userId', $userId);
+            if ($enterpriseId) {
+                $query->where('enterpriseId', $enterpriseId);
+            }
+            $query->update([
+                'coldFaceScore' => (int) $cold['score'],
+                'coldFaceLevel' => (string) $cold['level'],
+                'coldFaceUpdatedAt' => time(),
+                'updatedAt' => time(),
+            ]);
+        } catch (\Throwable $e) {
+            // 字段不存在（未执行迁移）时直接忽略
+        }
+    }
+
     /**
      * 结果字段可能为数组/对象，禁止直接 (string) 强转导致 Array to string conversion
      */

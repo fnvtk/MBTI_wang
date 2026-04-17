@@ -34,14 +34,17 @@ export default defineConfig({
   },
   server: {
     host: '0.0.0.0', // 允许局域网访问
-    port: 5173, // 首选端口
-    strictPort: false, // 如果端口被占用，自动尝试下一个可用端口
+    port: Number(process.env.MBTI_ADMIN_PORT) || 5173,
+    strictPort: true, // 端口被占用则直接失败，避免静默改端口导致「打不开」
     proxy: {
       '/api': {
         // 与 .env.development 配合：VITE_API_BASE_URL 留空时，浏览器请求 /api/* 由这里转发到本机 ThinkPHP
         target: process.env.VITE_DEV_API_PROXY ?? 'http://127.0.0.1:8787',
         changeOrigin: true,
         rewrite: (path) => path,
+        // 云库首次连库较慢时避免代理提前断开（毫秒）
+        timeout: Number(process.env.VITE_PROXY_TIMEOUT_MS) || 180000,
+        proxyTimeout: Number(process.env.VITE_PROXY_TIMEOUT_MS) || 180000,
       },
     },
   }

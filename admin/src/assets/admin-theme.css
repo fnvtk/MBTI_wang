@@ -1,0 +1,1207 @@
+/* 企业后台 /admin/* 统一浅色柔和主题（不影响 /superadmin） */
+
+.admin-layout {
+  --admin-primary: #4F46E5;
+  --admin-primary-soft: #EEF2FF;
+  --admin-primary-hover: #4338CA;
+  --admin-success: #10B981;
+  --admin-success-soft: #ECFDF5;
+  --admin-warning: #F59E0B;
+  --admin-warning-soft: #FFFBEB;
+  --admin-danger: #EF4444;
+  --admin-danger-soft: #FEF2F2;
+  --admin-info: #64748B;
+  --admin-info-soft: #F1F5F9;
+  --admin-bg: #F8FAFC;
+  --admin-card-bg: #FFFFFF;
+  --admin-text: #0F172A;
+  --admin-text-sub: #64748B;
+  --admin-border: #E2E8F0;
+  --admin-radius: 12px;
+  --admin-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.admin-layout .layout-main {
+  background-color: var(--admin-bg);
+}
+
+/* 通用卡片骨架 */
+.admin-layout .admin-card,
+.admin-layout .content-card {
+  background: var(--admin-card-bg);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+  border: 1px solid var(--admin-border);
+  padding: 20px;
+}
+
+/* KPI 卡片网格 */
+.admin-layout .kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 1200px) {
+  .admin-layout .kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .admin-layout .kpi-row { grid-template-columns: 1fr; }
+}
+
+.admin-layout .kpi-card {
+  background: var(--admin-card-bg);
+  border-radius: var(--admin-radius);
+  box-shadow: var(--admin-shadow);
+  border: 1px solid var(--admin-border);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+.admin-layout .kpi-card .kpi-label {
+  font-size: 13px;
+  color: var(--admin-text-sub);
+  font-weight: 500;
+}
+.admin-layout .kpi-card .kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--admin-text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.admin-layout .kpi-card .kpi-foot {
+  font-size: 12px;
+  color: var(--admin-text-sub);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.admin-layout .kpi-card .kpi-icon {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.admin-layout .kpi-card.kpi-primary .kpi-icon { background: var(--admin-primary-soft); color: var(--admin-primary); }
+.admin-layout .kpi-card.kpi-success .kpi-icon { background: var(--admin-success-soft); color: var(--admin-success); }
+.admin-layout .kpi-card.kpi-warning .kpi-icon { background: var(--admin-warning-soft); color: var(--admin-warning); }
+.admin-layout .kpi-card.kpi-danger  .kpi-icon { background: var(--admin-danger-soft);  color: var(--admin-danger); }
+.admin-layout .kpi-card.kpi-info    .kpi-icon { background: var(--admin-info-soft);    color: var(--admin-info); }
+
+/* 页面头部 */
+.admin-layout .admin-page {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.admin-layout .admin-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-layout .admin-page-header .page-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--admin-text);
+}
+.admin-layout .admin-page-header .page-subtitle {
+  font-size: 13px;
+  color: var(--admin-text-sub);
+  margin-top: 4px;
+}
+
+/* 表格轻量化 */
+.admin-layout .el-table {
+  --el-table-border-color: var(--admin-border);
+  --el-table-header-bg-color: #F8FAFC;
+  --el-table-row-hover-bg-color: #F8FAFC;
+  background: transparent;
+  color: var(--admin-text);
+}
+.admin-layout .el-table th.el-table__cell {
+  background-color: #F8FAFC !important;
+  color: var(--admin-text-sub) !important;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.admin-layout .el-table td.el-table__cell {
+  padding: 10px 0;
+}
+
+/* 状态 badge */
+.admin-layout .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  font-size: 12px;
+  border-radius: 999px;
+  font-weight: 500;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+.admin-layout .status-badge::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.admin-layout .status-badge.status-pending   { background: #F1F5F9; color: #475569; }
+.admin-layout .status-badge.status-paid      { background: #EEF2FF; color: #4F46E5; }
+.admin-layout .status-badge.status-completed { background: #ECFDF5; color: #059669; }
+.admin-layout .status-badge.status-refunded  { background: #FFF7ED; color: #C2410C; }
+.admin-layout .status-badge.status-cancelled { background: #E2E8F0; color: #334155; }
+.admin-layout .status-badge.status-failed    { background: #FEF2F2; color: #DC2626; }
+.admin-layout .status-badge.status-frozen    { background: #FFFBEB; color: #B45309; }
+
+/* 冷脸标签 */
+.admin-layout .coldface-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  border: 1px solid transparent;
+}
+.admin-layout .coldface-tag.coldface-cold { background: #EFF6FF; color: #1D4ED8; border-color: #DBEAFE; }
+.admin-layout .coldface-tag.coldface-neutral { background: #F1F5F9; color: #475569; border-color: #E2E8F0; }
+.admin-layout .coldface-tag.coldface-warm { background: #FFF7ED; color: #C2410C; border-color: #FED7AA; }
+
+/* 用户行首列 */
+.admin-layout .user-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.admin-layout .user-cell .user-avatar {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.admin-layout .user-cell .user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.admin-layout .user-cell .user-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 3px;
+}
+.admin-layout .user-cell .user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--admin-text);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+.admin-layout .user-cell .user-sub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--admin-text-sub);
+}
+
+/* 主按钮 */
+.admin-layout .el-button--primary {
+  --el-button-bg-color: var(--admin-primary);
+  --el-button-border-color: var(--admin-primary);
+  --el-button-hover-bg-color: var(--admin-primary-hover);
+  --el-button-hover-border-color: var(--admin-primary-hover);
+}
+
+/* 侧栏高亮替换成新主色 */
+.admin-layout .layout-sidebar .sidebar-nav .nav-item.active {
+  background-color: var(--admin-primary-soft) !important;
+  color: var(--admin-primary) !important;
+}
+.admin-layout .layout-sidebar .sidebar-nav .nav-item.active::before {
+  background-color: var(--admin-primary) !important;
+}
+.admin-layout .layout-sidebar .sidebar-nav .nav-item.active .nav-icon {
+  color: var(--admin-primary) !important;
+}
+.admin-layout .layout-header .logo-icon {
+  background-color: var(--admin-primary) !important;
+}
+
+/* 筛选条 */
+.admin-layout .admin-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 空状态 */
+.admin-layout .empty-hint {
+  color: var(--admin-text-sub);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   超级管理后台 /superadmin/* 统一主题
+   与 /admin 同色系（靛紫）但主色更深，加强「平台最高权限」视觉层级
+   logo 保留红色徽章作为超管标识
+   ========================================================================== */
+.superadmin-layout {
+  --sa-primary: #1E40AF;
+  --sa-primary-soft: #E0E7FF;
+  --sa-primary-hover: #1E3A8A;
+  --sa-primary-deep: #1E3A8A;
+  --sa-accent: #D97706;
+  --sa-accent-soft: #FEF3C7;
+  --sa-success: #10B981;
+  --sa-success-soft: #ECFDF5;
+  --sa-warning: #F59E0B;
+  --sa-warning-soft: #FFFBEB;
+  --sa-info: #64748B;
+  --sa-info-soft: #F1F5F9;
+  --sa-bg: #F8FAFC;
+  --sa-bg-sub: #F1F5F9;
+  --sa-card-bg: #FFFFFF;
+  --sa-text: #0F172A;
+  --sa-text-sub: #64748B;
+  --sa-text-muted: #94A3B8;
+  --sa-border: #E2E8F0;
+  --sa-border-soft: #F1F5F9;
+  --sa-radius: 12px;
+  --sa-radius-sm: 8px;
+  --sa-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --sa-shadow-hover: 0 2px 4px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.superadmin-layout .layout-main {
+  background-color: var(--sa-bg);
+}
+
+/* 统一页壳 */
+.superadmin-layout .sa-page {
+  padding: 24px;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+@media (max-width: 768px) {
+  .superadmin-layout .sa-page { padding: 16px; gap: 16px; }
+}
+
+/* 页头 */
+.superadmin-layout .sa-page-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.superadmin-layout .sa-page-head .sa-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--sa-text);
+  letter-spacing: -0.01em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.superadmin-layout .sa-page-head .sa-title .sa-title-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sa-accent);
+  background: var(--sa-accent-soft);
+  border-radius: 999px;
+  letter-spacing: 0.02em;
+}
+.superadmin-layout .sa-page-head .sa-subtitle {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--sa-text-sub);
+  line-height: 1.55;
+  max-width: 780px;
+}
+.superadmin-layout .sa-page-head.sa-page-head-row {
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.superadmin-layout .sa-page-head .sa-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Tab 切换 */
+.superadmin-layout .sa-tabs {
+  background-color: var(--sa-bg-sub);
+  padding: 4px;
+  border-radius: var(--sa-radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.superadmin-layout .sa-tabs .sa-tab-item {
+  cursor: pointer;
+  border-radius: 6px;
+  white-space: nowrap;
+  color: var(--sa-text-sub);
+  padding: 7px 18px;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all 0.18s;
+  line-height: 1.4;
+}
+.superadmin-layout .sa-tabs .sa-tab-item:hover {
+  color: var(--sa-text);
+}
+.superadmin-layout .sa-tabs .sa-tab-item.is-active {
+  background: var(--sa-card-bg);
+  color: var(--sa-text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+.superadmin-layout .sa-tabs .sa-tab-item.is-active .sa-tab-dot {
+  background: var(--sa-primary);
+}
+.superadmin-layout .sa-tabs .sa-tab-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--sa-text-muted);
+  margin-right: 6px;
+  vertical-align: middle;
+  transition: background 0.18s;
+}
+
+/* 卡片 */
+.superadmin-layout .sa-card {
+  background: var(--sa-card-bg);
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-border);
+  box-shadow: var(--sa-shadow);
+  padding: 20px;
+}
+.superadmin-layout .sa-card.sa-card-pad-lg {
+  padding: 24px;
+}
+.superadmin-layout .sa-card.sa-card-flush {
+  padding: 0;
+}
+.superadmin-layout .sa-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 14px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--sa-border-soft);
+}
+.superadmin-layout .sa-card-head .sa-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--sa-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.superadmin-layout .sa-card-head .sa-card-sub {
+  font-size: 12.5px;
+  color: var(--sa-text-muted);
+}
+
+/* KPI 卡片网格 */
+.superadmin-layout .sa-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+@media (max-width: 1200px) {
+  .superadmin-layout .sa-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 640px) {
+  .superadmin-layout .sa-kpi-row { grid-template-columns: 1fr; }
+}
+.superadmin-layout .sa-kpi-card {
+  background: var(--sa-card-bg);
+  border-radius: var(--sa-radius);
+  border: 1px solid var(--sa-border);
+  box-shadow: var(--sa-shadow);
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: all 0.2s;
+}
+.superadmin-layout .sa-kpi-card:hover {
+  box-shadow: var(--sa-shadow-hover);
+  transform: translateY(-1px);
+}
+.superadmin-layout .sa-kpi-card .sa-kpi-label {
+  font-size: 13px;
+  color: var(--sa-text-sub);
+  font-weight: 500;
+}
+.superadmin-layout .sa-kpi-card .sa-kpi-value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--sa-text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.superadmin-layout .sa-kpi-card .sa-kpi-foot {
+  font-size: 12px;
+  color: var(--sa-text-sub);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.superadmin-layout .sa-kpi-card .sa-kpi-foot.is-positive { color: var(--sa-success); }
+.superadmin-layout .sa-kpi-card .sa-kpi-foot.is-negative { color: var(--sa-accent); }
+.superadmin-layout .sa-kpi-card .sa-kpi-icon {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.superadmin-layout .sa-kpi-card.sa-kpi-primary .sa-kpi-icon { background: var(--sa-primary-soft); color: var(--sa-primary); }
+.superadmin-layout .sa-kpi-card.sa-kpi-success .sa-kpi-icon { background: var(--sa-success-soft); color: var(--sa-success); }
+.superadmin-layout .sa-kpi-card.sa-kpi-warning .sa-kpi-icon { background: var(--sa-warning-soft); color: var(--sa-warning); }
+.superadmin-layout .sa-kpi-card.sa-kpi-accent  .sa-kpi-icon { background: var(--sa-accent-soft);  color: var(--sa-accent); }
+.superadmin-layout .sa-kpi-card.sa-kpi-info    .sa-kpi-icon { background: var(--sa-info-soft);    color: var(--sa-info); }
+
+/* 工具栏 */
+.superadmin-layout .sa-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.superadmin-layout .sa-toolbar .sa-toolbar-label {
+  font-size: 12.5px;
+  color: var(--sa-text-sub);
+  margin-right: 2px;
+}
+
+/* 主按钮 */
+.superadmin-layout .el-button--primary {
+  --el-button-bg-color: var(--sa-primary);
+  --el-button-border-color: var(--sa-primary);
+  --el-button-hover-bg-color: var(--sa-primary-hover);
+  --el-button-hover-border-color: var(--sa-primary-hover);
+  --el-button-active-bg-color: var(--sa-primary-deep);
+  --el-button-active-border-color: var(--sa-primary-deep);
+}
+
+/* 侧栏高亮替换成新主色 */
+.superadmin-layout .layout-sidebar .sidebar-nav .nav-item.active {
+  background-color: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .layout-sidebar .sidebar-nav .nav-item.active::before {
+  background-color: var(--sa-primary) !important;
+}
+.superadmin-layout .layout-sidebar .sidebar-nav .nav-item.active .nav-icon {
+  color: var(--sa-primary) !important;
+}
+
+/* 侧栏分组标题 */
+.superadmin-layout .layout-sidebar .sidebar-nav .nav-group-label {
+  padding: 14px 24px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--sa-text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 表格轻量化（与 admin 对齐） */
+.superadmin-layout .el-table {
+  --el-table-border-color: var(--sa-border);
+  --el-table-header-bg-color: var(--sa-bg);
+  --el-table-row-hover-bg-color: var(--sa-bg);
+  background: transparent;
+  color: var(--sa-text);
+}
+.superadmin-layout .el-table th.el-table__cell {
+  background-color: var(--sa-bg) !important;
+  color: var(--sa-text-sub) !important;
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.superadmin-layout .el-table td.el-table__cell {
+  padding: 10px 0;
+}
+
+/* 空状态 */
+.superadmin-layout .sa-empty-hint {
+  color: var(--sa-text-muted);
+  font-size: 12.5px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+/* 嵌入模式：当子页以 embedded 形式被 Hub 使用时，隐藏重复页头 */
+.superadmin-layout .is-embedded .embedded-hide {
+  display: none !important;
+}
+
+/* ==========================================================================
+   Overview.vue · 视觉对齐（零接触 .vue 文件，通过提高选择器特异性/重要性覆盖 scoped 样式）
+   ========================================================================== */
+
+/* 总览区 & 统计卡 */
+.superadmin-layout .overview-section .section-header .section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--sa-text) !important;
+}
+.superadmin-layout .overview-section .section-header .section-subtitle {
+  color: var(--sa-text-sub) !important;
+  font-size: 13px !important;
+}
+.superadmin-layout .overview-section .stats-grid {
+  gap: 14px !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card,
+.superadmin-layout .quick-actions-section .actions-grid .action-card,
+.superadmin-layout .invite-section,
+.superadmin-layout .trend-section,
+.superadmin-layout .recent-dynamics-section,
+.superadmin-layout .ranking-section {
+  border-radius: var(--sa-radius) !important;
+  border: 1px solid var(--sa-border) !important;
+  box-shadow: var(--sa-shadow) !important;
+  background: var(--sa-card-bg) !important;
+  transition: all 0.2s !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card:hover {
+  box-shadow: var(--sa-shadow-hover) !important;
+  transform: translateY(-1px) !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-info .stat-label {
+  color: var(--sa-text-sub) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-info .stat-value {
+  font-size: 26px !important;
+  letter-spacing: -0.02em !important;
+  color: var(--sa-text) !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-info .stat-trend {
+  color: var(--sa-text-muted) !important;
+  font-size: 12px !important;
+}
+
+/* stat-icon 色系柔化：purple→primary 靛紫 | green→success | orange→warning */
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-icon {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  font-size: 18px !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-icon.purple {
+  background-color: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-icon.green {
+  background-color: var(--sa-success-soft) !important;
+  color: var(--sa-success) !important;
+}
+.superadmin-layout .overview-section .stats-grid .stat-card .stat-icon.orange {
+  background-color: var(--sa-warning-soft) !important;
+  color: var(--sa-warning) !important;
+}
+
+/* 快捷操作色系收敛：blue/purple 合并到 primary，其他柔化，图标色从纯白改为深色主调 */
+.superadmin-layout .quick-actions-section .section-header .section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--sa-text) !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card .action-icon {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 10px !important;
+  font-size: 20px !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card .action-label {
+  font-size: 13px !important;
+  color: var(--sa-text) !important;
+  font-weight: 500 !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card.blue .action-icon,
+.superadmin-layout .quick-actions-section .actions-grid .action-card.purple .action-icon {
+  background-color: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card.green .action-icon {
+  background-color: var(--sa-success-soft) !important;
+  color: var(--sa-success) !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card.orange .action-icon {
+  background-color: var(--sa-warning-soft) !important;
+  color: var(--sa-warning) !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card.gray .action-icon {
+  background-color: var(--sa-info-soft) !important;
+  color: var(--sa-info) !important;
+}
+.superadmin-layout .quick-actions-section .actions-grid .action-card:hover {
+  box-shadow: var(--sa-shadow-hover) !important;
+  transform: translateY(-2px) !important;
+  border-color: var(--sa-primary-soft) !important;
+}
+
+/* 邀请码卡片 */
+.superadmin-layout .invite-section .invite-label {
+  color: var(--sa-text-sub) !important;
+  font-weight: 500 !important;
+}
+.superadmin-layout .invite-section .invite-img {
+  border-color: var(--sa-border) !important;
+}
+.superadmin-layout .invite-section .invite-placeholder {
+  color: var(--sa-text-muted) !important;
+  font-size: 12.5px !important;
+}
+
+/* 下方左右双栏：动态 / 排行榜 */
+.superadmin-layout .recent-dynamics-section .section-header,
+.superadmin-layout .ranking-section .section-header {
+  border-bottom-color: var(--sa-border-soft) !important;
+  padding-bottom: 12px !important;
+  margin-bottom: 14px !important;
+}
+.superadmin-layout .recent-dynamics-section .section-header .section-title,
+.superadmin-layout .ranking-section .section-header .section-title {
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--sa-text) !important;
+}
+.superadmin-layout .recent-dynamics-section .section-header .view-all-btn,
+.superadmin-layout .ranking-section .section-header .view-all-btn {
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .recent-dynamics-section .section-header .view-all-btn:hover,
+.superadmin-layout .ranking-section .section-header .view-all-btn:hover {
+  color: var(--sa-primary-hover) !important;
+}
+
+/* 动态 / 排行条目分隔线淡化 */
+.superadmin-layout .dynamics-list .dynamics-item,
+.superadmin-layout .ranking-list .ranking-item {
+  border-bottom-color: var(--sa-border-soft) !important;
+}
+.superadmin-layout .ranking-list .ranking-item .ranking-number {
+  background-color: var(--sa-bg-sub) !important;
+  color: var(--sa-text-sub) !important;
+}
+.superadmin-layout .ranking-list .ranking-item .ranking-number.top-one {
+  background-color: var(--sa-warning-soft) !important;
+  color: var(--sa-warning) !important;
+}
+
+/* ==========================================================================
+   MpAnalytics.vue · 视觉对齐（嵌入态）
+   ========================================================================== */
+.superadmin-layout .mp-analytics .card-block {
+  margin-bottom: 16px !important;
+  border-radius: var(--sa-radius) !important;
+  border: 1px solid var(--sa-border) !important;
+  box-shadow: var(--sa-shadow) !important;
+}
+.superadmin-layout .mp-analytics .card-block .el-card__header {
+  padding: 14px 20px !important;
+  border-bottom: 1px solid var(--sa-border-soft) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--sa-text) !important;
+}
+.superadmin-layout .mp-analytics .card-block .el-card__body {
+  padding: 20px !important;
+}
+.superadmin-layout .mp-analytics .embedded-toolbar {
+  background: var(--sa-card-bg);
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  box-shadow: var(--sa-shadow);
+}
+.superadmin-layout .mp-analytics .embedded-toolbar .hint {
+  color: var(--sa-text-sub) !important;
+  font-size: 12.5px !important;
+}
+.superadmin-layout .mp-analytics .embedded-toolbar .toolbar .label,
+.superadmin-layout .mp-analytics .page-head .toolbar .label {
+  color: var(--sa-text-sub) !important;
+  font-size: 12.5px !important;
+}
+.superadmin-layout .mp-analytics .props-preview {
+  color: var(--sa-text-muted) !important;
+}
+.superadmin-layout .mp-analytics .empty-hint {
+  color: var(--sa-text-muted) !important;
+}
+.superadmin-layout .mp-analytics .filter-row {
+  margin-bottom: 16px !important;
+}
+.superadmin-layout .mp-analytics .pager {
+  margin-top: 16px !important;
+}
+
+/* ==========================================================================
+   Users.vue / Enterprises.vue · 视觉对齐
+   仅通过选择器覆盖，不改 .vue
+   ========================================================================== */
+
+/* 页壳与页头（两个大页都有 .page-container / .page-header） */
+.superadmin-layout .page-container {
+  padding: 0 !important;
+  background: transparent !important;
+}
+.superadmin-layout .page-container.is-embedded {
+  padding: 0 !important;
+}
+.superadmin-layout .page-header {
+  margin-bottom: 4px !important;
+}
+.superadmin-layout .page-header .title,
+.superadmin-layout .page-header h1,
+.superadmin-layout .page-header h2 {
+  font-size: 22px !important;
+  font-weight: 700 !important;
+  color: var(--sa-text) !important;
+  letter-spacing: -0.01em !important;
+}
+.superadmin-layout .page-header .subtitle {
+  color: var(--sa-text-sub) !important;
+  font-size: 13.5px !important;
+  margin-top: 4px !important;
+}
+.superadmin-layout .page-header .header-actions {
+  gap: 8px !important;
+}
+
+/* Users.vue · 用户池总览卡 / 汇总指标卡 */
+.superadmin-layout .user-overview-grid {
+  gap: 14px !important;
+}
+.superadmin-layout .user-card {
+  border-radius: var(--sa-radius) !important;
+  border: 1px solid var(--sa-border) !important;
+  box-shadow: var(--sa-shadow) !important;
+  background: var(--sa-card-bg) !important;
+  transition: all 0.2s !important;
+}
+.superadmin-layout .user-card:hover {
+  box-shadow: var(--sa-shadow-hover) !important;
+  transform: translateY(-1px) !important;
+}
+.superadmin-layout .user-card .card-header .card-icon {
+  border-radius: 10px !important;
+  background: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .user-card .card-header .card-name {
+  color: var(--sa-text) !important;
+  font-weight: 600 !important;
+}
+.superadmin-layout .user-card .stat-main .stat-value-large {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  color: var(--sa-text) !important;
+  letter-spacing: -0.02em !important;
+}
+.superadmin-layout .user-card .stat-main .stat-label-large {
+  color: var(--sa-text-sub) !important;
+  font-size: 13px !important;
+}
+.superadmin-layout .user-card .stat-sub .stat-active {
+  color: var(--sa-success) !important;
+}
+.superadmin-layout .user-card .stat-sub .stat-tested {
+  color: var(--sa-info) !important;
+}
+
+.superadmin-layout .summary-metrics-grid {
+  gap: 14px !important;
+}
+.superadmin-layout .summary-card {
+  border-radius: var(--sa-radius) !important;
+  border: 1px solid var(--sa-border) !important;
+  box-shadow: var(--sa-shadow) !important;
+  background: var(--sa-card-bg) !important;
+  transition: all 0.2s !important;
+}
+.superadmin-layout .summary-card:hover {
+  box-shadow: var(--sa-shadow-hover) !important;
+  transform: translateY(-1px) !important;
+}
+.superadmin-layout .summary-card .summary-label {
+  color: var(--sa-text-sub) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+.superadmin-layout .summary-card .summary-value {
+  color: var(--sa-text) !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.02em !important;
+}
+.superadmin-layout .summary-card .summary-percent {
+  color: var(--sa-text-muted) !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  margin-left: 6px !important;
+}
+
+/* Users.vue · MBTI 分布卡 / 搜索条 / 表格卡 */
+.superadmin-layout .mbti-distribution-card,
+.superadmin-layout .search-section,
+.superadmin-layout .table-card,
+.superadmin-layout .content-card {
+  border-radius: var(--sa-radius) !important;
+  border: 1px solid var(--sa-border) !important;
+  box-shadow: var(--sa-shadow) !important;
+  background: var(--sa-card-bg) !important;
+}
+.superadmin-layout .mbti-distribution-card .mbti-header .mbti-icon {
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .mbti-distribution-card .mbti-header .mbti-title {
+  color: var(--sa-text) !important;
+  font-weight: 600 !important;
+}
+
+/* 工具栏（Enterprises .toolbar / Users .search-section） */
+.superadmin-layout .toolbar {
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+/* 用户表格行：头像 + 元信息 */
+.superadmin-layout .user-table .user-info-cell {
+  gap: 10px !important;
+}
+.superadmin-layout .user-table .user-avatar {
+  border-radius: 10px !important;
+}
+.superadmin-layout .user-table .user-avatar.user-avatar-letter {
+  background: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .user-table .user-details .username {
+  color: var(--sa-text) !important;
+  font-weight: 600 !important;
+}
+.superadmin-layout .user-table .user-details .openid-line,
+.superadmin-layout .user-table .user-details .phone-line {
+  color: var(--sa-text-muted) !important;
+  font-size: 12px !important;
+}
+.superadmin-layout .user-table .test-results .result-tag {
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+.superadmin-layout .user-table .test-results .no-test {
+  color: var(--sa-text-muted) !important;
+}
+
+/* 分页 */
+.superadmin-layout .pagination-container {
+  padding-top: 8px !important;
+}
+
+/* 企业详情弹窗抽屉侧栏：统一圆角边框 */
+.superadmin-layout .ud-card {
+  border-radius: var(--sa-radius-sm) !important;
+  border: 1px solid var(--sa-border) !important;
+  background: var(--sa-card-bg) !important;
+}
+.superadmin-layout .ud-side {
+  background: var(--sa-bg) !important;
+}
+.superadmin-layout .ud-tag {
+  background: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+  border-radius: 6px !important;
+}
+.superadmin-layout .ed-kpi-value {
+  color: var(--sa-text) !important;
+  font-weight: 700 !important;
+}
+
+/* 空状态统一 */
+.superadmin-layout .empty-state {
+  color: var(--sa-text-muted) !important;
+}
+
+/* ==========================================================================
+   Overview.vue · 视觉对齐（不改页面代码，只 remap 视觉 token）
+   ========================================================================== */
+.superadmin-layout .dashboard-container {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background-color: var(--sa-bg);
+}
+.superadmin-layout .dashboard-container .section-header {
+  margin-bottom: 0 !important;
+  padding: 0 !important;
+}
+.superadmin-layout .dashboard-container .section-title {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  color: var(--sa-text) !important;
+  letter-spacing: -0.01em;
+  margin: 0 !important;
+}
+.superadmin-layout .dashboard-container .section-subtitle {
+  font-size: 12.5px !important;
+  color: var(--sa-text-sub) !important;
+  margin-top: 2px !important;
+}
+.superadmin-layout .dashboard-container .stats-grid {
+  gap: 14px !important;
+}
+.superadmin-layout .dashboard-container .stat-card {
+  background: var(--sa-card-bg) !important;
+  border: 1px solid var(--sa-border) !important;
+  border-radius: var(--sa-radius) !important;
+  box-shadow: var(--sa-shadow) !important;
+  padding: 18px 20px !important;
+  transition: transform 0.18s ease, box-shadow 0.2s ease;
+}
+.superadmin-layout .dashboard-container .stat-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sa-shadow-hover) !important;
+}
+.superadmin-layout .dashboard-container .stat-card .stat-label {
+  color: var(--sa-text-sub) !important;
+  font-size: 12.5px !important;
+  margin-bottom: 6px !important;
+}
+.superadmin-layout .dashboard-container .stat-card .stat-value {
+  color: var(--sa-text) !important;
+  font-size: 26px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums;
+}
+.superadmin-layout .dashboard-container .stat-card .stat-trend {
+  font-size: 11.5px !important;
+  color: var(--sa-text-muted) !important;
+  margin-top: 6px !important;
+}
+.superadmin-layout .dashboard-container .stat-card .stat-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+.superadmin-layout .dashboard-container .stat-card .stat-icon.purple { background: var(--sa-primary-soft); color: var(--sa-primary); }
+.superadmin-layout .dashboard-container .stat-card .stat-icon.green { background: var(--sa-success-soft); color: var(--sa-success); }
+.superadmin-layout .dashboard-container .stat-card .stat-icon.orange { background: var(--sa-warning-soft); color: var(--sa-warning); }
+.superadmin-layout .dashboard-container .stat-card .stat-icon.blue { background: var(--sa-primary-soft); color: var(--sa-primary); }
+
+.superadmin-layout .dashboard-container .actions-grid {
+  gap: 12px !important;
+}
+.superadmin-layout .dashboard-container .action-card {
+  background: var(--sa-card-bg) !important;
+  border: 1px solid var(--sa-border) !important;
+  border-radius: var(--sa-radius) !important;
+  box-shadow: var(--sa-shadow) !important;
+  padding: 16px 14px !important;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.superadmin-layout .dashboard-container .action-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sa-shadow-hover) !important;
+  border-color: var(--sa-primary) !important;
+}
+.superadmin-layout .dashboard-container .action-card .action-icon {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  margin-bottom: 8px !important;
+  background: var(--sa-primary-soft) !important;
+  color: var(--sa-primary) !important;
+}
+.superadmin-layout .dashboard-container .action-card .action-label {
+  color: var(--sa-text) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+}
+
+/* ==========================================================================
+   通用：Users / Enterprises / Finance / Pricing / Questions / AIConfig / Settings
+   把「筛选条 · 卡片 · 表格头」对齐 sa-* token（只 remap，不改页面）
+   ========================================================================== */
+.superadmin-layout .page-container,
+.superadmin-layout .users-container,
+.superadmin-layout .enterprise-container,
+.superadmin-layout .enterprises-container,
+.superadmin-layout .finance-container,
+.superadmin-layout .pricing-container,
+.superadmin-layout .questions-container,
+.superadmin-layout .ai-config-container,
+.superadmin-layout .settings-container,
+.superadmin-layout .database-container,
+.superadmin-layout .distribution-container {
+  padding: 24px;
+  background-color: var(--sa-bg);
+  min-height: calc(100vh - 56px);
+}
+.superadmin-layout .page-container .page-header,
+.superadmin-layout .users-container .page-header,
+.superadmin-layout .enterprise-container .page-header,
+.superadmin-layout .enterprises-container .page-header,
+.superadmin-layout .finance-container .page-header,
+.superadmin-layout .pricing-container .page-header,
+.superadmin-layout .questions-container .page-header,
+.superadmin-layout .ai-config-container .page-header,
+.superadmin-layout .settings-container .page-header,
+.superadmin-layout .database-container .page-header,
+.superadmin-layout .distribution-container .page-header {
+  background: var(--sa-card-bg);
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-radius);
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  box-shadow: var(--sa-shadow);
+}
+.superadmin-layout .page-container .page-header .page-title,
+.superadmin-layout .page-container .page-header h2,
+.superadmin-layout .users-container .page-header h2,
+.superadmin-layout .enterprise-container .page-header h2,
+.superadmin-layout .enterprises-container .page-header h2,
+.superadmin-layout .finance-container .page-header h2,
+.superadmin-layout .pricing-container .page-header h2,
+.superadmin-layout .questions-container .page-header h2,
+.superadmin-layout .ai-config-container .page-header h2,
+.superadmin-layout .settings-container .page-header h2 {
+  font-size: 18px !important;
+  font-weight: 700 !important;
+  color: var(--sa-text) !important;
+  margin: 0 !important;
+}
+
+/* 筛选条 */
+.superadmin-layout .filter-section,
+.superadmin-layout .filter-bar,
+.superadmin-layout .search-bar,
+.superadmin-layout .query-bar {
+  background: var(--sa-card-bg) !important;
+  border: 1px solid var(--sa-border) !important;
+  border-radius: var(--sa-radius-sm) !important;
+  padding: 12px 14px !important;
+  margin-bottom: 14px !important;
+  box-shadow: var(--sa-shadow);
+}
+
+/* 表格卡片壳（很多页用 .table-section / .content-card / .data-card / .list-section） */
+.superadmin-layout .table-section,
+.superadmin-layout .content-card,
+.superadmin-layout .data-card,
+.superadmin-layout .list-section,
+.superadmin-layout .chart-section {
+  background: var(--sa-card-bg);
+  border: 1px solid var(--sa-border);
+  border-radius: var(--sa-radius);
+  box-shadow: var(--sa-shadow);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.superadmin-layout .el-table th.el-table__cell {
+  background: var(--sa-bg-sub) !important;
+  color: var(--sa-text-sub) !important;
+  font-weight: 600 !important;
+}
+.superadmin-layout .el-table__empty-text {
+  color: var(--sa-text-muted) !important;
+}
+
+/* 金额颜色 · 表格中的金额统一右对齐 + 暖色 */
+.superadmin-layout .amount-cell,
+.superadmin-layout .money-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--sa-accent);
+}
+.superadmin-layout .amount-positive {
+  color: var(--sa-success);
+}
+.superadmin-layout .amount-negative {
+  color: var(--sa-accent);
+}
+
+/* ==========================================================================
+   admin 端 · 企业后台 Dashboard.vue 强调余额 / 扣款
+   ========================================================================== */
+.admin-layout .stat-card-recharge {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%) !important;
+  border: 1px solid #FDE68A !important;
+}
+.admin-layout .stat-card-recharge .stat-label {
+  color: #92400E !important;
+  font-weight: 600 !important;
+}
+.admin-layout .stat-card-recharge .stat-value {
+  color: #92400E !important;
+}
+

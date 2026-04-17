@@ -77,6 +77,26 @@ class FeishuLeadWebhookService
     }
 
     /**
+     * 小程序「了解自己」页提交咨询申请（与 CrmReport 存客宝上报并行；飞书机器人需 feishu_lead_webhook.enabled）
+     */
+    public static function onDeepServiceConsultApply(int $userId, string $source, string $categoryTag): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        $src = trim($source) !== '' ? trim($source) : '深度服务·申请咨询';
+        $tag = trim($categoryTag);
+        $dedup = 'deep_consult_apply:' . $userId . ':' . md5($src . '|' . $tag) . ':' . date('YmdH');
+        $extra = $tag !== '' ? ('套餐: ' . self::oneLine($tag, 60)) : '';
+        self::pushLead([
+            'dedupKey'  => $dedup,
+            'userId'    => $userId,
+            'source'    => $src,
+            'extraLine' => $extra,
+        ]);
+    }
+
+    /**
      * @param array{dedupKey:string,userId:int,source:string,phone?:string,extraLine?:string} $p
      */
     public static function pushLead(array $p): void
@@ -127,7 +147,7 @@ class FeishuLeadWebhookService
             $text .= "\n" . $p['extraLine'];
         }
 
-        $lines = self::recentBehaviorLines($userId, 8);
+        $lines = UserJourneyService::recentBehaviorLines($userId, 8);
         if (count($lines) > 0) {
             $text .= "\n━━━━━━━━━━\n最近行为:";
             $i = 1;
@@ -182,85 +202,6 @@ class FeishuLeadWebhookService
             return mb_substr($s, 0, $max) . '…';
         }
         return $s;
-    }
-
-    private static function recentBehaviorLines(int $userId, int $limit): array
-    {
-        if ($userId <= 0) {
-            return [];
-        }
-        try {
-            $rows = Db::name('analytics_events')
-                ->where('userId', $userId)
-                ->order('id', 'desc')
-                ->limit($limit)
-                ->select()
-                ->toArray();
-        } catch (\Throwable $e) {
-            return [];
-        }
-        $out = [];
-        foreach ($rows as $r) {
-            $out[] = self::formatAnalyticsLine($r);
-        }
-        return $out;
-    }
-
-    private static function formatAnalyticsLine(array $r): string
-    {
-        $name = (string) ($r['eventName'] ?? '');
-        $path = trim((string) ($r['pagePath'] ?? ''));
-        $props = [];
-        if (!empty($r['propsJson'])) {
-            $decoded = is_string($r['propsJson']) ? json_decode($r['propsJson'], true) : [];
-            $props = is_array($decoded) ? $decoded : [];
-        }
-        $labelMap = [
-            'page_view'     => '浏览页面',
-            'button_click'  => '按钮点击',
-            'click_pay'     => '发起支付',
-            'click_recharge'=> '点击充值',
-        ];
-        $label = $labelMap[$name] ?? $name;
-        $detail = '';
-        if ($name === 'page_view' && $path !== '') {
-            $detail = $path;
-        }
-        if (isset($props['action']) && (string) $props['action'] !== '') {
-            $detail = (string) $props['action'];
-            if (!empty($props['productType'])) {
-                $detail .= ' · ' . (string) $props['productType'];
-            }
-        } elseif (isset($props['label']) && (string) $props['label'] !== '') {
-            $detail = (string) $props['label'];
-        } elseif ($path !== '' && $detail === '') {
-            $detail = $path;
-        }
-        $line = $detail !== '' ? "{$label}: {$detail}" : $label;
-        $ts = isset($r['clientTs']) ? (int) $r['clientTs'] : null;
-        if (!$ts && !empty($r['createdAt'])) {
-            $ts = strtotime((string) $r['createdAt']) * 1000;
-        }
-        if ($ts) {
-            $line .= ' · ' . self::humanTimeAgoCn((int) round($ts));
-        }
-        return $line;
-    }
-
-    private static function humanTimeAgoCn(int $clientTsMs): string
-    {
-        $now = (int) (microtime(true) * 1000);
-        $sec = max(0, (int) (($now - $clientTsMs) / 1000));
-        if ($sec < 60) {
-            return '刚刚';
-        }
-        if ($sec < 3600) {
-            return (int) floor($sec / 60) . '分钟前';
-        }
-        if ($sec < 86400) {
-            return (int) floor($sec / 3600) . '小时前';
-        }
-        return (int) floor($sec / 86400) . '天前';
     }
 
     private static function beginDedup(string $dedupKey): bool

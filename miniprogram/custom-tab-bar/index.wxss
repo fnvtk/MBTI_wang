@@ -1,4 +1,4 @@
-/* 自定义 tabBar：白底、顶部分割线、中间浮起圆钮 */
+/* 自定义 TabBar：白底、顶部分割线、支持 highlight 圆钮 · 动态数量 */
 .tab-bar {
   position: fixed;
   left: 0;
@@ -18,19 +18,16 @@
 .tab-bar-inner {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: space-around;
   min-height: 120rpx;
   padding: 12rpx 12rpx 10rpx;
   position: relative;
   box-sizing: border-box;
 }
 
-/* 审核模式仅「首页」「我的」两栏时，左右均匀留白 */
-.tab-bar-inner--audit {
-  justify-content: space-between;
-  padding-left: 56rpx;
-  padding-right: 56rpx;
-}
+.tab-bar-count-3 { padding-left: 40rpx; padding-right: 40rpx; }
+.tab-bar-count-4,
+.tab-bar-count-5 { padding-left: 12rpx; padding-right: 12rpx; }
 
 .tab-item {
   flex: 1;
@@ -47,6 +44,32 @@
   width: 48rpx;
   height: 48rpx;
   margin-bottom: 4rpx;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 44rpx 44rpx;
+}
+
+/* 图片形态的图标（iconUrl 传图片时使用，保留圆角便于 logo 类图片显示） */
+.tab-icon-img {
+  width: 52rpx;
+  height: 52rpx;
+  margin-bottom: 4rpx;
+  border-radius: 12rpx;
+  filter: grayscale(60%);
+  opacity: 0.85;
+}
+.tab-icon-img--active {
+  filter: none;
+  opacity: 1;
+  transform: scale(1.05);
+  box-shadow: 0 4rpx 10rpx rgba(124, 58, 237, 0.25);
+}
+
+/* 中间浮钮的图片形态 */
+.center-img {
+  width: 50rpx;
+  height: 50rpx;
+  border-radius: 50%;
 }
 
 .tab-text {
@@ -58,7 +81,43 @@
   color: #7c3aed;
 }
 
-/* 中间列：独立层叠上下文，浮钮不盖住左右 tab */
+/* ===== 图标：home ===== */
+.tab-icon--home {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 12l9-9 9 9'/><path d='M5 10v10h14V10'/><path d='M10 20v-6h4v6'/></svg>");
+}
+.tab-icon--home.tab-icon--active,
+.tab-item.active .tab-icon--home {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' stroke='%237c3aed' stroke-width='1.6' stroke-linejoin='round'><path d='M3 12l9-9 9 9'/><path d='M5 10v10h14V10'/><path d='M10 20v-6h4v6' fill='none' stroke='%23ffffff'/></svg>");
+}
+
+/* ===== 图标：ai (sparkle) ===== */
+.tab-icon--ai {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1'/><circle cx='12' cy='12' r='3'/></svg>");
+}
+.tab-icon--ai.tab-icon--active,
+.tab-item.active .tab-icon--ai {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' stroke='%237c3aed' stroke-width='1.6' stroke-linejoin='round'><path d='M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1' stroke='%237c3aed' fill='none' stroke-linecap='round'/><circle cx='12' cy='12' r='3.5' fill='%237c3aed'/></svg>");
+}
+
+/* ===== 图标：profile ===== */
+.tab-icon--profile {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='8' r='4'/><path d='M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8'/></svg>");
+}
+.tab-icon--profile.tab-icon--active,
+.tab-item.active .tab-icon--profile {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' stroke='%237c3aed' stroke-width='1.6' stroke-linejoin='round'><circle cx='12' cy='8' r='4'/><path d='M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8' fill='%237c3aed'/></svg>");
+}
+
+/* ===== 图标：camera（作为普通 Tab 时用） ===== */
+.tab-icon--camera {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23999999' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M4 7h3l2-3h6l2 3h3v13H4z'/><circle cx='12' cy='13' r='4'/></svg>");
+}
+.tab-icon--camera.tab-icon--active,
+.tab-item.active .tab-icon--camera {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%237c3aed' stroke='%237c3aed' stroke-width='1.6' stroke-linejoin='round'><path d='M4 7h3l2-3h6l2 3h3v13H4z'/><circle cx='12' cy='13' r='4' fill='%23ffffff' stroke='%237c3aed'/></svg>");
+}
+
+/* ===== 中间浮钮 ===== */
 .tab-slot-middle {
   flex: 1;
   min-width: 0;
@@ -71,7 +130,6 @@
   padding-bottom: 0;
 }
 
-/* 浮钮：整体上移，更突出圆形快门、减少与底栏顶边重叠感 */
 .middle-fab {
   display: flex;
   flex-direction: column;
@@ -104,9 +162,19 @@
   box-shadow: 0 4rpx 20rpx rgba(124, 58, 237, 0.6);
 }
 
-.center-icon {
-  width: 40rpx;
-  height: 40rpx;
+.center-svg {
+  width: 44rpx;
+  height: 44rpx;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 42rpx 42rpx;
+}
+
+.center-svg--camera {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M4 7h3l2-3h6l2 3h3v13H4z'/><circle cx='12' cy='13' r='4'/></svg>");
+}
+.center-svg--ai {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1'/><circle cx='12' cy='12' r='3.5' fill='%23ffffff'/></svg>");
 }
 
 .tab-text-fab {

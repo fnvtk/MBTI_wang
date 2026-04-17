@@ -1,9 +1,48 @@
 <template>
   <div class="dashboard-viewport" v-loading="loading">
     <header class="dash-head">
-      <h1 class="dash-title">数据概览</h1>
-      <p class="dash-tagline"></p>
+      <h1 class="dash-title">企业概览</h1>
+      <p class="dash-tagline">实时掌握余额、扣款、冻结佣金与补充建议</p>
     </header>
+
+    <div class="wallet-strip">
+      <div class="wallet-card wallet-card--primary">
+        <div class="wallet-info">
+          <div class="wallet-label">当前余额</div>
+          <div class="wallet-value">¥{{ fenToYuan(finance.balanceFen) }}</div>
+          <div class="wallet-foot">历史充值 ¥{{ fenToYuan(finance.manualRechargeFen) }}</div>
+        </div>
+        <div class="wallet-icon"><el-icon><Wallet /></el-icon></div>
+        <el-button type="primary" size="small" class="wallet-action" @click="openRechargeDialog">立即充值</el-button>
+      </div>
+      <div class="wallet-card wallet-card--consume">
+        <div class="wallet-info">
+          <div class="wallet-label">本月已扣款</div>
+          <div class="wallet-value">¥{{ fenToYuan(finance.monthConsumeFen) }}</div>
+          <div class="wallet-foot">日均 ¥{{ fenToYuan(finance.avgDailyConsumeFen) }} · 今日 ¥{{ fenToYuan(finance.todayConsumeFen) }}</div>
+        </div>
+        <div class="wallet-icon"><el-icon><TrendCharts /></el-icon></div>
+      </div>
+      <div class="wallet-card wallet-card--frozen">
+        <div class="wallet-info">
+          <div class="wallet-label">冻结佣金</div>
+          <div class="wallet-value">¥{{ fenToYuan(finance.frozenCommissionFen) }}</div>
+          <div class="wallet-foot">余额补足后自动解冻</div>
+        </div>
+        <div class="wallet-icon"><el-icon><Lock /></el-icon></div>
+      </div>
+      <div class="wallet-card wallet-card--suggest">
+        <div class="wallet-info">
+          <div class="wallet-label">建议充值</div>
+          <div class="wallet-value">
+            <template v-if="finance.suggestRechargeFen > 0">¥{{ fenToYuan(finance.suggestRechargeFen) }}</template>
+            <template v-else>—</template>
+          </div>
+          <div class="wallet-foot">{{ suggestHint }}</div>
+        </div>
+        <div class="wallet-icon"><el-icon><WarningFilled /></el-icon></div>
+      </div>
+    </div>
 
     <div class="dash-kpis">
       <div v-for="(card, i) in kpiCards" :key="card.key" class="stat-card" :style="{ animationDelay: `${i * 45}ms` }">
@@ -15,21 +54,43 @@
           <el-icon><component :is="card.icon" /></el-icon>
         </div>
       </div>
-      <div class="stat-card stat-card-recharge" :style="{ animationDelay: `${kpiCards.length * 45}ms` }">
-        <div class="stat-card-recharge-inner">
-          <div class="stat-info stat-info--recharge">
-            <div class="stat-label">企业余额</div>
-            <div class="stat-value-row">
-              <span class="stat-value">{{ enterpriseBalanceDisplay }}</span>
-              <el-button link type="primary" size="small" class="recharge-btn-inline" @click="goEnterpriseRecharge">充值</el-button>
+    </div>
+
+    <el-dialog v-model="rechargeVisible" title="企业余额充值" width="420px" :close-on-click-modal="false" destroy-on-close>
+      <div class="recharge-dialog">
+        <el-form :model="rechargeForm" label-width="80px" size="default">
+          <el-form-item label="金额(元)">
+            <el-input-number
+              v-model="rechargeForm.amountYuan"
+              :min="1"
+              :max="100000"
+              :step="100"
+              controls-position="right"
+              style="width:100%"
+            />
+          </el-form-item>
+          <el-form-item v-if="quickAmounts.length" label="快速">
+            <div class="recharge-quick">
+              <el-button
+                v-for="a in quickAmounts"
+                :key="a"
+                size="small"
+                :type="rechargeForm.amountYuan === a ? 'primary' : 'default'"
+                @click="rechargeForm.amountYuan = a"
+              >¥{{ a }}</el-button>
             </div>
-          </div>
+          </el-form-item>
+        </el-form>
+        <div class="recharge-action">
+          <el-button type="primary" :loading="rechargeLoading" @click="generateRechargeQr">生成充值码</el-button>
+          <span class="recharge-tip">用微信扫码，在小程序完成支付</span>
         </div>
-        <div class="stat-icon amber">
-          <el-icon><Wallet /></el-icon>
+        <div v-if="rechargeQrcode" class="recharge-qr">
+          <img :src="rechargeQrcode" alt="充值二维码" />
+          <div class="recharge-qr-text">扫码支付 ¥{{ rechargeAmountYuanDisplay }}</div>
         </div>
       </div>
-    </div>
+    </el-dialog>
 
     <div class="dash-catalog" v-if="testCatalog.length">
       <div
@@ -158,7 +219,9 @@ import {
   Reading,
   Histogram,
   Medal,
-  Wallet
+  Wallet,
+  Lock,
+  WarningFilled
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -192,12 +255,65 @@ const stats = reactive({
   activeToday: 0
 })
 
-/** 企业余额（分），来自 /admin/finance/overview，与财务页一致 */
-const balanceFen = ref(0)
+/** 企业钱包概览（分），来自 /admin/finance/overview */
+const finance = reactive({
+  balanceFen: 0,
+  manualRechargeFen: 0,
+  frozenCommissionFen: 0,
+  monthConsumeFen: 0,
+  todayConsumeFen: 0,
+  avgDailyConsumeFen: 0,
+  suggestRechargeFen: 0,
+})
 
 const fenToYuan = (fen: number) => (Number(fen || 0) / 100).toFixed(2)
 
-const enterpriseBalanceDisplay = computed(() => `¥${fenToYuan(balanceFen.value)}`)
+const suggestHint = computed(() => {
+  if (finance.avgDailyConsumeFen <= 0) return '暂无消耗，按需充值即可'
+  if (finance.suggestRechargeFen <= 0) return '余额可支撑 > 14 日'
+  return '≥ 2 周使用量'
+})
+
+const rechargeVisible = ref(false)
+const rechargeLoading = ref(false)
+const rechargeForm = reactive({ amountYuan: 500 })
+const rechargeQrcode = ref('')
+const quickAmounts = [100, 500, 1000, 3000, 5000]
+const rechargeAmountYuanDisplay = computed(() => Number(rechargeForm.amountYuan || 0).toFixed(2))
+
+function openRechargeDialog() {
+  rechargeQrcode.value = ''
+  if (finance.suggestRechargeFen > 0) {
+    rechargeForm.amountYuan = Math.max(100, Math.round(finance.suggestRechargeFen / 100))
+  } else if (!rechargeForm.amountYuan) {
+    rechargeForm.amountYuan = 500
+  }
+  rechargeVisible.value = true
+}
+
+async function generateRechargeQr() {
+  if (rechargeLoading.value) return
+  const amountFen = Math.round(Number(rechargeForm.amountYuan || 0) * 100)
+  if (amountFen <= 0) {
+    ElMessage.warning('请先输入充值金额')
+    return
+  }
+  rechargeLoading.value = true
+  rechargeQrcode.value = ''
+  try {
+    const res: any = await request.post('/admin/finance/recharge-qrcode', { amountFen })
+    const qr = res?.data?.qrcode || res?.qrcode
+    if (typeof qr === 'string' && qr) {
+      rechargeQrcode.value = qr
+    } else {
+      ElMessage.error(res?.message || '二维码生成失败')
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '二维码生成失败')
+  } finally {
+    rechargeLoading.value = false
+  }
+}
 
 const testTrends = ref<
   Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>
@@ -244,7 +360,7 @@ const kpiCards = computed(() => [
 ])
 
 function goEnterpriseRecharge() {
-  void router.push({ path: '/admin/settings', query: { tab: 'finance' } })
+  openRechargeDialog()
 }
 
 const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
@@ -389,9 +505,22 @@ function summarizeTypes(row: TopUserRow) {
 async function loadFinanceBalance() {
   try {
     const res: any = await request.get('/admin/finance/overview')
-    balanceFen.value = Number(res?.data?.balanceFen ?? 0)
+    const d = res?.data || {}
+    finance.balanceFen = Number(d.balanceFen ?? 0)
+    finance.manualRechargeFen = Number(d.manualRechargeFen ?? 0)
+    finance.frozenCommissionFen = Number(d.frozenCommissionFen ?? 0)
+    finance.monthConsumeFen = Number(d.monthConsumeFen ?? 0)
+    finance.todayConsumeFen = Number(d.todayConsumeFen ?? 0)
+    finance.avgDailyConsumeFen = Number(d.avgDailyConsumeFen ?? 0)
+    finance.suggestRechargeFen = Number(d.suggestRechargeFen ?? 0)
   } catch {
-    balanceFen.value = 0
+    finance.balanceFen = 0
+    finance.manualRechargeFen = 0
+    finance.frozenCommissionFen = 0
+    finance.monthConsumeFen = 0
+    finance.todayConsumeFen = 0
+    finance.avgDailyConsumeFen = 0
+    finance.suggestRechargeFen = 0
   }
 }
 
@@ -526,10 +655,72 @@ const loadInviteQrcode = async () => {
   max-width: 920px;
 }
 
-.dash-kpis {
+.wallet-strip {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.wallet-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+  animation: dashFadeUp 0.45s ease-out both;
+}
+
+.wallet-info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wallet-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.wallet-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.wallet-foot { font-size: 11px; color: #94a3b8; }
+.wallet-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.wallet-card--primary { background: linear-gradient(135deg, #eef2ff 0%, #ffffff 60%); }
+.wallet-card--primary .wallet-icon { background: #eef2ff; color: #4f46e5; }
+.wallet-card--primary .wallet-value { color: #3730a3; }
+.wallet-card--consume .wallet-icon { background: #ecfdf5; color: #10b981; }
+.wallet-card--frozen .wallet-icon { background: #fffbeb; color: #b45309; }
+.wallet-card--suggest .wallet-icon { background: #fef2f2; color: #ef4444; }
+.wallet-action {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 4px 12px;
+  font-weight: 600;
+  height: auto;
+}
+
+.recharge-dialog { display: flex; flex-direction: column; gap: 12px; }
+.recharge-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.recharge-action { display: flex; align-items: center; gap: 10px; }
+.recharge-tip { font-size: 12px; color: #94a3b8; }
+.recharge-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px; }
+.recharge-qr img { width: 200px; height: 200px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 8px; }
+.recharge-qr-text { font-size: 13px; color: #475569; }
+
+.dash-kpis {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 8px;
 }
@@ -983,10 +1174,16 @@ const loadInviteQrcode = async () => {
   }
 }
 
+@media (max-width: 1100px) {
+  .wallet-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 640px) {
   .dash-kpis {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .wallet-strip { grid-template-columns: 1fr; }
 
   .dash-catalog {
     grid-template-columns: repeat(2, 1fr);

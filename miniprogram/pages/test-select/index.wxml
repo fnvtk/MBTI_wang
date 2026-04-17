@@ -1,8 +1,8 @@
-<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / SBTI / PDP / DISC）-->
+<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / SBTI / PDP / DISC / AI）-->
 <view class="container">
   <view class="card intro-card">
     <text class="intro-title">选择一项详细性格测试</text>
-    <text class="intro-desc">完成问卷即可获得对应维度的专业性格报告</text>
+    <text class="intro-desc">问卷测评与 AI 对话 / 拍照面相分项进入，完成后可获得对应报告</text>
   </view>
 
   <view class="card entry-card" bindtap="goMBTI" wx:if="{{permMbti}}">
@@ -45,6 +45,28 @@
     <view class="entry-content">
       <text class="entry-name">DISC 性格测试</text>
       <text class="entry-brief">D/I/S/C 四维 · 沟通与行为倾向</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goAIChatInterpretation" wx:if="{{permAiHub}}">
+    <view class="entry-icon-wrap ai-chat">
+      <text class="entry-emoji">💬</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">AI 对话解读</text>
+      <text class="entry-brief">与神仙 AI 对话 · 结合测评画像的深度解读与建议</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goAIFaceAnalysis" wx:if="{{permFace}}">
+    <view class="entry-icon-wrap ai-face">
+      <text class="entry-emoji">📷</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">拍照面相分析</text>
+      <text class="entry-brief">上传正面与侧面照 · 面相 / 骨相与性格报告</text>
     </view>
     <text class="entry-arrow">→</text>
   </view>

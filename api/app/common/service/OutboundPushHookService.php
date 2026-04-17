@@ -243,8 +243,29 @@ class OutboundPushHookService
                     $lines[] = '测试结果: ' . self::truncatePlainText((string) ($payload['resultSummary'] ?? ''), 100) . "\n";
                 }
                 $lines[] = '测试时间: ' . $testTime;
+                $body = implode('', $lines);
+                $mgmtSummary = trim((string) ($payload['managementSummary'] ?? ''));
+                if ($mgmtSummary !== '') {
+                    $body .= "\n━━━━━━━━━━\n用户管理:\n" . $mgmtSummary;
+                }
+                $um = $payload['userManagement'] ?? null;
+                if (is_array($um) && !empty($um['openidTail6'])) {
+                    $body .= "\nOpenID尾号(脱敏): " . (string) $um['openidTail6'];
+                }
+                $beh = $payload['recentBehaviors'] ?? [];
+                if (is_array($beh) && count($beh) > 0) {
+                    $body .= "\n━━━━━━━━━━\n最近行为:";
+                    $i = 1;
+                    foreach ($beh as $bl) {
+                        if (!is_string($bl) || $bl === '') {
+                            continue;
+                        }
+                        $body .= "\n  {$i}. {$bl}";
+                        $i++;
+                    }
+                }
 
-                return implode('', $lines);
+                return $body;
             default:
                 return $head . "\n事件: " . $event;
         }
@@ -590,6 +611,50 @@ class OutboundPushHookService
         return 0;
     }
 
+    /**
+     * 测评完成 JSON / 飞书文本：附加用户管理字段 + analytics 用户旅程（与 FeishuLeadWebhookService 获客卡片「最近行为」同源）
+     *
+     * @param array<string,mixed>        $payload   引用
+     * @param array<string,mixed>        $testResultRow test_results 一行
+     * @param array<string,mixed>|null $wuArr     wechat_users 行（可含 openid）
+     */
+    private static function mergeTestResultUserJourneyPayload(array &$payload, int $userId, array $testResultRow, ?array $wuArr): void
+    {
+        if ($userId <= 0) {
+            $payload['recentBehaviors'] = [];
+            $payload['userManagement'] = [
+                'wechatUserId'   => 0,
+                'enterpriseId'   => 0,
+                'enterpriseName' => null,
+                'openidTail6'    => null,
+                'testScope'      => (string) ($testResultRow['testScope'] ?? ''),
+            ];
+            $payload['managementSummary'] = '';
+
+            return;
+        }
+        $eidResolved = self::resolveEnterpriseIdForTestResult($testResultRow, $wuArr);
+        $tenant = self::tenantPayload($eidResolved);
+        $openid = '';
+        if ($wuArr !== null && isset($wuArr['openid'])) {
+            $openid = trim((string) $wuArr['openid']);
+        }
+        $tail = '';
+        if ($openid !== '') {
+            $tail = strlen($openid) >= 6 ? substr($openid, -6) : $openid;
+        }
+        $payload['userManagement'] = [
+            'wechatUserId'   => $userId,
+            'enterpriseId'   => $eidResolved,
+            'enterpriseName' => $tenant['enterpriseName'],
+            'openidTail6'    => $tail !== '' ? $tail : null,
+            'testScope'      => (string) ($testResultRow['testScope'] ?? ''),
+        ];
+        $payload['recentBehaviors'] = UserJourneyService::recentBehaviorLines($userId, 12);
+        $trEid = (int) ($testResultRow['enterpriseId'] ?? 0);
+        $payload['managementSummary'] = UserJourneyService::managementSummaryLine($userId, $trEid);
+    }
+
     public static function isEventEnabled(string $event, array $cfg): bool
     {
         if (empty($cfg['enabled'])) {
@@ -712,7 +777,7 @@ class OutboundPushHookService
         $completedAt = date('Y-m-d H:i:s', $createdAt);
 
         $wu = $userId > 0
-            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId')->find()
+            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId,openid')->find()
             : null;
         $userName = $wu ? trim((string) ($wu['nickname'] ?? '')) : '';
         if ($userName === '') {
@@ -765,6 +830,7 @@ class OutboundPushHookService
                 $payload['resultDisc'] = $dims['disc'];
             }
         }
+        self::mergeTestResultUserJourneyPayload($payload, $userId, $row, $wuArr);
 
         self::dispatch('test.result_completed', [
             'event'       => 'test.result_completed',
@@ -807,7 +873,7 @@ class OutboundPushHookService
         $completedAt = date('Y-m-d H:i:s', $createdAt);
 
         $wu = $userId > 0
-            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId')->find()
+            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId,openid')->find()
             : null;
         $userName = $wu ? trim((string) ($wu['nickname'] ?? '')) : '';
         if ($userName === '') {
@@ -860,6 +926,7 @@ class OutboundPushHookService
                 $payload['resultDisc'] = $dims['disc'];
             }
         }
+        self::mergeTestResultUserJourneyPayload($payload, $userId, $row, $wuArr);
 
         return self::dispatchDetailed('test.result_completed', [
             'event'       => 'test.result_completed',

@@ -1,5 +1,5 @@
 <!--pages/profile/index.wxml-->
-<view class="page">
+<view class="page tabbar-pad">
 
   <!-- 顶部栏 -->
   <view class="topbar">
@@ -11,28 +11,12 @@
     </view>
   </view>
 
-  <!-- 未登录 -->
-  <view class="user-card" wx:if="{{!hasLogin}}" bindtap="doLogin">
-    <view class="avatar-ring">
-      <view class="avatar-letter-wrap" style="background:{{avatarBgColor}}">
-        <text class="avatar-letter">{{avatarLetter}}</text>
-      </view>
-    </view>
-    <view class="user-meta">
-      <text class="user-name" wx:if="{{loginLoading}}">登录中...</text>
-      <text class="user-name" wx:elif="{{loginFailed}}">登录失败，点击重试</text>
-      <text class="user-name" wx:else>点击登录</text>
-      <text class="user-sub">登录后查看你的测试结果</text>
-    </view>
-    <text class="chevron">›</text>
-  </view>
-
-  <!-- 已登录：用户卡片（点击进入个人资料） -->
-  <view class="user-card" wx:if="{{hasLogin}}" bindtap="goToUserProfile">
-    <!-- 头像区 -->
+  <!-- 用户卡片：未登录点击登录，已登录点击进入个人资料（合并双态） -->
+  <view class="user-card" bindtap="onUserCardTap">
+    <!-- 头像区：已登录显示用户头像 + 在线点，未登录仅字母圆 -->
     <view class="avatar-wrap">
       <view class="avatar-ring">
-        <image wx:if="{{userInfo && (userInfo.avatarUrl || userInfo.avatar)}}"
+        <image wx:if="{{hasLogin && userInfo && (userInfo.avatarUrl || userInfo.avatar)}}"
                class="avatar-img"
                src="{{userInfo.avatarUrl || userInfo.avatar}}"
                mode="aspectFill"/>
@@ -40,48 +24,88 @@
           <text class="avatar-letter">{{avatarLetter}}</text>
         </view>
       </view>
-      <view class="online-dot"></view>
+      <view wx:if="{{hasLogin}}" class="online-dot"></view>
     </view>
 
-    <!-- 昵称 + 标签 -->
+    <!-- 元信息：已登录昵称+标签；未登录登录提示 -->
     <view class="user-meta">
-      <text class="nickname-text">{{nicknameDisplay || '点击设置昵称'}}</text>
-      <!-- 类型标签 -->
-      <scroll-view scroll-x class="tags-scroll">
-        <view class="tags-row">
-          <view class="tag tag-purple" wx:if="{{mbtiType && permMbti}}">
-            <text class="tag-text">{{mbtiType}}</text>
+      <block wx:if="{{hasLogin}}">
+        <text class="nickname-text">{{nicknameDisplay || '点击设置昵称'}}</text>
+        <scroll-view scroll-x class="tags-scroll">
+          <view class="tags-row">
+            <view class="tag tag-purple" wx:if="{{mbtiType && permMbti}}">
+              <text class="tag-text">{{mbtiType}}</text>
+            </view>
+            <view class="tag tag-sbti" wx:if="{{sbtiType && permSbti}}">
+              <text class="tag-text">{{sbtiType}}</text>
+            </view>
+            <view class="tag tag-blue" wx:if="{{discType && permDisc}}">
+              <text class="tag-text">{{discType}}</text>
+            </view>
+            <view class="tag tag-orange" wx:if="{{pdpType && permPdp}}">
+              <text class="tag-text">{{pdpType}}</text>
+            </view>
+            <view class="tag tag-gray" wx:if="{{showEmptyPersonalityTags}}">
+              <text class="tag-text">暂无测试记录</text>
+            </view>
           </view>
-          <view class="tag tag-sbti" wx:if="{{sbtiType && permSbti}}">
-            <text class="tag-text">{{sbtiType}}</text>
-          </view>
-          <view class="tag tag-blue" wx:if="{{discType && permDisc}}">
-            <text class="tag-text">{{discType}}</text>
-          </view>
-          <view class="tag tag-orange" wx:if="{{pdpType && permPdp}}">
-            <text class="tag-text">{{pdpType}}</text>
-          </view>
-          <view class="tag tag-gray" wx:if="{{showEmptyPersonalityTags}}">
-            <text class="tag-text">暂无测试记录</text>
-          </view>
-        </view>
-      </scroll-view>
+        </scroll-view>
+      </block>
+      <block wx:else>
+        <text class="user-name" wx:if="{{loginLoading}}">登录中...</text>
+        <text class="user-name" wx:elif="{{loginFailed}}">登录失败，点击重试</text>
+        <text class="user-name" wx:else>点击登录</text>
+        <text class="user-sub">登录后查看你的测试结果</text>
+      </block>
     </view>
 
     <text class="chevron">›</text>
   </view>
 
-  <!-- 深度解析：四字标题下整合「最新测试 + 查看全部/历史」与深度服务入口（单面板） -->
+  <!-- 数据条：测试数 / 邀请 / 收益 / 可提现（营销数据融入身份，不再独立突兀卡） -->
+  <view class="user-stats" wx:if="{{hasLogin}}">
+    <view class="user-stat" bindtap="goToHistory">
+      <text class="user-stat__v">{{testCount || 0}}</text>
+      <text class="user-stat__l">测评记录</text>
+    </view>
+    <view
+      class="user-stat"
+      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      bindtap="goToPromo"
+    >
+      <text class="user-stat__v">{{promoTotalInvite || 0}}</text>
+      <text class="user-stat__l">邀请好友</text>
+    </view>
+    <!-- 第三格：可提现 → 分销中心 -->
+    <view
+      class="user-stat user-stat--highlight"
+      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      bindtap="goToPromo"
+    >
+      <text class="user-stat__v">¥{{promoWithdrawable || '0.00'}}</text>
+      <text class="user-stat__l">可提现 ›</text>
+    </view>
+    <!-- 第四格：累计 → 提现记录 -->
+    <view
+      class="user-stat user-stat--sub"
+      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      bindtap="goToPromoWithdrawals"
+    >
+      <text class="user-stat__v user-stat__v--sm">¥{{promoTotalEarned || '0.00'}}</text>
+      <text class="user-stat__l">累计 ›</text>
+    </view>
+  </view>
+
+  <!-- 我的测评：最新测试横滑 + 功能图标网格（Soul 风：图标网格代替长列表） -->
   <view class="section px-section" wx:if="{{hasLogin}}">
-    <text class="section-title depth-parse-title">深度解析</text>
-    <view class="depth-unified-card">
-      <view class="depth-unified-header">
-        <text class="depth-unified-subtitle">最新测试</text>
-        <view class="depth-header-link" bindtap="goToHistory">
-          <text class="depth-header-link-text">查看全部<text wx:if="{{testCount > 0}}"> · {{testCount}}条</text></text>
-          <text class="depth-header-chevron">›</text>
-        </view>
+    <view class="sec-head">
+      <text class="sec-head__title">我的测评</text>
+      <view class="sec-head__link" bindtap="goToHistory">
+        <text>全部<text wx:if="{{testCount > 0}}"> · {{testCount}}</text></text>
+        <text class="sec-head__chev">›</text>
       </view>
+    </view>
+    <view class="depth-unified-card">
       <scroll-view wx:if="{{showLatestTestRow}}" scroll-x class="cards-scroll cards-scroll--in-card" enhanced show-scrollbar="{{false}}">
         <view class="cards-row cards-row--in-card">
           <view class="result-card card-purple {{mbtiType ? '' : 'result-card--placeholder'}}" bindtap="viewMBTI" wx:if="{{permMbti}}">
@@ -140,83 +164,50 @@
           </view>
         </view>
       </scroll-view>
-      <view wx:if="{{showLatestTestRow}}" class="depth-empty-hint depth-empty-hint--compact">
-        <text>点击卡片查看详情；右上方可查看全部测试记录。</text>
+    </view>
+  </view>
+
+  <!-- 快捷入口图标网格（Soul 风：2×N 图标 + 短标题） -->
+  <view class="section px-section" wx:if="{{hasLogin}}">
+    <view class="quick-grid quick-grid--4">
+      <view class="quick-grid__item" bindtap="goToTestSelect">
+        <view class="quick-grid__ic quick-grid__ic--purple">🧠</view>
+        <text class="quick-grid__label">性格测试</text>
       </view>
-      <view class="depth-inner-divider"></view>
-      <view class="menu-item menu-item--flat" bindtap="goToTestSelect">
-        <view class="menu-icon-wrap menu-icon-test-select">
-          <text class="menu-icon">🧠</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">详细性格测试</text>
-          <text class="menu-sub">MBTI、PDP、DISC 三套问卷，任选一项开始</text>
-        </view>
-        <text class="menu-chevron">›</text>
+      <view class="quick-grid__item" bindtap="goToOrders">
+        <view class="quick-grid__ic quick-grid__ic--emerald">🧾</view>
+        <text class="quick-grid__label">我的订单</text>
       </view>
-      <view class="menu-divider menu-divider--in-card"></view>
-      <view class="menu-item menu-item--flat" bindtap="goToDeepService">
-        <view class="menu-icon-wrap menu-icon-purple">
-          <text class="menu-icon">✨</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">深度解读与方案</text>
-          <text class="menu-sub">个人报告与团队／企业服务，进入后按需选择</text>
-        </view>
-        <text class="menu-chevron">›</text>
+      <view class="quick-grid__item" bindtap="goToDeepService">
+        <view class="quick-grid__ic quick-grid__ic--indigo">💎</view>
+        <text class="quick-grid__label">了解自己</text>
       </view>
-      <view class="menu-divider menu-divider--in-card"></view>
-      <view class="menu-item menu-item--flat" bindtap="goToOrders">
-        <view class="menu-icon-wrap menu-icon-emerald">
-          <text class="menu-icon">🧾</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">我的订单</text>
-          <text class="menu-sub">支付记录与订单状态</text>
-        </view>
-        <text class="menu-chevron">›</text>
-      </view>
-      <view class="menu-divider menu-divider--in-card" wx:if="{{hasEnterprise}}"></view>
-      <view class="menu-item menu-item--flat" wx:if="{{hasEnterprise}}" bindtap="goToMyResume">
-        <view class="menu-icon-wrap menu-icon-indigo">
-          <text class="menu-icon">📋</text>
-        </view>
-        <view class="menu-content">
-          <text class="menu-title">我的简历</text>
-          <text class="menu-sub">查看与设置默认简历</text>
-        </view>
-        <text class="menu-chevron">›</text>
+      <view class="quick-grid__item" bindtap="goToMatchJob">
+        <view class="quick-grid__ic quick-grid__ic--blue">💼</view>
+        <text class="quick-grid__label">匹配工作</text>
       </view>
     </view>
   </view>
 
-  <!-- 推广中心（与管理端开关、标题配置一致；卡片样式与其他区块统一） -->
-  <view class="section px-section" wx:if="{{hasLogin && promoDistributionEnabled && !reviewMode && permDistribution}}">
-    <view class="promo-card" bindtap="goToPromo">
-      <view class="promo-header">
-        <view class="promo-title-wrap">
-          <text class="promo-icon">📈</text>
-          <text class="promo-title">{{promoCenterTitle}}</text>
-        </view>
-      </view>
-      <view class="promo-stats">
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">邀请好友</text>
-          <text class="promo-stat-value">{{promoTotalInvite}}</text>
-        </view>
-        <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">累计收益</text>
-          <text class="promo-stat-value">¥{{promoTotalEarned}}</text>
-        </view>
-        <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">可提现</text>
-          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
-        </view>
+  <!-- Soul 引流：后台「当前推荐」第 1 篇 + 可配区块标题（灰字可点） -->
+  <view class="section px-section profile-reco-wrap" wx:if="{{hasLogin && profileRecoShow}}">
+    <view
+      class="profile-reco-card"
+      hover-class="profile-reco-card--press"
+      bindtap="onTapProfileReco"
+      data-id="{{profileRecoArticle.id}}"
+      data-url="{{profileRecoArticle.url}}"
+      data-title="{{profileRecoArticle.title}}"
+    >
+      <text class="profile-reco-label">{{profileRecoSectionLabel}}</text>
+      <view class="profile-reco-row">
+        <text class="profile-reco-title">{{profileRecoArticle.title}}</text>
+        <text class="profile-reco-chev">›</text>
       </view>
     </view>
   </view>
+
+  <!-- 分销/提现入口已上移至数据条下方（promo-quick-bar） -->
 
   <view class="bottom-safe"></view>
   <custom-tab-bar />

@@ -1,0 +1,6 @@
+.placeholder {
+  padding: 120rpx 40rpx;
+  text-align: center;
+  color: #9CA3AF;
+  font-size: 28rpx;
+}

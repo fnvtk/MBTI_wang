@@ -28,10 +28,18 @@ const getBaseURL = (): string => {
   return '/api/v1'
 }
 
+// 本地连云库时接口可能较慢：开发环境默认放宽；可用 VITE_REQUEST_TIMEOUT_MS 覆盖
+const requestTimeoutMs = (() => {
+  const raw = import.meta.env.VITE_REQUEST_TIMEOUT_MS
+  const n = typeof raw === 'string' ? Number(raw.trim()) : Number(raw)
+  if (Number.isFinite(n) && n > 0) return n
+  return import.meta.env.DEV ? 180000 : 15000
+})()
+
 // 创建 axios 实例
 const service: AxiosInstance = axios.create({
   baseURL: getBaseURL(),
-  timeout: 15000,
+  timeout: requestTimeoutMs,
   headers: {
     'Content-Type': 'application/json'
   }

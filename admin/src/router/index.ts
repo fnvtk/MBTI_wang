@@ -27,7 +27,7 @@ const routes: RouteRecordRaw[] = [
         path: 'dashboard',
         name: 'AdminDashboard',
         component: () => import('@/views/admin/Dashboard.vue'),
-        meta: { title: '概览' }
+        meta: { title: '企业概览' }
       },
       {
         path: 'users',
@@ -63,7 +63,7 @@ const routes: RouteRecordRaw[] = [
         path: 'settings',
         name: 'AdminSettings',
         component: () => import('@/views/admin/Settings.vue'),
-        meta: { title: '系统设置' }
+        meta: { title: '企业设置' }
       },
     ]
   },
@@ -137,6 +137,30 @@ const routes: RouteRecordRaw[] = [
         name: 'SuperAdminAIConfig',
         component: () => import('@/views/superadmin/AIConfig.vue'),
         meta: { title: '智能算力' }
+      },
+      {
+        path: 'soul-articles',
+        name: 'SuperAdminSoulArticles',
+        redirect: to => ({
+          path: '/superadmin/enterprises',
+          query: { ...to.query, tab: 'soulArticles' }
+        })
+      },
+      {
+        path: 'mp-tabbar',
+        name: 'SuperAdminMpTabBar',
+        redirect: to => ({
+          path: '/superadmin/enterprises',
+          query: { ...to.query, tab: 'mpTabbar' }
+        })
+      },
+      {
+        path: 'profit-rules',
+        name: 'SuperAdminProfitRules',
+        redirect: to => ({
+          path: '/superadmin/enterprises',
+          query: { ...to.query, tab: 'profitRules' }
+        })
       },
       {
         path: 'settings',

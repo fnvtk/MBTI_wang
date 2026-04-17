@@ -3,7 +3,9 @@ namespace app\controller\api;
 
 use app\BaseController;
 use app\common\PdpDiscResultText;
+use app\common\service\FeishuLeadWebhookService;
 use app\common\service\JwtService;
+use app\common\service\UserJourneyService;
 use think\facade\Db;
 use think\facade\Log;
 
@@ -22,6 +24,7 @@ class CrmReport extends BaseController
      * @param string remark    备注，如"申请咨询"/"完成付款"
      * @param string tags      可选，逗号分隔的微信标签
      * @param string siteTags  可选，逗号分隔的站内标签
+     * @param bool   deepConsult 为 true 时：「了解自己」申请咨询；apiKey 可空，后端按用户归属企业从 cunkebao_keys 解析；并推送飞书获客（若已配置）
      */
     public function report()
     {
@@ -49,6 +52,8 @@ class CrmReport extends BaseController
         $tags     = trim((string) ($this->request->param('tags', '') ?? ''));
         $siteTags = trim((string) ($this->request->param('siteTags', '') ?? ''));
 
+        $deepConsult = self::isTruthyParam($this->request->param('deepConsult', false));
+
         // 测评类付费（人脸/MBTI/PDP/DISC）：未传 apiKey 时从企业后台配置 cunkebao_keys 解析（与深度服务「完成付款」上报一致）
         $testType           = trim((string) ($this->request->param('testType', '') ?? ''));
         $testResultId       = (int) ($this->request->param('testResultId', 0) ?? 0);
@@ -70,6 +75,15 @@ class CrmReport extends BaseController
             }
         }
 
+        // 「了解自己」申请咨询：类目未配 consultWechat 时，按用户归属企业回落 cunkebao_keys
+        if ($apiKey === '' && $deepConsult && $userId > 0) {
+            $eidDeep = (int) (Db::name('wechat_users')->where('id', $userId)->value('enterpriseId') ?? 0);
+            $fk      = self::readSingleCunkebaoApiKeyWithFallback($eidDeep);
+            if ($fk !== '') {
+                $apiKey = $fk;
+            }
+        }
+
         // 使用企业 cunkebao_keys 的「测评付费」上报：须校验已支付（防止未支付伪造「完成付款」）
         if ($resolvedFromEnterpriseKeys && !empty($apiKey)) {
             $deny = self::verifyTestPaidForCrmReport($userId, $testType, $testResultId);
@@ -78,19 +92,58 @@ class CrmReport extends BaseController
             }
         }
 
-        // apiKey 为空则跳过，不影响主流程
-        if (empty($apiKey)) {
+        if (empty($apiKey) && !$deepConsult) {
             return success(['reported' => false, 'reason' => 'no_api_key']);
         }
 
         // 测评结果：备注仅摘要；站内/微信标签含「测评名,结果」
         if ($testResultId > 0 && $userId > 0) {
             self::applyTestResultSummaryToReportPayload($userId, $testType, $testResultId, $remark, $tags, $siteTags);
+            $eidForMgmt = $contextEnterpriseId;
+            if ($eidForMgmt <= 0) {
+                $eidForMgmt = (int) (Db::name('test_results')->where('id', $testResultId)->where('userId', $userId)->value('enterpriseId') ?? 0);
+            }
+            self::appendCrmRemarkUserJourney($userId, $eidForMgmt, $remark);
         }
 
-        $ok = self::doReport($userId, $apiKey, $source, $remark, $tags, $siteTags);
+        // 申请咨询：备注中附带用户管理摘要与旅程（与飞书卡片「最近行为」同源）
+        if ($deepConsult && $userId > 0 && !empty($apiKey)) {
+            $eidJ = (int) (Db::name('wechat_users')->where('id', $userId)->value('enterpriseId') ?? 0);
+            self::appendCrmRemarkUserJourney($userId, $eidJ, $remark);
+        }
 
-        return success(['reported' => $ok, 'reason' => $ok ? '' : 'api_error']);
+        $ok = false;
+        if (!empty($apiKey)) {
+            $ok = self::doReport($userId, $apiKey, $source, $remark, $tags, $siteTags);
+        }
+
+        if ($deepConsult && $userId > 0) {
+            $feishuSource = $source !== '' ? $source : '深度服务·申请咨询';
+            FeishuLeadWebhookService::onDeepServiceConsultApply($userId, $feishuSource, $siteTags);
+        }
+
+        if ($ok) {
+            return success(['reported' => true, 'reason' => '']);
+        }
+
+        return success([
+            'reported' => false,
+            'reason'   => empty($apiKey) ? 'no_api_key' : 'api_error',
+        ]);
+    }
+
+    /** @param mixed $v */
+    private static function isTruthyParam($v): bool
+    {
+        if ($v === true || $v === 1) {
+            return true;
+        }
+        if ($v === false || $v === 0 || $v === null || $v === '') {
+            return false;
+        }
+        $s = strtolower(trim((string) $v));
+
+        return in_array($s, ['1', 'true', 'yes', 'on'], true);
     }
 
     /**
@@ -398,6 +451,8 @@ class CrmReport extends BaseController
             $tags = $merged;
             $siteTags = $merged;
 
+            self::appendCrmRemarkUserJourney($userId, $enterpriseId, $remark);
+
             self::doReport($userId, $apiKey, $source, $remark, $tags, $siteTags);
         } catch (\Throwable $e) {
             Log::warning('[CrmReport] reportTestCompletion 异常 userId=' . $userId . ' err=' . $e->getMessage());
@@ -458,6 +513,36 @@ class CrmReport extends BaseController
         }
 
         return '';
+    }
+
+    /**
+     * 存客宝 remark 追加：用户管理一行 + analytics 用户旅程（与飞书/出站 Hook 字段同源）
+     */
+    private static function appendCrmRemarkUserJourney(int $userId, int $enterpriseIdForMgmt, string &$remark): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+        $blocks = [];
+        $m = UserJourneyService::managementSummaryLine($userId, $enterpriseIdForMgmt);
+        if ($m !== '') {
+            $blocks[] = '【用户管理】' . $m;
+        }
+        $jb = UserJourneyService::journeyLinesToRemarkBlock(UserJourneyService::recentBehaviorLines($userId, 10), 720);
+        if ($jb !== '') {
+            $blocks[] = $jb;
+        }
+        if (count($blocks) === 0) {
+            return;
+        }
+        $append = implode("\n", $blocks);
+        $remark = trim($remark === '' ? $append : ($remark . "\n" . $append));
+        $cap = 900;
+        if (function_exists('mb_strlen') && mb_strlen($remark) > $cap) {
+            $remark = mb_substr($remark, 0, $cap) . '…';
+        } elseif (!function_exists('mb_strlen') && strlen($remark) > $cap) {
+            $remark = substr($remark, 0, $cap) . '…';
+        }
     }
 
     /**

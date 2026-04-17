@@ -116,18 +116,10 @@
         </view>
       </view>
 
-      <view
-        class="result-cta-questionnaire"
-        hover-class="result-cta-questionnaire--pressed"
-        hover-stay-time="120"
-        bindtap="goToQuestionnaireTest"
-      >
-        <text class="result-cta-questionnaire-text">去做详细性格测试</text>
-      </view>
     </view>
 
     <view class="card" tt:if="{{!hasError && result.summary}}">
-      <text class="card-title">性格概述</text>
+      <text class="card-title">📝 性格概述</text>
       <text class="card-text">{{result.summary}}</text>
     </view>
 
@@ -336,5 +328,24 @@
 
     </block>
 
+  </view>
+
+  <!-- 固定底部操作栏：三按钮常驻（抖音） -->
+  <view class="result-action-bar" tt:if="{{!isAnalyzing && showResult && !hasError}}">
+    <view class="result-action-bar__btn result-action-bar__btn--test" bindtap="goToQuestionnaireFromFace">
+      <text class="result-action-bar__ic">🧠</text>
+      <text class="result-action-bar__label">详细性格测试</text>
+    </view>
+    <view class="result-action-bar__btn result-action-bar__btn--deep" bindtap="goToDeepServiceFromFace">
+      <text class="result-action-bar__ic">💎</text>
+      <text class="result-action-bar__label">找专家·深度解读</text>
+    </view>
+    <view class="result-action-bar__btn result-action-bar__btn--share" bindtap="goToPromoFromFace">
+      <text class="result-action-bar__ic">📣</text>
+      <view class="result-action-bar__share-body">
+        <text class="result-action-bar__label">分享赚</text>
+        <text class="result-action-bar__label-hl">90%</text>
+      </view>
+    </view>
   </view>
 </view>

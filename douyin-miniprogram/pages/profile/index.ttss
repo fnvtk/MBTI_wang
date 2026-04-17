@@ -559,6 +559,21 @@ page {
   color: #F43F5E;
 }
 
+/* "累计"辅格：紫色较小字号 */
+.promo-stat-item--sub .promo-stat-value {
+  color: #a78bfa;
+  font-size: 30rpx;
+}
+
+.promo-stat-item--sub .promo-stat-label {
+  color: #7c3aed;
+  font-weight: 600;
+}
+
+.promo-stat-value--sub {
+  font-size: 30rpx;
+}
+
 /* ===== 服务菜单 ===== */
 .menu-card {
   background: #FFFFFF;

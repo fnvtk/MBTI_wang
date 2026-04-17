@@ -209,6 +209,42 @@
               </div>
               <div v-else class="ud-empty-hint">暂无人脸分析照片</div>
             </el-tab-pane>
+
+            <el-tab-pane label="用户旅程" name="journey">
+              <div class="ud-journey">
+                <div class="ud-journey__toolbar">
+                  <span class="ud-journey__label">统计范围</span>
+                  <el-select v-model="journeyDays" style="width: 120px" @change="loadJourney">
+                    <el-option :value="7" label="近 7 天" />
+                    <el-option :value="30" label="近 30 天" />
+                    <el-option :value="90" label="近 90 天" />
+                  </el-select>
+                  <el-button size="small" :loading="journeyLoading" @click="loadJourney">刷新</el-button>
+                </div>
+                <el-table
+                  v-loading="journeyLoading"
+                  :data="journeyRows"
+                  stripe
+                  size="small"
+                  max-height="420"
+                  empty-text="暂无行为记录"
+                >
+                  <el-table-column prop="createdAt" label="时间" width="160" />
+                  <el-table-column label="事件" min-width="220">
+                    <template #default="{ row }">
+                      <strong>{{ row.eventNameCn || row.eventName }}</strong>
+                      <div class="ud-journey__subname">{{ row.eventName }}</div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="pagePath" label="页面" min-width="180" show-overflow-tooltip />
+                  <el-table-column label="附加" min-width="220">
+                    <template #default="{ row }">
+                      <span class="ud-journey__props">{{ formatJourneyProps(row.props) }}</span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </el-tab-pane>
           </el-tabs>
         </main>
       </template>
@@ -249,6 +285,7 @@ import VChart from 'vue-echarts'
 import { discTopTwoLabel, discCompactLabel } from '@/utils/discDisplay'
 import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
 import { SBTI_RADAR_DIMENSION_ORDER, buildSbtiRadarValues, formatSbtiSummary } from '@/utils/sbtiDisplay'
+import { request } from '@/utils/request'
 
 use([CanvasRenderer, RadarChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent])
 
@@ -271,12 +308,17 @@ const udTab = ref('analysis')
 const testPage = ref(1)
 const testPageSize = 8
 
+const journeyDays = ref(30)
+const journeyLoading = ref(false)
+const journeyRows = ref<any[]>([])
+
 watch(
   () => props.modelValue,
   v => {
     if (v) {
       udTab.value = 'analysis'
       testPage.value = 1
+      journeyRows.value = []
     }
   }
 )
@@ -285,8 +327,44 @@ watch(
   () => props.user?.id,
   () => {
     testPage.value = 1
+    journeyRows.value = []
   }
 )
+
+watch(udTab, (t) => {
+  if (t === 'journey' && journeyRows.value.length === 0) {
+    void loadJourney()
+  }
+})
+
+async function loadJourney() {
+  const uid = props.user?.id
+  if (!uid) {
+    journeyRows.value = []
+    return
+  }
+  journeyLoading.value = true
+  try {
+    const res: any = await request.get('/superadmin/analytics/user-journey', {
+      params: { userId: uid, days: journeyDays.value }
+    })
+    journeyRows.value = res.data?.list || []
+  } catch {
+    journeyRows.value = []
+  } finally {
+    journeyLoading.value = false
+  }
+}
+
+function formatJourneyProps(p: unknown): string {
+  if (p == null) return '—'
+  try {
+    const s = JSON.stringify(p)
+    return s.length > 160 ? s.slice(0, 160) + '…' : s
+  } catch {
+    return '—'
+  }
+}
 
 const avatarLetter = computed(() => {
   const n = (props.user?.username || props.user?.nickname || '?').trim()
@@ -1094,6 +1172,35 @@ function openMail(email: string) {
   width: 100px;
   height: 100px;
   border-radius: 8px;
+}
+
+.ud-journey {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ud-journey__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ud-journey__label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.ud-journey__subname {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.ud-journey__props {
+  font-size: 12px;
+  color: #64748b;
+  word-break: break-all;
 }
 
 @media (max-width: 900px) {

@@ -1,40 +1,42 @@
-<!-- 自定义 tabBar：顶部分割线 + 三栏；中间单独一列避免浮钮与左右叠层 -->
+<!-- 自定义 TabBar：由 globalData.tabBar 动态渲染；支持 iconUrl 图片覆盖 SVG；highlight=中间浮钮 -->
 <view class="tab-bar">
   <view class="tab-bar-line"></view>
-  <view class="tab-bar-inner {{hideMiddleFab ? 'tab-bar-inner--audit' : ''}}">
-    <view
-      class="tab-item {{selected === 0 ? 'active' : ''}}"
-      data-index="0"
-      data-path="/pages/index/index"
-      bindtap="switchTab"
-    >
-      <image class="tab-icon" src="{{selected === 0 ? '/images/home-active.png' : '/images/home.png'}}" mode="aspectFit" />
-      <text class="tab-text">首页</text>
-    </view>
+  <view class="tab-bar-inner tab-bar-count-{{items.length}}">
+    <block wx:for="{{items}}" wx:key="pagePath" wx:for-item="it">
+      <!-- 中间浮钮（highlight=true） -->
+      <view wx:if="{{it.highlight}}" class="tab-slot-middle">
+        <view
+          class="middle-fab {{selected === index ? 'active' : ''}}"
+          data-index="{{index}}"
+          bindtap="switchTab"
+        >
+          <view class="center-circle">
+            <image wx:if="{{it.iconUrl}}" class="center-img" src="{{it.iconUrl}}" mode="aspectFit" />
+            <view wx:else class="center-svg center-svg--{{it.iconKey || 'camera'}}"></view>
+          </view>
+          <text class="tab-text tab-text-fab">{{it.text}}</text>
+        </view>
+      </view>
 
-    <!-- 中间列：非审核模式显示「拍摄」 -->
-    <view class="tab-slot-middle" wx:if="{{!hideMiddleFab}}">
+      <!-- 普通 Tab item -->
       <view
-        class="middle-fab {{selected === 1 ? 'active' : ''}}"
-        data-index="1"
-        data-path="/pages/index/camera"
+        wx:else
+        class="tab-item {{selected === index ? 'active' : ''}} tab-item--{{it.iconKey || 'home'}}"
+        data-index="{{index}}"
         bindtap="switchTab"
       >
-        <view class="center-circle">
-          <image class="center-icon" src="{{selected === 1 ? '/images/camera-active.png' : '/images/camera.png'}}" mode="aspectFit" />
-        </view>
-        <text class="tab-text tab-text-fab">拍摄</text>
+        <image
+          wx:if="{{it.iconUrl}}"
+          class="tab-icon-img {{selected === index ? 'tab-icon-img--active' : ''}}"
+          src="{{it.iconUrl}}"
+          mode="aspectFit"
+        />
+        <view
+          wx:else
+          class="tab-icon tab-icon--{{it.iconKey || 'home'}} {{selected === index ? 'tab-icon--active' : ''}}"
+        ></view>
+        <text class="tab-text">{{it.text}}</text>
       </view>
-    </view>
-
-    <view
-      class="tab-item {{selected === 2 ? 'active' : ''}}"
-      data-index="2"
-      data-path="/pages/profile/index"
-      bindtap="switchTab"
-    >
-      <image class="tab-icon" src="{{selected === 2 ? '/images/user-active.png' : '/images/user.png'}}" mode="aspectFit" />
-      <text class="tab-text">我的</text>
-    </view>
+    </block>
   </view>
 </view>

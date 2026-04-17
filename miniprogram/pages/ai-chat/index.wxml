@@ -1,0 +1,113 @@
+<!-- 神仙 AI · 对话页 -->
+<view class="ai-page">
+  <!-- 推荐文章：超管开启后显示；默认折叠（由后台 sectionExpandedDefault 控制首次是否展开） -->
+  <view class="soul-articles-wrap" wx:if="{{articlesDisplayEnabled}}">
+    <view class="articles-fold-bar" bindtap="onToggleArticlesFold">
+      <view class="articles-fold-left">
+        <text class="articles-fold-title">精选推荐</text>
+        <text class="articles-fold-pill">Soul</text>
+        <text class="articles-fold-count" wx:if="{{!articlesBlockExpanded}}">· {{articles.length}} 篇</text>
+      </view>
+      <text class="articles-fold-chevron">{{articlesBlockExpanded ? '▼' : '▶'}}</text>
+    </view>
+    <view class="soul-articles" wx:if="{{articlesBlockExpanded && articles.length > 0}}">
+      <view class="articles-list">
+        <view class="article-card" wx:for="{{articles}}" wx:key="id" bindtap="onTapArticle" data-id="{{item.id}}" data-url="{{item.url}}" data-title="{{item.title}}">
+          <view class="article-cover-wrap">
+            <image class="article-cover" src="{{item.cover || defaultCover}}" mode="aspectFill" />
+          </view>
+          <view class="article-body">
+            <text class="article-title">{{item.title}}</text>
+            <view class="article-meta">
+              <text class="article-pill">{{item.tag || 'MBTI'}}</text>
+              <text class="article-time" wx:if="{{item.publishedAt}}">{{item.publishedAt}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- MBTI 提醒：去测 → 详细性格测试列表 -->
+  <view class="mbti-remind-card">
+    <view class="mbti-remind-row">
+      <image class="mbti-remind-avatar" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
+      <view class="mbti-remind-texts">
+        <view class="mbti-remind-title">我是神仙 AI</view>
+        <view class="mbti-remind-sub">{{mbtiType ? ('已了解你的 ' + mbtiType + '，继续聊～') : '先做一下 MBTI 测评，我能帮你聊得更懂你哦～'}}</view>
+      </view>
+    </view>
+    <view class="mbti-remind-actions">
+      <text class="mbti-remind-tag">MBTI</text>
+      <view class="mbti-remind-btn" hover-class="mbti-remind-btn--press" bindtap="onGoMbtiTest">去测 MBTI</view>
+    </view>
+  </view>
+
+  <!-- 聊天区 -->
+  <scroll-view class="chat-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" scroll-with-animation="true" enhanced show-scrollbar="{{false}}">
+    <!-- 消息气泡 -->
+    <view class="msg-wrap" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
+      <view wx:if="{{item.role === 'assistant'}}" class="msg msg-ai">
+        <image class="avatar-ai" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
+        <view class="bubble bubble-ai {{item.isDegraded ? 'bubble-degraded' : ''}}">
+          <text selectable="true">{{item.content}}</text>
+          <view class="bubble-meta" wx:if="{{item.isDegraded}}">（降级兜底）</view>
+        </view>
+      </view>
+      <view wx:else class="msg msg-me">
+        <view class="bubble bubble-me">
+          <text selectable="true">{{item.content}}</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="typing" wx:if="{{sending}}" id="msg-typing">
+      <image class="avatar-ai" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
+      <view class="bubble bubble-ai"><text>神仙在思考…</text></view>
+    </view>
+
+    <!-- 深度报告 CTA：对话 >=10 条且还没付费时显示 -->
+    <view class="report-cta" wx:if="{{showReportCta}}" bindtap="onTapReportCta">
+      <view class="report-cta-text">✨ 聊了这么多，来份专属 AI 深度画像报告？¥9.9</view>
+      <view class="report-cta-btn">立即生成</view>
+    </view>
+
+    <view class="scroll-bottom" id="bottom"></view>
+  </scroll-view>
+
+  <!-- 底部快捷问法（常驻） -->
+  <scroll-view class="quick-bottom-scroll" scroll-x="true" show-scrollbar="{{false}}" wx:if="{{quickQuestions.length > 0}}">
+    <view class="quick-bottom-list">
+      <view class="quick-bottom-item" wx:for="{{quickQuestions}}" wx:for-item="q" wx:key="*this" bindtap="onTapQuick" data-q="{{q}}">
+        {{q}}
+      </view>
+    </view>
+  </scroll-view>
+
+  <!-- 输入区：输入框 + 发送 -->
+  <view class="input-bar">
+    <input
+      class="input"
+      placeholder="问我你想了解的自己"
+      placeholder-class="input-ph"
+      value="{{draft}}"
+      bindinput="onInput"
+      bindconfirm="onSend"
+      confirm-type="send"
+      confirm-hold="true"
+      adjust-position="{{true}}"
+      maxlength="800"
+      disabled="{{sending}}"
+    />
+
+    <view
+      class="send-btn {{draft && !sending ? 'send-btn--active' : ''}} {{sending || !draft ? 'send-btn--disabled' : ''}}"
+      hover-class="{{draft && !sending ? 'send-btn--press' : ''}}"
+      hover-start-time="0"
+      hover-stay-time="80"
+      bindtap="onSend"
+    >
+      <text class="send-btn__label">发送</text>
+    </view>
+  </view>
+</view>

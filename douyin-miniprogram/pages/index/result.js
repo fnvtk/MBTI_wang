@@ -627,6 +627,19 @@ Page({
     tt.navigateTo({ url: '/pages/test-select/index' })
   },
 
+  goToQuestionnaireFromFace() {
+    tt.navigateTo({ url: '/pages/test-select/index' })
+  },
+
+  goToDeepServiceFromFace() {
+    tt.navigateTo({ url: '/pages/purchase/index' })
+  },
+
+  goToPromoFromFace() {
+    tt.showShareMenu && tt.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage'] })
+    tt.navigateTo({ url: '/pages/promo/index' })
+  },
+
   retake() {
     // camera 是 tabBar 页面，必须用 switchTab
     tt.switchTab({ url: '/pages/index/camera' })

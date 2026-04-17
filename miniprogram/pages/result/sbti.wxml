@@ -1,20 +1,40 @@
-<!--pages/result/sbti.wxml-->
+<!--pages/result/sbti.wxml - SBTI 结果页（高级排版）-->
 <view class="result-page">
-  <scroll-view class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}}" scroll-y>
-    <view class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}}">
+  <scroll-view
+    class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-scroll--with-bottom-tools' : ''}}"
+    scroll-y
+    scroll-into-view="{{scrollTarget}}"
+    scroll-with-animation
+    bindscroll="onSectionScroll"
+  >
+    <view
+      class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-container--with-bottom-tools' : ''}}"
+    >
 
-      <!-- 主类型卡片：有图且图加载成功时隐藏顶部三行（与图内文案重复）；无图/失败/加载中仍显示 -->
-      <view class="card main-type-card">
-        <view
-          class="type-header-text-fallback"
-          wx:if="{{!typeImageUrl || typeImageLoadFailed || !typeImageLoaded}}"
-        >
-          <text class="section-label">你的人格类型是:</text>
-          <view class="type-title-area">
-            <text class="type-main-cn">{{result.sbtiCn}}</text>
-            <text class="type-main-code">{{result.sbtiType}}</text>
-          </view>
+      <!-- 分类锚点导航 -->
+      <result-section-nav
+        wx:if="{{result && !fromShare}}"
+        sections="{{sectionNav}}"
+        active="{{activeSection}}"
+        theme="teal"
+        bindnavtap="onTapSectionNav"
+      />
+
+      <!-- Hero -->
+      <view class="hero-card hero-card--sbti" id="sec-hero" wx:if="{{result}}">
+        <text class="hero-eyebrow">SBTI · 15-DIM PROFILE</text>
+        <text class="hero-code">{{result.sbtiType}}</text>
+        <text class="hero-title">{{result.sbtiCn}}</text>
+        <text class="hero-subtitle" wx:if="{{profileGate && previewSbtiIntro}}">{{previewSbtiIntro}}</text>
+        <text class="hero-subtitle" wx:elif="{{result.intro && !profileGate}}">{{result.intro}}</text>
+        <view class="hero-badges">
+          <view class="hero-badge hero-badge--solid">匹配度 {{result.matchPercent}}%</view>
+          <view class="hero-badge">精准命中 {{result.hitDimCount}}/15 维</view>
         </view>
+      </view>
+
+      <!-- 类型插画（若有） -->
+      <view class="card main-type-card" wx:if="{{typeImageUrl && !typeImageLoadFailed}}">
         <image
           class="type-avatar-image"
           src="{{typeImageUrl}}"
@@ -22,28 +42,10 @@
           show-menu-by-longpress="{{true}}"
           bindload="onTypeImageLoad"
           binderror="onTypeImageError"
-          wx:if="{{typeImageUrl && !typeImageLoadFailed}}"
         />
-        <view class="type-avatar-fallback" wx:if="{{!typeImageUrl || typeImageLoadFailed}}">
-          <text>{{result.sbtiType}}</text>
-        </view>
-        <text class="type-intro">{{result.intro}}</text>
       </view>
 
-      <!-- 你的主类型卡片 -->
-      <view class="card your-main-type-card">
-        <text class="card-title">你的主类型</text>
-        <view class="main-type-summary">
-          <text class="main-type-text">{{result.sbtiType}} ({{result.sbtiCn}})</text>
-          <text class="main-type-desc">维度命中度较高，当前结果可视为你的第一人格画像。</text>
-        </view>
-        <view class="match-info">
-          <text class="match-percent">匹配度 {{result.matchPercent}}%</text>
-          <text class="match-dim">精准命中 {{result.hitDimCount}}/15 维</text>
-        </view>
-      </view>
-
-      <!-- 付费墙（完整报告部分） -->
+      <!-- 付费墙 -->
       <view class="card paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
         <view class="paywall-content">
           <view class="paywall-blur">
@@ -72,8 +74,7 @@
         </view>
       </view>
 
-      <!-- 强制完善资料卡片（分享落地 fromShare 不展示，避免引导访客完善自己的资料） -->
-      <view class="card paywall-card" wx:elif="{{result && result.locked && !fromShare}}">
+      <view class="card paywall-card" wx:elif="{{result && result.locked && !fromShare && !profileGate}}">
         <view class="paywall-content">
           <text class="paywall-fake-title">完整报告需完善资料</text>
           <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整解读。</text>
@@ -83,31 +84,124 @@
         </view>
       </view>
 
-      <view wx:if="{{!result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+      <view wx:if="{{(profileGate || !result.locked) && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+
         <!-- 人格描述 -->
+        <view class="section-head" id="sec-desc">
+          <view class="section-head__bar section-head__bar--sbti"></view>
+          <text class="section-head__title">{{profileGate ? '人格描述（预览约 30%）' : '人格描述'}}</text>
+          <text class="section-head__desc">专属人格解读</text>
+        </view>
         <view class="card description-card">
-          <text class="card-title">人格描述</text>
-          <text class="description-text">{{result.desc}}</text>
+          <block wx:if="{{profileGate && previewSbtiDescParts.length}}">
+            <text class="description-para" wx:for="{{previewSbtiDescParts}}" wx:key="*this">{{item}}</text>
+          </block>
+          <text class="description-text" wx:elif="{{profileGate}}">{{previewSbtiDesc}}</text>
+          <block wx:elif="{{descParts.length}}">
+            <text class="description-para" wx:for="{{descParts}}" wx:key="*this">{{item}}</text>
+          </block>
+          <text class="description-text" wx:else>{{result.desc}}</text>
         </view>
 
-        <!-- 十五维度详解 -->
-        <view class="card dimension-detail-card">
-          <text class="card-title">十五维度详解</text>
-          <view class="dim-list">
-            <view class="dim-item" wx:for="{{dimExplainList}}" wx:key="dim">
-              <view class="dim-header">
-                <text class="dim-name">{{item.name}}</text>
-                <text class="dim-score">{{item.level}} / 6分<text wx:if="{{item.raw != null && item.raw !== ''}}"> · {{item.raw}}分</text></text>
+        <!-- 十五维度：按系分组 + 可展开 -->
+        <block wx:if="{{dimGroups.length}}">
+          <view class="section-head" id="sec-dim">
+            <view class="section-head__bar section-head__bar--sbti"></view>
+            <text class="section-head__title">{{profileGate ? '十五维度（预览约 30%）' : '十五维度详解'}}</text>
+            <text class="section-head__desc">6 分制 · 分系展开</text>
+          </view>
+          <view class="sbti-group-wrap">
+            <block wx:for="{{dimGroups}}" wx:key="key" wx:for-item="group">
+              <view class="sbti-group">
+                <view class="sbti-group__head" bindtap="toggleGroup" data-key="{{group.key}}">
+                  <text class="sbti-group__title">{{group.title}}</text>
+                  <text class="sbti-group__count">{{group.items.length}} 项</text>
+                  <text class="sbti-group__chev {{openGroup === group.key ? 'sbti-group__chev--open' : ''}}">›</text>
+                </view>
+                <view class="sbti-group__body" wx:if="{{openGroup === group.key}}">
+                  <view class="sbti-dim-grid sbti-dim-grid--in-group">
+                    <view class="sbti-dim-card {{item.colorClass}}" wx:for="{{group.items}}" wx:for-item="item" wx:key="dim">
+                      <view class="sbti-dim-card__head">
+                        <view class="sbti-dim-card__ic">{{item.icon}}</view>
+                        <view class="sbti-dim-card__meta">
+                          <text class="sbti-dim-card__name">{{item.name}}</text>
+                          <text class="sbti-dim-card__score">{{item.level}}/6<text wx:if="{{item.raw != null && item.raw !== ''}}"> · 原始 {{item.raw}}</text></text>
+                        </view>
+                      </view>
+                      <view class="sbti-dim-card__track">
+                        <view class="sbti-dim-card__fill" style="width: {{item.percent}}%"></view>
+                      </view>
+                      <text class="sbti-dim-card__text">{{item.text}}</text>
+                    </view>
+                  </view>
+                </view>
               </view>
-              <text class="dim-text">{{item.text}}</text>
-            </view>
+            </block>
+          </view>
+        </block>
+
+        <view wx:if="{{profileGate}}" class="card profile-gate-cta-card">
+          <text class="preview-teaser-hint sbti-gate-hint">完善头像、昵称并绑定手机号后，可查看全部维度解读与分享完整卡片。</text>
+          <button class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
+            <text class="paywall-btn-main">去完善资料 · 解锁全文</text>
+          </button>
+        </view>
+
+        <!-- 深度解读 CTA -->
+        <view class="deep-cta-card" id="sec-cta" wx:if="{{result && !profileGate}}">
+          <view class="deep-cta-head">
+            <view class="deep-cta-ic">💎</view>
+            <text class="deep-cta-title">深度解读 · 综合人格方案</text>
+          </view>
+          <text class="deep-cta-desc">结合 SBTI、MBTI、PDP、DISC 与面相综合分析；获得亲密关系与发展路径的个性化建议。邀请好友参与测评可参与推广分润。</text>
+          <view class="deep-cta-actions">
+            <view class="deep-cta-btn deep-cta-btn--primary" bindtap="onTapDeepService">深度解读方案</view>
+            <view class="deep-cta-btn deep-cta-btn--ghost" bindtap="onTapPromoCenter">推广中心</view>
           </view>
         </view>
 
       </view>
     </view>
   </scroll-view>
-  <view class="result-share-footer" wx:if="{{fromShare}}">
+
+  <view class="result-bottom-tools" wx:if="{{result && !fromShare}}">
+    <view class="journey-stepper">
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step1Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===1 ? 'journey-stepper__dot--active' : '')}}">1</view>
+        <text class="journey-stepper__label {{journey.activeStep===1 ? 'journey-stepper__label--active' : ''}}">看全文</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step1Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step2Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===2 ? 'journey-stepper__dot--active' : '')}}">2</view>
+        <text class="journey-stepper__label {{journey.activeStep===2 ? 'journey-stepper__label--active' : ''}}">分享朋友圈</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step2Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step3Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===3 ? 'journey-stepper__dot--active' : '')}}">3</view>
+        <text class="journey-stepper__label {{journey.activeStep===3 ? 'journey-stepper__label--active' : ''}}">AI 拍照</text>
+      </view>
+    </view>
+    <view class="result-bottom-tools__row">
+      <view class="result-tool-btn result-tool-btn--primary" bindtap="onTapReadFull">
+        <text>{{journey.step1Unlocked ? '查看全文' : '① 解锁全文'}}</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? '完善资料即解锁' : '点击解锁')}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step1Unlocked ? 'result-tool-btn--rose' : 'result-tool-btn--locked'}}" bindtap="onTapShareMoment">
+        <text><text wx:if="{{!journey.step1Unlocked}}" class="result-tool-btn__lock">🔒</text>朋友圈</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? (journey.step2Unlocked ? '已分享' : '点击分享') : '先解锁全文'}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step2Unlocked ? 'result-tool-btn--ghost' : 'result-tool-btn--locked'}}" bindtap="onTapFaceCamera">
+        <text><text wx:if="{{!journey.step2Unlocked}}" class="result-tool-btn__lock">🔒</text>AI 拍照</text>
+        <text class="result-tool-sub">{{journey.step2Unlocked ? '面相+人格' : '先分享朋友圈'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-share-footer result-share-footer--stack" wx:if="{{fromShare}}">
     <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+    <view class="result-share-footer-row2">
+      <button class="result-share-footer-btn result-share-footer-btn--ghost" bindtap="goReadFullFromShare">看全文</button>
+      <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
+    </view>
   </view>
 </view>

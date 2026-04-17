@@ -109,6 +109,9 @@ Page({
 
   onLoad(options) {
     this._payInfoSetByDetail = false
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {}
 
     // 加载文案配置（分析中提示、报告标题等）
     const tc = app.globalData.textConfig
@@ -672,6 +675,27 @@ Page({
     } else {
       wx.switchTab({ url: '/pages/index/index' })
     }
+  },
+
+  goToDeepServiceFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_deep_service_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+
+  goToPromoFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_promo_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+
+  goToQuestionnaireFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_questionnaire_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   onShareAppMessage() {

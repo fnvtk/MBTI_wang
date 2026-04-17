@@ -174,3 +174,20 @@ page {
   padding-bottom: calc(constant(safe-area-inset-bottom) + 16rpx);
   padding-bottom: calc(env(safe-area-inset-bottom) + 16rpx);
 }
+
+/* ============ 全局 TabBar 底部避让 ============ */
+/* 自定义 TabBar 高度约 140rpx + 底部安全区。
+   在 tab 页外层 view 加 .tabbar-pad 即可避免被遮挡；
+   也可直接写 style="padding-bottom: var(--tabbar-pad)" */
+page {
+  --tabbar-height: 140rpx;
+  --tabbar-pad: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 20rpx);
+}
+
+.tabbar-pad {
+  padding-bottom: var(--tabbar-pad) !important;
+}
+
+.tabbar-pad-fixed {
+  bottom: var(--tabbar-pad) !important;
+}

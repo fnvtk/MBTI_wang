@@ -1,17 +1,91 @@
-<!--pages/result/mbti.wxml - MBTI结果页面（支持付费墙）-->
+<!--pages/result/mbti.wxml - MBTI 结果页（高级排版）-->
 <view class="result-page">
-  <scroll-view class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}}" scroll-y>
-    <view class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}}">
-      <view class="type-card">
-        <view class="type-header">
-          <text class="type-label">您的MBTI性格类型</text>
-          <text class="type-value">{{result.mbtiType}}</text>
-          <text class="type-title">{{mbtiDesc.title}}</text>
-          <text class="type-description">{{mbtiDesc.description}}</text>
-        </view>
+  <scroll-view
+    class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-scroll--with-bottom-tools' : ''}}"
+    scroll-y
+    scroll-into-view="{{scrollTarget}}"
+    scroll-with-animation
+    bindscroll="onSectionScroll"
+  >
+    <view
+      class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-container--with-bottom-tools' : ''}}"
+    >
 
-        <!-- 付费墙：未解锁时显示 -->
-        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+      <!-- 分类锚点导航：顶部粘贴，chip 跳到对应 section -->
+      <result-section-nav
+        wx:if="{{result && !fromShare}}"
+        sections="{{sectionNav}}"
+        active="{{activeSection}}"
+        theme="purple"
+        bindnavtap="onTapSectionNav"
+      />
+
+      <!-- Hero：类型卡片 -->
+      <view class="hero-card hero-card--mbti" id="sec-hero" wx:if="{{result}}">
+        <text class="hero-eyebrow">MBTI · PERSONALITY</text>
+        <text class="hero-code">{{result.mbtiType}}</text>
+        <text class="hero-title" wx:if="{{mbtiDesc.title}}">{{mbtiDesc.title}}</text>
+        <text class="hero-subtitle" wx:if="{{mbtiDesc.description}}">{{profileGate ? previewDescription : mbtiDesc.description}}</text>
+        <view class="hero-badges">
+          <view class="hero-badge hero-badge--solid" wx:if="{{mbtiDesc.category}}">{{mbtiDesc.category}}</view>
+          <view class="hero-badge" wx:for="{{mbtiTags}}" wx:key="*this">{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 深度洞察三宫格 -->
+      <block wx:if="{{mbtiInsight}}">
+        <view class="section-head" id="sec-insight">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">深度洞察</text>
+          <text class="section-head__desc">一眼看懂的底层气质</text>
+        </view>
+        <view class="insight-grid">
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--purple">🧠</view>
+            <text class="insight-card__label">心智模式</text>
+            <text class="insight-card__value">{{mbtiInsight.mind}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--blue">🎯</view>
+            <text class="insight-card__label">决策倾向</text>
+            <text class="insight-card__value">{{mbtiInsight.decision}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--orange">⚡</view>
+            <text class="insight-card__label">能量来源</text>
+            <text class="insight-card__value">{{mbtiInsight.energy}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--rose">⚠️</view>
+            <text class="insight-card__label">压力反应</text>
+            <text class="insight-card__value">{{mbtiInsight.stress}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{mbtiInsight.comm}}">
+            <view class="insight-card__icon insight-card__icon--teal">💬</view>
+            <text class="insight-card__label">沟通风格</text>
+            <text class="insight-card__value">{{mbtiInsight.comm}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{mbtiInsight.lead}}">
+            <view class="insight-card__icon insight-card__icon--purple">🚩</view>
+            <text class="insight-card__label">领导模式</text>
+            <text class="insight-card__value">{{mbtiInsight.lead}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{mbtiInsight.love}}">
+            <view class="insight-card__icon insight-card__icon--rose">💝</view>
+            <text class="insight-card__label">恋爱与亲密</text>
+            <text class="insight-card__value">{{mbtiInsight.love}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{mbtiInsight.team}}">
+            <view class="insight-card__icon insight-card__icon--blue">👥</view>
+            <text class="insight-card__label">团队角色</text>
+            <text class="insight-card__value">{{mbtiInsight.team}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 付费墙 -->
+      <view class="type-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+        <view class="paywall-card">
           <view class="paywall-content">
             <view class="paywall-blur">
               <text class="paywall-fake-title">完整性格分析</text>
@@ -20,7 +94,6 @@
               <text class="paywall-fake-line">• 职业匹配与人际关系建议</text>
             </view>
             <view class="paywall-mask"></view>
-            <!-- 未有手机号：使用微信系统手机号授权 -->
             <button
               class="paywall-btn"
               wx:if="{{!hasPhone}}"
@@ -30,7 +103,6 @@
               <text class="paywall-btn-main">解锁完整报告</text>
               <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
             </button>
-            <!-- 已有手机号：普通按钮，直接解锁 -->
             <button
               class="paywall-btn"
               wx:elif="{{hasPhone}}"
@@ -41,8 +113,11 @@
             </button>
           </view>
         </view>
+      </view>
 
-        <view class="paywall-card" wx:elif="{{result && result.locked && !fromShare}}">
+      <!-- 资料门禁兜底 -->
+      <view class="type-card" wx:elif="{{result && result.locked && !fromShare && !profileGate}}">
+        <view class="paywall-card">
           <view class="paywall-content">
             <text class="paywall-fake-title">完整报告需完善资料</text>
             <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整性格分析。</text>
@@ -51,70 +126,185 @@
             </button>
           </view>
         </view>
+      </view>
 
-        <view class="dimensions-section" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-          <view class="dimension-item" wx:for="{{dimensions}}" wx:key="key">
-            <view class="dimension-labels">
-              <text class="label-left">{{item.left}}</text>
-              <text class="label-right">{{item.right}}</text>
+      <!-- 四维分析（预览或完整） -->
+      <block wx:if="{{dimensions.length && (!payInfo.requiresPayment || payInfo.isPaid) && (profileGate || !result.locked)}}">
+        <view class="section-head" id="sec-dim">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">四维得分</text>
+          <text class="section-head__desc">主导倾向的量化画像</text>
+        </view>
+        <view class="type-card" style="padding: 36rpx 32rpx;">
+          <view class="dash-dimension-row" wx:for="{{dimensions}}" wx:key="key">
+            <view class="dash-dimension-labels">
+              <text class="dash-lab">{{item.left}}</text>
+              <text class="dash-lab">{{item.right}}</text>
             </view>
-            <view class="progress-bar-container">
-              <view class="progress-bar" style="width: {{item.percentage}}%"></view>
+            <view class="dash-track">
+              <view class="dash-fill {{item.dashClass}}" style="width: {{item.percentage}}%"></view>
             </view>
-            <view class="dimension-values">
-              <text class="value-left">{{item.dominant}}</text>
-              <text class="value-right">{{item.percentage}}%</text>
+            <view class="dash-foot">
+              <text>主导：{{item.dominant}}</text>
+              <text>{{item.percentage}}%</text>
             </view>
+            <text class="dash-dim-desc">{{item.desc}}</text>
           </view>
         </view>
-      </view>
+      </block>
 
-      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-        <text class="card-title">性格特征分析</text>
-        <view class="trait-section">
-          <text class="trait-title">优势</text>
-          <view class="trait-item" wx:for="{{mbtiDesc.strengths}}" wx:key="*this">
-            <text class="trait-bullet">•</text>
-            <text class="trait-text">{{item}}</text>
+      <!-- 资料门禁：预览摘要 -->
+      <view wx:if="{{profileGate && result && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <view class="preview-teaser-card" wx:if="{{previewStrengths.length}}">
+          <text class="preview-teaser-title">优势摘录（预览约 30%）</text>
+          <view class="preview-strength-row" wx:for="{{previewStrengths}}" wx:key="*this">
+            <text class="preview-strength-dot">•</text>
+            <text class="preview-strength-text">{{item}}</text>
           </view>
+          <text class="preview-teaser-hint">完善头像、昵称并绑定手机号后可看全文与分享完整卡片。</text>
         </view>
-
-        <view class="trait-section">
-          <text class="trait-title">需要注意的方面</text>
-          <view class="trait-item" wx:for="{{mbtiDesc.weaknesses}}" wx:key="*this">
-            <text class="trait-bullet">•</text>
-            <text class="trait-text">{{item}}</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="analysis-card" wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
-        <text class="card-title">职业匹配度分析</text>
-        <view class="career-item" wx:for="{{mbtiDesc.careers}}" wx:key="*this">
-          <view class="career-dot"></view>
-          <text class="career-text">{{item}}</text>
-        </view>
-      </view>
-
-      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
-        <text class="card-title">人际关系分析</text>
-        <text class="relationship-text">{{mbtiDesc.relationships}}</text>
-      </view>
-
-      <!-- <view class="action-section">
-        <button class="btn btn-primary" open-type="share">
-          <text class="btn-text">分享结果</text>
+        <button class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
+          <text class="paywall-btn-main">去完善资料 · 解锁全文</text>
         </button>
-        <view class="btn btn-outline" bindtap="retakeTest">
-          <text class="btn-text-outline">重新测试</text>
+      </view>
+
+      <!-- 优势 vs 注意（两栏） -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <view class="section-head" id="sec-trait">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">性格特征分析</text>
+          <text class="section-head__desc">善用与防守指南</text>
         </view>
-        <view class="btn btn-outline" bindtap="goHome">
-          <text class="btn-text-outline">返回首页</text>
+        <view class="trait-dual">
+          <view class="trait-dual__col trait-dual__col--strength">
+            <view class="trait-dual__title">
+              <view class="trait-dual__ic trait-dual__ic--strength">✨</view>
+              <text>天赋优势</text>
+            </view>
+            <view>
+              <text class="trait-dual__chip trait-dual__chip--strength" wx:for="{{mbtiDesc.strengths}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
+          <view class="trait-dual__col trait-dual__col--caution">
+            <view class="trait-dual__title">
+              <view class="trait-dual__ic trait-dual__ic--caution">⚠️</view>
+              <text>需要注意</text>
+            </view>
+            <view>
+              <text class="trait-dual__chip trait-dual__chip--caution" wx:for="{{mbtiDesc.weaknesses}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
         </view>
-      </view> -->
+      </block>
+
+      <!-- 职业匹配 -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiCareerItems.length}}">
+        <view class="section-head" id="sec-career">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">职业匹配</text>
+          <text class="section-head__desc">高契合度职业方向</text>
+        </view>
+        <view class="career-grid">
+          <view class="career-grid__item" wx:for="{{mbtiCareerItems}}" wx:key="name">
+            <view class="career-grid__ic">{{item.icon}}</view>
+            <text class="career-grid__text">{{item.name}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 职业领域 -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiFields.length}}">
+        <view class="section-head">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">职业领域</text>
+          <text class="section-head__desc">行业方向分布</text>
+        </view>
+        <view class="field-chip-row">
+          <text class="field-chip" wx:for="{{mbtiFields}}" wx:key="*this">{{item}}</text>
+        </view>
+      </block>
+
+      <!-- 发展建议 -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiGrowth.length}}">
+        <view class="section-head">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">发展建议</text>
+          <text class="section-head__desc">下一步的刻意练习</text>
+        </view>
+        <view class="growth-list">
+          <view class="growth-item" wx:for="{{mbtiGrowth}}" wx:key="*this">
+            <view class="growth-item__no">{{index + 1}}</view>
+            <text class="growth-item__text">{{item}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 人际关系（引用风格） -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && mbtiDesc.relationships}}">
+        <view class="section-head" id="sec-rel">
+          <view class="section-head__bar"></view>
+          <text class="section-head__title">人际关系</text>
+          <text class="section-head__desc">亲密与协作</text>
+        </view>
+        <view class="quote-card">
+          <text class="quote-card__label">RELATIONSHIP · 人际画像</text>
+          <text class="quote-card__text">{{mbtiDesc.relationships}}</text>
+        </view>
+      </block>
+
+      <!-- 深度解读 CTA（成交链路） -->
+      <view class="deep-cta-card" id="sec-cta" wx:if="{{result}}">
+        <view class="deep-cta-head">
+          <view class="deep-cta-ic">💎</view>
+          <text class="deep-cta-title">深度解读 · 团队/企业方案</text>
+        </view>
+        <text class="deep-cta-desc">结合面相、MBTI、PDP、DISC 的综合报告；或为团队做岗位适配与沟通建议。邀请好友测评可参与推广分润（以活动规则为准）。</text>
+        <view class="deep-cta-actions">
+          <view class="deep-cta-btn deep-cta-btn--primary" bindtap="onTapDeepService">深度解读方案</view>
+          <view class="deep-cta-btn deep-cta-btn--ghost" bindtap="onTapPromoCenter">推广中心</view>
+        </view>
+      </view>
     </view>
   </scroll-view>
-  <view class="result-share-footer" wx:if="{{fromShare}}">
+
+  <view class="result-bottom-tools" wx:if="{{result && !fromShare}}">
+    <view class="journey-stepper">
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step1Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===1 ? 'journey-stepper__dot--active' : '')}}">1</view>
+        <text class="journey-stepper__label {{journey.activeStep===1 ? 'journey-stepper__label--active' : ''}}">看全文</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step1Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step2Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===2 ? 'journey-stepper__dot--active' : '')}}">2</view>
+        <text class="journey-stepper__label {{journey.activeStep===2 ? 'journey-stepper__label--active' : ''}}">分享朋友圈</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step2Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step3Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===3 ? 'journey-stepper__dot--active' : '')}}">3</view>
+        <text class="journey-stepper__label {{journey.activeStep===3 ? 'journey-stepper__label--active' : ''}}">AI 拍照</text>
+      </view>
+    </view>
+    <view class="result-bottom-tools__row">
+      <view class="result-tool-btn result-tool-btn--primary" bindtap="onTapReadFull">
+        <text>{{journey.step1Unlocked ? '查看全文' : '① 解锁全文'}}</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? '完善资料即解锁' : '点击解锁')}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step1Unlocked ? 'result-tool-btn--rose' : 'result-tool-btn--locked'}}" bindtap="onTapShareMoment">
+        <text><text wx:if="{{!journey.step1Unlocked}}" class="result-tool-btn__lock">🔒</text>朋友圈</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? (journey.step2Unlocked ? '已分享' : '点击分享') : '先解锁全文'}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step2Unlocked ? 'result-tool-btn--ghost' : 'result-tool-btn--locked'}}" bindtap="onTapFaceCamera">
+        <text><text wx:if="{{!journey.step2Unlocked}}" class="result-tool-btn__lock">🔒</text>AI 拍照</text>
+        <text class="result-tool-sub">{{journey.step2Unlocked ? '面相+人格' : '先分享朋友圈'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-share-footer result-share-footer--stack" wx:if="{{fromShare}}">
     <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+    <view class="result-share-footer-row2">
+      <button class="result-share-footer-btn result-share-footer-btn--ghost" bindtap="goReadFullFromShare">看全文</button>
+      <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
+    </view>
   </view>
 </view>

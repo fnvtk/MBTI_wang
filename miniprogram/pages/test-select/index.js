@@ -8,6 +8,8 @@ Page({
     permSbti: true,
     permPdp: true,
     permDisc: true,
+    /** AI 测评聚合页（对话 / 拍照）；企业显式关闭 aiHub 时隐藏 */
+    permAiHub: true,
     /** 四类入口均被企业权限关闭时提示，避免误以为白屏 */
     allTestsDisabled: false
   },
@@ -35,36 +37,63 @@ Page({
     const permSbti = !p || p.sbti !== false
     const permPdp = !p || p.pdp !== false
     const permDisc = !p || p.disc !== false
+    const permAiHub = !p || p.aiHub !== false
     this.setData({
       permFace,
       permMbti,
       permSbti,
       permPdp,
       permDisc,
+      permAiHub,
       allTestsDisabled: p && !permMbti && !permSbti && !permPdp && !permDisc
     })
   },
 
+  _trackSelect(type) {
+    try { require('../../utils/analytics').track('tap_test_select', { type }) } catch (e) {}
+  },
+
   goMBTI() {
+    this._trackSelect('mbti')
     wx.navigateTo({ url: '/pages/test/mbti' })
   },
 
   goSBTI() {
+    this._trackSelect('sbti')
     wx.navigateTo({ url: '/pages/test/sbti' })
   },
 
   goPDP() {
+    this._trackSelect('pdp')
     wx.navigateTo({ url: '/pages/test/pdp' })
   },
 
   goDISC() {
+    this._trackSelect('disc')
     wx.navigateTo({ url: '/pages/test/disc' })
+  },
+
+  /** AI 对话解读（神仙 AI） */
+  goAIChatInterpretation() {
+    this._trackSelect('ai_chat')
+    wx.navigateTo({ url: '/pages/ai-chat/index?src=test_select' })
+  },
+
+  /** 拍照面相分析（与底部「拍摄」同页） */
+  goAIFaceAnalysis() {
+    this._trackSelect('ai_face')
+    wx.switchTab({
+      url: '/pages/index/camera',
+      fail: () => {
+        wx.showToast({ title: '请从底部「拍摄」进入', icon: 'none' })
+      }
+    })
   },
 
   onShareAppMessage() {
     const { getSharePath } = require('../../utils/share')
     return {
-      title: '4 大详细性格测试，来测测你的性格类型',
+      title: '问卷 + AI 测评，发现你的性格类型',
       path: getSharePath('/pages/test-select/index')
     }
   },
@@ -72,7 +101,7 @@ Page({
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
     return {
-      title: '4 大详细性格测试，来测测你的性格类型',
+      title: '问卷 + AI 测评，发现你的性格类型',
       query: buildShareQuery()
     }
   }

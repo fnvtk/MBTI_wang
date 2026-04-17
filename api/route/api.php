@@ -27,6 +27,14 @@ Route::group('api', function () {
     Route::post('analytics/events', 'api.Analytics/batch');
     // 好友打开分享卡片：凭 st 校验查看他人测试结果（无需登录）
     Route::get('test/share-detail', 'api.Test/shareDetail');
+    // 神仙 AI · 推荐文章（无需登录也可拉取，首屏展示）
+    Route::get('ai/articles/recommended', 'api.AiChat/recommendedArticles');
+    Route::get('ai/articles/profile-teaser', 'api.AiChat/profileArticleTeaser');
+    Route::post('ai/articles/:id/click', 'api.AiChat/articleClick');
+    // 快捷问句：公开接口；若请求头带有效微信 token 则按用户 MBTI 个性化
+    Route::get('ai/quick-questions', 'api.AiChat/quickQuestions');
+    // 小程序 TabBar 动态配置（无需登录，启动拉取）
+    Route::get('mp/tabbar', 'api.MpConfig/tabbar');
 })->middleware('cors');
 
 // 前端需要认证的API路由
@@ -81,6 +89,19 @@ Route::group('api', function () {
     Route::post('wechat/transfer/notify', 'api.WechatTransferNotify/notify')->middleware('cors');
     // 存客宝获客线索上报
     Route::post('crm/report', 'api.CrmReport/report');
+
+    // ==================== 神仙 AI（需要微信登录）====================
+    Route::post('ai/chat', 'api.AiChat/chat');
+    Route::get('ai/conversations', 'api.AiChat/conversations');
+    Route::get('ai/conversations/:id/messages', 'api.AiChat/messages');
+    Route::post('ai/transcribe', 'api.AiChat/transcribe');
+
+    // AI 深度画像报告
+    Route::post('ai/report/create', 'api.AiReport/create');
+    Route::get('ai/report/my-latest', 'api.AiReport/myLatest');
+    Route::get('ai/report/:id', 'api.AiReport/show');
+    Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
+    Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
 })->middleware(['cors', 'auth']);
 
 // ==================== 小程序API路由（匹配前端 /api 路径）====================
@@ -295,6 +316,34 @@ Route::group('api/v1/superadmin', function () {
     // 小程序埋点统计（仅超管）
     Route::get('analytics/summary', 'superadmin.Analytics/summary');
     Route::get('analytics/events', 'superadmin.Analytics/events');
+    Route::get('analytics/user-journey', 'superadmin.Analytics/userJourney');
+    Route::get('analytics/share-stats', 'superadmin.Analytics/shareStats');
+    Route::get('analytics/share-funnel', 'superadmin.Analytics/shareFunnel');
+
+    // Soul 文章采集与推荐（一场 soul 创业实验引流）
+    Route::get('soul-articles/ai-chat-display', 'superadmin.SoulArticle/aiChatDisplayGet');
+    Route::post('soul-articles/ai-chat-display', 'superadmin.SoulArticle/aiChatDisplaySave');
+    Route::post('soul-articles/sync', 'superadmin.SoulArticle/sync');
+    Route::post('soul-articles/:id/recommend', 'superadmin.SoulArticle/recommend');
+    Route::post('soul-articles/:id/order', 'superadmin.SoulArticle/setOrder');
+    Route::post('soul-articles/reorder-normalize', 'superadmin.SoulArticle/normalizeOrder');
+    Route::post('soul-articles/:id/delete', 'superadmin.SoulArticle/remove');
+    Route::get('soul-articles', 'superadmin.SoulArticle/index');
+
+    // 神仙 AI 健康与欠费监控
+    Route::get('ai/health', 'superadmin.SoulArticle/health');
+    Route::post('ai/balance-check', 'superadmin.AiMonitor/balanceCheck');
+
+    // 小程序 TabBar 后台可配
+    Route::get('tabbar', 'superadmin.MpTabBar/index');
+    Route::post('tabbar/save', 'superadmin.MpTabBar/save');
+    Route::post('tabbar/reorder', 'superadmin.MpTabBar/reorder');
+    Route::post('tabbar/:id/delete', 'superadmin.MpTabBar/remove');
+
+    // 分账规则
+    Route::get('profit-rules', 'superadmin.ProfitRule/index');
+    Route::post('profit-rules/save', 'superadmin.ProfitRule/save');
+    Route::post('profit-rules/:id/toggle', 'superadmin.ProfitRule/toggle');
 })->middleware(['cors', 'auth', 'superadmin']);
 
 // ==================== 兼容旧版路由（保留，逐步废弃）====================

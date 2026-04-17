@@ -9,20 +9,25 @@ Page({
     personalCategories: [],
     enterpriseCategories: [],
     loading: true,
+    loadError: false,
+    loadErrorMsg: '',
     purchasing: false,
     hasPhone: false,
     successModal: {
       visible: false,
       title: '',
-      content: '',
-      wechat: ''
+      content: ''
     }
+  },
+
+  retryLoad() {
+    this.loadDeepPricing()
   },
 
   onLoad(options) {
     const tab = (options && options.tab === 'enterprise') ? 'enterprise' : 'personal'
     this.setData({ activeTab: tab })
-    wx.setNavigationBarTitle({ title: '深度服务' })
+    wx.setNavigationBarTitle({ title: '了解自己' })
     this.loadDeepPricing()
   },
 
@@ -34,21 +39,44 @@ Page({
   loadDeepPricing() {
     const apiBase = app.globalData.apiBase || ''
     if (!apiBase) {
-      this.setData({ loading: false })
+      this.setData({ loading: false, loadError: true, loadErrorMsg: '服务地址未配置' })
       return
     }
-    this.setData({ loading: true })
+    this.setData({ loading: true, loadError: false, loadErrorMsg: '' })
     Promise.all([
       this.requestDeepPricing('personal'),
       this.requestDeepPricing('enterprise')
     ]).then(([personal, enterprise]) => {
+      const pErr = personal && personal.__error
+      const eErr = enterprise && enterprise.__error
+      const pList = Array.isArray(personal) ? personal : []
+      const eList = Array.isArray(enterprise) ? enterprise : []
+      const bothFailed = pErr && eErr
+      const bothEmpty = !pList.length && !eList.length
+      if (bothFailed || bothEmpty) {
+        const msg = pErr ? (personal.__errorMsg || '网络异常') : (eErr ? (enterprise.__errorMsg || '网络异常') : '暂无可购买方案')
+        this.setData({
+          personalCategories: [],
+          enterpriseCategories: [],
+          loading: false,
+          loadError: true,
+          loadErrorMsg: msg
+        })
+        return
+      }
       this.setData({
-        personalCategories: personal || [],
-        enterpriseCategories: enterprise || [],
-        loading: false
+        personalCategories: pList,
+        enterpriseCategories: eList,
+        loading: false,
+        loadError: false,
+        loadErrorMsg: ''
       })
-    }).catch(() => {
-      this.setData({ loading: false })
+    }).catch((err) => {
+      this.setData({
+        loading: false,
+        loadError: true,
+        loadErrorMsg: (err && err.message) || '加载失败，请检查网络后重试'
+      })
     })
   },
 
@@ -58,14 +86,15 @@ Page({
         url: `${app.globalData.apiBase.replace(/\/$/, '')}/api/config/deep-pricing`,
         method: 'GET',
         data: { scope },
+        timeout: 15000,
         success: (res) => {
           if (res.statusCode === 200 && res.data && res.data.code === 200 && Array.isArray(res.data.data && res.data.data.categories)) {
             resolve(res.data.data.categories)
           } else {
-            resolve([])
+            resolve({ __error: true, __errorMsg: (res && res.data && res.data.message) || '响应异常' })
           }
         },
-        fail: () => resolve([])
+        fail: (err) => resolve({ __error: true, __errorMsg: (err && err.errMsg) || '网络异常' })
       })
     })
   },
@@ -74,7 +103,7 @@ Page({
     const tab = e.currentTarget.dataset.tab
     if (tab !== 'personal' && tab !== 'enterprise') return
     this.setData({ activeTab: tab })
-    wx.setNavigationBarTitle({ title: '深度服务' })
+    wx.setNavigationBarTitle({ title: '了解自己' })
   },
 
   // 无需再次授权时，直接点击按钮执行购买/咨询
@@ -147,8 +176,7 @@ Page({
         this.setData({ purchasing: false })
         this._reportCrmLead(category, 'buy')
         const successMsg = (category.successMessage || '购买成功！我们的顾问会尽快与您联系，为您提供专属深度解读服务。').trim()
-        const wechat = (category.serviceWechat || '').trim()
-        this._showSuccessModal('购买成功', successMsg, wechat)
+        this._showSuccessModal('购买成功', successMsg)
       },
       fail: () => {
         wx.hideLoading()
@@ -158,27 +186,21 @@ Page({
   },
 
   applyConsult(category) {
-    // serviceWechat 展示给用户，consultWechat 是存客宝 API key
-    const wechat = (category.serviceWechat || '').trim()
-    const apiKey = (category.consultWechat || '').trim()
     const successMsg = (category.successMessage || '感谢您的申请，我们的顾问会尽快与您联系！').trim()
     wx.showLoading({ title: '提交中...', mask: true })
-    if (apiKey) {
-      this._reportCrmLead(category, 'consult')
-    }
-    setTimeout(() => {
+    const done = () => {
       wx.hideLoading()
-      this._showSuccessModal('申请成功', successMsg, wechat)
-    }, 600)
+      this._showSuccessModal('申请成功', successMsg)
+    }
+    this._reportCrmLead(category, 'consult', done)
   },
 
-  _showSuccessModal(title, content, wechat) {
+  _showSuccessModal(title, content) {
     this.setData({
       successModal: {
         visible: true,
         title: title || '成功',
-        content: content || '',
-        wechat: wechat || ''
+        content: content || ''
       }
     })
   },
@@ -189,25 +211,23 @@ Page({
     this.setData({ 'successModal.visible': false })
   },
 
-  copyWechat() {
-    const wechat = this.data.successModal.wechat
-    if (!wechat) return
-    wx.setClipboardData({
-      data: wechat,
-      success: () => wx.showToast({ title: '已复制微信号', icon: 'success' })
-    })
-  },
-
   /**
    * 向后端上报存客宝线索，后端负责签名和调用存客宝 API
-   * @param {Object} category  深度服务类目对象（需含 consultWechat / title）
+   * @param {Object} category  深度服务类目对象（consultWechat 为存客宝 KEY，可空由后端按企业配置回落）
    * @param {string} actionType  'buy'（付款完成）| 'consult'（申请咨询）
+   * @param {Function} [onDone]  请求结束回调（含失败）
    */
-  _reportCrmLead(category, actionType) {
-    const apiKey = category.consultWechat || ''
-    if (!apiKey) return
+  _reportCrmLead(category, actionType, onDone) {
+    const apiKey = (category.consultWechat || '').trim()
     const apiBase = app.globalData.apiBase || ''
-    if (!apiBase) return
+    if (actionType === 'buy' && !apiKey) {
+      if (typeof onDone === 'function') onDone()
+      return
+    }
+    if (!apiBase) {
+      if (typeof onDone === 'function') onDone()
+      return
+    }
 
     const isEnterprise = this.data.activeTab === 'enterprise'
     const source = (isEnterprise ? '企业深度服务' : '个人深度服务') + (category.title ? `-${category.title}` : '')
@@ -225,12 +245,16 @@ Page({
         source,
         remark,
         siteTags: category.title || '',
+        deepConsult: actionType === 'consult',
       },
       success(res) {
         console.log('[CRM] 线索上报结果', res.data)
       },
       fail(err) {
         console.warn('[CRM] 线索上报请求失败', err)
+      },
+      complete() {
+        if (typeof onDone === 'function') onDone()
       },
     })
   },

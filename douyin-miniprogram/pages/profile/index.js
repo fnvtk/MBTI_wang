@@ -350,6 +350,7 @@ Page({
   goToPurchaseEnterprise() { tt.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
   goToEnterprise() { tt.navigateTo({ url: '/pages/enterprise/index' }) },
   goToPromo() { tt.navigateTo({ url: '/pages/promo/index' }) },
+  goToPromoWithdrawals() { tt.navigateTo({ url: '/pages/promo/withdrawals' }) },
   goToMyResume() { tt.navigateTo({ url: '/pages/enterprise/resume-history' }) },
   goToSettings() {
     tt.showToast({ title: '开发中', icon: 'none' })

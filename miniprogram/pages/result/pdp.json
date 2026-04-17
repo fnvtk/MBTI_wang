@@ -2,5 +2,9 @@
   "navigationBarTitleText": "PDP结果",
   "navigationBarBackgroundColor": "#F59E0B",
   "navigationBarTextStyle": "white",
-  "usingComponents": {}
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
+  "usingComponents": {
+    "result-section-nav": "/components/result-section-nav/index"
+  }
 }

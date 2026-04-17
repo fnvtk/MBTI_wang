@@ -1,16 +1,92 @@
-<!--pages/result/pdp.wxml - PDP结果（按旧版模板重构）-->
+<!--pages/result/pdp.wxml - PDP 结果页（高级排版）-->
 <view class="result-page">
-  <scroll-view class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}}" scroll-y>
-    <view class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}}">
-      <view class="type-card">
-        <view class="type-header">
-          <text class="type-label">PDP性格类型</text>
-          <text class="type-value">{{typeSummaryLine}}</text>
-          <text class="type-title" wx:if="{{result.description.title}}">{{result.description.title}}</text>
-          <text class="type-description" wx:if="{{result.description.description}}">{{result.description.description}}</text>
-        </view>
+  <scroll-view
+    class="content-scroll {{fromShare ? 'content-scroll--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-scroll--with-bottom-tools' : ''}}"
+    scroll-y
+    scroll-into-view="{{scrollTarget}}"
+    scroll-with-animation
+    bindscroll="onSectionScroll"
+  >
+    <view
+      class="content-container {{fromShare ? 'content-container--with-fixed-footer' : ''}} {{result && !fromShare ? 'content-container--with-bottom-tools' : ''}}"
+    >
 
-        <view class="paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+      <!-- 分类锚点导航 -->
+      <result-section-nav
+        wx:if="{{result && !fromShare}}"
+        sections="{{sectionNav}}"
+        active="{{activeSection}}"
+        theme="orange"
+        bindnavtap="onTapSectionNav"
+      />
+
+      <!-- Hero -->
+      <view class="hero-card hero-card--pdp" id="sec-hero" wx:if="{{result}}">
+        <text class="hero-eyebrow">PDP · ANIMAL STYLE</text>
+        <text class="hero-code">{{typeSummaryLine}}</text>
+        <text class="hero-title" wx:if="{{result.description && result.description.title}}">{{result.description.title}}</text>
+        <text class="hero-subtitle" wx:if="{{profileGate && previewPdpDescription}}">{{previewPdpDescription}}</text>
+        <text class="hero-subtitle" wx:elif="{{result.description && result.description.description && !profileGate}}">{{result.description.description}}</text>
+        <view class="hero-badges">
+          <view class="hero-badge hero-badge--solid" wx:if="{{pdpInsight && pdpInsight.mind}}">{{pdpInsight.mind}}</view>
+          <view class="hero-badge" wx:for="{{pdpTags}}" wx:key="*this">{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 深度洞察 -->
+      <block wx:if="{{pdpInsight}}">
+        <view class="section-head" id="sec-insight">
+          <view class="section-head__bar section-head__bar--pdp"></view>
+          <text class="section-head__title">深度洞察</text>
+          <text class="section-head__desc">动物型背后的底层风格</text>
+        </view>
+        <view class="insight-grid">
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--orange">🧠</view>
+            <text class="insight-card__label">心智模式</text>
+            <text class="insight-card__value">{{pdpInsight.mind}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--blue">🎯</view>
+            <text class="insight-card__label">决策倾向</text>
+            <text class="insight-card__value">{{pdpInsight.decision}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--teal">⚡</view>
+            <text class="insight-card__label">能量来源</text>
+            <text class="insight-card__value">{{pdpInsight.energy}}</text>
+          </view>
+          <view class="insight-card">
+            <view class="insight-card__icon insight-card__icon--rose">⚠️</view>
+            <text class="insight-card__label">压力反应</text>
+            <text class="insight-card__value">{{pdpInsight.stress}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{pdpInsight.comm}}">
+            <view class="insight-card__icon insight-card__icon--purple">💬</view>
+            <text class="insight-card__label">沟通风格</text>
+            <text class="insight-card__value">{{pdpInsight.comm}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{pdpInsight.lead}}">
+            <view class="insight-card__icon insight-card__icon--orange">🚩</view>
+            <text class="insight-card__label">领导模式</text>
+            <text class="insight-card__value">{{pdpInsight.lead}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{pdpInsight.love}}">
+            <view class="insight-card__icon insight-card__icon--rose">💝</view>
+            <text class="insight-card__label">恋爱与亲密</text>
+            <text class="insight-card__value">{{pdpInsight.love}}</text>
+          </view>
+          <view class="insight-card" wx:if="{{pdpInsight.team}}">
+            <view class="insight-card__icon insight-card__icon--teal">👥</view>
+            <text class="insight-card__label">团队角色</text>
+            <text class="insight-card__value">{{pdpInsight.team}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 付费墙 -->
+      <view class="type-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}">
+        <view class="paywall-card">
           <view class="paywall-content">
             <view class="paywall-blur">
               <text class="paywall-fake-title">完整PDP报告</text>
@@ -25,8 +101,10 @@
             </view>
           </view>
         </view>
+      </view>
 
-        <view class="paywall-card" wx:elif="{{result && result.locked && !fromShare}}">
+      <view class="type-card" wx:elif="{{result && result.locked && !fromShare && !profileGate}}">
+        <view class="paywall-card">
           <view class="paywall-content">
             <text class="paywall-fake-title">完整报告需完善资料</text>
             <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整 PDP 报告。</text>
@@ -35,66 +113,154 @@
             </view>
           </view>
         </view>
+      </view>
 
-        <view class="scores-section" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-          <text class="section-title">PDP得分详情</text>
-          <view class="score-item" wx:for="{{typeList}}" wx:key="type">
-            <view class="score-header">
-              <text class="score-label">{{item.emoji}} {{item.label}}</text>
-              <text class="score-value">{{result.percentagesInt && result.percentagesInt[item.type] != null ? result.percentagesInt[item.type] + '%' : '0%'}}</text>
+      <!-- 五维得分 -->
+      <block wx:if="{{pdpDimensions.length && (!payInfo.requiresPayment || payInfo.isPaid) && (profileGate || !result.locked)}}">
+        <view class="section-head" id="sec-dim">
+          <view class="section-head__bar section-head__bar--pdp"></view>
+          <text class="section-head__title">{{profileGate ? 'PDP 得分预览' : '五维动物型得分'}}</text>
+          <text class="section-head__desc">老虎 · 孔雀 · 无尾熊 · 猫头鹰 · 变色龙</text>
+        </view>
+        <view class="type-card" style="padding: 36rpx 32rpx;">
+          <view class="dash-dimension-row" wx:for="{{pdpDimensions}}" wx:key="key">
+            <view class="dash-dimension-labels">
+              <text class="dash-lab">{{item.emoji}} {{item.label}}</text>
+              <text class="dash-lab">{{item.percentage}}%</text>
             </view>
-            <view class="progress-bar-container">
-              <view class="progress-bar {{item.colorClass}}" style="width: {{result.percentages[item.type]}}%"></view>
+            <view class="dash-track">
+              <view class="dash-fill {{item.dashClass}}" style="width: {{item.percentage}}%"></view>
             </view>
+            <text class="dash-dim-desc">{{item.desc}}</text>
           </view>
         </view>
-      </view>
+      </block>
 
-      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-        <text class="card-title">性格特征</text>
-        <view class="trait-section">
-          <text class="trait-title">优势</text>
-          <view class="trait-item" wx:for="{{result.description.strengths}}" wx:key="*this">
-            <text class="trait-bullet">•</text>
-            <text class="trait-text">{{item}}</text>
+      <!-- 资料门禁预览 -->
+      <view wx:if="{{profileGate && result && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <view class="preview-teaser-card" wx:if="{{previewPdpStrengths.length}}">
+          <text class="preview-teaser-title">优势摘录（预览约 30%）</text>
+          <view class="preview-strength-row" wx:for="{{previewPdpStrengths}}" wx:key="*this">
+            <text class="preview-strength-dot">•</text>
+            <text class="preview-strength-text">{{item}}</text>
           </view>
+          <text class="preview-teaser-hint">完善头像、昵称并绑定手机号后可查看团队角色与推荐职业全文。</text>
         </view>
-        <view class="trait-section">
-          <text class="trait-title">需要注意的方面</text>
-          <view class="trait-item" wx:for="{{result.description.weaknesses}}" wx:key="*this">
-            <text class="trait-bullet">•</text>
-            <text class="trait-text">{{item}}</text>
-          </view>
-        </view>
-      </view>
-
-      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-        <text class="card-title">团队角色</text>
-        <text class="relationship-text">{{result.description.teamRole}}</text>
-      </view>
-
-      <view class="analysis-card" wx:if="{{result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
-        <text class="card-title">推荐职业</text>
-        <view class="career-item" wx:for="{{result.description.careers}}" wx:key="*this">
-          <view class="career-dot"></view>
-          <text class="career-text">{{item}}</text>
-        </view>
-      </view>
-
-      <!-- <view class="action-section">
-        <button class="btn btn-primary" open-type="share">
-          <text class="btn-text">分享结果</text>
+        <button class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
+          <text class="paywall-btn-main">去完善资料 · 解锁全文</text>
         </button>
-        <view class="btn btn-outline" bindtap="retakeTest">
-          <text class="btn-text-outline">重新测试</text>
+      </view>
+
+      <!-- 优势 / 注意 -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+        <view class="section-head" id="sec-trait">
+          <view class="section-head__bar section-head__bar--pdp"></view>
+          <text class="section-head__title">性格特征</text>
+          <text class="section-head__desc">善用与防守指南</text>
         </view>
-        <view class="btn btn-outline" bindtap="goHome">
-          <text class="btn-text-outline">返回首页</text>
+        <view class="trait-dual">
+          <view class="trait-dual__col trait-dual__col--strength">
+            <view class="trait-dual__title">
+              <view class="trait-dual__ic trait-dual__ic--strength">✨</view>
+              <text>天赋优势</text>
+            </view>
+            <view>
+              <text class="trait-dual__chip trait-dual__chip--strength" wx:for="{{result.description.strengths}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
+          <view class="trait-dual__col trait-dual__col--caution">
+            <view class="trait-dual__title">
+              <view class="trait-dual__ic trait-dual__ic--caution">⚠️</view>
+              <text>需要注意</text>
+            </view>
+            <view>
+              <text class="trait-dual__chip trait-dual__chip--caution" wx:for="{{result.description.weaknesses}}" wx:key="*this">{{item}}</text>
+            </view>
+          </view>
         </view>
-      </view> -->
+      </block>
+
+      <!-- 团队角色（引用） -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && result.description.teamRole}}">
+        <view class="section-head" id="sec-team">
+          <view class="section-head__bar section-head__bar--pdp"></view>
+          <text class="section-head__title">团队角色</text>
+          <text class="section-head__desc">在团队协作中的最佳位置</text>
+        </view>
+        <view class="quote-card">
+          <text class="quote-card__label">TEAM · 协作画像</text>
+          <text class="quote-card__text">{{result.description.teamRole}}</text>
+        </view>
+      </block>
+
+      <!-- 推荐职业 -->
+      <block wx:if="{{!profileGate && result && !result.locked && (!payInfo.requiresPayment || payInfo.isPaid) && pdpCareerItems.length}}">
+        <view class="section-head" id="sec-career">
+          <view class="section-head__bar section-head__bar--pdp"></view>
+          <text class="section-head__title">推荐职业</text>
+          <text class="section-head__desc">高契合度职业方向</text>
+        </view>
+        <view class="career-grid">
+          <view class="career-grid__item" wx:for="{{pdpCareerItems}}" wx:key="name">
+            <view class="career-grid__ic">{{item.icon}}</view>
+            <text class="career-grid__text">{{item.name}}</text>
+          </view>
+        </view>
+      </block>
+
+      <!-- 深度解读 CTA -->
+      <view class="deep-cta-card" id="sec-cta" wx:if="{{result}}">
+        <view class="deep-cta-head">
+          <view class="deep-cta-ic">💎</view>
+          <text class="deep-cta-title">深度解读 · 团队/企业方案</text>
+        </view>
+        <text class="deep-cta-desc">结合 PDP、MBTI、DISC 与面相综合报告；团队可做岗位适配、沟通协作与领导力建议。邀请好友测评可参与推广分润。</text>
+        <view class="deep-cta-actions">
+          <view class="deep-cta-btn deep-cta-btn--primary" bindtap="onTapDeepService">深度解读方案</view>
+          <view class="deep-cta-btn deep-cta-btn--ghost" bindtap="onTapPromoCenter">推广中心</view>
+        </view>
+      </view>
     </view>
   </scroll-view>
-  <view class="result-share-footer" wx:if="{{fromShare}}">
+
+  <view class="result-bottom-tools" wx:if="{{result && !fromShare}}">
+    <view class="journey-stepper">
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step1Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===1 ? 'journey-stepper__dot--active' : '')}}">1</view>
+        <text class="journey-stepper__label {{journey.activeStep===1 ? 'journey-stepper__label--active' : ''}}">看全文</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step1Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step2Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===2 ? 'journey-stepper__dot--active' : '')}}">2</view>
+        <text class="journey-stepper__label {{journey.activeStep===2 ? 'journey-stepper__label--active' : ''}}">分享朋友圈</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step2Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view class="journey-stepper__dot {{journey.step3Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===3 ? 'journey-stepper__dot--active' : '')}}">3</view>
+        <text class="journey-stepper__label {{journey.activeStep===3 ? 'journey-stepper__label--active' : ''}}">AI 拍照</text>
+      </view>
+    </view>
+    <view class="result-bottom-tools__row">
+      <view class="result-tool-btn result-tool-btn--primary" bindtap="onTapReadFull">
+        <text>{{journey.step1Unlocked ? '查看全文' : '① 解锁全文'}}</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? '完善资料即解锁' : '点击解锁')}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step1Unlocked ? 'result-tool-btn--rose' : 'result-tool-btn--locked'}}" bindtap="onTapShareMoment">
+        <text><text wx:if="{{!journey.step1Unlocked}}" class="result-tool-btn__lock">🔒</text>朋友圈</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? (journey.step2Unlocked ? '已分享' : '点击分享') : '先解锁全文'}}</text>
+      </view>
+      <view class="result-tool-btn {{journey.step2Unlocked ? 'result-tool-btn--ghost' : 'result-tool-btn--locked'}}" bindtap="onTapFaceCamera">
+        <text><text wx:if="{{!journey.step2Unlocked}}" class="result-tool-btn__lock">🔒</text>AI 拍照</text>
+        <text class="result-tool-sub">{{journey.step2Unlocked ? '面相+人格' : '先分享朋友圈'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-share-footer result-share-footer--stack" wx:if="{{fromShare}}">
     <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+    <view class="result-share-footer-row2">
+      <button class="result-share-footer-btn result-share-footer-btn--ghost" bindtap="goReadFullFromShare">看全文</button>
+      <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
+    </view>
   </view>
 </view>

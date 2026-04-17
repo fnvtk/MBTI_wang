@@ -655,18 +655,18 @@ onMounted(async () => {
       flex-shrink: 0;
 
       &.purple {
-        background-color: #f3e8ff;
-        color: #a855f7;
+        background-color: #E0E7FF;
+        color: #1E40AF;
       }
 
       &.green {
-        background-color: #dcfce7;
-        color: #22c55e;
+        background-color: #D1FAE5;
+        color: #059669;
       }
 
       &.orange {
-        background-color: #fed7aa;
-        color: #f97316;
+        background-color: #FEF3C7;
+        color: #D97706;
       }
     }
   }
@@ -719,23 +719,23 @@ onMounted(async () => {
     }
 
     &.blue .action-icon {
-      background-color: #3b82f6;
+      background-image: linear-gradient(135deg, #1E40AF 0%, #3730A3 100%);
     }
 
     &.green .action-icon {
-      background-color: #22c55e;
+      background-image: linear-gradient(135deg, #059669 0%, #047857 100%);
     }
 
     &.orange .action-icon {
-      background-color: #f97316;
+      background-image: linear-gradient(135deg, #D97706 0%, #B45309 100%);
     }
 
     &.purple .action-icon {
-      background-color: #a855f7;
+      background-image: linear-gradient(135deg, #4338CA 0%, #312E81 100%);
     }
 
     &.gray .action-icon {
-      background-color: #6b7280;
+      background-color: #475569;
     }
   }
 }
@@ -848,7 +848,7 @@ onMounted(async () => {
       padding: 0;
 
       &:hover {
-        color: #ef4444;
+        color: #1E40AF;
       }
     }
   }

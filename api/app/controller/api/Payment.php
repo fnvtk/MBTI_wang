@@ -6,6 +6,7 @@ use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
 use app\common\service\FeishuLeadWebhookService;
+use app\common\service\AiReportService;
 use think\facade\Request;
 use think\facade\Db;
 
@@ -364,6 +365,14 @@ class Payment extends BaseController
                 // 企业四项测试支付后，订单金额进入企业余额
                 $this->creditEnterpriseBalanceForOrder($order, $paidAmountFen, $now);
 
+                // AI 深度报告：支付成功后置 paid 并触发报告生成（幂等）
+                if (($order['productType'] ?? '') === 'ai_deep_report' && !empty($order['orderNo'])) {
+                    try {
+                        AiReportService::markPaid((string) $order['orderNo']);
+                    } catch (\Throwable $e) {
+                    }
+                }
+
                 if (($order['productType'] ?? '') !== 'recharge') {
                     // 触发分销佣金结算
                     try {
@@ -371,6 +380,43 @@ class Payment extends BaseController
                     } catch (\Exception $e) {
                         // 佣金结算失败不影响主流程
                     }
+                }
+
+                // 成交归因：写入一条 analytics_events，便于漏斗统计
+                try {
+                    $userId = (int) ($order['userId'] ?? 0);
+                    $inviterRow = null;
+                    if ($userId > 0) {
+                        $inviterRow = Db::name('distribution_bindings')
+                            ->where('inviteeId', $userId)
+                            ->where('status', 'active')
+                            ->where('expireAt', '>', time())
+                            ->order('id', 'desc')
+                            ->field('inviterId')
+                            ->find();
+                    }
+                    $amountFenForEvent = (int) ($order['amount'] ?? 0);
+                    $props = [
+                        'orderId'   => (int) $order['id'],
+                        'orderNo'   => $order['orderNo'] ?? '',
+                        'amountFen' => $amountFenForEvent,
+                        'amountYuan'=> $amountFenForEvent / 100,
+                        'productType' => $order['productType'] ?? '',
+                        'testType'  => $order['testType'] ?? '',
+                        'inviterId' => $inviterRow ? (int) ($inviterRow['inviterId'] ?? 0) : 0,
+                    ];
+                    Db::name('analytics_events')->insert([
+                        'userId'    => $userId ?: null,
+                        'eventName' => 'pay_success_attribution',
+                        'pagePath'  => 'server/payment/notify',
+                        'propsJson' => json_encode($props, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+                        'clientTs'  => (int) ($now * 1000),
+                        'platform'  => 'server',
+                        'sessionId' => null,
+                        'createdAt' => date('Y-m-d H:i:s', $now),
+                    ]);
+                } catch (\Throwable $e) {
+                    // 埋点失败不影响主流程
                 }
             }
 
@@ -460,6 +506,14 @@ class Payment extends BaseController
 
                         // 企业四项测试支付后，订单金额进入企业余额
                         $this->creditEnterpriseBalanceForOrder($localOrder, $finalAmount, $now);
+
+                        // AI 深度报告：查询确认支付时补偿置 paid（幂等）
+                        if (($localOrder['productType'] ?? '') === 'ai_deep_report' && !empty($localOrder['orderNo'])) {
+                            try {
+                                AiReportService::markPaid((string) $localOrder['orderNo']);
+                            } catch (\Throwable $e) {
+                            }
+                        }
 
                         if (($localOrder['productType'] ?? '') !== 'recharge') {
                             // 触发分销佣金结算

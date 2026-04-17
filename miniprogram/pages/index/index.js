@@ -145,23 +145,17 @@ Page({
     }
   },
 
-  // 审核态：主按钮进问卷选测试；否则进拍摄 Tab
+  // 主按钮统一进入「详细性格测试」列表（问卷 / AI 对话 / 拍照等分项选择），不再直跳拍摄 Tab
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    const gd = getApp().globalData
-    const ep = gd.enterprisePermissions
-    const faceOff = ep && ep.face === false
-    if (gd.reviewMode || gd.maintenanceMode || faceOff) {
-      wx.navigateTo({ url: '/pages/test-select/index' })
-      return
-    }
-    wx.switchTab({ url: '/pages/index/camera' })
+    try { require('../../utils/analytics').track('tap_home_test_select', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   // 上传照片（个人版入口：强制本次链路为个人定价）
   uploadPhoto() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    // 这里仅负责跳转到全新的「拍摄或上传照片」页面，具体拍摄/上传逻辑在新页面实现
+    try { require('../../utils/analytics').track('tap_upload_photo_home', {}) } catch (e) {}
     wx.navigateTo({
       url: '/pages/index/upload'
     })
@@ -169,6 +163,7 @@ Page({
 
   // 切换到企业版（仅已绑定企业的用户可进入，优先用登录返回的 hasEnterprise，避免多请求）
   switchToEnterprise() {
+    try { require('../../utils/analytics').track('tap_enterprise_entry', {}) } catch (e) {}
     const app = getApp()
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo') || {}
     if (userInfo.hasEnterprise === true) {
