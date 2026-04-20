@@ -97,18 +97,21 @@ Page({
               app.globalData.siteTitle = cfg.siteTitle
               this.setData({ siteTitle: cfg.siteTitle })
             }
-            const maintenanceMode = !!(cfg.maintenanceMode || cfg.reviewMode)
             if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
             if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
               app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
             }
+            try {
+              require('../../utils/miniprogramAuditGate.js').applyAuditUiOverride(app)
+            } catch (e) {}
+            const auditEff = !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
             const ep2 = app.globalData.enterprisePermissions
             const pf2 = !ep2 || ep2.face !== false
             this.setData({
-              startButtonEnterprise: (maintenanceMode || !pf2) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+              startButtonEnterprise: (auditEff || !pf2) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
               aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
-              maintenanceMode,
-              reviewMode: maintenanceMode,
+              maintenanceMode: auditEff,
+              reviewMode: auditEff,
               permFace: pf2
             })
           }
@@ -129,18 +132,21 @@ Page({
             this.setData({ siteTitle: cfg.siteTitle })
           }
           if (cfg.textConfig) app.globalData.textConfig = cfg.textConfig
-          const maintenanceMode = !!(cfg && (cfg.maintenanceMode || cfg.reviewMode))
           if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
           if (cfg.reviewMode !== undefined || cfg.maintenanceMode !== undefined) {
             app.globalData.reviewMode = !!(cfg.reviewMode || cfg.maintenanceMode)
           }
+          try {
+            require('../../utils/miniprogramAuditGate.js').applyAuditUiOverride(app)
+          } catch (e) {}
+          const auditEff2 = !!(app.globalData.reviewMode || app.globalData.maintenanceMode)
           const ep3 = app.globalData.enterprisePermissions
           const pf3 = !ep3 || ep3.face !== false
           this.setData({
-            startButtonEnterprise: (maintenanceMode || !pf3) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
+            startButtonEnterprise: (auditEff2 || !pf3) ? '开始性格测试' : (cfg.textConfig && cfg.textConfig.startButtonEnterprise || '开始面部测试'),
             aiAnalysisText: (cfg.textConfig && cfg.textConfig.aiAnalysisText) || '智能分析',
-            maintenanceMode,
-            reviewMode: maintenanceMode,
+            maintenanceMode: auditEff2,
+            reviewMode: auditEff2,
             permFace: pf3
           })
         }

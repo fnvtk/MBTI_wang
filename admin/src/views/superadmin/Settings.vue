@@ -385,7 +385,7 @@
         </div>
 
         <div v-if="activeTab === 'pushhook'" class="tab-content">
-          <PushHookConfigPanel api-prefix="/superadmin" />
+          <PushHookConfigPanel api-prefix="/superadmin" :show-test-tools="showOutboundPushDebug" />
         </div>
 
         <!-- 账户安全 -->
@@ -474,6 +474,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
+import { isOutboundPushDebugVisible } from '@/utils/outboundPushDebug'
 import PosterEditor from './PosterEditor.vue'
 import Questions from './Questions.vue'
 import PushHookConfigPanel from '../admin/PushHookConfigPanel.vue'
@@ -495,6 +496,9 @@ function isTabId(s: string): s is TabId {
 
 const route = useRoute()
 const router = useRouter()
+
+/** 出站推送测试区：仅开发或 VITE_SHOW_OUTBOUND_PUSH_DEBUG=true，生产包默认隐藏 */
+const showOutboundPushDebug = isOutboundPushDebugVisible()
 
 const activeTab = ref<TabId>('review')
 const saveSuccess = ref<string | null>(null)

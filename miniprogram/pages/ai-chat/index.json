@@ -1,7 +1,7 @@
 {
   "navigationBarTitleText": "神仙 AI",
-  "navigationBarBackgroundColor": "#ffffff",
+  "navigationBarBackgroundColor": "#faf9ff",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#ffffff",
+  "backgroundColor": "#f4f3f9",
   "usingComponents": {}
 }

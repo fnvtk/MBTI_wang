@@ -82,7 +82,7 @@
   <view class="ai-bottom-solid" aria-hidden="true"></view>
 
   <!-- 底部：快捷语（横滑）+ 输入区，固定在 Tab 之上 -->
-  <view class="composer-wrap">
+  <view class="composer-wrap {{quickQuestions.length > 0 ? 'composer-wrap--has-chips' : ''}}">
     <view class="quick-chips-outer" wx:if="{{quickQuestions.length > 0}}">
       <scroll-view
         class="quick-chips-scroll"
@@ -105,7 +105,7 @@
     </view>
     <view class="input-bar">
       <view class="resume-entry" bindtap="onTapUploadResume" hover-class="resume-entry--press">
-        <text class="resume-entry-icon">📎</text>
+        <view class="resume-entry-icon" aria-hidden="true"></view>
         <text class="resume-entry-txt">简历</text>
       </view>
       <input

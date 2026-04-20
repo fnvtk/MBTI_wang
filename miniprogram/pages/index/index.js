@@ -46,19 +46,23 @@ Page({
         if (cfg.maintenanceMode !== undefined) {
           getApp().globalData.maintenanceMode = !!cfg.maintenanceMode
         }
+        try {
+          require('../../utils/miniprogramAuditGate.js').applyAuditUiOverride(getApp())
+        } catch (e) {}
+        const rmEff = !!(getApp().globalData.reviewMode || getApp().globalData.maintenanceMode)
         if (cfg.siteTitle) {
           getApp().globalData.siteTitle = cfg.siteTitle
-          this.setData({ siteTitle: rm ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
+          this.setData({ siteTitle: rmEff ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
         }
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
-            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '30秒测出你的性格'),
-            aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
+            startButtonText: rmEff ? '开始性格测试' : (cfg.textConfig.startButtonText || '30秒测出你的性格'),
+            aiAnalysisText: rmEff ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
         const ep2 = getApp().globalData.enterprisePermissions
-        this.setData({ reviewMode: rm, permFace: !ep2 || ep2.face !== false })
+        this.setData({ reviewMode: rmEff, permFace: !ep2 || ep2.face !== false })
         try {
           const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
           if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()

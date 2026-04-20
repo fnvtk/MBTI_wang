@@ -1,14 +1,14 @@
 /* 神仙 AI · 对话页样式 */
 page {
   height: 100%;
-  background-color: #ffffff;
+  background-color: #f4f3f9;
 }
 
 .ai-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: #ffffff;
+  background: linear-gradient(180deg, #f0edff 0%, #f8f7fc 18%, #ffffff 42%);
   /* TabBar + 底部 composer（快捷语 + 输入行） */
   padding-bottom: calc(var(--tabbar-pad, 170rpx) + 200rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
@@ -16,23 +16,27 @@ page {
 
 /* MBTI 引导卡 */
 .mbti-remind-card {
-  margin: 8rpx 0 16rpx;
-  padding: 22rpx 24rpx;
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  border: 1rpx solid #e9d5ff;
-  border-radius: 24rpx;
+  margin: 4rpx 0 20rpx;
+  padding: 28rpx 28rpx 26rpx;
+  background: linear-gradient(145deg, #faf8ff 0%, #f3e8ff 45%, #ede9fe 100%);
+  border: 1rpx solid rgba(167, 139, 250, 0.35);
+  border-radius: 28rpx;
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  gap: 18rpx;
+  gap: 22rpx;
+  box-shadow:
+    0 4rpx 6rpx rgba(124, 58, 237, 0.04),
+    0 16rpx 40rpx rgba(124, 58, 237, 0.1);
 }
 
 .mbti-remind-avatar {
-  width: 72rpx;
-  height: 72rpx;
+  width: 80rpx;
+  height: 80rpx;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 2rpx solid #e9d5ff;
+  border: 3rpx solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4rpx 14rpx rgba(124, 58, 237, 0.2);
   background: #fff;
 }
 
@@ -42,17 +46,18 @@ page {
 }
 
 .mbti-remind-title {
-  font-size: 30rpx;
+  font-size: 32rpx;
   font-weight: 700;
-  color: #1f1b4d;
-  margin-bottom: 8rpx;
+  color: #312e81;
+  letter-spacing: 0.5rpx;
+  margin-bottom: 10rpx;
 }
 
 .mbti-remind-sub {
   font-size: 26rpx;
-  color: #4b5563;
-  line-height: 1.45;
-  margin-bottom: 16rpx;
+  color: #57534e;
+  line-height: 1.5;
+  margin-bottom: 20rpx;
 }
 
 .mbti-badge {
@@ -63,43 +68,47 @@ page {
 .mbti-remind-actions {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
   flex-wrap: wrap;
 }
 
 .mbti-remind-tag {
   font-size: 22rpx;
+  font-weight: 600;
   color: #6d28d9;
-  background: #fff;
-  padding: 6rpx 18rpx;
+  background: #ffffff;
+  padding: 10rpx 22rpx;
   border-radius: 100rpx;
-  border: 1rpx solid #ddd6fe;
+  border: 1rpx solid rgba(196, 181, 253, 0.85);
+  box-shadow: 0 2rpx 8rpx rgba(124, 58, 237, 0.06);
 }
 
 .mbti-remind-btn {
   font-size: 26rpx;
   font-weight: 600;
   color: #fff;
-  padding: 12rpx 36rpx;
+  padding: 14rpx 38rpx;
   border-radius: 999rpx;
-  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
-  box-shadow: 0 6rpx 20rpx rgba(124, 58, 237, 0.35);
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 48%, #6d28d9 100%);
+  box-shadow: 0 8rpx 24rpx rgba(124, 58, 237, 0.38);
 }
 
 .mbti-remind-btn--press {
-  opacity: 0.88;
+  opacity: 0.9;
+  transform: scale(0.98);
 }
 
 /* 聊天区：不透明白底，避免页面渐变从气泡后透出 */
 .chat-scroll {
   flex: 1;
   min-height: 0;
-  margin: 0 16rpx;
-  padding: 16rpx 20rpx 32rpx;
+  margin: 0 12rpx;
+  padding: 20rpx 22rpx 36rpx;
   box-sizing: border-box;
   background-color: #ffffff;
-  border-radius: 24rpx;
-  border: 1rpx solid rgba(229, 231, 235, 0.9);
+  border-radius: 28rpx;
+  border: 1rpx solid rgba(229, 231, 235, 0.65);
+  box-shadow: 0 8rpx 32rpx rgba(15, 23, 42, 0.04);
 }
 
 /* 消息气泡 */
@@ -143,10 +152,10 @@ page {
 
 .bubble-ai {
   background-color: #ffffff;
-  color: #1F1B4D;
-  border-top-left-radius: 4rpx;
-  box-shadow: 0 2rpx 12rpx rgba(31, 27, 77, 0.08);
-  border: 1rpx solid rgba(243, 244, 246, 0.98);
+  color: #1f2937;
+  border-top-left-radius: 6rpx;
+  box-shadow: 0 4rpx 16rpx rgba(15, 23, 42, 0.06);
+  border: 1rpx solid rgba(229, 231, 235, 0.85);
   /* 避免开发者工具/部分机型上 text 与 scroll-view 叠层导致「透底」 */
   isolation: isolate;
   overflow: hidden;
@@ -332,27 +341,35 @@ page {
   bottom: 0;
   z-index: 9990;
   height: calc(var(--tabbar-height, 168rpx) + env(safe-area-inset-bottom) + 260rpx);
-  background-color: #ffffff;
+  background-color: #f8f7fc;
   pointer-events: none;
 }
 
-/* ==== 底部 composer：快捷语 + 输入（整块贴在 Tab 上沿）==== */
+/* ==== 底部 composer：快捷语 + 输入（整块贴在 Tab 上沿，通栏纯白避免裁切/叠层发灰）==== */
 .composer-wrap {
   position: fixed;
   left: 0;
   right: 0;
   bottom: calc(var(--tabbar-height, 168rpx) + env(safe-area-inset-bottom));
+  width: 100%;
+  box-sizing: border-box;
   background-color: #ffffff;
   z-index: 9998;
-  box-shadow: 0 -6rpx 24rpx rgba(15, 23, 42, 0.08);
-  border-top: 1rpx solid #e5e7eb;
+  box-shadow: 0 -8rpx 32rpx rgba(15, 23, 42, 0.06);
+  /* 顶栏不用圆角，避免 overflow 与圆角把快捷语下沿「吃掉」；左右通栏占满 */
+  border-radius: 0;
+  overflow: visible;
+  border-top: 1rpx solid rgba(233, 213, 255, 0.65);
 }
 
 /* 横滑快捷语：右侧极淡渐变，暗示可横滑（无文字） */
 .quick-chips-outer {
   position: relative;
   width: 100%;
+  box-sizing: border-box;
   background-color: #ffffff;
+  /* 与下方输入条留出间距，避免视觉上被白条压住 */
+  padding-bottom: 8rpx;
 }
 
 .quick-chips-edge-fade {
@@ -361,11 +378,11 @@ page {
   right: 0;
   top: 0;
   bottom: 0;
-  width: 56rpx;
+  width: 64rpx;
   background: linear-gradient(
     90deg,
     rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.75) 45%,
+    rgba(255, 255, 255, 0.88) 42%,
     #ffffff 100%
   );
 }
@@ -373,10 +390,11 @@ page {
 .quick-chips-scroll {
   width: 100%;
   white-space: nowrap;
-  height: 72rpx;
-  padding: 10rpx 0 6rpx;
+  /* 固定高度：须大于 chip 实际高度 + padding，避免上边框被 scroll-view 裁切 */
+  height: 100rpx;
+  padding: 18rpx 0 14rpx;
   box-sizing: border-box;
-  background-color: #ffffff;
+  background-color: transparent;
 }
 
 .quick-chips-row {
@@ -385,7 +403,8 @@ page {
   align-items: center;
   gap: 12rpx;
   padding: 0 20rpx;
-  height: 56rpx;
+  min-height: 72rpx;
+  box-sizing: border-box;
 }
 
 .quick-chip {
@@ -395,31 +414,37 @@ page {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 24rpx;
-  color: #374151;
-  line-height: 1.3;
-  padding: 12rpx 24rpx;
-  background: #f3f4f6;
+  color: #5b21b6;
+  line-height: 1.35;
+  padding: 14rpx 26rpx;
+  background: rgba(124, 58, 237, 0.06);
   border-radius: 999rpx;
-  border: 1rpx solid #e5e7eb;
+  border: 1rpx solid rgba(167, 139, 250, 0.35);
 }
 
 .quick-chip:active {
-  opacity: 0.95;
-  background: #ffffff;
+  opacity: 0.92;
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .input-bar {
   position: relative;
-  left: auto;
-  right: auto;
-  bottom: auto;
+  left: 0;
+  right: 0;
+  width: 100%;
+  box-sizing: border-box;
   background-color: #ffffff;
-  padding: 8rpx 20rpx 14rpx;
+  padding: 12rpx 22rpx 18rpx;
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  border-top: 1rpx solid #f3f4f6;
+  gap: 14rpx;
+  border-top: none;
   box-shadow: none;
+}
+
+/* 有快捷语时：输入条与快捷语之间的通栏分隔（无快捷语时仅保留 composer-wrap 顶边，避免双线） */
+.composer-wrap--has-chips .input-bar {
+  border-top: 1rpx solid #ede9fe;
 }
 
 .resume-entry {
@@ -428,40 +453,50 @@ page {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 64rpx;
-  padding: 4rpx 8rpx 0;
+  min-width: 72rpx;
+  padding: 10rpx 12rpx 6rpx;
   box-sizing: border-box;
+  background: rgba(124, 58, 237, 0.06);
+  border-radius: 18rpx;
+  border: 1rpx solid rgba(196, 181, 253, 0.35);
 }
 
 .resume-entry--press {
-  opacity: 0.85;
+  opacity: 0.88;
+  background: rgba(124, 58, 237, 0.1);
 }
 
 .resume-entry-icon {
-  font-size: 32rpx;
-  line-height: 1;
+  width: 36rpx;
+  height: 36rpx;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path d='M586.9568 165.888H272.4864c-23.2448 0-42.1888 18.944-42.1888 42.1888v607.8464c0 23.2448 18.944 42.1888 42.1888 42.1888H751.616c23.2448 0 42.1888-18.944 42.1888-42.1888V372.736l-206.848-206.848z m-158.1056 88.1664c37.1712 0 67.2768 30.1056 67.2768 67.2768s-30.1056 67.2768-67.2768 67.2768c-37.1712 0-67.2768-30.1056-67.2768-67.2768s30.0032-67.2768 67.2768-67.2768z m0 145.3056c52.1216 0 94.5152 37.888 94.5152 84.3776 0 11.6736-9.4208 21.0944-21.0944 21.0944-11.6736 0-21.0944-9.4208-21.0944-21.0944 0-22.8352-23.9616-42.1888-52.3264-42.1888s-52.3264 19.3536-52.3264 42.1888c0 11.6736-9.4208 21.0944-21.0944 21.0944s-21.0944-9.4208-21.0944-21.0944c0-46.592 42.3936-84.3776 94.5152-84.3776z m240.9472 344.8832H354.2016c-11.5712 0-21.0944-9.5232-21.0944-21.0944s9.5232-21.0944 21.0944-21.0944H669.696c11.5712 0 21.0944 9.5232 21.0944 21.0944 0.1024 11.5712-9.4208 21.0944-20.992 21.0944z m0-106.8032H354.2016c-11.5712 0-21.0944-9.5232-21.0944-21.0944s9.5232-21.0944 21.0944-21.0944H669.696c11.5712 0 21.0944 9.5232 21.0944 21.0944s-9.4208 21.0944-20.992 21.0944z m-48.128-287.232c-3.8912 0-7.2704-3.3792-7.2704-7.2704v-89.9072l97.1776 97.1776h-89.9072z' fill='%236d28d9'/><path d='M428.8512 351.744c16.7936 0 30.4128-13.6192 30.4128-30.4128s-13.6192-30.4128-30.4128-30.4128-30.4128 13.6192-30.4128 30.4128 13.6192 30.4128 30.4128 30.4128z' fill='%236d28d9'/></svg>");
 }
 
 .resume-entry-txt {
   font-size: 20rpx;
-  color: #6b7280;
-  margin-top: 2rpx;
+  color: #6d28d9;
+  font-weight: 600;
+  margin-top: 4rpx;
   line-height: 1.2;
 }
 
 .input {
   flex: 1;
   min-width: 0;
-  background: #F3F4F6;
+  background: #f3f4f6;
   border-radius: 100rpx;
-  padding: 16rpx 28rpx;
+  padding: 18rpx 30rpx;
   font-size: 28rpx;
-  min-height: 72rpx;
-  color: #1F1B4D;
+  min-height: 76rpx;
+  color: #1f2937;
+  border: 1rpx solid rgba(229, 231, 235, 0.95);
 }
 
 .input-ph {
-  color: #9CA3AF;
+  color: #9ca3af;
   font-size: 26rpx;
 }
 
@@ -490,10 +525,7 @@ page {
 
 .send-icon-btn--active {
   background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%) !important;
-}
-
-.send-icon-btn--active .send-icon-plane {
-  filter: brightness(0) invert(1);
+  box-shadow: 0 6rpx 18rpx rgba(124, 58, 237, 0.35);
 }
 
 .send-icon-btn--hover {
@@ -501,11 +533,15 @@ page {
 }
 
 .send-icon-plane {
-  width: 36rpx;
-  height: 36rpx;
+  width: 34rpx;
+  height: 34rpx;
   background-repeat: no-repeat;
   background-position: center;
-  background-size: 36rpx 36rpx;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'><line x1='22' y1='2' x2='11' y2='13'/><polygon points='22 2 15 22 11 13 2 9 22 2' fill='%236b7280' stroke='%236b7280'/></svg>");
+  background-size: 34rpx 34rpx;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path d='M915.515273 142.819385 98.213046 458.199122c-46.058539 17.772838-44.90475 43.601756 2.348455 57.622994l197.477685 58.594874 80.292024 238.91085c10.51184 31.277988 37.972822 37.873693 61.462483 14.603752l103.584447-102.611545 204.475018 149.840224c26.565749 19.467242 53.878547 9.222132 61.049613-23.090076l149.210699-672.34491C965.264096 147.505054 946.218922 130.971848 915.515273 142.819385zM791.141174 294.834331l-348.61988 310.610267c-6.268679 5.58499-11.941557 16.652774-12.812263 24.846818l-15.390659 144.697741c-1.728128 16.24808-7.330491 16.918483-12.497501 1.344894l-67.457277-203.338603c-2.638691-7.954906 0.975968-17.705389 8.022355-21.931178l442.114555-265.181253C812.67481 268.984974 815.674251 272.975713 791.141174 294.834331z' fill='%236b7280'/></svg>");
+}
+
+.send-icon-btn--active .send-icon-plane {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><path d='M915.515273 142.819385 98.213046 458.199122c-46.058539 17.772838-44.90475 43.601756 2.348455 57.622994l197.477685 58.594874 80.292024 238.91085c10.51184 31.277988 37.972822 37.873693 61.462483 14.603752l103.584447-102.611545 204.475018 149.840224c26.565749 19.467242 53.878547 9.222132 61.049613-23.090076l149.210699-672.34491C965.264096 147.505054 946.218922 130.971848 915.515273 142.819385zM791.141174 294.834331l-348.61988 310.610267c-6.268679 5.58499-11.941557 16.652774-12.812263 24.846818l-15.390659 144.697741c-1.728128 16.24808-7.330491 16.918483-12.497501 1.344894l-67.457277-203.338603c-2.638691-7.954906 0.975968-17.705389 8.022355-21.931178l442.114555-265.181253C812.67481 268.984974 815.674251 272.975713 791.141174 294.834331z' fill='%23ffffff'/></svg>");
 }
 

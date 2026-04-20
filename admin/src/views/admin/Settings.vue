@@ -153,7 +153,7 @@
         </div>
 
         <div v-if="activeTab === 'pushhook'" class="tab-content">
-          <PushHookConfigPanel api-prefix="/admin" />
+          <PushHookConfigPanel api-prefix="/admin" :show-test-tools="false" />
         </div>
 
         <div v-if="activeTab === 'finance'" class="embed-wrap">

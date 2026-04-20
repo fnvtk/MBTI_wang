@@ -251,7 +251,7 @@ custom-tab-bar {
 
 /* ===== Section ===== */
 .section {
-  margin-bottom: 28rpx;
+  margin-bottom: 24rpx;
 }
 
 .px-section {
@@ -707,19 +707,19 @@ custom-tab-bar {
 }
 
 .bottom-safe {
-  height: 40rpx;
+  height: 28rpx;
 }
 
-/* ===== 用户数据条（Soul 风，营销数据融入身份卡下方）===== */
+/* ===== 用户数据条（四宫格：收紧留白、金额列紫色层级统一）===== */
 .user-stats {
   display: flex;
   align-items: stretch;
-  margin: 16rpx 32rpx 0;
-  padding: 28rpx 8rpx;
+  margin: 12rpx 32rpx 8rpx;
+  padding: 20rpx 4rpx;
   background: #fff;
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05);
-  border: 1rpx solid #f1f5f9;
+  border-radius: 20rpx;
+  box-shadow: 0 2rpx 16rpx rgba(15, 23, 42, 0.04);
+  border: 1rpx solid #eef2f7;
 }
 .user-stat {
   flex: 1;
@@ -727,75 +727,87 @@ custom-tab-bar {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6rpx;
+  gap: 4rpx;
   position: relative;
+  min-width: 0;
 }
 .user-stat + .user-stat::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 14rpx;
-  bottom: 14rpx;
+  top: 8rpx;
+  bottom: 8rpx;
   width: 1rpx;
-  background: #f1f5f9;
+  background: #e2e8f0;
 }
 .user-stat__v {
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: 700;
-  color: #111827;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
+  color: #0f172a;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 .user-stat__l {
-  font-size: 22rpx;
-  color: #94a3b8;
+  font-size: 21rpx;
+  color: #64748b;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
 }
+/* 可提现：主色强调 */
 .user-stat--highlight .user-stat__v {
   color: #7c3aed;
 }
-
-.user-stat:active {
-  background: rgba(124, 58, 237, 0.04);
-  border-radius: 12rpx;
+.user-stat--highlight .user-stat__l {
+  color: #64748b;
+  font-weight: 500;
 }
 
-/* "累计"第四格：金额字号略小，紫色辅文字呼应高亮格 */
+.user-stat:active {
+  background: rgba(124, 58, 237, 0.05);
+  border-radius: 14rpx;
+}
+
+/* 累计：同色系略浅一档，与可提现区分层级 */
 .user-stat__v--sm {
-  font-size: 30rpx;
+  font-size: 28rpx;
+  font-weight: 700;
 }
 
 .user-stat--sub .user-stat__v {
-  color: #a78bfa;
+  color: #8b5cf6;
 }
 
 .user-stat--sub .user-stat__l {
-  color: #7c3aed;
-  font-weight: 600;
+  color: #64748b;
+  font-weight: 400;
 }
 
-/* ===== 小节标题（Soul 风：短促、带副箭头链接）===== */
+/* ===== 小节标题（与数据条间距收紧）===== */
 .sec-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8rpx 16rpx;
+  padding: 0 4rpx 12rpx;
 }
 .sec-head__title {
   font-size: 30rpx;
   font-weight: 700;
-  color: #111827;
-  letter-spacing: -0.01em;
+  color: #0f172a;
+  letter-spacing: -0.02em;
 }
 .sec-head__link {
   display: flex;
   align-items: center;
-  gap: 4rpx;
-  font-size: 24rpx;
-  color: #94a3b8;
+  gap: 2rpx;
+  font-size: 23rpx;
+  color: #64748b;
+  font-weight: 500;
 }
 .sec-head__chev {
-  font-size: 26rpx;
-  color: #cbd5e1;
+  font-size: 24rpx;
+  color: #94a3b8;
+  margin-left: 2rpx;
 }
 
 /* ===== 快捷入口图标网格 2×3 / 2×4 ===== */

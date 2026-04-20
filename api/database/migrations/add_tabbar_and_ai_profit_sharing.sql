@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `mbti_mp_tabbar_items` (
   KEY `idx_sort` (`sortOrder`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='小程序 TabBar 后台可配';
 
--- 初始 4 项（默认顺序：首页·拍摄·神仙AI·我）
+-- 初始 4 项（默认顺序：首页·拍摄(第2项凸起)·神仙AI·我，与 app.json tabBar 一致）
 INSERT INTO `mbti_mp_tabbar_items` (sortOrder, pagePath, text, iconKey, highlight, visible, createdAt, updatedAt) VALUES
   (10, 'pages/index/index',   '首页',   'home',    0, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),
   (20, 'pages/index/camera',  '拍摄',   'camera',  1, 1, UNIX_TIMESTAMP(), UNIX_TIMESTAMP()),

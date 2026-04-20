@@ -511,10 +511,12 @@ class OutboundPushHookService
             'X-MBTI-Internal-Signature: ' . self::signAsyncInternalDispatch($body, $timestamp),
         ];
 
-        if (!self::postJsonAsyncNoWait($url, $body, $headers)) {
+        $verifyHttp2xx = (($payload['job'] ?? '') === 'ai.chat_turn');
+
+        if (!self::postJsonAsyncNoWait($url, $body, $headers, $verifyHttp2xx)) {
             // 偶发 TLS 握手/链路抖动：短间隔重试一次再回落 shutdown
             usleep(150000);
-            if (!self::postJsonAsyncNoWait($url, $body, $headers)) {
+            if (!self::postJsonAsyncNoWait($url, $body, $headers, $verifyHttp2xx)) {
                 Log::warning('OutboundPushHook async enqueue failed', [
                     'url'     => self::maskUrl($url),
                     'payload' => $payload,
@@ -566,11 +568,13 @@ class OutboundPushHookService
     }
 
     /**
-     * fire-and-forget 异步 POST：只负责把请求投出去，不等待接口处理完成。
+     * fire-and-forget 异步 POST：把请求写出；可选读取 HTTP 首行状态码。
+     * - verifyHttp2xx=false：与旧版一致，仅判断 fwrite（其它 job 可能同步较慢，不宜等响应头）。
+     * - verifyHttp2xx=true：用于 ai.chat_turn（dispatch 须先快速返回 2xx，否则会误判失败且无法触发 AiChat shutdown 兜底）。
      *
      * @param array<int,string> $headers
      */
-    private static function postJsonAsyncNoWait(string $url, string $body, array $headers): bool
+    private static function postJsonAsyncNoWait(string $url, string $body, array $headers, bool $verifyHttp2xx = false): bool
     {
         $parts = parse_url($url);
         if (!is_array($parts) || empty($parts['host'])) {
@@ -633,9 +637,44 @@ class OutboundPushHookService
 
         $rawRequest = implode("\r\n", $requestLines) . "\r\n\r\n" . $body;
         $written = @fwrite($socket, $rawRequest);
-        @fclose($socket);
+        if ($written === false) {
+            @fclose($socket);
 
-        return $written !== false;
+            return false;
+        }
+
+        if (!$verifyHttp2xx) {
+            @fclose($socket);
+
+            return true;
+        }
+
+        $statusLine = @fgets($socket);
+        @fclose($socket);
+        if ($statusLine === false || $statusLine === '') {
+            Log::warning('OutboundPushHook async: no HTTP status line', ['url' => self::maskUrl($url)]);
+
+            return false;
+        }
+        if (!preg_match('#HTTP/\d\.\d\s+(\d{3})#', $statusLine, $m)) {
+            Log::warning('OutboundPushHook async: bad status line', [
+                'url'    => self::maskUrl($url),
+                'prefix' => mb_substr($statusLine, 0, 80),
+            ]);
+
+            return false;
+        }
+        $code = (int) $m[1];
+        if ($code < 200 || $code >= 300) {
+            Log::warning('OutboundPushHook async: non-2xx from internal dispatch', [
+                'url'  => self::maskUrl($url),
+                'http' => $code,
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**

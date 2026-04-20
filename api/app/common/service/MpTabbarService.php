@@ -25,10 +25,20 @@ class MpTabbarService
             foreach ($items as $row) {
                 $iconKey = $row['iconKey'] ?? 'home';
                 $iconUrl = $row['iconUrl'] ?? null;
+                $iconUrlActive = null;
                 if ($iconKey === 'ai') {
-                    $iconUrl = '/images/shenxian-oldman-circle.png';
+                    $u = is_string($iconUrl) ? trim($iconUrl) : '';
+                    if ($u !== '') {
+                        $iconUrl = $u;
+                        $iconUrlActive = isset($row['iconUrlActive']) && $row['iconUrlActive'] !== ''
+                            ? $row['iconUrlActive']
+                            : '/images/tab-ai-active.png';
+                    } else {
+                        $iconUrl = null;
+                        $iconUrlActive = null;
+                    }
                 }
-                $list[] = [
+                $item = [
                     'id'        => (int) $row['id'],
                     'pagePath'  => $row['pagePath'],
                     'text'      => $row['text'],
@@ -37,16 +47,21 @@ class MpTabbarService
                     'highlight' => (int) ($row['highlight'] ?? 0) === 1,
                     'badgeKey'  => $row['badgeKey'] ?? null,
                 ];
+                if ($iconUrlActive !== null) {
+                    $item['iconUrlActive'] = $iconUrlActive;
+                }
+                $list[] = $item;
             }
         } catch (\Throwable $e) {
             $list = [];
         }
 
         if (empty($list)) {
+            // 顺序：首页 · 第2项凸起拍摄 · 神仙AI · 我（与小程序 app.json tabBar.list 一致）
             $list = [
                 ['id' => 0, 'pagePath' => 'pages/index/index',   'text' => '首页',   'iconKey' => 'home',    'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
                 ['id' => 0, 'pagePath' => 'pages/index/camera',  'text' => '拍摄',   'iconKey' => 'camera',  'iconUrl' => null, 'highlight' => true,  'badgeKey' => null],
-                ['id' => 0, 'pagePath' => 'pages/ai-chat/index', 'text' => '神仙AI', 'iconKey' => 'ai',      'iconUrl' => '/images/shenxian-oldman-circle.png', 'highlight' => false, 'badgeKey' => null],
+                ['id' => 0, 'pagePath' => 'pages/ai-chat/index', 'text' => '神仙AI', 'iconKey' => 'ai', 'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
                 ['id' => 0, 'pagePath' => 'pages/profile/index', 'text' => '我',     'iconKey' => 'profile', 'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
             ];
         }

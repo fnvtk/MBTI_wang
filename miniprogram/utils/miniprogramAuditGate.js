@@ -4,7 +4,30 @@
  * - maintenanceMode / reviewMode：面相审核（用户口语「审核模式」常指其一）
  */
 
+/** 临时：为 true 时在客户端忽略审核/提审隐藏逻辑。平时必须为 false，由 runtime 与后端 miniprogramAuditMode 等决定展示 */
+const TEMP_FORCE_SHOW_ALL_HIDDEN_UI = false
+
+/**
+ * 在 getRuntimeConfig 写入 globalData 之后调用：把审核相关开关置为关闭，供各页与 TabBar 使用。
+ */
+function applyAuditUiOverride(app) {
+  if (!TEMP_FORCE_SHOW_ALL_HIDDEN_UI || !app || !app.globalData) return
+  app.globalData.reviewMode = false
+  app.globalData.maintenanceMode = false
+  app.globalData.miniprogramAuditMode = false
+}
+
+/** 是否因审核/面相权限隐藏中间凸起 Tab（拍摄） */
+function shouldHideTabBarHighlightFab(gd) {
+  if (TEMP_FORCE_SHOW_ALL_HIDDEN_UI) return false
+  if (!gd) return false
+  const ep = gd.enterprisePermissions
+  const faceOff = !!(ep && ep.face === false)
+  return !!(gd.reviewMode || gd.maintenanceMode) || faceOff
+}
+
 function isAuditHideAiMode(gd) {
+  if (TEMP_FORCE_SHOW_ALL_HIDDEN_UI) return false
   if (!gd) return false
   return !!(gd.miniprogramAuditMode || gd.maintenanceMode || gd.reviewMode)
 }
@@ -40,6 +63,9 @@ function ensureRuntimeThenGate(callback) {
 }
 
 module.exports = {
+  TEMP_FORCE_SHOW_ALL_HIDDEN_UI,
+  applyAuditUiOverride,
+  shouldHideTabBarHighlightFab,
   isAuditHideAiMode,
   redirectIfMiniprogramAudit,
   ensureRuntimeThenGate

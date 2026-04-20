@@ -554,17 +554,11 @@ class Settings extends BaseController
     /**
      * POST /api/v1/admin/settings/push-hook/test
      * 向当前解析到的 URL 发送 hook.ping（不写去重表）
+     * 企业后台不提供：请在超管后台调试，避免误触对外 URL / 重放业务数据。
      */
     public function testPushHookConfig()
     {
-        $user = $this->request->user ?? null;
-        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
-            return error('无权限访问', 403);
-        }
-        $ctx = $this->resolveAdminPushHookEnterpriseId();
-        $r = OutboundPushHookService::sendTestPing($ctx);
-
-        return success($r, $r['ok'] ? '测试推送已发出' : ($r['message'] ?? '测试失败'));
+        return error('连接测试与重放调试仅在超管后台开放', 403);
     }
 
     /**
@@ -573,16 +567,7 @@ class Settings extends BaseController
      */
     public function testPushHookTestResult()
     {
-        $user = $this->request->user ?? null;
-        if (!$user || !in_array($user['role'], ['admin', 'enterprise_admin'])) {
-            return error('无权限访问', 403);
-        }
-
-        $testResultId = (int) Request::param('testResultId', 0);
-        $force = (int) Request::param('force', 0) === 1;
-        $r = OutboundPushHookService::replayTestResultForDebug($testResultId, $force);
-
-        return success($r, $r['message'] ?? ($r['ok'] ? '已重放推送' : '重放失败'));
+        return error('连接测试与重放调试仅在超管后台开放', 403);
     }
 
     /**

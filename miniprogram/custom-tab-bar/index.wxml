@@ -1,4 +1,4 @@
-<!-- 自定义 TabBar：由 globalData.tabBar 动态渲染；支持 iconUrl 图片覆盖 SVG；highlight=中间浮钮 -->
+<!-- 自定义 TabBar：第2项为凸起拍摄；主题色品牌紫 -->
 <view class="tab-bar">
   <view class="tab-bar-line"></view>
   <view class="tab-bar-inner tab-bar-count-{{items.length}}">
@@ -27,8 +27,8 @@
       >
         <image
           wx:if="{{it.iconUrl}}"
-          class="tab-icon-img {{selected === index ? 'tab-icon-img--active' : ''}}"
-          src="{{it.iconUrl}}"
+          class="tab-icon-img {{it.iconUrlActive ? 'tab-icon-img--dual' : ''}} {{selected === index ? 'tab-icon-img--active' : ''}}"
+          src="{{it.iconUrlActive && selected === index ? it.iconUrlActive : it.iconUrl}}"
           mode="aspectFit"
         />
         <view
