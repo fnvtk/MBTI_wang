@@ -74,7 +74,7 @@
   </view>
 
   <view class="start-button" bindtap="startCamera">
-    <text class="button-text">{{startButtonText || '开始性格测试'}}</text>
+    <text class="button-text">{{startButtonText || '30秒测出你的性格'}}</text>
   </view>
 
   <!-- 自定义底部导航 -->

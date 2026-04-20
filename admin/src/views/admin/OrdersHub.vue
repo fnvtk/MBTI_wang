@@ -108,50 +108,7 @@ onMounted(() => {
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  width: 100%;
-
-  &.tabs-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    min-width: min-content;
-
-    &.tabs-many .tab-item {
-      flex: 0 0 auto;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-
-    .tab-item {
-      cursor: pointer;
-      border-radius: 6px;
-      white-space: nowrap;
-      color: #6b7280;
-      padding: 8px 18px;
-      transition: all 0.2s;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .hub-body.flat {
   width: 100%;

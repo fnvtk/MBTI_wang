@@ -10,6 +10,7 @@ class WechatService
     protected static $tokenUrl = 'https://api.weixin.qq.com/cgi-bin/token';
     protected static $getPhoneNumberUrl = 'https://api.weixin.qq.com/wxa/business/getuserphonenumber';
     protected static $getWxacodeUnlimitedUrl = 'https://api.weixin.qq.com/wxa/getwxacodeunlimit';
+    protected static $getLatestAuditStatusUrl = 'https://api.weixin.qq.com/wxa/get_latest_auditstatus';
 
     /** @var string|null 内存缓存的 access_token */
     protected static $cachedAccessToken = null;
@@ -190,5 +191,28 @@ class WechatService
             }
         }
         return ['binary' => $resp];
+    }
+
+    /**
+     * 查询最新一次代码提审状态（官方 status：0 成功 1 拒绝 2 审核中 3 撤回 4 延后）
+     * @return array 微信原始 JSON（含 errcode）；失败时含 errcode/errmsg
+     */
+    public static function getLatestAuditStatus(): array
+    {
+        $tokenResult = self::getAccessToken();
+        if (isset($tokenResult['errcode'])) {
+            return $tokenResult;
+        }
+        $accessToken = $tokenResult['access_token'];
+        $url = self::$getLatestAuditStatusUrl . '?access_token=' . urlencode($accessToken);
+        $resp = @file_get_contents($url);
+        if ($resp === false) {
+            return ['errcode' => -2, 'errmsg' => '请求微信接口失败'];
+        }
+        $data = json_decode($resp, true);
+        if (empty($data) || !is_array($data)) {
+            return ['errcode' => -3, 'errmsg' => '微信接口返回异常'];
+        }
+        return $data;
     }
 }

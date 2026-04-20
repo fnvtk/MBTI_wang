@@ -1,7 +1,13 @@
 // pages/index/result.js - AI分析结果页（按旧版模板重构）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
+const {
+  hasPhone,
+  bindPhoneByCode,
+  isProfileComplete,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded
+} = require('../../utils/phoneAuth.js')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
@@ -100,6 +106,10 @@ Page({
     // 是否已在本地拥有手机号（决定是否还需要弹出微信手机号授权）
     hasPhone: false,
     isProfileComplete: false,
+    /** fs=1 等分享落地：不挡手机登录门禁 */
+    fromShare: false,
+    /** 非分享且本会话未 getPhoneNumber 成功：遮挡完整报告 */
+    phoneLoginGate: false,
     /** 企业后台关闭 SBTI 时不展示人脸报告中的 SBTI（与 enterprisePermissions.sbti 一致） */
     showSbtiFace: true,
     analyzingTitle: '正在分析中',
@@ -145,7 +155,8 @@ Page({
 
     // 带记录 id：只读库展示，禁止落入 startAnalysis 造成「二次分析」
     if (idStr && (faceType === 'ai' || faceType === 'face')) {
-      this.setData({ testResultId: idStr })
+      const fromShareFs = options && (String(options.fs) === '1' || options.from === 'share')
+      this.setData({ testResultId: idStr, fromShare: !!fromShareFs })
       this.loadFaceRecordById(idStr, st, faceType)
       return
     }
@@ -234,6 +245,15 @@ Page({
     })
   },
 
+  _syncPhoneLoginGate() {
+    if (this.data.hasError) {
+      this.setData({ phoneLoginGate: false })
+      return
+    }
+    const gate = needsResultProfileGate(!!this.data.fromShare)
+    this.setData({ phoneLoginGate: gate })
+  },
+
   onShow() {
     const ep = app.globalData.enterprisePermissions
     const showSbtiFace = !ep || ep.sbti !== false
@@ -242,6 +262,7 @@ Page({
       isProfileComplete: isProfileComplete(),
       showSbtiFace
     })
+    if (this.data.showResult) this._syncPhoneLoginGate()
     const tc = app.globalData.textConfig
     if (tc) {
       this.setData({
@@ -293,6 +314,7 @@ Page({
     wx.request({
       url: `${app.globalData.apiBase}/api/analyze`,
       method: 'POST',
+      timeout: 120000,
       header: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${wx.getStorageSync('token') || ''}`
@@ -401,6 +423,7 @@ Page({
     }
 
     this.setData(updates)
+    this._syncPhoneLoginGate()
 
     // 优先使用后端 /api/analyze 返回的价格信息，避免二次请求
     if (apiData._payment) {
@@ -558,7 +581,29 @@ Page({
     bindPhoneByCode(code)
       .then(() => {
         this.setData({ hasPhone: true, isProfileComplete: isProfileComplete() })
+        this._syncPhoneLoginGate()
         wx.showToast({ title: '已绑定手机号', icon: 'success' })
+        navigateToCompleteProfileAfterPhoneIfNeeded()
+      })
+      .catch(() => {})
+  },
+
+  /** 结果页主流程：微信手机号快捷登录后解锁完整报告区 */
+  onPhoneLoginForFaceResult(e) {
+    const { code, errMsg } = e.detail || {}
+    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
+      wx.showToast({ title: '需要授权手机号才能查看完整报告', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '获取手机号失败', icon: 'none' })
+      return
+    }
+    bindPhoneByCode(code)
+      .then(() => {
+        this.setData({ hasPhone: true, isProfileComplete: isProfileComplete() })
+        this._syncPhoneLoginGate()
+        navigateToCompleteProfileAfterPhoneIfNeeded()
       })
       .catch(() => {})
   },
@@ -585,6 +630,7 @@ Page({
     bindPhoneByCode(code)
       .then(() => {
         this.setData({ hasPhone: true })
+        this._syncPhoneLoginGate()
         this.unlockFullReport()
       })
       .catch(() => {
@@ -649,7 +695,8 @@ Page({
       isAnalyzing: false,
       showResult: true,
       hasError: true,
-      errorMessage: message || '分析失败，请稍后重试'
+      errorMessage: message || '分析失败，请稍后重试',
+      phoneLoginGate: false
     })
   },
 

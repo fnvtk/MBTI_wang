@@ -90,6 +90,26 @@ abstract class BaseController
         ];
     }
 
+    /**
+     * 当前请求 JWT 主体用户 id（与 Auth 中间件一致：user_id / userId，兼容历史 id）
+     */
+    protected function jwtSubjectUserId(): int
+    {
+        $fromReq = $this->request->userId ?? null;
+        if ($fromReq !== null && $fromReq !== '') {
+            $n = (int) $fromReq;
+            if ($n > 0) {
+                return $n;
+            }
+        }
+        $user = $this->request->user ?? [];
+        if (!is_array($user)) {
+            return 0;
+        }
+
+        return (int) ($user['user_id'] ?? $user['userId'] ?? $user['id'] ?? 0);
+    }
+
     protected function validate(array $data, $validate, array $message = [], bool $batch = false)
     {
         if (is_array($validate)) {

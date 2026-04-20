@@ -120,12 +120,35 @@ class AppUser extends BaseController
 
         if ($enterpriseId) {
             $total = (int) (clone $baseQuery)->distinct(true)->count('w.id');
-            $list = (clone $baseQuery)
-                ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
+            // 先按「去重后的 w.id」分页，再拉全字段；避免 JOIN 放大行数导致 LIMIT 作用在重复用户上，
+            // 进而出现「一页里混入全库统计感」或本页人数与 pageSize 不一致。
+            $idRows = (clone $baseQuery)
+                ->field('w.id')
+                ->group('w.id')
                 ->order('w.id', 'desc')
                 ->page($page, $pageSize)
                 ->select()
                 ->toArray();
+            $orderedIds = array_values(array_filter(array_map('intval', array_column($idRows, 'id'))));
+            if ($orderedIds === []) {
+                $list = [];
+            } else {
+                $rows = Db::name('wechat_users')->alias('w')
+                    ->whereIn('w.id', $orderedIds)
+                    ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
+                    ->select()
+                    ->toArray();
+                $byId = [];
+                foreach ($rows as $r) {
+                    $byId[(int) ($r['id'] ?? 0)] = $r;
+                }
+                $list = [];
+                foreach ($orderedIds as $oid) {
+                    if (isset($byId[$oid])) {
+                        $list[] = $byId[$oid];
+                    }
+                }
+            }
         } else {
             $total = (int) (clone $baseQuery)->count();
             $list = (clone $baseQuery)

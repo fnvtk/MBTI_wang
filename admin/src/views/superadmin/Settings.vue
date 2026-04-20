@@ -49,29 +49,77 @@
                   <el-icon class="header-icon"><Document /></el-icon>
                   <span>小程序审核模式</span>
                 </div>
-                <p class="header-description">提交微信审核前开启，审核通过后关闭。开启后小程序将隐藏所有AI相关功能。</p>
+                <p class="header-description">提交微信审核前按需开启。面相审核与「神仙 AI」提审可分开控制，避免误关问卷类功能。</p>
               </div>
             </template>
             <div class="card-content">
-              <div class="review-mode-alert" :class="{ active: systemConfig.maintenanceMode }">
+              <div class="review-mode-alert" :class="{ active: systemConfig.maintenanceMode || systemConfig.miniprogramAuditMode }">
                 <div class="review-mode-status">
-                  <span class="review-dot" :class="{ on: systemConfig.maintenanceMode }"></span>
-                  <span class="review-status-text">{{ systemConfig.maintenanceMode ? '审核模式已开启' : '审核模式已关闭' }}</span>
+                  <span class="review-dot" :class="{ on: systemConfig.maintenanceMode || systemConfig.miniprogramAuditMode }"></span>
+                  <span class="review-status-text">{{
+                    systemConfig.maintenanceMode || systemConfig.miniprogramAuditMode ? '审核/提审开关已开启（至少一项）' : '审核与提审均已关闭'
+                  }}</span>
                 </div>
-                <p class="review-mode-desc">{{ systemConfig.maintenanceMode ? '当前小程序处于审核状态，AI面相分析功能已隐藏' : '当前小程序正常运行，所有功能可用' }}</p>
+                <p class="review-mode-desc">
+                  面相审核：{{ systemConfig.maintenanceMode ? '开' : '关' }} · 神仙 AI 提审隐藏：{{ systemConfig.miniprogramAuditMode ? '开' : '关' }}
+                </p>
               </div>
 
               <div class="switch-section">
                 <div class="switch-item">
                   <div class="switch-info">
-                    <p class="switch-title">开启审核模式</p>
-                    <p class="switch-desc">开启后小程序将执行以下变更：</p>
+                    <p class="switch-title">面相 / 拍摄审核模式（maintenanceMode）</p>
+                    <p class="switch-desc">隐藏拍摄 Tab、面相入口与部分「AI」文案，保留问卷测试。</p>
                   </div>
                   <el-switch
                     v-model="systemConfig.maintenanceMode"
-                    active-color="#ef4444"
-                    inactive-color="#d1d5db"
+                    style="--el-switch-on-color: var(--sa-accent); --el-switch-off-color: #cbd5e1"
                   />
+                </div>
+                <div class="switch-item" style="margin-top: 16px">
+                  <div class="switch-info">
+                    <p class="switch-title">小程序提审模式 · 隐藏神仙 AI（miniprogramAuditMode）</p>
+                    <p class="switch-desc">隐藏底部「神仙 AI」Tab、对话/简历/深度报告入口；后端同步关闭对话与报告接口。同时关闭虚拟商品链路：不下发深度套餐与报告付费标记、拦截支付下单、隐藏「了解自己」购买页入口。用于微信「深度合成」与「虚拟支付/iOS」类审核意见。</p>
+                  </div>
+                  <el-switch
+                    v-model="systemConfig.miniprogramAuditMode"
+                    style="--el-switch-on-color: var(--sa-accent); --el-switch-off-color: #cbd5e1"
+                  />
+                </div>
+                <div class="switch-item" style="margin-top: 16px">
+                  <div class="switch-info">
+                    <p class="switch-title">跟随微信代码审核自动切换提审隐藏</p>
+                    <p class="switch-desc">
+                      开启后，打开本页时会按约 5 分钟节流调用微信「最新审核状态」：审核中(2)/延后(4)自动打开提审隐藏；成功/拒绝/撤回或无审核单则自动关闭。不影响「面相审核」开关。
+                    </p>
+                  </div>
+                  <el-switch
+                    v-model="systemConfig.wechatAuditAutoMiniprogramMode"
+                    style="--el-switch-on-color: var(--sa-success); --el-switch-off-color: #cbd5e1"
+                  />
+                </div>
+                <div v-if="systemConfig.wechatLastAuditSyncedAt" class="wechat-audit-meta">
+                  <p class="meta-line">
+                    <span class="meta-k">上次同步</span>
+                    {{ formatAuditSyncedAt(systemConfig.wechatLastAuditSyncedAt) }}
+                  </p>
+                  <p class="meta-line">
+                    <span class="meta-k">微信审核</span>
+                    {{ wechatAuditStatusLabel(systemConfig.wechatLastAuditStatus) }}
+                    <span class="meta-sub">（errcode {{ systemConfig.wechatLastAuditErrcode ?? '—' }}）</span>
+                  </p>
+                  <p v-if="systemConfig.wechatLastAuditReason" class="meta-line reason">
+                    {{ systemConfig.wechatLastAuditReason }}
+                  </p>
+                </div>
+                <div class="wechat-sync-actions">
+                  <el-button
+                    type="default"
+                    :loading="wechatSyncLoading"
+                    @click="handleWechatAuditSync"
+                  >
+                    立即同步微信审核状态
+                  </el-button>
                 </div>
               </div>
 
@@ -94,7 +142,11 @@
                 </div>
                 <div class="review-change-item">
                   <span class="change-icon hide">隐藏</span>
-                  <span class="change-text">所有含「AI」字样的文案</span>
+                  <span class="change-text">所有含「AI」字样的文案（仅当面相审核开启时）</span>
+                </div>
+                <div class="review-change-item">
+                  <span class="change-icon hide">隐藏</span>
+                  <span class="change-text">提审模式：神仙 AI Tab、测试列表「AI 对话」、对话内简历与深度报告</span>
                 </div>
                 <div class="review-change-item">
                   <span class="change-icon show">保留</span>
@@ -111,17 +163,16 @@
               </div>
 
               <div class="review-tip">
-                <strong>使用流程：</strong>开启审核模式 → 提交小程序代码审核 → 审核通过后关闭审核模式
+                <strong>使用流程：</strong>可开启「跟随微信审核」自动切换提审隐藏，或手动开关；面相审核与提审隐藏相互独立，通过后按需关闭即可
               </div>
 
               <el-button
                 type="primary"
-                :color="systemConfig.maintenanceMode ? '#ef4444' : '#6366f1'"
                 class="save-button"
                 @click="handleSave('review')"
               >
                 <el-icon class="mr-1"><Document /></el-icon>
-                {{ systemConfig.maintenanceMode ? '保存并开启审核模式' : '保存并关闭审核模式' }}
+                保存审核与提审开关
               </el-button>
             </div>
           </el-card>
@@ -222,7 +273,7 @@
                   <el-input
                     v-model="textConfig.startButtonText"
                     class="form-input"
-                    placeholder="默认：开始面相测试"
+                    placeholder="默认：30秒测出你的性格"
                   />
                   <span class="form-hint">原「开始AI面相测试」</span>
                 </div>
@@ -260,7 +311,6 @@
 
             <el-button
               type="primary"
-              color="#6366f1"
               class="save-button"
               @click="handleSave('system')"
             >
@@ -307,7 +357,6 @@
               </div>
               <el-button
                 type="primary"
-                color="#6366f1"
                 class="save-button"
                 @click="handleSave('prompts')"
               >
@@ -394,7 +443,6 @@
 
             <el-button
               type="primary"
-              color="#6366f1"
               class="save-button"
               @click="handleSave('credentials')"
             >
@@ -501,10 +549,58 @@ const systemConfig = reactive({
   siteDescription: '专业的AI性格测试平台',
   miniprogramName: '神仙团队AI性格测试',
   maintenanceMode: false,
+  miniprogramAuditMode: false,
+  wechatAuditAutoMiniprogramMode: true,
+  wechatLastAuditErrcode: null as number | null,
+  wechatLastAuditStatus: null as number | null,
+  wechatLastAuditReason: '',
+  wechatLastAuditSyncedAt: null as number | null,
   maxTestsPerDay: 100,
   trialTestCount: 10,
   defaultEnterpriseId: null as number | null,
 })
+
+const wechatSyncLoading = ref(false)
+
+function wechatAuditStatusLabel(st: number | null | undefined): string {
+  const m: Record<number, string> = {
+    0: '审核成功',
+    1: '审核被拒绝',
+    2: '审核中',
+    3: '已撤回',
+    4: '审核延后'
+  }
+  if (st == null || Number.isNaN(Number(st))) return '—'
+  return m[Number(st)] ?? `未知(${st})`
+}
+
+function formatAuditSyncedAt(ts: number | null | undefined): string {
+  if (ts == null || !Number.isFinite(Number(ts))) return '—'
+  const d = new Date(Number(ts) * 1000)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleString('zh-CN', { hour12: false })
+}
+
+async function handleWechatAuditSync() {
+  wechatSyncLoading.value = true
+  try {
+    const res: any = await request.post('/superadmin/settings/wechat-audit-sync')
+    if (res.code === 200) {
+      const w = res.data?.wechat
+      const applied = res.data?.applied
+      await loadSettings()
+      ElMessage.success(
+        applied
+          ? '已根据微信状态更新提审隐藏开关'
+          : (w?.errcode !== 0 ? '已拉取微信返回（未改开关，见下方 errcode）' : '已同步，当前无需改开关')
+      )
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '同步失败')
+  } finally {
+    wechatSyncLoading.value = false
+  }
+}
 
 /** 下拉：企业管理中的企业列表 */
 const enterpriseOptions = ref<Array<{ id: number; name: string }>>([])
@@ -522,7 +618,7 @@ const credentials = reactive({
 // 小程序文案配置（分析中提示、按钮、报告标题等）
 const textConfig = reactive({
   analyzingTitle: '正在分析中',
-  startButtonText: '开始面相测试',
+  startButtonText: '30秒测出你的性格',
   startButtonEnterprise: '开始面部测试',
   reportTitle: '分析报告',
   aiAnalysisText: '智能分析',
@@ -544,6 +640,21 @@ const loadSettings = async () => {
       if (response.data.system) {
         Object.assign(systemConfig, response.data.system)
         systemConfig.maintenanceMode = !!systemConfig.maintenanceMode
+        systemConfig.miniprogramAuditMode = !!systemConfig.miniprogramAuditMode
+        systemConfig.wechatAuditAutoMiniprogramMode =
+          response.data.system.wechatAuditAutoMiniprogramMode !== false
+        const wl = response.data.system.wechatLastAuditSyncedAt
+        systemConfig.wechatLastAuditSyncedAt =
+          wl != null && wl !== '' ? Number(wl) : null
+        const wst = response.data.system.wechatLastAuditStatus
+        systemConfig.wechatLastAuditStatus =
+          wst != null && wst !== '' ? Number(wst) : null
+        const we = response.data.system.wechatLastAuditErrcode
+        systemConfig.wechatLastAuditErrcode =
+          we != null && we !== '' ? Number(we) : null
+        systemConfig.wechatLastAuditReason = String(
+          response.data.system.wechatLastAuditReason ?? ''
+        )
         const de = response.data.system.defaultEnterpriseId
         systemConfig.defaultEnterpriseId =
           de != null && de !== '' && Number(de) > 0 ? Number(de) : null
@@ -607,11 +718,13 @@ const handleSave = async (section: string) => {
     switch (section) {
       case 'review':
         response = await request.put('/superadmin/settings/system', {
-          maintenanceMode: !!systemConfig.maintenanceMode
+          maintenanceMode: !!systemConfig.maintenanceMode,
+          miniprogramAuditMode: !!systemConfig.miniprogramAuditMode,
+          wechatAuditAutoMiniprogramMode: !!systemConfig.wechatAuditAutoMiniprogramMode
         })
         if (response.code === 200) {
           await loadSettings()
-          ElMessage.success(systemConfig.maintenanceMode ? '审核模式已开启，小程序将隐藏AI功能' : '审核模式已关闭，AI功能已恢复')
+          ElMessage.success('审核与提审开关已保存')
           saveSuccess.value = section
           setTimeout(() => { saveSuccess.value = null }, 3000)
         }
@@ -631,6 +744,7 @@ const handleSave = async (section: string) => {
               siteDescription: saved.siteDescription ?? systemConfig.siteDescription,
               miniprogramName: saved.miniprogramName ?? systemConfig.miniprogramName,
               maintenanceMode: !!saved.maintenanceMode,
+              miniprogramAuditMode: !!saved.miniprogramAuditMode,
               maxTestsPerDay: Number(saved.maxTestsPerDay ?? systemConfig.maxTestsPerDay),
               trialTestCount: Number(saved.trialTestCount ?? systemConfig.trialTestCount)
             })
@@ -730,63 +844,8 @@ const handleSave = async (section: string) => {
   gap: 0;
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 20px;
-  width: 100%;
-
-  &.tabs-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-    min-width: min-content;
-
-    &.tabs-many .tab-item {
-      flex: 0 0 auto;
-      padding: 6px 12px;
-      font-size: 12px;
-    }
-
-    .tab-item {
-      flex: 1;
-      padding: 6px 20px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-
-      .tab-icon {
-        font-size: 14px;
-      }
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css；本页 .tab-icon 仍生效（admin-theme 不限制图标） */
+.custom-tabs-container .tab-item .tab-icon { font-size: 14px; }
 
 .tab-content-card {
   background: #fff;
@@ -985,6 +1044,41 @@ const handleSave = async (section: string) => {
       margin: 0;
     }
   }
+}
+
+.wechat-audit-meta {
+  margin-top: 8px;
+  padding: 12px;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #0f766e;
+
+  .meta-line {
+    margin: 0 0 6px 0;
+    line-height: 1.45;
+    &:last-child {
+      margin-bottom: 0;
+    }
+    &.reason {
+      color: #115e59;
+      word-break: break-word;
+    }
+  }
+  .meta-k {
+    font-weight: 600;
+    margin-right: 8px;
+    color: #134e4a;
+  }
+  .meta-sub {
+    color: #5eead4;
+    margin-left: 4px;
+  }
+}
+
+.wechat-sync-actions {
+  margin-top: 12px;
 }
 
 .warning-box {

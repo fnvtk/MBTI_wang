@@ -361,7 +361,7 @@ class Settings extends BaseController
 
             $tcDefaults = [
                 'analyzingTitle'        => '正在分析中',
-                'startButtonText'       => '开始面相测试',
+                'startButtonText'       => '30秒测出你的性格',
                 'startButtonEnterprise' => '开始面部测试',
                 'reportTitle'           => '分析报告',
                 'aiAnalysisText'        => '智能分析',
@@ -645,7 +645,7 @@ class Settings extends BaseController
         $tcKeys = ['analyzingTitle', 'startButtonText', 'startButtonEnterprise', 'reportTitle', 'aiAnalysisText'];
         $tcDefaults = [
             'analyzingTitle'        => '正在分析中',
-            'startButtonText'       => '开始面相测试',
+            'startButtonText'       => '30秒测出你的性格',
             'startButtonEnterprise' => '开始面部测试',
             'reportTitle'           => '分析报告',
             'aiAnalysisText'        => '智能分析',

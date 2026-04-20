@@ -40,7 +40,6 @@
           <el-switch v-model="replayForce" />
           <el-button
             type="primary"
-            color="#7c3aed"
             class="manual-test-btn"
             :loading="replayLoading"
             @click="replayTestResult"
@@ -86,7 +85,7 @@
       </div>
     </div>
     <div class="save-actions save-actions-row">
-      <el-button type="primary" color="#7c3aed" class="save-btn" :loading="loading" @click="save">
+      <el-button type="primary" class="save-btn" :loading="loading" @click="save">
         保存配置
       </el-button>
     </div>

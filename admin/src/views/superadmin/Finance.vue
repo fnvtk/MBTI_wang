@@ -637,43 +637,7 @@ watch(activeTab, (tab) => {
   gap: 0;
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 20px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      padding: 6px 20px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .tab-content-card {
   background: #fff;

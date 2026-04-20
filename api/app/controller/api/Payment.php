@@ -5,6 +5,7 @@ use app\BaseController;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
+use app\common\service\MiniprogramAuditMode;
 use app\common\service\FeishuLeadWebhookService;
 use app\common\service\AiReportService;
 use think\facade\Request;
@@ -58,6 +59,10 @@ class Payment extends BaseController
             $userId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
             if ($userId <= 0) {
                 return error('用户信息异常', 400);
+            }
+
+            if (MiniprogramAuditMode::isOn()) {
+                return error('小程序版本审核期间暂不可发起虚拟商品支付，请审核结束后再试', 400);
             }
 
             // 企业ID 与金额优先从 test_results 读取（历史记录进入：enterpriseId 为空则按个人价；金额用 paidAmount）

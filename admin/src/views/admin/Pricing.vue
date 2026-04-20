@@ -52,7 +52,7 @@
               <span>当前使用超管默认定价，保存后将创建您的个人版专属配置</span>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#7c3aed" class="save-btn" @click="savePersonal" :loading="loading">
+              <el-button type="primary" class="save-btn" @click="savePersonal" :loading="loading">
                 保存个人版价格
               </el-button>
             </div>
@@ -89,7 +89,7 @@
               <span>当前使用超管默认企业定价，保存后将创建您的企业版专属配置</span>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveEnterprise" :loading="loading">
+              <el-button type="primary" class="save-btn" @click="saveEnterprise" :loading="loading">
                 保存企业版价格
               </el-button>
             </div>
@@ -209,41 +209,7 @@ onMounted(() => {
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 20px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      padding: 6px 16px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
-
-      &:hover { color: #111827; }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .pricing-content {
   display: flex;

@@ -5,7 +5,7 @@
         <h2>Soul 引流文章</h2>
         <p class="subtitle">
           采集由服务端<strong>仅通过 HTTPS</strong>请求「一场 soul 创业实验」开放接口，<strong>不使用 SSH</strong>。
-          「当前推荐」至多 3 篇；需在下方开启<strong>神仙 AI 页</strong>或<strong>我的页推荐条</strong>后，小程序对应位置才会展示；排序第 1 篇用于「我的」底部灰字链接。
+          「当前推荐」至多 3 篇；默认开启神仙 AI 顶部列表（可在下方「小程序 · 推荐文章展示」关闭或改条数）。「我的」底部推荐条默认关，需单独打开。
         </p>
       </div>
       <div class="header-actions">
@@ -25,6 +25,15 @@
         </el-button>
       </div>
     </div>
+
+    <el-alert type="info" show-icon :closable="false" class="sync-hint-alert">
+      <template #title>自动拉取 · 与手动采集</template>
+      <p class="sync-hint-p">
+        用户打开神仙 AI（或拉推荐接口）且已开启展示时，服务端会按配置
+        <code>soul_article_auto_sync</code> 的间隔，自动请求 Soul 公网 API 更新候选池。
+        「采集最新 10 篇」「搜索并添加」用于运营<strong>立即补池</strong>，二者并行不冲突。
+      </p>
+    </el-alert>
 
     <!-- 神仙 AI 健康小条 -->
     <el-card v-if="health.loaded" class="health-card" shadow="never" :class="{ 'health-card--warn': health.hasAlert }">
@@ -74,6 +83,62 @@
           <el-switch v-model="aiChatDisplay.sectionExpandedDefault" />
           <span class="form-hint-inline">关闭则默认收起，用户点击「精选推荐」后展开</span>
         </el-form-item>
+        <el-divider content-position="left">精选推荐 · 跳转其他小程序</el-divider>
+        <el-form-item v-if="aiChatDisplay.enabled" label="目标小程序 AppID">
+          <el-input
+            v-model="aiChatDisplay.recoJumpMiniAppId"
+            clearable
+            placeholder="默认与「一场 soul」一致：wxb8bbb2b10dec74aa；留空则点击仍走原文 webview"
+            style="max-width: 420px"
+          />
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="打开路径 path">
+          <el-input
+            v-model="aiChatDisplay.recoJumpMiniPath"
+            placeholder="如 pages/index/index（勿以 / 开头；可带 query）"
+            style="max-width: 420px"
+          />
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="环境版本">
+          <el-radio-group v-model="aiChatDisplay.recoJumpMiniEnvVersion">
+            <el-radio label="release">正式版 release</el-radio>
+            <el-radio label="trial">体验版 trial</el-radio>
+            <el-radio label="develop">开发版 develop</el-radio>
+          </el-radio-group>
+          <div class="form-hint-block">
+            用户点击推荐卡片时将调用 wx.navigateToMiniProgram；需在小程序管理后台与目标小程序完成关联，且本小程序
+            app.json 已声明 navigateToMiniProgramAppIdList。
+          </div>
+        </el-form-item>
+        <el-divider content-position="left">对话内 · 精选推荐抽检（文章 / 功能卡）</el-divider>
+        <el-form-item v-if="aiChatDisplay.enabled" label="从第几条用户消息起">
+          <el-input-number v-model="aiChatDisplay.inlineRecoMinUserTurns" :min="1" :max="10" :step="1" controls-position="right" />
+          <span class="form-hint-inline">达到该条数后才开始抽检（默认 2，即第二条用户发言起的回复可能带推荐）</span>
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="间隔 N（再每几条）">
+          <el-input-number v-model="aiChatDisplay.inlineRecoInterval" :min="2" :max="10" :step="1" controls-position="right" />
+          <span class="form-hint-inline">在「起始条数」之后，每再 N 条用户消息抽检一次（2～3 即约每两三句一轮）</span>
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="抽检出现概率">
+          <el-slider v-model="aiChatDisplay.inlineRecoRollPercent" :min="5" :max="100" show-input />
+          <div class="form-hint-block">命中间隔后，实际是否插入推荐由概率决定；100% 表示只要抽检必尝试（仍受意图与正文匹配限制）。</div>
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="角标图标个数">
+          <el-radio-group v-model="aiChatDisplay.inlineRecoIconCount">
+            <el-radio :label="1">1 个</el-radio>
+            <el-radio :label="2">2 个</el-radio>
+            <el-radio :label="3">3 个</el-radio>
+          </el-radio-group>
+          <span class="form-hint-inline">每条推荐卡上方 emoji 数量，不超过 3</span>
+        </el-form-item>
+        <el-form-item v-if="aiChatDisplay.enabled" label="图标 emoji">
+          <el-input
+            v-model="aiChatDisplay.inlineRecoIconsStr"
+            placeholder="逗号分隔，如 ✨,💬,📌；求职类会在前端自动前置 💼"
+            style="max-width: 480px"
+            clearable
+          />
+        </el-form-item>
         <el-divider content-position="left">我的 · 底部推荐条</el-divider>
         <el-form-item label="我的页展示首条">
           <el-switch v-model="aiChatDisplay.profileRecoEnabled" />
@@ -84,7 +149,7 @@
             v-model="aiChatDisplay.profileSectionLabel"
             maxlength="32"
             show-word-limit
-            placeholder="如：一场创业实验、精选阅读"
+            placeholder="默认：我的由来（可改成任意短标题）"
             style="max-width: 360px"
           />
         </el-form-item>
@@ -100,7 +165,7 @@
     <el-card class="reco-card" shadow="hover">
       <template #header>
         <div class="card-header">
-          <span>当前推荐（至多 3 篇 · 需在上方开启「小程序展示」后按条数展示）</span>
+          <span>当前推荐（至多 3 篇 · 默认在神仙 AI 展示；可在「小程序 · 推荐文章展示」关闭）</span>
           <div class="reco-head-actions">
             <span class="reco-count">{{ recommended.length }} / 3</span>
             <el-button size="small" @click="onNormalizeOrder">一键归一排序</el-button>
@@ -256,11 +321,19 @@ const dateRange = ref<string[]>([])
 const health = ref<any>({ loaded: false, providers: [], lastAlert: null, hasAlert: false })
 
 const aiChatDisplay = ref({
-  enabled: false,
-  maxShow: 1,
-  sectionExpandedDefault: false,
+  enabled: true,
+  maxShow: 3,
+  sectionExpandedDefault: true,
   profileRecoEnabled: false,
-  profileSectionLabel: '推荐阅读'
+  profileSectionLabel: '我的由来',
+  recoJumpMiniAppId: 'wxb8bbb2b10dec74aa',
+  recoJumpMiniPath: 'pages/index/index',
+  recoJumpMiniEnvVersion: 'release' as 'release' | 'trial' | 'develop',
+  inlineRecoMinUserTurns: 2,
+  inlineRecoInterval: 3,
+  inlineRecoRollPercent: 50,
+  inlineRecoIconCount: 3,
+  inlineRecoIconsStr: '✨,💬,📌'
 })
 const savingAcDisplay = ref(false)
 
@@ -438,12 +511,25 @@ const fetchAiChatDisplay = async () => {
     const res: any = await request.get('/superadmin/soul-articles/ai-chat-display')
     if (res && res.code === 200 && res.data) {
       const d = res.data
+      const envRaw = String(d.recoJumpMiniEnvVersion || 'release').toLowerCase()
+      const env =
+        envRaw === 'trial' || envRaw === 'develop' || envRaw === 'release' ? envRaw : 'release'
+      const roll = typeof d.inlineRecoRoll === 'number' && !Number.isNaN(d.inlineRecoRoll) ? d.inlineRecoRoll : 0.5
+      const iconsArr = Array.isArray(d.inlineRecoIcons) ? d.inlineRecoIcons : []
       aiChatDisplay.value = {
         enabled: !!d.enabled,
         maxShow: Math.max(1, Math.min(3, Number(d.maxShow) || 1)),
         sectionExpandedDefault: !!d.sectionExpandedDefault,
         profileRecoEnabled: !!d.profileRecoEnabled,
-        profileSectionLabel: String(d.profileSectionLabel || '推荐阅读').slice(0, 32)
+        profileSectionLabel: String(d.profileSectionLabel || '我的由来').slice(0, 32),
+        recoJumpMiniAppId: d.recoJumpMiniAppId != null ? String(d.recoJumpMiniAppId).trim() : '',
+        recoJumpMiniPath: d.recoJumpMiniPath != null ? String(d.recoJumpMiniPath).trim() : 'pages/index/index',
+        recoJumpMiniEnvVersion: env as 'release' | 'trial' | 'develop',
+        inlineRecoMinUserTurns: Math.max(1, Math.min(10, Number(d.inlineRecoMinUserTurns) || 2)),
+        inlineRecoInterval: Math.max(2, Math.min(10, Number(d.inlineRecoInterval) || 3)),
+        inlineRecoRollPercent: Math.max(5, Math.min(100, Math.round(roll * 100))),
+        inlineRecoIconCount: Math.max(1, Math.min(3, Number(d.inlineRecoIconCount) || 3)),
+        inlineRecoIconsStr: iconsArr.length ? iconsArr.map((x: any) => String(x)).join(',') : '✨,💬,📌'
       }
     }
   } catch (e) {}
@@ -452,12 +538,25 @@ const fetchAiChatDisplay = async () => {
 const saveAiChatDisplay = async () => {
   savingAcDisplay.value = true
   try {
+    const rawIcons = String(aiChatDisplay.value.inlineRecoIconsStr || '')
+      .split(/[,，\s]+/)
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .slice(0, 10)
     const res: any = await request.post('/superadmin/soul-articles/ai-chat-display', {
       enabled: aiChatDisplay.value.enabled,
       maxShow: aiChatDisplay.value.maxShow,
       sectionExpandedDefault: aiChatDisplay.value.sectionExpandedDefault,
       profileRecoEnabled: aiChatDisplay.value.profileRecoEnabled,
-      profileSectionLabel: aiChatDisplay.value.profileSectionLabel
+      profileSectionLabel: aiChatDisplay.value.profileSectionLabel,
+      recoJumpMiniAppId: aiChatDisplay.value.recoJumpMiniAppId,
+      recoJumpMiniPath: aiChatDisplay.value.recoJumpMiniPath,
+      recoJumpMiniEnvVersion: aiChatDisplay.value.recoJumpMiniEnvVersion,
+      inlineRecoMinUserTurns: aiChatDisplay.value.inlineRecoMinUserTurns,
+      inlineRecoInterval: aiChatDisplay.value.inlineRecoInterval,
+      inlineRecoRoll: Math.max(0.05, Math.min(1, (Number(aiChatDisplay.value.inlineRecoRollPercent) || 50) / 100)),
+      inlineRecoIconCount: aiChatDisplay.value.inlineRecoIconCount,
+      inlineRecoIcons: rawIcons.length ? rawIcons : ['✨', '💬', '📌']
     })
     if (res && res.code === 200) {
       ElMessage.success('展示设置已保存')
@@ -523,6 +622,17 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.sync-hint-alert {
+  margin-bottom: 16px;
+}
+
+.sync-hint-p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.65;
+  color: #4b5563;
+}
+
 .header-left h2 {
   margin: 0 0 8px 0;
   font-size: 22px;
@@ -556,6 +666,14 @@ onMounted(() => {
   font-size: 12px;
   color: #6B6894;
   vertical-align: middle;
+}
+
+.form-hint-block {
+  margin-top: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #6B6894;
+  max-width: 560px;
 }
 
 .health-card {

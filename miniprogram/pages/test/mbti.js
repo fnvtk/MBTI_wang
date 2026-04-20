@@ -2,6 +2,7 @@
 const { loadQuestions } = require('../../utils/questionBank')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const payment = require('../../utils/payment')
+const { afterTestSubmitNavigate } = require('../../utils/phoneAuth')
 const app = getApp()
 
 const MBTI_TIME_SEC = 30 * 60 // 30 分钟
@@ -257,11 +258,8 @@ Page({
 
     app.saveTestResult('mbti', resultData).then((extra) => {
       const rid = extra && extra.id
-      if (rid) {
-        wx.redirectTo({ url: `/pages/result/mbti?id=${rid}&type=mbti` })
-      } else {
-        wx.redirectTo({ url: '/pages/result/mbti' })
-      }
+      const target = rid ? `/pages/result/mbti?id=${rid}&type=mbti` : '/pages/result/mbti'
+      afterTestSubmitNavigate(target)
     })
   },
 

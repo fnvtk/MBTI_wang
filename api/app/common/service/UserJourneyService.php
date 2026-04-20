@@ -1,6 +1,8 @@
 <?php
 namespace app\common\service;
 
+use app\common\AnalyticsEventLabels;
+use app\common\AnalyticsPagePathLabels;
 use think\facade\Db;
 
 /**
@@ -79,28 +81,26 @@ class UserJourneyService
             $decoded = is_string($r['propsJson']) ? json_decode($r['propsJson'], true) : [];
             $props = is_array($decoded) ? $decoded : [];
         }
-        $labelMap = [
-            'page_view'      => '浏览页面',
-            'button_click'   => '按钮点击',
-            'click_pay'      => '发起支付',
-            'click_recharge' => '点击充值',
-        ];
-        $label = $labelMap[$name] ?? $name;
+        $label = AnalyticsEventLabels::cn($name);
+        $pathCn = $path !== '' ? AnalyticsPagePathLabels::cn($path) : '';
         $detail = '';
-        if ($name === 'page_view' && $path !== '') {
-            $detail = $path;
-        }
-        if (isset($props['action']) && (string) $props['action'] !== '') {
-            $detail = (string) $props['action'];
+        if ($name === 'page_view' && $pathCn !== '') {
+            $detail = $pathCn;
+        } elseif (isset($props['action']) && (string) $props['action'] !== '') {
+            $act = (string) $props['action'];
+            $detail = AnalyticsPagePathLabels::cn($act);
             if (!empty($props['productType'])) {
-                $detail .= ' · ' . (string) $props['productType'];
+                $pt = (string) $props['productType'];
+                $detail .= ' · ' . self::productTypeCn($pt);
             }
+        } elseif ($pathCn !== '' && $detail === '') {
+            $detail = $pathCn;
+        } elseif (isset($props['type']) && (string) $props['type'] !== '' && $detail === '') {
+            $detail = self::productTypeCn((string) $props['type']);
         } elseif (isset($props['label']) && (string) $props['label'] !== '') {
             $detail = (string) $props['label'];
-        } elseif ($path !== '' && $detail === '') {
-            $detail = $path;
         }
-        $line = $detail !== '' ? "{$label}: {$detail}" : $label;
+        $line = $detail !== '' ? "{$label} · {$detail}" : $label;
         $ts = isset($r['clientTs']) ? (int) $r['clientTs'] : null;
         if (!$ts && !empty($r['createdAt'])) {
             $ts = strtotime((string) $r['createdAt']) * 1000;
@@ -110,6 +110,24 @@ class UserJourneyService
         }
 
         return $line;
+    }
+
+    /**
+     * 埋点 props 里常见测评类型 → 中文
+     */
+    private static function productTypeCn(string $t): string
+    {
+        $t = strtolower(trim($t));
+        $m = [
+            'mbti' => 'MBTI',
+            'disc' => 'DISC',
+            'pdp'  => 'PDP',
+            'sbti' => 'SBTI',
+            'face' => '面相',
+            'ai'   => 'AI 综合',
+        ];
+
+        return $m[$t] ?? strtoupper($t);
     }
 
     public static function humanTimeAgoCn(int $clientTsMs): string

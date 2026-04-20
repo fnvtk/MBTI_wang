@@ -8,7 +8,7 @@ Page({
     navbarHeight: 88,
     showEnterpriseEntry: false,
     siteTitle: '神仙团队性格测试',
-    startButtonText: '开始性格测试',
+    startButtonText: '30秒测出你的性格',
     aiAnalysisText: '分析',
     reviewMode: true,
     permFace: true
@@ -33,7 +33,7 @@ Page({
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
       siteTitle: rm0 ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+      startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '30秒测出你的性格'),
       aiAnalysisText: rm0 ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm0,
       permFace: pf
@@ -53,7 +53,7 @@ Page({
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
-            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '拍摄'),
+            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '30秒测出你的性格'),
             aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
@@ -120,7 +120,7 @@ Page({
     const ep3 = g.enterprisePermissions
     this.setData({
       siteTitle: rm ? (g.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (g.siteTitle || '神仙团队性格测试'),
-      startButtonText: (rm || (ep3 && ep3.face === false)) ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '拍摄'),
+      startButtonText: (rm || (ep3 && ep3.face === false)) ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '30秒测出你的性格'),
       aiAnalysisText: rm ? '分析' : ((g.textConfig && g.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm,
       permFace: !ep3 || ep3.face !== false
@@ -145,11 +145,20 @@ Page({
     }
   },
 
-  // 主按钮统一进入「详细性格测试」列表（问卷 / AI 对话 / 拍照等分项选择），不再直跳拍摄 Tab
+  // 主按钮：面相/拍摄链路直进「拍摄」Tab（与底栏拍摄一致）；审核模式或企业关闭面相时进测试列表
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    try { require('../../utils/analytics').track('tap_home_test_select', {}) } catch (e) {}
-    wx.navigateTo({ url: '/pages/test-select/index' })
+    const g = getApp().globalData
+    const rm = !!(g.reviewMode || g.maintenanceMode)
+    const ep = g.enterprisePermissions
+    const faceOff = ep && ep.face === false
+    if (rm || faceOff) {
+      try { require('../../utils/analytics').track('tap_home_test_select', {}) } catch (e) {}
+      wx.navigateTo({ url: '/pages/test-select/index' })
+      return
+    }
+    try { require('../../utils/analytics').track('tap_home_camera_tab', {}) } catch (e) {}
+    wx.switchTab({ url: '/pages/index/camera' })
   },
 
   // 上传照片（个人版入口：强制本次链路为个人定价）

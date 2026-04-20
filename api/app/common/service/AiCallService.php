@@ -129,6 +129,19 @@ class AiCallService
         return array_merge($healthy, $depleted);
     }
 
+    /**
+     * 与 POST /api/ai/chat 相同的第一优先服务商（sortWeight 升序 + 余额预警沉底）。
+     * 面相 POST /api/analyze、简历分析等应与此一致，保证密钥、线路、优先级与神仙 AI 对齐。
+     *
+     * @return AiProviderModel|null
+     */
+    public static function firstOrderedProvider(): ?AiProviderModel
+    {
+        $list = self::resolveProviders();
+
+        return $list[0] ?? null;
+    }
+
     private static function resolveEndpoint($provider): string
     {
         $endpoint = !empty($provider->apiEndpoint) ? rtrim($provider->apiEndpoint, '/') : '';
@@ -187,7 +200,8 @@ class AiCallService
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 60,
+            // 异步任务在 shutdown 中执行时可等待更久；同步面相等场景亦避免慢模型被 60s 截断
+            CURLOPT_TIMEOUT        => 120,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_SSL_VERIFYPEER => false,
@@ -259,7 +273,7 @@ class AiCallService
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_TIMEOUT        => 60,
+            CURLOPT_TIMEOUT        => 120,
             CURLOPT_POST           => true,
             CURLOPT_POSTFIELDS     => $payload,
             CURLOPT_SSL_VERIFYPEER => false,
@@ -327,24 +341,29 @@ class AiCallService
         $summary  = trim((string) ($userContext['summary'] ?? ''));
         $nickname = trim((string) ($userContext['nickname'] ?? ''));
 
-        $prompt = "你是「神仙 AI」，神仙团队 MBTI 性格小程序的专属人格伙伴。\n";
-        $prompt .= "说话风格：像朋友一样亲切、简短（每次回答 150 字以内，必要时可延展），不堆砌术语；适度鼓励用户完成其他测评（DISC / PDP / SBTI / 面相）或去「一场 soul 创业实验」公众号阅读相关文章。\n";
-        $prompt .= "禁止：做医疗诊断 / 政治议题 / 具体投资建议。\n";
+        $prompt = "你是「神仙 AI」，微信小程序里的性格与成长助手。你必须**直接生成**对当前这条消息的回答，禁止套用固定模板或预置长文案。\n";
+        $prompt .= "【语气】像真人深聊：完整、通顺的句子；先接住对方的问题或情绪，再展开；有轻有重、有节奏，不要电报式短句堆砌。口语自然，但保持可读与分寸，像值得信赖的朋友。**禁止**「作为 AI」「根据您的问题」等机械开场，**禁止**元叙述（解释自己怎么回答、用什么结构）。\n";
+        $prompt .= "**禁止**在正文里提及任何「回复格式名」「模式名」「版本代号」或类似自报（含 Human、HUMAN、3.0、秋门等谐音或变体）；只自然说话，不要标签。\n";
+        $prompt .= "第一句就要切入正题；分段清晰；单次回复以 180～380 字为宜（用户明确要求更长时再略增）。不堆砌术语。\n";
+        $prompt .= "【时效】用户端网络请求约 60 秒内必须结束：请优先完整答完当前问题，避免冗长铺垫，以免用户看到超时错误。\n";
+        $prompt .= "【重要】下方「测评档案」仅供你理解用户背景：**禁止**把档案整段抄给用户、**禁止**逐条罗列题号或问卷选项。\n";
+        $prompt .= "**禁止**以 #、@、「我是xxx」、括号人设、运营标签或任何签名行开场；**禁止**自称/提及「卡若」或类似第三方运营人设；**禁止**编造「几点起床」等噱头头衔。**禁止**主动插入公众号、外链或营销话术；用户若问起其他测评，用一句话带过即可。\n";
+        $prompt .= "禁止：医疗诊断、政治敏感、具体投资建议。\n";
         if ($nickname !== '') {
-            $prompt .= "称呼：可以偶尔叫用户「{$nickname}」。\n";
+            $prompt .= "可偶尔称呼用户「{$nickname}」。\n";
         }
         if ($mbtiType !== '') {
-            $prompt .= "用户 MBTI：{$mbtiType}。请结合此类型做个性化回答。\n";
+            $prompt .= "已知 MBTI：{$mbtiType}，请结合类型作答。\n";
         } else {
-            $prompt .= "用户尚未完成 MBTI 测试。回答时可友好建议先去做一下测评。\n";
+            $prompt .= "用户可能尚未测 MBTI；可温和建议先完成站内测评。\n";
         }
         if ($summary !== '') {
-            $prompt .= "用户性格画像摘要：{$summary}\n";
+            $prompt .= "性格摘要（勿照抄，仅作理解）：{$summary}\n";
         }
 
         $appendix = trim((string) ($userContext['testAppendix'] ?? ''));
         if ($appendix !== '') {
-            $prompt .= "\n【用户测评客观记录（含问卷选项，供你结合其当前提问做针对性回答；勿机械罗列题号套话）】\n";
+            $prompt .= "\n【测评档案·内部参考】\n";
             $prompt .= $appendix . "\n";
         }
 
@@ -352,65 +371,94 @@ class AiCallService
     }
 
     /**
+     * 拉取用户 MBTI 画像（轻量：不含测评附录，供快捷问句/runtime 嵌入等避免重型查询与异常导致 500）
+     */
+    public static function fetchUserContextLight(int $userId): array
+    {
+        $empty = ['mbtiType' => '', 'summary' => '', 'nickname' => '', 'testAppendix' => ''];
+        if ($userId <= 0) {
+            return $empty;
+        }
+
+        try {
+            $nickname = (string) Db::name('wechat_users')->where('id', $userId)->value('nickname');
+
+            $mbtiType = '';
+            $summary  = '';
+            $row = Db::name('test_results')
+                ->where('userId', $userId)
+                ->where('testType', 'mbti')
+                ->order('id', 'desc')
+                ->find();
+            if ($row && !empty($row['resultData'])) {
+                $data = is_string($row['resultData']) ? json_decode($row['resultData'], true) : $row['resultData'];
+                if (is_array($data)) {
+                    $mbtiType = (string) ($data['mbtiType'] ?? ($data['mbti']['type'] ?? ''));
+                    if (!empty($data['description']['summary'])) {
+                        $summary = (string) $data['description']['summary'];
+                    } elseif (!empty($data['description']['overview'])) {
+                        $summary = (string) $data['description']['overview'];
+                    }
+                }
+            }
+
+            if ($mbtiType === '') {
+                $faceRow = Db::name('test_results')
+                    ->where('userId', $userId)
+                    ->where('testType', 'face')
+                    ->order('id', 'desc')
+                    ->find();
+                if ($faceRow && !empty($faceRow['resultData'])) {
+                    $data = is_string($faceRow['resultData']) ? json_decode($faceRow['resultData'], true) : $faceRow['resultData'];
+                    if (is_array($data) && isset($data['mbti']['type'])) {
+                        $mbtiType = (string) $data['mbti']['type'];
+                        $summary  = (string) ($data['personalitySummary'] ?? ($data['overview'] ?? ''));
+                    }
+                }
+            }
+
+            return [
+                'mbtiType'     => $mbtiType,
+                'summary'      => $summary,
+                'nickname'     => $nickname,
+                'testAppendix' => '',
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('fetchUserContextLight: ' . $e->getMessage());
+
+            return $empty;
+        }
+    }
+
+    /**
      * 拉取用户 MBTI 画像（最近一次 test_results 结果）
      */
     public static function fetchUserContext(int $userId): array
     {
+        $base = self::fetchUserContextLight($userId);
         if ($userId <= 0) {
-            return ['mbtiType' => '', 'summary' => '', 'nickname' => '', 'testAppendix' => ''];
+            return $base;
         }
 
-        $nickname = (string) Db::name('wechat_users')->where('id', $userId)->value('nickname');
-
-        $mbtiType = '';
-        $summary  = '';
-        $row = Db::name('test_results')
-            ->where('userId', $userId)
-            ->where('testType', 'mbti')
-            ->order('id', 'desc')
-            ->find();
-        if ($row && !empty($row['resultData'])) {
-            $data = is_string($row['resultData']) ? json_decode($row['resultData'], true) : $row['resultData'];
-            if (is_array($data)) {
-                $mbtiType = (string) ($data['mbtiType'] ?? ($data['mbti']['type'] ?? ''));
-                if (!empty($data['description']['summary'])) {
-                    $summary = (string) $data['description']['summary'];
-                } elseif (!empty($data['description']['overview'])) {
-                    $summary = (string) $data['description']['overview'];
-                }
-            }
+        $testAppendix = '';
+        try {
+            // 对话场景不传逐题选项，避免模型照抄冗长问卷，仍走真实模型与类型/得分摘要
+            $testAppendix = self::buildLatestTestsAppendix($userId, false);
+        } catch (\Throwable $e) {
+            Log::warning('fetchUserContext buildLatestTestsAppendix: ' . $e->getMessage());
         }
 
-        // 若无 MBTI，尝试回落到面相分析给出的 mbti
-        if ($mbtiType === '') {
-            $faceRow = Db::name('test_results')
-                ->where('userId', $userId)
-                ->where('testType', 'face')
-                ->order('id', 'desc')
-                ->find();
-            if ($faceRow && !empty($faceRow['resultData'])) {
-                $data = is_string($faceRow['resultData']) ? json_decode($faceRow['resultData'], true) : $faceRow['resultData'];
-                if (is_array($data) && isset($data['mbti']['type'])) {
-                    $mbtiType = (string) $data['mbti']['type'];
-                    $summary  = (string) ($data['personalitySummary'] ?? ($data['overview'] ?? ''));
-                }
-            }
-        }
+        $base['testAppendix'] = $testAppendix;
 
-        $testAppendix = self::buildLatestTestsAppendix($userId);
-
-        return [
-            'mbtiType'     => $mbtiType,
-            'summary'      => $summary,
-            'nickname'     => $nickname,
-            'testAppendix' => $testAppendix,
-        ];
+        return $base;
     }
 
     /**
-     * 汇总用户最近一次各类型测评的答题与结果，供 system prompt 使用（有长度上限）
+     * 汇总用户最近一次各类型测评结果，供 system prompt 使用（有长度上限）
+     *
+     * @param bool $includeAnswerDetail 为 true 时附带逐题选项（仅排查/特殊场景；对话默认 false）
      */
-    private static function buildLatestTestsAppendix(int $userId): string
+    private static function buildLatestTestsAppendix(int $userId, bool $includeAnswerDetail = false): string
     {
         $types   = ['mbti', 'sbti', 'disc', 'pdp'];
         $blocks  = [];
@@ -427,7 +475,7 @@ class AiCallService
             if (!is_array($data)) {
                 continue;
             }
-            $block = self::formatTestBlockForPrompt($type, $data);
+            $block = self::formatTestBlockForPrompt($type, $data, $includeAnswerDetail);
             if ($block !== '') {
                 $blocks[] = $block;
             }
@@ -436,7 +484,7 @@ class AiCallService
         if ($text === '') {
             return '';
         }
-        $maxLen = 3800;
+        $maxLen = 2800;
         if (mb_strlen($text, 'UTF-8') > $maxLen) {
             $text = mb_substr($text, 0, $maxLen, 'UTF-8') . '…（档案已截断）';
         }
@@ -446,17 +494,17 @@ class AiCallService
     /**
      * @param array<string, mixed> $data
      */
-    private static function formatTestBlockForPrompt(string $testType, array $data): string
+    private static function formatTestBlockForPrompt(string $testType, array $data, bool $includeAnswerDetail = false): string
     {
         switch ($testType) {
             case 'mbti':
-                return self::formatMbtiBlockForPrompt($data);
+                return self::formatMbtiBlockForPrompt($data, $includeAnswerDetail);
             case 'sbti':
-                return self::formatSbtiBlockForPrompt($data);
+                return self::formatSbtiBlockForPrompt($data, $includeAnswerDetail);
             case 'disc':
-                return self::formatDiscBlockForPrompt($data);
+                return self::formatDiscBlockForPrompt($data, $includeAnswerDetail);
             case 'pdp':
-                return self::formatPdpBlockForPrompt($data);
+                return self::formatPdpBlockForPrompt($data, $includeAnswerDetail);
             default:
                 return '';
         }
@@ -490,7 +538,7 @@ class AiCallService
     /**
      * @param array<string, mixed> $data
      */
-    private static function formatMbtiBlockForPrompt(array $data): string
+    private static function formatMbtiBlockForPrompt(array $data, bool $includeAnswerDetail = false): string
     {
         $lines = ['【MBTI·最近一次】'];
         $type = (string) ($data['mbtiType'] ?? ($data['mbti']['type'] ?? ''));
@@ -506,9 +554,11 @@ class AiCallService
         if (!empty($data['scores']) && is_array($data['scores'])) {
             $lines[] = '字母计数：' . json_encode($data['scores'], JSON_UNESCAPED_UNICODE);
         }
-        $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
-        if ($ans !== '') {
-            $lines[] = '逐题选项（题号/ID→所选）：' . $ans;
+        if ($includeAnswerDetail) {
+            $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
+            if ($ans !== '') {
+                $lines[] = '逐题选项（题号/ID→所选）：' . $ans;
+            }
         }
         return implode("\n", $lines);
     }
@@ -516,7 +566,7 @@ class AiCallService
     /**
      * @param array<string, mixed> $data
      */
-    private static function formatSbtiBlockForPrompt(array $data): string
+    private static function formatSbtiBlockForPrompt(array $data, bool $includeAnswerDetail = false): string
     {
         $lines  = ['【SBTI·最近一次】'];
         $final  = $data['finalType'] ?? null;
@@ -528,9 +578,11 @@ class AiCallService
         if (!empty($data['special'])) {
             $lines[] = '特殊标记：' . json_encode($data['special'], JSON_UNESCAPED_UNICODE);
         }
-        $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
-        if ($ans !== '') {
-            $lines[] = '逐题选项：' . $ans;
+        if ($includeAnswerDetail) {
+            $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
+            if ($ans !== '') {
+                $lines[] = '逐题选项：' . $ans;
+            }
         }
         return implode("\n", $lines);
     }
@@ -538,7 +590,7 @@ class AiCallService
     /**
      * @param array<string, mixed> $data
      */
-    private static function formatDiscBlockForPrompt(array $data): string
+    private static function formatDiscBlockForPrompt(array $data, bool $includeAnswerDetail = false): string
     {
         $lines = ['【DISC·最近一次】'];
         if (!empty($data['dominantType'])) {
@@ -547,9 +599,11 @@ class AiCallService
         if (!empty($data['scores']) && is_array($data['scores'])) {
             $lines[] = '得分：' . json_encode($data['scores'], JSON_UNESCAPED_UNICODE);
         }
-        $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
-        if ($ans !== '') {
-            $lines[] = '逐题选项：' . $ans;
+        if ($includeAnswerDetail) {
+            $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
+            if ($ans !== '') {
+                $lines[] = '逐题选项：' . $ans;
+            }
         }
         return implode("\n", $lines);
     }
@@ -557,7 +611,7 @@ class AiCallService
     /**
      * @param array<string, mixed> $data
      */
-    private static function formatPdpBlockForPrompt(array $data): string
+    private static function formatPdpBlockForPrompt(array $data, bool $includeAnswerDetail = false): string
     {
         $lines = ['【PDP·最近一次】'];
         if (!empty($data['dominantType'])) {
@@ -566,9 +620,11 @@ class AiCallService
         if (!empty($data['scores']) && is_array($data['scores'])) {
             $lines[] = '得分：' . json_encode($data['scores'], JSON_UNESCAPED_UNICODE);
         }
-        $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
-        if ($ans !== '') {
-            $lines[] = '逐题选项：' . $ans;
+        if ($includeAnswerDetail) {
+            $ans = self::formatAnswersCompact(isset($data['answers']) && is_array($data['answers']) ? $data['answers'] : null);
+            if ($ans !== '') {
+                $lines[] = '逐题选项：' . $ans;
+            }
         }
         return implode("\n", $lines);
     }

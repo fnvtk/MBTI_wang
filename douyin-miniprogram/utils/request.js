@@ -38,15 +38,17 @@ function clearLoginState() {
 
 /**
  * 发起请求
- * @param {Object} options - 同 wx.request，url 可为相对路径（自动加 apiBase）
- * @param {boolean} options.needAuth - 是否携带 Authorization，默认 true
- * @param {boolean} options.allow401 - 401 时是否静默清除登录态而不 fail，默认 true
+ * @param {Object} options - 同 tt.request，url 可为相对路径（自动加 apiBase）
+ * @param {boolean} options.needAuth - 是否尝试携带 Authorization（有 token 则带上），默认 true
+ * @param {boolean} options.optionalAuth - needAuth 为 false 时仍可在有 token 时附带 Bearer
+ * @param {boolean} options.allow401 - 401 且本次请求已带 Authorization 时是否清除登录态，默认 true
  */
 function request(options) {
   const apiBase = getApiBase()
   const url = options.url
   const fullUrl = url.startsWith('http') ? url : `${apiBase.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`
   const needAuth = options.needAuth !== false
+  const optionalAuth = options.optionalAuth === true
   const allow401 = options.allow401 !== false
 
   const header = {
@@ -56,7 +58,12 @@ function request(options) {
   if (needAuth) {
     const token = getToken()
     if (token) header['Authorization'] = `Bearer ${token}`
+  } else if (optionalAuth) {
+    const token = getToken()
+    if (token) header['Authorization'] = `Bearer ${token}`
   }
+
+  const authHeaderSent = !!header['Authorization']
 
   const success = options.success
   const fail = options.fail
@@ -67,7 +74,7 @@ function request(options) {
     url: fullUrl,
     header,
     success(res) {
-      if (res.statusCode === 401 && allow401) {
+      if (res.statusCode === 401 && allow401 && authHeaderSent) {
         clearLoginState()
       }
       if (success) success(res)

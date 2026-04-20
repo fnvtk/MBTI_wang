@@ -1,10 +1,5 @@
 {
   "navigationBarTitleText": "DISC结果",
   "navigationBarBackgroundColor": "#3B82F6",
-  "navigationBarTextStyle": "white",
-  "enableShareAppMessage": true,
-  "enableShareTimeline": true,
-  "usingComponents": {
-    "result-section-nav": "/components/result-section-nav/index"
-  }
+  "navigationBarTextStyle": "white"
 }

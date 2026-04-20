@@ -297,9 +297,14 @@
   letter-spacing: 0.02em;
 }
 
-.content-container--with-bottom-tools {
-  /* 步骤条 (~72rpx) + 按钮行 (~110rpx) + 垂直内边距 (~34rpx) = 216rpx 本体 + 40rpx 留白 = 256rpx */
-  padding-bottom: calc(80rpx + 320rpx + env(safe-area-inset-bottom));
+/*
+ * 底部固定条占位：须用 .content-container.content-container--with-bottom-tools
+ * 否则各页 wxss 里单独的 .content-container { padding-bottom: 64rpx } 会晚加载并覆盖单类名修饰符，导致「深度解读」等末尾区块被挡住。
+ */
+.content-container.content-container--with-bottom-tools {
+  padding-bottom: calc(
+    120rpx + 400rpx + env(safe-area-inset-bottom)
+  );
 }
 
 .content-scroll--with-bottom-tools {

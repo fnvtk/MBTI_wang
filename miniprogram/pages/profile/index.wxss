@@ -6,8 +6,7 @@ page {
 .page {
   min-height: 100vh;
   background-color: #F9FAFB;
-  /* 自定义 tabBar 加高 + 中间浮钮上移，多留底边距 */
-  padding-bottom: calc(168rpx + env(safe-area-inset-bottom));
+  /* 底栏避让由全局 .tabbar-pad / --tabbar-pad 统一控制 */
 }
 
 custom-tab-bar {
@@ -843,7 +842,6 @@ custom-tab-bar {
   line-height: 1.2;
 }
 
-/* ===== 我的页 · Soul 推荐条（灰字、可读） ===== */
 .profile-reco-wrap {
   margin-top: 8rpx;
 }
@@ -862,7 +860,6 @@ custom-tab-bar {
   display: block;
   font-size: 22rpx;
   color: #9ca3af;
-  letter-spacing: 0.02em;
   margin-bottom: 10rpx;
 }
 .profile-reco-row {

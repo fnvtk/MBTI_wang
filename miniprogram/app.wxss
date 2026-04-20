@@ -1,5 +1,7 @@
 /* app.wxss - 全局样式 */
 
+@import "./styles/result-page-dashboard.wxss";
+
 /* 主题颜色 */
 page {
   --primary-color: #FF6B8A;
@@ -180,8 +182,9 @@ page {
    在 tab 页外层 view 加 .tabbar-pad 即可避免被遮挡；
    也可直接写 style="padding-bottom: var(--tabbar-pad)" */
 page {
-  --tabbar-height: 140rpx;
-  --tabbar-pad: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 20rpx);
+  /* 与实际自定义 tab 栏（含文案行 + 中间浮钮视觉）对齐，略放大避免遮挡 */
+  --tabbar-height: 168rpx;
+  --tabbar-pad: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 36rpx);
 }
 
 .tabbar-pad {

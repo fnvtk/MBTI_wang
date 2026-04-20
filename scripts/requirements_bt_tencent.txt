@@ -1,0 +1,2 @@
+# 仅用于 scripts/sync_env_bt_from_tencent_ssm.py（本地 venv 安装）
+tencentcloud-sdk-python>=3.0.1200

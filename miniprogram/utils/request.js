@@ -1,6 +1,6 @@
 /**
  * 统一请求封装：自动拼接 baseURL、携带 token、处理 401
- * 使用前需已执行 App()，否则 getApp() 在 require 时可能未就绪，这里在请求时再取 app
+ * 401 时先尝试静默登录一次并重试，减少 token 过期/首屏竞态导致的误 401
  */
 function getAppSafe() {
   try {
@@ -12,7 +12,17 @@ function getAppSafe() {
 
 function getToken() {
   const app = getAppSafe()
-  return (app && app.globalData && app.globalData.token) || wx.getStorageSync('token') || ''
+  const g = app && app.globalData && app.globalData.token
+  if (g) return g
+  try {
+    const st = wx.getStorageSync('token')
+    if (st && app && app.globalData) {
+      app.globalData.token = st
+    }
+    return st || ''
+  } catch (e) {
+    return ''
+  }
 }
 
 function getApiBase() {
@@ -20,9 +30,6 @@ function getApiBase() {
   return (app && app.globalData && app.globalData.apiBase) || ''
 }
 
-/**
- * 清除登录态（401 或主动退出时调用）
- */
 function clearLoginState() {
   const app = getAppSafe()
   if (app && app.globalData) {
@@ -37,17 +44,29 @@ function clearLoginState() {
 }
 
 /**
- * 发起请求
- * @param {Object} options - 同 wx.request，url 可为相对路径（自动加 apiBase）
- * @param {boolean} options.needAuth - 是否携带 Authorization，默认 true
- * @param {boolean} options.allow401 - 401 时是否静默清除登录态而不 fail，默认 true
+ * @param {Object} options - 同 wx.request
+ * @param {boolean} options.needAuth - 是否带 Authorization，默认 true
+ * @param {boolean} options.optionalAuth
+ * @param {boolean} options.allow401 - 401 且已带 Bearer 时是否清登录态（重试失败后），默认 true
  */
 function request(options) {
   const apiBase = getApiBase()
-  const url = options.url
-  const fullUrl = url.startsWith('http') ? url : `${apiBase.replace(/\/$/, '')}${url.startsWith('/') ? '' : '/'}${url}`
+  const {
+    __didAuthRetry,
+    success: userSuccess,
+    fail: userFail,
+    complete: userComplete,
+    url: optUrl,
+    ...rest
+  } = options
+
+  const fullUrl = optUrl.startsWith('http')
+    ? optUrl
+    : `${apiBase.replace(/\/$/, '')}${optUrl.startsWith('/') ? '' : '/'}${optUrl}`
   const needAuth = options.needAuth !== false
+  const optionalAuth = options.optionalAuth === true
   const allow401 = options.allow401 !== false
+  const didRetry = __didAuthRetry === true
 
   const header = {
     'Content-Type': 'application/json',
@@ -56,34 +75,58 @@ function request(options) {
   if (needAuth) {
     const token = getToken()
     if (token) header['Authorization'] = `Bearer ${token}`
+  } else if (optionalAuth) {
+    const token = getToken()
+    if (token) header['Authorization'] = `Bearer ${token}`
   }
 
-  const success = options.success
-  const fail = options.fail
-  const complete = options.complete
+  const authHeaderSent = !!header['Authorization']
 
-  return wx.request({
-    ...options,
+  wx.request({
+    ...rest,
     url: fullUrl,
     header,
     success(res) {
-      if (res.statusCode === 401 && allow401) {
+      if (
+        res.statusCode === 401 &&
+        allow401 &&
+        authHeaderSent &&
+        needAuth &&
+        !didRetry
+      ) {
+        const app = getAppSafe()
+        if (app && typeof app.silentLogin === 'function') {
+          app
+            .silentLogin()
+            .then((loginOk) => {
+              if (loginOk && getToken()) {
+                request({ ...options, __didAuthRetry: true })
+              } else {
+                clearLoginState()
+                if (userSuccess) userSuccess(res)
+              }
+            })
+            .catch(() => {
+              clearLoginState()
+              if (userSuccess) userSuccess(res)
+            })
+          return
+        }
+      }
+      if (res.statusCode === 401 && allow401 && authHeaderSent) {
         clearLoginState()
       }
-      if (success) success(res)
+      if (userSuccess) userSuccess(res)
     },
     fail(err) {
-      if (fail) fail(err)
+      if (userFail) userFail(err)
     },
     complete(res) {
-      if (complete) complete(res)
+      if (userComplete) userComplete(res)
     }
   })
 }
 
-/**
- * Promise 版 request，便于 async/await
- */
 function requestPromiseOnce(options) {
   return new Promise((resolve, reject) => {
     request({
@@ -110,7 +153,6 @@ function requestPromiseOnce(options) {
         }
       },
       fail(err) {
-        // wx.request fail：网络不可达 / CONNECTION_CLOSED / TLS / 超时
         const e = new Error((err && err.errMsg) || '网络异常')
         e.isNetworkError = true
         reject(e)
@@ -119,23 +161,20 @@ function requestPromiseOnce(options) {
   })
 }
 
-/**
- * 带指数退避重试（默认 2 次）：仅对"网络异常"或 5xx 重试，4xx 不重试
- * 用法：requestPromise({ url, ...opts, retry: 2, retryDelayMs: 400 })
- */
 function requestPromise(options) {
   const retry = options.retry == null ? 2 : Number(options.retry) || 0
   const retryDelayMs = options.retryDelayMs == null ? 400 : Number(options.retryDelayMs) || 0
   let attempt = 0
-  const run = () => requestPromiseOnce(options).catch((err) => {
-    const retriable = err && (err.isNetworkError || (err.statusCode >= 500 && err.statusCode < 600))
-    if (!retriable || attempt >= retry) {
-      return Promise.reject(err)
-    }
-    attempt += 1
-    const wait = retryDelayMs * Math.pow(2, attempt - 1)
-    return new Promise((r) => setTimeout(r, wait)).then(run)
-  })
+  const run = () =>
+    requestPromiseOnce(options).catch((err) => {
+      const retriable = err && (err.isNetworkError || (err.statusCode >= 500 && err.statusCode < 600))
+      if (!retriable || attempt >= retry) {
+        return Promise.reject(err)
+      }
+      attempt += 1
+      const wait = retryDelayMs * Math.pow(2, attempt - 1)
+      return new Promise((r) => setTimeout(r, wait)).then(run)
+    })
   return run()
 }
 

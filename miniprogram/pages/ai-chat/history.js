@@ -8,7 +8,10 @@ Page({
     hasMore: true
   },
   onShow() {
-    this.setData({ list: [], page: 1, hasMore: true }, () => this.fetchPage())
+    const { ensureRuntimeThenGate } = require('../../utils/miniprogramAuditGate.js')
+    ensureRuntimeThenGate(() => {
+      this.setData({ list: [], page: 1, hasMore: true }, () => this.fetchPage())
+    })
   },
   fetchPage() {
     const { page, pageSize, list, hasMore } = this.data

@@ -87,7 +87,7 @@
               </div>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#ef4444" class="save-btn" @click="savePersonal">
+              <el-button type="primary" class="save-btn" @click="savePersonal">
                 保存个人版价格设置
               </el-button>
             </div>
@@ -160,7 +160,7 @@
               </div>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#ef4444" class="save-btn" @click="saveEnterprise">
+              <el-button type="primary" class="save-btn" @click="saveEnterprise">
                 保存企业版价格设置
               </el-button>
             </div>
@@ -251,7 +251,7 @@
               <span v-else>可通过上方列表自由新增/修改/下线个人版与企业版深度服务类目，保存后小程序开通会员页会自动同步。</span>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#ef4444" class="save-btn" @click="saveDeep">
+              <el-button type="primary" class="save-btn" @click="saveDeep">
                 保存深度服务配置
               </el-button>
             </div>
@@ -285,7 +285,11 @@
       </div>
       <div class="deep-form-item">
         <label>价格单位</label>
-        <el-input v-model="personalDraft.priceUnit" placeholder="/次" />
+        <el-input v-model="personalDraft.priceUnit" placeholder="如 /次、/小时、/2小时" />
+      </div>
+      <div class="deep-form-item deep-form-item-full" v-if="personalDraft.actionType === 'buy'">
+        <label>购买按钮文案</label>
+        <el-input v-model="personalDraft.purchaseButtonText" placeholder="空则小程序默认「了解自己并付款」；例：了解并付款" />
       </div>
       <div class="deep-form-item deep-form-item-full">
         <label>副标题</label>
@@ -329,8 +333,8 @@
         <el-input v-model="personalDraft.productKey" placeholder="如 personal_insight" />
       </div>
       <div class="deep-form-item">
-        <label>客服微信</label>
-        <el-input v-model="personalDraft.serviceWechat" placeholder="展示给用户的客服微信号" />
+        <label>客服微信（备档）</label>
+        <el-input v-model="personalDraft.serviceWechat" placeholder="已不再在小程序成功弹窗展示；线索以存客宝+飞书群通知为准" />
       </div>
       <div class="deep-form-item">
         <label>存客宝KEY</label>
@@ -404,8 +408,8 @@
         <el-input v-model="enterpriseDraft.buttonText" placeholder="如 申请咨询" />
       </div>
       <div class="deep-form-item">
-        <label>客服微信</label>
-        <el-input v-model="enterpriseDraft.serviceWechat" placeholder="展示给用户的客服微信号" />
+        <label>客服微信（备档）</label>
+        <el-input v-model="enterpriseDraft.serviceWechat" placeholder="已不再在小程序成功弹窗展示；线索以存客宝+飞书群通知为准" />
       </div>
       <div class="deep-form-item">
         <label>存客宝KEY</label>
@@ -486,6 +490,8 @@ interface PersonalCategory {
   subtitle: string
   featuresText: string
   actionType: 'buy' | 'consult'
+  /** 小程序「立即购买」主按钮文案，空则接口默认「了解自己并付款」 */
+  purchaseButtonText: string
   productKey: string
   serviceWechat: string
   consultWechat: string
@@ -517,6 +523,7 @@ function createPersonalCategory (): PersonalCategory {
     subtitle: '',
     featuresText: '',
     actionType: 'buy',
+    purchaseButtonText: '',
     productKey: ts,
     serviceWechat: '',
     consultWechat: '',
@@ -581,6 +588,7 @@ const loadPricing = async () => {
           subtitle: c.subtitle || '',
           featuresText: Array.isArray(c.features) ? c.features.join('\n') : '',
           actionType: (c.actionType === 'consult' ? 'consult' : 'buy'),
+          purchaseButtonText: c.purchaseButtonText ?? '',
           productKey: c.productKey || 'personal_insight',
           serviceWechat: c.serviceWechat ?? '',
           consultWechat: c.consultWechat ?? '',
@@ -750,6 +758,7 @@ const saveDeep = async () => {
         ? item.featuresText.split(/\r?\n/).map((s) => s.trim()).filter(Boolean)
         : [],
       actionType: item.actionType || 'buy',
+      purchaseButtonText: (item.purchaseButtonText ?? '').trim(),
       productKey: item.productKey || 'personal_insight',
       serviceWechat: item.serviceWechat ?? '',
       consultWechat: item.consultWechat ?? '',
@@ -831,43 +840,7 @@ onMounted(() => {
   gap: 0;
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 20px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      padding: 6px 20px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .tab-content-card {
   background: #fff;

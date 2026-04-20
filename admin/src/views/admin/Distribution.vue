@@ -134,7 +134,7 @@
             <el-input v-model="distSearch" placeholder="搜索用户名..." class="search-input">
               <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
-            <el-button type="primary" color="#7c3aed" @click="loadDistributors">搜索</el-button>
+            <el-button type="primary" @click="loadDistributors">搜索</el-button>
           </div>
           <el-table :data="distributors" style="width: 100%" class="custom-table" v-loading="loading">
             <el-table-column label="分销商" min-width="160">
@@ -326,7 +326,7 @@
         </div>
         
         <div class="save-actions">
-          <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
+          <el-button type="primary" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
         </div>
       </div>
     </div>
@@ -827,45 +827,7 @@ onMounted(() => {
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 24px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 0;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css 的 .admin-layout .custom-tabs-container */
 
 .stats-grid {
   display: grid;

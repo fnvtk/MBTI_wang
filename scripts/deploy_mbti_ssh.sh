@@ -22,11 +22,50 @@ echo "== API PHP -> ${SSH_USER}@${SSH_HOST}:${REMOTE_API}"
   "${ROOT}/api/app/controller/admin/AppUser.php" \
   "${ROOT}/api/app/controller/admin/Order.php" \
   "${ROOT}/api/app/controller/admin/Dashboard.php" \
+  "${ROOT}/api/app/controller/admin/Finance.php" \
   "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/controller/admin/"
+
+"${RSYNC[@]}" \
+  "${ROOT}/api/app/controller/admin/concern/ExtractsTestResults.php" \
+  "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/controller/admin/concern/"
 
 "${RSYNC[@]}" \
   "${ROOT}/api/app/model/WechatUser.php" \
   "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/model/"
+
+"${RSYNC[@]}" \
+  "${ROOT}/api/route/api.php" \
+  "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/route/"
+
+"${RSYNC[@]}" \
+  "${ROOT}/api/app/controller/api/Auth.php" \
+  "${ROOT}/api/app/controller/api/AppConfig.php" \
+  "${ROOT}/api/app/controller/api/MpConfig.php" \
+  "${ROOT}/api/app/controller/api/Order.php" \
+  "${ROOT}/api/app/controller/api/AiChat.php" \
+  "${ROOT}/api/app/controller/api/AiReport.php" \
+  "${ROOT}/api/app/controller/api/Payment.php" \
+  "${ROOT}/api/app/controller/api/WechatTransferNotify.php" \
+  "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/controller/api/"
+
+"${RSYNC[@]}" \
+  "${ROOT}/api/app/common/service/AiCallService.php" \
+  "${ROOT}/api/app/common/service/AiChatArticleDisplayService.php" \
+  "${ROOT}/api/app/common/service/SoulArticleService.php" \
+  "${ROOT}/api/app/common/service/AiReportService.php" \
+  "${ROOT}/api/app/common/service/WechatService.php" \
+  "${ROOT}/api/app/common/service/WechatAuditSyncService.php" \
+  "${ROOT}/api/app/common/service/WechatTransferService.php" \
+  "${ROOT}/api/app/common/service/JwtService.php" \
+  "${ROOT}/api/app/common/service/MpTabbarService.php" \
+  "${ROOT}/api/app/common/service/FeishuLeadWebhookService.php" \
+  "${ROOT}/api/app/common/service/OutboundPushHookService.php" \
+  "${ROOT}/api/app/common/service/ThirdPartyChannelService.php" \
+  "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/common/service/"
+
+"${RSYNC[@]}" \
+  "${ROOT}/api/app/controller/superadmin/Settings.php" \
+  "${SSH_USER}@${SSH_HOST}:${REMOTE_API}/app/controller/superadmin/"
 
 if [[ ! -d "${ROOT}/admin/dist" ]]; then
   echo "缺少 admin/dist，正在构建..." >&2

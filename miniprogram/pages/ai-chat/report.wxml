@@ -15,7 +15,7 @@
         <view class="unlock-row">
           <view class="price">¥{{report.priceYuan || '9.9'}}</view>
           <button class="unlock-btn" bindtap="onTapPay" disabled="{{paying}}">
-            {{paying ? '处理中…' : '立即解锁'}}
+            {{paying ? '处理中…' : '深度详细分析报告'}}
           </button>
         </view>
       </view>
@@ -40,7 +40,7 @@
   <!-- 已完成 -->
   <view class="section" wx:elif="{{report.status === 'done'}}">
     <view class="report-body">
-      <text selectable="true" user-select="true">{{report.content}}</text>
+      <text user-select="true">{{report.content}}</text>
     </view>
     <view class="done-actions">
       <button class="share-btn" open-type="share">📤 分享给好友</button>

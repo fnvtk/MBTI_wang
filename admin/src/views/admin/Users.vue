@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="header-left">
         <h2>用户测试画像</h2>
-        <p class="subtitle">以用户为核心 · 一行看清面容分析、MBTI / DISC / PDP 结果</p>
+        <p class="subtitle">以用户为核心 · 面容分析、MBTI / SBTI / DISC / PDP 分类展示，点标签进对应测评记录</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" size="small" @click="exportData">
@@ -12,22 +12,22 @@
       </div>
     </div>
 
-    <!-- 画像汇总条 -->
-    <div class="profile-summary">
+    <div class="profile-summary profile-summary--five">
       <div class="summary-card">
         <div class="summary-ic ic-blue">👥</div>
         <div class="summary-body">
-          <div class="summary-label">总用户数</div>
-          <div class="summary-value">{{ total }}</div>
+          <div class="summary-label">用户数量</div>
+          <div class="summary-value">{{ pageUserCount }}</div>
+          <div class="summary-foot">符合条件的用户共 <strong>{{ total }}</strong> 人</div>
         </div>
       </div>
       <div class="summary-card">
         <div class="summary-ic ic-teal">🪞</div>
         <div class="summary-body">
-          <div class="summary-label">已面容分析</div>
+          <div class="summary-label">已面容 / 面相</div>
           <div class="summary-value">
             {{ profileStats.faceCount }}
-            <span class="summary-sub">/ 本页 {{ users.length }}</span>
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
           </div>
         </div>
       </div>
@@ -37,7 +37,17 @@
           <div class="summary-label">已完成 MBTI</div>
           <div class="summary-value">
             {{ profileStats.mbtiCount }}
-            <span class="summary-sub">/ 本页 {{ users.length }}</span>
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-violet">🃏</div>
+        <div class="summary-body">
+          <div class="summary-label">已完成 SBTI</div>
+          <div class="summary-value">
+            {{ profileStats.sbtiCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
           </div>
         </div>
       </div>
@@ -47,7 +57,7 @@
           <div class="summary-label">至少一项测试</div>
           <div class="summary-value">
             {{ profileStats.anyTestCount }}
-            <span class="summary-sub">/ 本页 {{ users.length }}</span>
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
           </div>
         </div>
       </div>
@@ -128,12 +138,13 @@
           <template #default="{ row }">
             <div class="test-results">
               <el-tag v-if="row.mbtiType" size="small" class="result-tag tag-mbti" @click.stop="handleClickTestTag(row, 'mbti')">MBTI · {{ row.mbtiType }}</el-tag>
+              <el-tag v-if="row.sbtiType" size="small" class="result-tag tag-sbti" @click.stop="handleClickTestTag(row, 'sbti')">SBTI · {{ row.sbtiType }}</el-tag>
               <el-tag v-if="row.discType" size="small" class="result-tag tag-disc" type="info" @click.stop="handleClickTestTag(row, 'disc')">DISC · {{ row.discType }}</el-tag>
               <el-tag v-if="row.pdpType" size="small" class="result-tag tag-pdp" type="warning" @click.stop="handleClickTestTag(row, 'pdp')">PDP · {{ row.pdpType }}</el-tag>
               <el-tag v-if="row.faceMbtiType" size="small" class="result-tag tag-face" type="success" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceMbtiType }}</el-tag>
               <el-tag v-if="row.faceDiscType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceDiscType }}</el-tag>
               <el-tag v-if="row.facePdpType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.facePdpType }}</el-tag>
-              <span v-if="!row.mbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
+              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
             </div>
           </template>
         </el-table-column>
@@ -172,7 +183,7 @@
           v-model:current-page="currentPage"
           :page-size="pageSize"
           :total="total"
-          layout="prev, pager, next"
+          layout="total, prev, pager, next"
           @current-change="handlePageChange"
         />
       </div>
@@ -731,22 +742,33 @@ const currentTestType = computed(() => (currentTest.value?.testType || '').toLow
 
 const users = ref<any[]>([])
 
-/** 页内画像汇总 */
+const pageUserCount = computed(() => (users.value || []).length)
+
+/** 页内画像汇总（严格只遍历当前表格 users，与分页接口返回的本页 list 一致） */
 const profileStats = computed(() => {
   const list = users.value || []
   let faceCount = 0
   let mbtiCount = 0
+  let sbtiCount = 0
   let anyTestCount = 0
   for (const u of list) {
-    const hasFace = !!(u.faceMbtiType || u.faceDiscType || u.facePdpType)
+    const hasFace = !!(
+      u.faceMbtiType ||
+      u.faceDiscType ||
+      u.facePdpType ||
+      u.faceType ||
+      u.coldFaceLevel
+    )
     const hasMbti = !!u.mbtiType
+    const hasSbti = !!u.sbtiType
     const hasDisc = !!u.discType
     const hasPdp = !!u.pdpType
     if (hasFace) faceCount++
     if (hasMbti) mbtiCount++
-    if (hasFace || hasMbti || hasDisc || hasPdp) anyTestCount++
+    if (hasSbti) sbtiCount++
+    if (hasFace || hasMbti || hasSbti || hasDisc || hasPdp) anyTestCount++
   }
-  return { faceCount, mbtiCount, anyTestCount }
+  return { faceCount, mbtiCount, sbtiCount, anyTestCount }
 })
 
 async function loadUsers() {
@@ -761,12 +783,13 @@ async function loadUsers() {
       params.coldFaceLevel = coldFaceFilter.value.join(',')
     }
     const res: any = await request.get('/admin/app-users', { params })
-    const list = res.data?.list ?? res?.list ?? []
+    const payload = res.data ?? res
+    const list = Array.isArray(payload?.list) ? payload.list : Array.isArray(payload) ? payload : []
     users.value = list.map((row: any) => ({
       ...row,
       username: row.username ?? row.nickname ?? ('用户' + row.id)
     }))
-    total.value = res.data?.total ?? res?.total ?? 0
+    total.value = Number(payload?.total ?? 0) || 0
   } catch {
     users.value = []
     total.value = 0
@@ -1212,6 +1235,13 @@ onMounted(() => {
   gap: 12px;
   margin-bottom: 16px;
 
+  &.profile-summary--five {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    @media (max-width: 1100px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
   @media (max-width: 900px) {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1246,6 +1276,7 @@ onMounted(() => {
     &.ic-blue { background: #eff6ff; }
     &.ic-teal { background: #f0fdfa; }
     &.ic-indigo { background: #eef2ff; }
+    &.ic-violet { background: #f5f3ff; }
     &.ic-amber { background: #fffbeb; }
   }
 
@@ -1272,6 +1303,14 @@ onMounted(() => {
       color: #9ca3af;
       margin-left: 6px;
     }
+  }
+
+  .summary-foot {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+    font-weight: 400;
   }
 }
 
@@ -1407,6 +1446,12 @@ onMounted(() => {
       font-size: 12px;
       cursor: pointer;
   }
+
+    :deep(.tag-sbti.el-tag) {
+      --el-tag-bg-color: #f5f3ff;
+      --el-tag-border-color: #ddd6fe;
+      --el-tag-text-color: #5b21b6;
+    }
 
     .no-test {
     font-size: 13px;

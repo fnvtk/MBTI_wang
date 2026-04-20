@@ -1,6 +1,18 @@
-// pages/match-job/index.js - 匹配工作（简历 + 性格 + AI 综合分析）
+// pages/match-job/index.js - 匹配工作（与「我的」同源拉取性格画像 + 简历 + AI 综合分析，含面相）
 const app = getApp()
 const { request } = require('../../utils/request')
+const { getTypeOnly } = require('../../utils/resultFormat')
+
+/** 与 profile 页 /api/test/recent 解析一致 */
+function summaryFromRecentRecord(rec, testType) {
+  if (!rec) return ''
+  const meta = rec.resultMeta
+  if (meta && typeof meta === 'object') {
+    const t = getTypeOnly(meta, testType)
+    if (t) return t
+  }
+  return String(rec.resultText || '').trim()
+}
 
 const DEFAULT_MBTI_JOB = {
   ISTJ: '适合财务、审计、行政、项目经理等结构化岗位。',
@@ -41,10 +53,12 @@ Page({
     discType: '',
     sbtiType: '',
     faceType: '',
+    hasFaceReport: false,
     mbtiJobHint: '',
     pdpJobHint: '',
     discJobHint: '',
     hasAnyTest: false,
+    showRuleDetail: false,
     resumeUrl: '',
     resumeFileName: '',
     uploading: false,
@@ -54,68 +68,67 @@ Page({
   },
 
   onLoad() {
-    try { require('../../utils/analytics').track('page_view', { path: 'pages/match-job/index' }) } catch (e) {}
-    app.ensureLogin && app.ensureLogin().then(() => {
-      this.loadPersonalityTags()
-      this.loadDefaultResume()
-    })
+    try {
+      require('../../utils/analytics').track('page_view', { path: 'pages/match-job/index' })
+    } catch (e) {}
+    app.ensureLogin &&
+      app.ensureLogin().then(() => {
+        this.loadPortraitFromRecent()
+        this.loadDefaultResume()
+      })
   },
 
   onShow() {
-    this.loadPersonalityTags()
+    this.loadPortraitFromRecent()
   },
 
-  loadPersonalityTags() {
+  toggleRuleDetail() {
+    this.setData({ showRuleDetail: !this.data.showRuleDetail })
+  },
+
+  loadPortraitFromRecent() {
     request({
-      url: '/api/test/recent',
+      url: '/api/test/recent?scope=all',
       method: 'GET',
       needAuth: true,
       success: (res) => {
-        const d = (res && res.data && res.data.code === 200 && res.data.data) || {}
-        const mbti = this._pickType(d.mbti, 'mbti')
-        const pdp = this._pickType(d.pdp, 'pdp')
-        const disc = this._pickType(d.disc, 'disc')
-        const sbti = this._pickType(d.sbti, 'sbti')
-        const face = this._pickType(d.face, 'face')
-        const hasAnyTest = !!(mbti || pdp || disc || sbti || face)
+        const payload = res && res.data
+        if (!payload || payload.code !== 200 || !payload.data) return
+        const { records = {} } = payload.data
+        const r = records
+        const mbti = summaryFromRecentRecord(r.mbti, 'mbti')
+        const pdp = summaryFromRecentRecord(r.pdp, 'pdp')
+        const disc = summaryFromRecentRecord(r.disc, 'disc')
+        const sbti = summaryFromRecentRecord(r.sbti, 'sbti')
+        const faceText = r.ai ? String(r.ai.resultText || '').trim() : ''
+        const hasFaceReport = !!r.ai
+        const hasAnyTest = !!(r.mbti || r.sbti || r.disc || r.pdp || r.ai)
         this.setData({
           mbtiType: mbti,
           pdpType: pdp,
           discType: disc,
           sbtiType: sbti,
-          faceType: face,
+          faceType: faceText,
+          hasFaceReport,
           hasAnyTest,
-          mbtiJobHint: mbti ? (DEFAULT_MBTI_JOB[mbti] || '结合所属类别的典型岗位方向。') : '',
-          pdpJobHint: pdp ? (DEFAULT_PDP_JOB[pdp] || '') : '',
-          discJobHint: disc ? (DEFAULT_DISC_JOB[(disc || '').charAt(0).toUpperCase()] || '') : ''
+          mbtiJobHint: mbti ? DEFAULT_MBTI_JOB[mbti] || '结合所属类别的典型岗位方向。' : '',
+          pdpJobHint: pdp ? DEFAULT_PDP_JOB[pdp] || '' : '',
+          discJobHint: disc ? DEFAULT_DISC_JOB[(disc || '').charAt(0).toUpperCase()] || '' : ''
         })
       },
       fail: () => {}
     })
   },
 
-  _pickType(rec, type) {
-    if (!rec) return ''
-    try {
-      const rd = typeof rec.resultData === 'string' ? JSON.parse(rec.resultData) : (rec.resultData || {})
-      if (type === 'mbti') return rd.mbtiType || rd.mbti || ''
-      if (type === 'pdp') return (rd.description && rd.description.type) || rd.dominantType || ''
-      if (type === 'disc') return rd.dominantType || rd.disc || ''
-      if (type === 'sbti') return rd.sbtiType || (rd.finalType && rd.finalType.code) || ''
-      if (type === 'face') return rd.mbti || rd.faceType || ''
-    } catch (e) {}
-    return ''
-  },
-
   loadDefaultResume() {
-    // 取默认简历（若有）
     request({
       url: '/api/enterprise/resume-uploads?pageSize=1',
       method: 'GET',
       needAuth: true,
       success: (res) => {
-        const list = (res && res.data && res.data.code === 200 && res.data.data && res.data.data.list) || []
-        const def = list.find((r) => r.isDefault) || list[0]
+        const list =
+          (res && res.data && res.data.code === 200 && res.data.data && res.data.data.list) || []
+        const def = list.find((x) => x.isDefault) || list[0]
         if (def) {
           this.setData({ resumeUrl: def.url || '', resumeFileName: def.fileName || '' })
         }
@@ -124,8 +137,18 @@ Page({
     })
   },
 
+  goToTestSelect() {
+    wx.navigateTo({ url: '/pages/test-select/index' })
+  },
+
+  goCamera() {
+    wx.switchTab({ url: '/pages/index/camera' })
+  },
+
   chooseResume() {
-    try { require('../../utils/analytics').track('tap_match_upload_resume', {}) } catch (e) {}
+    try {
+      require('../../utils/analytics').track('tap_match_upload_resume', {})
+    } catch (e) {}
     wx.chooseMessageFile({
       count: 1,
       type: 'file',
@@ -143,7 +166,7 @@ Page({
 
   _doUpload(filePath, fileName) {
     this.setData({ uploading: true })
-    const apiBase = (app.globalData && app.globalData.apiBase) ? app.globalData.apiBase.replace(/\/$/, '') : ''
+    const apiBase = app.globalData && app.globalData.apiBase ? app.globalData.apiBase.replace(/\/$/, '') : ''
     const token = (app.globalData && app.globalData.token) || wx.getStorageSync('token') || ''
     wx.showLoading({ title: '上传中...', mask: true })
     wx.uploadFile({
@@ -157,7 +180,6 @@ Page({
           const data = JSON.parse(res.data)
           if (data.code === 200 && data.data && data.data.url) {
             const url = data.data.url
-            // 记录一条简历上传（方便历史页看）
             request({
               url: '/api/enterprise/resume-uploads',
               method: 'POST',
@@ -186,7 +208,7 @@ Page({
   previewResume() {
     const url = this.data.resumeUrl
     if (!url) return
-    const apiBase = (app.globalData && app.globalData.apiBase) ? app.globalData.apiBase.replace(/\/$/, '') : ''
+    const apiBase = app.globalData && app.globalData.apiBase ? app.globalData.apiBase.replace(/\/$/, '') : ''
     const full = url.startsWith('http') ? url : apiBase + url
     wx.downloadFile({
       url: full,
@@ -203,7 +225,7 @@ Page({
 
   runAnalyze() {
     if (!this.data.hasAnyTest) {
-      wx.showToast({ title: '请先完成至少一项性格测评', icon: 'none' })
+      wx.showToast({ title: '请先完成问卷或面相拍摄', icon: 'none' })
       return
     }
     if (!this.data.resumeUrl) {
@@ -211,13 +233,21 @@ Page({
       return
     }
     this.setData({ analyzing: true })
-    try { require('../../utils/analytics').track('tap_match_analyze', { mbti: this.data.mbtiType, pdp: this.data.pdpType }) } catch (e) {}
+    try {
+      require('../../utils/analytics').track('tap_match_analyze', {
+        mbti: this.data.mbtiType,
+        pdp: this.data.pdpType,
+        face: this.data.hasFaceReport
+      })
+    } catch (e) {}
     wx.showLoading({ title: 'AI 分析中...', mask: true })
+    const fileUrl = this.data.resumeUrl
     request({
       url: '/api/resume/analyze',
       method: 'POST',
       needAuth: true,
-      data: { resumeUrl: this.data.resumeUrl },
+      timeout: 120000,
+      data: { fileUrl, resumeUrl: fileUrl },
       success: (res) => {
         wx.hideLoading()
         if (res.statusCode === 200 && res.data && res.data.code === 200) {
@@ -239,26 +269,41 @@ Page({
   },
 
   _normalizeAnalyzeResult(d) {
-    const fit = Array.isArray(d.fitRoles)
-      ? d.fitRoles
-      : (d.portrait && Array.isArray(d.portrait.bestFit) ? d.portrait.bestFit : [])
-    const strengths = Array.isArray(d.strengths)
-      ? d.strengths
-      : (d.portrait && Array.isArray(d.portrait.coreStrengths) ? d.portrait.coreStrengths : [])
-    const weaknesses = Array.isArray(d.weaknesses)
-      ? d.weaknesses
-      : (d.portrait && Array.isArray(d.portrait.coreRisks) ? d.portrait.coreRisks : [])
+    const portrait = d.portrait && typeof d.portrait === 'object' ? d.portrait : {}
+    const hrView = d.hrView && typeof d.hrView === 'object' ? d.hrView : {}
+    const roleRec = hrView.roleRecommend && typeof hrView.roleRecommend === 'object' ? hrView.roleRecommend : {}
+
+    let fit = Array.isArray(d.fitRoles) ? d.fitRoles : []
+    if (!fit.length && Array.isArray(roleRec.bestFit)) fit = roleRec.bestFit
+    if (!fit.length && Array.isArray(portrait.bestFit)) fit = portrait.bestFit
+
+    let strengths = Array.isArray(d.strengths) ? d.strengths : []
+    if (!strengths.length && Array.isArray(portrait.coreStrengths)) strengths = portrait.coreStrengths
+    if (!strengths.length && Array.isArray(d.resumeHighlights)) strengths = d.resumeHighlights.slice(0, 8)
+
+    let weaknesses = Array.isArray(d.weaknesses) ? d.weaknesses : []
+    if (!weaknesses.length && Array.isArray(portrait.coreRisks)) weaknesses = portrait.coreRisks
+
+    const summary =
+      d.summary ||
+      d.overview ||
+      portrait.workStyle ||
+      (typeof d.content === 'string' ? d.content : '') ||
+      ''
+
+    const advice = d.advice || d.nextStep || (hrView.lifecycle && hrView.lifecycle.growth) || ''
+
+    let score = typeof d.score === 'number' ? d.score : null
+    if (score == null && d.matchScore != null) score = Number(d.matchScore)
+    if (score == null && typeof d.hrScore === 'number') score = d.hrScore
+
     return {
-      score: typeof d.score === 'number' ? d.score : (d.matchScore || null),
+      score,
       fitRoles: fit.slice(0, 5),
-      summary: d.summary || (d.portrait && d.portrait.workStyle) || '',
+      summary,
       strengths: strengths.slice(0, 8),
       weaknesses: weaknesses.slice(0, 6),
-      advice: d.advice || d.nextStep || ''
+      advice: typeof advice === 'string' ? advice : ''
     }
-  },
-
-  goToTestSelect() {
-    wx.navigateTo({ url: '/pages/test-select/index' })
   }
 })

@@ -2,7 +2,12 @@
 const app = getApp()
 const payment = require('../../utils/payment')
 const { getTypeOnly } = require('../../utils/resultFormat')
-const { isReportProfileComplete } = require('../../utils/phoneAuth.js')
+const {
+  hasPhone,
+  bindPhoneByCode,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded
+} = require('../../utils/phoneAuth.js')
 const {
   slicePreviewText,
   slicePreviewList,
@@ -55,6 +60,7 @@ Page({
     shareToken: '',
     hasReloadedAfterPay: false,
     fromShare: false,
+    hasPhone: false,
     profileGate: false,
     previewPdpDescription: '',
     previewPdpStrengths: [],
@@ -203,21 +209,25 @@ Page({
   },
 
   onShow() {
+    this.setData({ hasPhone: hasPhone() })
+    if (this.data.testResultId && this.data.result) {
+      this._syncPdpGate()
+    } else if (!this.data.testResultId) {
+      const raw = wx.getStorageSync('pdpResult')
+      if (!raw) return
+      this.setData({
+        result: withPercentagesInt(raw),
+        typeSummaryLine: getTypeOnly(raw, 'pdp')
+      })
+      this._syncPdpGate()
+    }
     this._syncJourney()
-    if (this.data.testResultId) return
-    const raw = wx.getStorageSync('pdpResult')
-    if (!raw) return
-    this.setData({
-      result: withPercentagesInt(raw),
-      typeSummaryLine: getTypeOnly(raw, 'pdp')
-    })
-    this._syncPdpGate()
   },
 
   _syncPdpGate() {
     const r = this.data.result
     const fromShare = !!this.data.fromShare
-    const profileGate = !fromShare && !isReportProfileComplete()
+    const profileGate = needsResultProfileGate(fromShare)
     const desc = (r && r.description) || {}
     const code = (r && (r.dominantType || (desc && desc.type))) || ''
     this.setData({
@@ -242,10 +252,43 @@ Page({
     wx.navigateTo({ url: '/pages/promo/index' })
   },
 
+  onPhoneLoginForResultGate(e) {
+    const { code, errMsg } = e.detail || {}
+    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
+      wx.showToast({ title: '需要授权手机号才能查看完整报告', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '获取手机号失败', icon: 'none' })
+      return
+    }
+    bindPhoneByCode(code)
+      .then(() => {
+        this.setData({ hasPhone: hasPhone() })
+        if (this.data.testResultId) {
+          this._syncPdpGate()
+        } else {
+          const raw = wx.getStorageSync('pdpResult')
+          if (raw) {
+            this.setData({
+              result: withPercentagesInt(raw),
+              typeSummaryLine: getTypeOnly(raw, 'pdp')
+            })
+            this._syncPdpGate()
+          }
+        }
+        navigateToCompleteProfileAfterPhoneIfNeeded()
+      })
+      .catch(() => {})
+  },
+
   onTapReadFull() {
     try { require('../../utils/analytics').track('tap_read_full', { type: 'pdp' }) } catch (e) {}
     if (this.data.profileGate) {
-      this.goCompleteProfile()
+      wx.showToast({
+        title: this.data.hasPhone ? '请先完善头像与昵称' : '请先点击下方「登录解锁全文」',
+        icon: 'none'
+      })
       return
     }
     if (this.data.payInfo.requiresPayment && !this.data.payInfo.isPaid) {

@@ -1,6 +1,6 @@
 /**
  * 结果页「按步骤解锁」状态：
- *   Step 1 · 看全文（需完善资料或付费）
+ *   Step 1 · 看全文（需手机号+头像+昵称齐全，或已付费）
  *   Step 2 · 分享朋友圈（Step 1 完成后启用）
  *   Step 3 · AI 拍照测试（Step 2 完成后启用）
  *
@@ -27,7 +27,7 @@ function write(obj) {
 
 /**
  * Step 1 是否已解锁
- * 条件：资料完善（profileGate===false）且（免费或已付费）
+ * 条件：资料已齐（profileGate===false，与 isReportProfileComplete 一致）且（免费或已付费）
  */
 function isStep1Unlocked({ profileGate, payRequired, isPaid }) {
   if (profileGate) return false

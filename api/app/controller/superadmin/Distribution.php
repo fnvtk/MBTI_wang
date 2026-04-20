@@ -315,7 +315,7 @@ class Distribution extends BaseController
                 'enabled'          => true,
                 'promoCenterTitle' => '推广中心',
                 'bindingDays'      => 30,
-                'minWithdrawFen'   => 100,
+                'minWithdrawFen'   => 1,
                 'maxWithdrawFen'   => 0,
                 'requireAudit'     => true,
                 'withdrawFee'      => 0,
@@ -327,7 +327,7 @@ class Distribution extends BaseController
             } else {
                 $settings = $default;
             }
-            $settings['minWithdraw'] = round((float)($settings['minWithdrawFen'] ?? 100) / 100, 2);
+            $settings['minWithdraw'] = round((float)($settings['minWithdrawFen'] ?? 1) / 100, 2);
             $settings['maxWithdraw'] = ($max = (int)($settings['maxWithdrawFen'] ?? 0)) > 0 ? round($max / 100, 2) : 0;
             $settings['testSettings'] = self::appendTestSettingsAmount(
                 array_merge(self::defaultTestSettings(), $settings['testSettings'] ?? [])
@@ -351,11 +351,11 @@ class Distribution extends BaseController
 
         $minWithdrawFen = isset($settings['minWithdraw'])
             ? (int) round((float)$settings['minWithdraw'] * 100)
-            : (int)($settings['minWithdrawFen'] ?? 100);
+            : (int)($settings['minWithdrawFen'] ?? 1);
         $maxWithdrawFen = isset($settings['maxWithdraw'])
             ? (int) round((float)$settings['maxWithdraw'] * 100)
             : (int)($settings['maxWithdrawFen'] ?? 0);
-        $minWithdrawFen = max(100, min(20000, $minWithdrawFen));
+        $minWithdrawFen = max(1, min(20000, $minWithdrawFen));
         $maxWithdrawFen = $maxWithdrawFen > 0 ? min(20000, max(100, $maxWithdrawFen)) : 0;
 
         $promoTitle = trim((string)($settings['promoCenterTitle'] ?? ''));

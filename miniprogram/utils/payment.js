@@ -71,6 +71,13 @@ function generateOrderId(productType) {
 function wxPay(options) {
   const { orderId, amount = 0, description, productType, testResultId, deepProductId, enterpriseId, success, fail } = options
 
+  if (app.globalData && app.globalData.miniprogramAuditMode) {
+    const msg = '版本审核期间不可发起支付'
+    wx.showToast({ title: msg, icon: 'none' })
+    if (typeof fail === 'function') fail(new Error(msg))
+    return
+  }
+
   try {
     const analyticsMod = require('./analytics')
     if (analyticsMod && typeof analyticsMod.track === 'function') {

@@ -257,7 +257,7 @@
             <div class="form-grid">
               <div class="form-item">
                 <label>最低提现金额 (元)</label>
-                <el-input-number v-model="minWithdraw" :min="1" :max="200" :precision="2" class="w-full" />
+                <el-input-number v-model="minWithdraw" :min="0.01" :max="200" :precision="2" class="w-full" />
               </div>
               <div class="form-item">
                 <label>最高提现金额 (元)</label>
@@ -315,7 +315,7 @@
           </div>
         </div>
         <div class="save-actions">
-          <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
+          <el-button type="primary" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
         </div>
       </div>
     </div>
@@ -386,7 +386,7 @@ const loadingTopAgents = ref(false)
 
 const distEnabled = ref(true)
 const promoCenterTitle = ref('推广中心')
-const minWithdraw = ref(1)
+const minWithdraw = ref(0.01)
 const maxWithdraw = ref(0)
 const requireAudit = ref(true)
 const withdrawFee = ref(0)
@@ -540,7 +540,7 @@ const loadSettings = async () => {
       const d = res.data
       distEnabled.value      = d.enabled ?? true
       promoCenterTitle.value = d.promoCenterTitle ?? '推广中心'
-      minWithdraw.value      = d.minWithdraw ?? 1
+      minWithdraw.value      = d.minWithdraw ?? 0.01
       maxWithdraw.value      = d.maxWithdraw ?? 0
       requireAudit.value     = d.requireAudit !== false
       withdrawFee.value      = d.withdrawFee ?? 0
@@ -617,21 +617,7 @@ onMounted(() => { loadOverview(); loadTopAgents() })
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6; padding: 4px;
-  border-radius: 8px; display: flex; margin-bottom: 24px; width: 100%;
-  .custom-tabs {
-    display: flex; gap: 4px; width: 100%;
-    .tab-item {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      padding: 8px 0; font-size: 13px; color: #6b7280;
-      cursor: pointer; border-radius: 6px; transition: all 0.2s;
-      white-space: nowrap;
-      &:hover { color: #111827; }
-      &.active { background: #fff; color: #111827; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .overview-section {
   .stats-grid {

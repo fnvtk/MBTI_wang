@@ -5,10 +5,12 @@ use app\BaseController;
 use app\common\service\EnterpriseBillingService;
 use app\controller\api\Test as TestController;
 use app\model\AiProvider as AiProviderModel;
+use app\common\service\AiCallService;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
+use app\common\service\MiniprogramAuditMode;
 use think\facade\Db;
 use think\facade\Log;
 use think\facade\Request;
@@ -66,12 +68,8 @@ class Analyze extends BaseController
             return error('请上传至少一张人脸照片', 400);
         }
 
-        $provider = AiProviderModel::where('enabled', 1)
-            ->whereRaw('(visible IS NULL OR visible = 1)')
-            ->whereRaw('(apiKey IS NOT NULL AND LENGTH(TRIM(apiKey)) > 0)')
-            ->order('id', 'asc')
-            ->find();
-
+        // 与神仙 AI 对话共用同一套服务商排序（sortWeight、余额沉底），避免「聊天用 A、面相用 B」
+        $provider = AiCallService::firstOrderedProvider();
         if (!$provider) {
             return error('暂无可用的 AI 服务，请联系管理员配置', 503);
         }
@@ -143,6 +141,10 @@ class Analyze extends BaseController
         // $enterpriseId=非null 时走企业版定价；=null 时走个人版定价（含绑定企业的 admin_personal）
         $standardAmountFen = $this->getStandardAmountByTestType('face', $enterpriseId, $pricingEnterpriseId);
         $requiresPayment = $standardAmountFen > 0 ? 1 : 0;
+        if (MiniprogramAuditMode::isOn()) {
+            $standardAmountFen = 0;
+            $requiresPayment = 0;
+        }
 
         // 有 token 时顺带写入测试记录，避免小程序多请求一次 /api/test/submit
         $testResultId = null;
@@ -281,7 +283,7 @@ class Analyze extends BaseController
 
         $input = Request::post();
         $resumeText = trim((string) ($input['resumeText'] ?? $input['resume'] ?? ''));
-        $fileUrl    = trim((string) ($input['fileUrl'] ?? ''));
+        $fileUrl    = trim((string) ($input['fileUrl'] ?? $input['resumeUrl'] ?? ''));
 
         // 当前企业：优先用请求体传入，其次用用户绑定企业（需在简历自动读取之前确定 enterpriseId）
         $enterpriseIdFromRequest = isset($input['enterpriseId']) && (int) $input['enterpriseId'] > 0;
@@ -313,10 +315,13 @@ class Analyze extends BaseController
         $pricingEnterpriseId = $enterpriseId > 0 ? $enterpriseId : null;
         $standardAmountFen   = $this->getStandardAmountByTestType('resume', $pricingEnterpriseId, $pricingEnterpriseId);
         $requiresPayment     = $standardAmountFen > 0 ? 1 : 0;
+        if (MiniprogramAuditMode::isOn()) {
+            $standardAmountFen = 0;
+            $requiresPayment = 0;
+        }
 
         $latest = TestController::getLatestResultsForResume($userId, $enterpriseId > 0 ? $enterpriseId : null);
-        // face/ai 暂不计入，有 MBTI / DISC / PDP 任意一项即可视为有测试数据
-        $hasTests = $latest['mbti'] !== null || $latest['disc'] !== null || $latest['pdp'] !== null;
+        $hasTests = $latest['mbti'] !== null || $latest['sbti'] !== null || $latest['disc'] !== null || $latest['pdp'] !== null || $latest['face'] !== null;
         $hasAnySource = $hasTests || $resumeText !== '' || $fileUrl !== '';
         if (!$hasAnySource) {
             return error('暂无可用于分析的信息，请先上传简历或完成至少一项测试', 422);
@@ -326,11 +331,7 @@ class Analyze extends BaseController
         // 仅统计 MBTI / DISC / PDP 是否齐全（face/ai 暂不参与）
         $hasAllFour = $latest['mbti'] !== null && $latest['disc'] !== null && $latest['pdp'] !== null;
         $systemPrompt = $this->getReportSummaryPrompt($hasAllFour, $hasTests);
-        $provider = AiProviderModel::where('enabled', 1)
-            ->whereRaw('(visible IS NULL OR visible = 1)')
-            ->whereRaw('(apiKey IS NOT NULL AND LENGTH(TRIM(apiKey)) > 0)')
-            ->order('id', 'asc')
-            ->find();
+        $provider = AiCallService::firstOrderedProvider();
         if (!$provider) {
             return error('暂无可用的 AI 服务，请联系管理员配置', 503);
         }
@@ -554,9 +555,9 @@ PROMPT;
             $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
             $sections[] = "## 简历文件\n\n候选人已上传简历文件：{$filename}\n文件类型：{$ext}\n文件地址：{$fileUrl}\n（内容无法自动解析，请结合测试数据与面相进行分析）";
         }
-        // face/ai 临时去除，仅拼接 MBTI / PDP / DISC
         $order = [
             'mbti' => 'MBTI',
+            'sbti' => 'SBTI',
             'pdp'  => 'PDP',
             'disc' => 'DISC',
         ];
@@ -575,6 +576,20 @@ PROMPT;
             }
             $sections[] = "## {$title}\n\n" . $text;
         }
+
+        $faceRow = $latest['face'] ?? null;
+        if ($faceRow && !empty($faceRow['resultData'])) {
+            $raw = $faceRow['resultData'];
+            $data = is_string($raw) ? json_decode($raw, true) : $raw;
+            if (is_array($data)) {
+                $data = $this->sanitizeResumeTestData('face', $data);
+                $text = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            } else {
+                $text = (string) $raw;
+            }
+            $sections[] = "## 面相/拍照分析\n\n" . $text;
+        }
+
         return implode("\n\n", $sections);
     }
 
@@ -586,93 +601,7 @@ PROMPT;
      */
     private function extractResumeFileText(string $fileUrl): string
     {
-        if ($fileUrl === '' || !filter_var($fileUrl, FILTER_VALIDATE_URL)) {
-            return '';
-        }
-
-        $ext = strtolower(pathinfo(parse_url($fileUrl, PHP_URL_PATH) ?? '', PATHINFO_EXTENSION));
-
-        // 图片无法提取文本，直接跳过
-        if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
-            return '';
-        }
-
-        $ctx = stream_context_create([
-            'http' => [
-                'timeout'    => 15,
-                'user_agent' => 'Mozilla/5.0',
-            ],
-            'ssl' => [
-                'verify_peer'      => false,
-                'verify_peer_name' => false,
-            ],
-        ]);
-        $raw = @file_get_contents($fileUrl, false, $ctx);
-        if ($raw === false || strlen($raw) < 10) {
-            return '';
-        }
-
-        if ($ext === 'docx') {
-            return $this->extractDocxText($raw);
-        }
-
-        if ($ext === 'pdf') {
-            return $this->extractPdfText($raw);
-        }
-
-        return '';
-    }
-
-    /** 从 docx 二进制内容提取文本（docx 为 ZIP，内含 word/document.xml） */
-    private function extractDocxText(string $raw): string
-    {
-        $tmp = tempnam(sys_get_temp_dir(), 'docx_');
-        if ($tmp === false) {
-            return '';
-        }
-        if (file_put_contents($tmp, $raw) === false) {
-            @unlink($tmp);
-            return '';
-        }
-        $zip = new \ZipArchive();
-        if ($zip->open($tmp) !== true) {
-            @unlink($tmp);
-            return '';
-        }
-        $xml = $zip->getFromName('word/document.xml');
-        $zip->close();
-        @unlink($tmp);
-        if ($xml === false || $xml === '') {
-            return '';
-        }
-        // 提取所有 <w:t>...</w:t> 文本节点
-        preg_match_all('/<w:t[^>]*>([^<]*)<\/w:t>/u', $xml, $m);
-        $text = isset($m[1]) ? implode('', $m[1]) : '';
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_XML1, 'UTF-8');
-        $text = preg_replace('/[^\x{4e00}-\x{9fff}\x{3000}-\x{303f}a-zA-Z0-9\s\.,;:!?()（）【】\[\]\/\-_@]/u', ' ', $text);
-        return trim(preg_replace('/\s{2,}/', ' ', $text));
-    }
-
-    /** 从 PDF 二进制内容提取文本 */
-    private function extractPdfText(string $raw): string
-    {
-        $text = '';
-        if (preg_match_all('/BT\s+(.*?)\s+ET/s', $raw, $blocks)) {
-            foreach ($blocks[1] as $block) {
-                if (preg_match_all('/\(([^)]*)\)\s*Tj/s', $block, $tj)) {
-                    $text .= implode(' ', $tj[1]) . ' ';
-                }
-                if (preg_match_all('/\[(.*?)]\s*TJ/s', $block, $tjArr)) {
-                    foreach ($tjArr[1] as $inner) {
-                        if (preg_match_all('/\(([^)]*)\)/s', $inner, $parts)) {
-                            $text .= implode('', $parts[1]) . ' ';
-                        }
-                    }
-                }
-            }
-        }
-        $text = preg_replace('/[^\x{4e00}-\x{9fff}\x{3000}-\x{303f}a-zA-Z0-9\s\.,;:!?()（）【】\[\]\/\-_@]/u', ' ', $text);
-        return trim(preg_replace('/\s{2,}/', ' ', $text));
+        return \app\common\service\ResumeFileExtractService::extractFromUrl($fileUrl);
     }
 
     /**
@@ -733,6 +662,18 @@ PROMPT;
                     $desc = $data['description'];
                     unset($desc['careers'], $desc['color']);
                     $keep['description'] = $desc;
+                }
+                return $keep;
+
+            case 'sbti':
+                $keep = [];
+                if (!empty($data['sbtiType'])) $keep['sbtiType'] = $data['sbtiType'];
+                if (!empty($data['sbtiCn'])) $keep['sbtiCn'] = $data['sbtiCn'];
+                if (!empty($data['finalType']) && is_array($data['finalType'])) {
+                    $keep['finalType'] = $data['finalType'];
+                }
+                if (!empty($data['levels']) && is_array($data['levels'])) {
+                    $keep['levels'] = $data['levels'];
                 }
                 return $keep;
 

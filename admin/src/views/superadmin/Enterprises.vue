@@ -9,7 +9,7 @@
         <el-button variant="outline" @click="handleRefresh">
           <el-icon class="mr-1"><Refresh /></el-icon>刷新
         </el-button>
-        <el-button type="primary" color="#3b82f6" @click="showCreateDialog = true">
+        <el-button type="primary" @click="showCreateDialog = true">
           <el-icon class="mr-1"><Plus /></el-icon>新建企业
         </el-button>
       </div>
@@ -46,7 +46,7 @@
             <el-button variant="outline" @click="handleRefresh">
               <el-icon class="mr-1"><Refresh /></el-icon>刷新
             </el-button>
-            <el-button type="primary" color="#3b82f6" @click="showCreateDialog = true">
+            <el-button type="primary" @click="showCreateDialog = true">
               <el-icon class="mr-1"><Plus /></el-icon>新建企业
             </el-button>
           </div>
@@ -254,7 +254,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="showCreateDialog = false" class="cancel-btn">取消</el-button>
-          <el-button type="primary" color="#ef4444" @click="handleCreateEnterprise" class="submit-btn" :loading="creating">
+          <el-button type="primary" @click="handleCreateEnterprise" class="submit-btn" :loading="creating">
             立即创建
           </el-button>
         </div>
@@ -336,7 +336,7 @@
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="showEditDialog = false" class="cancel-btn">取消</el-button>
-          <el-button type="primary" color="#ef4444" @click="handleSaveEdit" class="submit-btn">
+          <el-button type="primary" @click="handleSaveEdit" class="submit-btn">
             保存修改
           </el-button>
         </div>
@@ -362,7 +362,7 @@
 
       <div v-loading="viewLoading" class="enterprise-detail-content">
         <div v-if="viewEnterpriseData" class="ud-wrap">
-          <!-- 左侧：企业概览（与用户详情弹窗 ud-side 一致） -->
+          <!-- 左侧：企业数据摘要（与用户详情弹窗 ud-side 一致） -->
           <aside class="ud-side">
             <div class="ud-avatar-block">
               <div class="ud-avatar-letter">{{ enterpriseAvatarLetter }}</div>
@@ -452,7 +452,7 @@
                         <div class="ud-roles">
                           <div class="ud-role">
                             <span class="ud-role-n">已支付</span>
-                            <el-progress :percentage="orderPaidProgressPct" :stroke-width="6" :show-text="false" color="#7c3aed" />
+                            <el-progress :percentage="orderPaidProgressPct" :stroke-width="6" :show-text="false" color="var(--sa-primary)" />
                             <span class="ud-role-p">{{ viewEnterpriseData.orderStats?.paidCount ?? 0 }}</span>
                           </div>
                         </div>
@@ -468,12 +468,12 @@
                       <div class="ud-roles">
                         <div class="ud-role">
                           <span class="ud-role-n">事件</span>
-                          <el-progress :percentage="analyticsEventProgressPct" :stroke-width="6" :show-text="false" color="#7c3aed" />
+                          <el-progress :percentage="analyticsEventProgressPct" :stroke-width="6" :show-text="false" color="var(--sa-primary)" />
                           <span class="ud-role-p">{{ viewEnterpriseData.analyticsStats?.eventTotal ?? 0 }}</span>
                         </div>
                         <div class="ud-role">
                           <span class="ud-role-n">page_view</span>
-                          <el-progress :percentage="analyticsPvProgressPct" :stroke-width="6" :show-text="false" color="#a855f7" />
+                          <el-progress :percentage="analyticsPvProgressPct" :stroke-width="6" :show-text="false" color="var(--sa-accent)" />
                           <span class="ud-role-p">{{ viewEnterpriseData.analyticsStats?.pageViewCount ?? 0 }}</span>
                         </div>
                       </div>
@@ -736,7 +736,6 @@
           <el-button @click="showInviteQrcodeDialog = false" class="cancel-btn">关闭</el-button>
           <el-button
             type="primary"
-            color="#3b82f6"
             :loading="inviteQrcodeLoading"
             @click="loadInviteQrcodeForDialog"
           >

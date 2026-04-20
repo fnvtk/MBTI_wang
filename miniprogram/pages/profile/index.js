@@ -2,6 +2,11 @@
 const app = getApp()
 const { getTypeOnly } = require('../../utils/resultFormat')
 const { request } = require('../../utils/request')
+const { buildRecoMiniProgramPath } = require('../../utils/recoMiniProgram.js')
+const { isAuditHideAiMode } = require('../../utils/miniprogramAuditGate.js')
+
+/** 与超管「小程序 · 推荐文章展示」中「区块标题」一致；接口无字段时的兜底 */
+const PROFILE_RECO_LABEL_FALLBACK = '我的由来'
 
 /** recent 单条：优先用 resultMeta 与结果页一致的「双项」文案 */
 function summaryFromRecentRecord(rec, testType) {
@@ -34,6 +39,10 @@ Page({
     pdpTime: '',
     aiTime: '',
     reviewMode: false,
+    /** 超管「小程序提审模式」：与 reviewMode 一样隐藏推广/部分营销入口 */
+    mpAuditMode: false,
+    /** 仅 miniprogramAuditMode：隐藏「了解自己」深度套餐入口（虚拟商品合规） */
+    showDeepPricingEntry: true,
     /** 最近记录的数据库 ID，用于跳转时传参 */
     mbtiResultId: null,
     sbtiResultId: null,
@@ -66,15 +75,16 @@ Page({
     showLatestTestRow: false,
     /** 用户卡片下性格标签：在「当前权限下无任何问卷结果」时显示灰色提示 */
     showEmptyPersonalityTags: true,
-    /** 我的页底部 Soul 推荐条（超管可配） */
     profileRecoShow: false,
     profileRecoSectionLabel: '',
-    profileRecoArticle: null
+    profileRecoArticle: null,
+    /** 与神仙 AI 精选推荐同源：配置了 AppID 时优先跳转目标小程序 */
+    profileRecoJump: null
   },
 
   _computeShowLatestTestRow(d) {
-    const rm = !!(d.reviewMode)
-    if (rm) {
+    const hideFace = !!(d.reviewMode || d.mpAuditMode)
+    if (hideFace) {
       return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc)
     }
     return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc || d.permFace)
@@ -94,7 +104,8 @@ Page({
     this.runLoginThenLoad()
   },
   _syncPerms(overrides = {}) {
-    const p = app.globalData.enterprisePermissions
+    const gd = app.globalData || {}
+    const p = gd.enterprisePermissions
     const next = {
       permFace: !p || p.face !== false,
       permMbti: !p || p.mbti !== false,
@@ -102,6 +113,7 @@ Page({
       permPdp:  !p || p.pdp  !== false,
       permDisc: !p || p.disc !== false,
       permDistribution: !p || p.distribution !== false,
+      showDeepPricingEntry: !gd.miniprogramAuditMode,
       ...overrides
     }
     const d = { ...this.data, ...next }
@@ -114,7 +126,10 @@ Page({
 
   onShow() {
     const gd = app.globalData
-    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+    this._syncPerms({
+      reviewMode: !!(gd.reviewMode || gd.maintenanceMode),
+      mpAuditMode: isAuditHideAiMode(gd)
+    })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
@@ -173,7 +188,10 @@ Page({
 
   loadData() {
     const gd = app.globalData
-    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+    this._syncPerms({
+      reviewMode: !!(gd.reviewMode || gd.maintenanceMode),
+      mpAuditMode: isAuditHideAiMode(gd)
+    })
 
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
     const token = app.globalData.token || wx.getStorageSync('token')
@@ -209,41 +227,105 @@ Page({
       this._loadPromoStats()
       this._loadProfileRecoTeaser()
     } else {
-      this.setData({ profileRecoShow: false, profileRecoArticle: null, profileRecoSectionLabel: '' })
+      this.setData({
+        profileRecoShow: false,
+        profileRecoArticle: null,
+        profileRecoSectionLabel: '',
+        profileRecoJump: null
+      })
     }
   },
 
-  /** 拉取「我的」页推荐条：与超管 Soul 文章推荐位第 1 篇一致 */
+  _parseRecoJumpFromDisplay(d) {
+    if (!d || typeof d !== 'object') return null
+    const appId = ((d.recoJumpMiniAppId || '') + '').trim()
+    if (!appId || !/^wx[0-9a-f]{16}$/i.test(appId)) return null
+    const envRaw = ((d.recoJumpMiniEnvVersion || 'release') + '').trim().toLowerCase()
+    const env = envRaw === 'trial' || envRaw === 'develop' ? envRaw : 'release'
+    let path = ((d.recoJumpMiniPath || 'pages/index/index') + '').trim().replace(/^\//, '')
+    if (!path) path = 'pages/index/index'
+    return { appId: appId.toLowerCase(), path, envVersion: env }
+  },
+
+  _applyProfileTeaserPayload(d) {
+    const art = d.article && d.article.url ? d.article : null
+    const show = !!(d.enabled && art)
+    this.setData({
+      profileRecoShow: show,
+      profileRecoSectionLabel: (d.sectionLabel && String(d.sectionLabel).trim()) || PROFILE_RECO_LABEL_FALLBACK,
+      profileRecoArticle: show ? art : null,
+      profileRecoJump: show ? this._parseRecoJumpFromDisplay(d) : null
+    })
+  },
+
   _loadProfileRecoTeaser() {
     const t = Date.now()
+    const finishFail = () =>
+      this.setData({
+        profileRecoShow: false,
+        profileRecoArticle: null,
+        profileRecoSectionLabel: '',
+        profileRecoJump: null
+      })
+
+    const tryLegacyPath = () => {
+      request({
+        url: `/api/ai/articles/profile-teaser?_t=${Date.now()}`,
+        method: 'GET',
+        needAuth: false,
+        success: (res) => {
+          const payload = res && res.data
+          if (!payload || payload.code !== 200 || !payload.data) {
+            finishFail()
+            return
+          }
+          this._applyProfileTeaserPayload(payload.data)
+        },
+        fail: finishFail
+      })
+    }
+
+    // 优先走 recommended?usage=profile（与已放行路径一致）；部署新 API 后与 profile-teaser 结构相同
     request({
-      url: `/api/ai/articles/profile-teaser?_t=${t}`,
+      url: `/api/ai/articles/recommended?usage=profile&_t=${t}`,
       method: 'GET',
       needAuth: false,
       success: (res) => {
         const payload = res && res.data
         if (!payload || payload.code !== 200 || !payload.data) {
-          this.setData({ profileRecoShow: false, profileRecoArticle: null })
+          tryLegacyPath()
           return
         }
         const d = payload.data
-        const art = d.article && d.article.url ? d.article : null
-        const show = !!(d.enabled && art)
-        this.setData({
-          profileRecoShow: show,
-          profileRecoSectionLabel: (d.sectionLabel && String(d.sectionLabel).trim()) || '推荐阅读',
-          profileRecoArticle: show ? art : null
-        })
+        if (Object.prototype.hasOwnProperty.call(d, 'article')) {
+          this._applyProfileTeaserPayload(d)
+          return
+        }
+        if (Array.isArray(d.list) && d.list.length) {
+          const disp = d.display || {}
+          const first = d.list[0]
+          if (disp.enabled !== false && first && first.url) {
+            this.setData({
+              profileRecoShow: true,
+              profileRecoSectionLabel: (disp.profileSectionLabel && String(disp.profileSectionLabel).trim()) || PROFILE_RECO_LABEL_FALLBACK,
+              profileRecoArticle: first,
+              profileRecoJump: this._parseRecoJumpFromDisplay(disp)
+            })
+            return
+          }
+        }
+        tryLegacyPath()
       },
-      fail: () => {
-        this.setData({ profileRecoShow: false, profileRecoArticle: null })
-      }
+      fail: tryLegacyPath
     })
   },
 
   onTapProfileReco(e) {
-    const { id, url, title } = (e && e.currentTarget && e.currentTarget.dataset) || {}
-    if (!url) return
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {}
+    const id = ds.id
+    const url = ds.url
+    const title = ds.title
+    const sourceId = ds.sourceId
     try {
       require('../../utils/analytics').track('tap_ai_article', {
         articleId: id,
@@ -261,6 +343,39 @@ Page({
         fail() {}
       })
     }
+    const jump = this.data.profileRecoJump
+    if (jump && jump.appId) {
+      const path = buildRecoMiniProgramPath(jump.path, {
+        id,
+        title,
+        sourceId,
+        fromTag: 'mbti_profile_reco'
+      })
+      const env = jump.envVersion === 'trial' || jump.envVersion === 'develop' ? jump.envVersion : 'release'
+      wx.navigateToMiniProgram({
+        appId: jump.appId,
+        path,
+        envVersion: env,
+        fail: (err) => {
+          if (url) {
+            const enc = encodeURIComponent(url)
+            wx.navigateTo({
+              url: `/pages/webview/index?url=${enc}`,
+              fail: () => {
+                wx.setClipboardData({
+                  data: url,
+                  success: () => wx.showToast({ title: '已复制链接', icon: 'none' })
+                })
+              }
+            })
+          } else {
+            wx.showToast({ title: (err && err.errMsg) || '无法打开目标小程序', icon: 'none' })
+          }
+        }
+      })
+      return
+    }
+    if (!url) return
     const enc = encodeURIComponent(url)
     wx.navigateTo({
       url: `/pages/webview/index?url=${enc}`,
@@ -436,6 +551,10 @@ Page({
   },
   /** 深度服务统一入口（页内 Tab：个人 / 团队与企业） */
   goToDeepService() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
     try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/purchase/index' })
   },
@@ -447,9 +566,27 @@ Page({
     try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/order/index' })
   },
-  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index' }) },
-  goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
-  goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
+  goToPurchase() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+  goToPurchasePersonal() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index?tab=personal' })
+  },
+  goToPurchaseEnterprise() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' })
+  },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },
   goToPromoWithdrawals() {
     try { require('../../utils/analytics').track('tap_promo_withdrawals', { from: 'profile' }) } catch (e) {}
@@ -526,7 +663,10 @@ Page({
 
   onShareAppMessage() {
     const { getSharePathByScope } = require('../../utils/share')
-    const rm = !!app.globalData.reviewMode
+    const gd = app.globalData || {}
+    if (gd.miniprogramAuditMode || gd.reviewMode || gd.maintenanceMode) {
+      return { title: '性格测试', path: '/pages/index/index' }
+    }
     return {
       title: '神仙团队性格测试 - 发现你的MBTI类型',
       path: getSharePathByScope('/pages/index/index')
@@ -535,7 +675,10 @@ Page({
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
-    const rm = !!app.globalData.reviewMode
+    const gd = app.globalData || {}
+    if (gd.miniprogramAuditMode || gd.reviewMode || gd.maintenanceMode) {
+      return { title: '性格测试', query: '' }
+    }
     return {
       title: '神仙团队性格测试 - 发现你的MBTI类型',
       query: buildShareQuery()

@@ -70,7 +70,7 @@
     </view>
     <view
       class="user-stat"
-      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      wx:if="{{promoDistributionEnabled && !reviewMode && !mpAuditMode && permDistribution}}"
       bindtap="goToPromo"
     >
       <text class="user-stat__v">{{promoTotalInvite || 0}}</text>
@@ -79,7 +79,7 @@
     <!-- 第三格：可提现 → 分销中心 -->
     <view
       class="user-stat user-stat--highlight"
-      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      wx:if="{{promoDistributionEnabled && !reviewMode && !mpAuditMode && permDistribution}}"
       bindtap="goToPromo"
     >
       <text class="user-stat__v">¥{{promoWithdrawable || '0.00'}}</text>
@@ -88,7 +88,7 @@
     <!-- 第四格：累计 → 提现记录 -->
     <view
       class="user-stat user-stat--sub"
-      wx:if="{{promoDistributionEnabled && !reviewMode && permDistribution}}"
+      wx:if="{{promoDistributionEnabled && !reviewMode && !mpAuditMode && permDistribution}}"
       bindtap="goToPromoWithdrawals"
     >
       <text class="user-stat__v user-stat__v--sm">¥{{promoTotalEarned || '0.00'}}</text>
@@ -144,7 +144,7 @@
             <text class="card-value">{{discType || '未测评'}}</text>
             <text class="card-time">{{discTime || '—'}}</text>
           </view>
-          <view class="result-card card-teal {{(gallupPreview || aiType) ? '' : 'result-card--placeholder'}}" bindtap="viewGallup" wx:if="{{!reviewMode && permFace}}">
+          <view class="result-card card-teal {{(gallupPreview || aiType) ? '' : 'result-card--placeholder'}}" bindtap="viewGallup" wx:if="{{!reviewMode && !mpAuditMode && permFace}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-teal">
               <text class="card-icon">⭐</text>
@@ -153,7 +153,7 @@
             <text class="card-value card-value--small">{{gallupPreview || (aiType ? '见面相报告' : '未测评')}}</text>
             <text class="card-time">{{aiTime || '—'}}</text>
           </view>
-          <view class="result-card card-rose {{aiType ? '' : 'result-card--placeholder'}}" bindtap="viewAI" wx:if="{{!reviewMode && permFace}}">
+          <view class="result-card card-rose {{aiType ? '' : 'result-card--placeholder'}}" bindtap="viewAI" wx:if="{{!reviewMode && !mpAuditMode && permFace}}">
             <view class="card-deco"></view>
             <view class="card-icon-wrap card-icon-rose">
               <text class="card-icon">👁️</text>
@@ -178,7 +178,7 @@
         <view class="quick-grid__ic quick-grid__ic--emerald">🧾</view>
         <text class="quick-grid__label">我的订单</text>
       </view>
-      <view class="quick-grid__item" bindtap="goToDeepService">
+      <view class="quick-grid__item" wx:if="{{showDeepPricingEntry}}" bindtap="goToDeepService">
         <view class="quick-grid__ic quick-grid__ic--indigo">💎</view>
         <text class="quick-grid__label">了解自己</text>
       </view>
@@ -189,7 +189,7 @@
     </view>
   </view>
 
-  <!-- Soul 引流：后台「当前推荐」第 1 篇 + 可配区块标题（灰字可点） -->
+  <!-- Soul 引流：超管「我的页展示首条」+ 当前推荐第 1 篇 -->
   <view class="section px-section profile-reco-wrap" wx:if="{{hasLogin && profileRecoShow}}">
     <view
       class="profile-reco-card"
@@ -198,6 +198,7 @@
       data-id="{{profileRecoArticle.id}}"
       data-url="{{profileRecoArticle.url}}"
       data-title="{{profileRecoArticle.title}}"
+      data-source-id="{{profileRecoArticle.sourceId}}"
     >
       <text class="profile-reco-label">{{profileRecoSectionLabel}}</text>
       <view class="profile-reco-row">

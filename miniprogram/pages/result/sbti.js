@@ -1,7 +1,12 @@
 // pages/result/sbti.js — SBTI 结果页
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, isReportProfileComplete } = require('../../utils/phoneAuth.js')
+const {
+  hasPhone,
+  bindPhoneByCode,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded
+} = require('../../utils/phoneAuth.js')
 const {
   slicePreviewText,
   openTimelineShareHint
@@ -60,7 +65,7 @@ Page({
     shareToken: '',
     hasReloadedAfterPay: false,
     hasPhone: false,
-    /** 分享落地（path 带 fs=1 或旧版仅 id+st），用于隐藏「去完善资料」、展示底部「我也要测试」 */
+    /** 分享落地（path 带 fs=1 或旧版仅 id+st），用于隐藏「登录解锁」区、展示底部「我也要测试」 */
     fromShare: false,
     profileGate: false,
     previewSbtiIntro: '',
@@ -137,12 +142,13 @@ Page({
 
   onShow() {
     this.setData({ hasPhone: hasPhone() })
-    this._syncJourney()
-    if (this.data.testResultId) return
-    const raw = wx.getStorageSync('sbtiResult')
-    if (raw) {
-      this.applyResult(raw)
+    if (this.data.testResultId && this.data.result) {
+      this.applyResult(this.data.result)
+    } else if (!this.data.testResultId) {
+      const raw = wx.getStorageSync('sbtiResult')
+      if (raw) this.applyResult(raw)
     }
+    this._syncJourney()
   },
 
   goCompleteProfile() {
@@ -228,7 +234,7 @@ Page({
     if (!result) return
     const normalized = normalizeSbtiResultForDisplay(result)
     const fromShare = !!this.data.fromShare
-    const profileGate = !fromShare && !isReportProfileComplete()
+    const profileGate = needsResultProfileGate(fromShare)
     const src = Array.isArray(normalized.dimExplainList) ? normalized.dimExplainList : []
     const allowDims = profileGate || !normalized.locked
     let dimExplainList = []
@@ -275,10 +281,33 @@ Page({
     wx.navigateTo({ url: '/pages/promo/index' })
   },
 
+  onPhoneLoginForResultGate(e) {
+    const { code, errMsg } = e.detail || {}
+    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
+      wx.showToast({ title: '需要授权手机号才能查看完整报告', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '获取手机号失败', icon: 'none' })
+      return
+    }
+    bindPhoneByCode(code)
+      .then(() => {
+        this.setData({ hasPhone: hasPhone() })
+        const r = this.data.result || wx.getStorageSync('sbtiResult')
+        if (r) this.applyResult(r)
+        navigateToCompleteProfileAfterPhoneIfNeeded()
+      })
+      .catch(() => {})
+  },
+
   onTapReadFull() {
     try { require('../../utils/analytics').track('tap_read_full', { type: 'sbti' }) } catch (e) {}
     if (this.data.profileGate) {
-      this.goCompleteProfile()
+      wx.showToast({
+        title: this.data.hasPhone ? '请先完善头像与昵称' : '请先点击下方「登录解锁全文」',
+        icon: 'none'
+      })
       return
     }
     if (this.data.payInfo.requiresPayment && !this.data.payInfo.isPaid) {
@@ -397,7 +426,7 @@ Page({
     }
     bindPhoneByCode(code)
       .then(() => {
-        this.setData({ hasPhone: true })
+        this.setData({ hasPhone: hasPhone() })
         this.unlockFullReport()
       })
       .catch(() => {})

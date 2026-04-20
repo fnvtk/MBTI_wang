@@ -4,6 +4,7 @@ namespace app\controller\superadmin;
 use app\BaseController;
 use app\common\service\FeishuLeadWebhookService;
 use app\common\service\OutboundPushHookService;
+use app\common\service\WechatAuditSyncService;
 use app\model\SystemConfig as SystemConfigModel;
 use app\model\User as UserModel;
 use app\model\Enterprise as EnterpriseModel;
@@ -57,9 +58,17 @@ class Settings extends BaseController
                 'siteDescription' => '专业的AI性格测试平台',
                 'miniprogramName' => '神仙团队AI性格测试',
                 'maintenanceMode' => false,
+                /** 小程序提审：隐藏神仙 AI 对话/深度报告等深度合成入口，与 maintenanceMode（面相审核）可分开 */
+                'miniprogramAuditMode' => false,
                 'maxTestsPerDay' => 100,
                 'trialTestCount' => 10,
                 'defaultEnterpriseId' => null,
+                /** 为 true（默认）时：打开超管设置会按间隔拉微信审核状态并自动切换 miniprogramAuditMode */
+                'wechatAuditAutoMiniprogramMode' => true,
+                'wechatLastAuditErrcode' => null,
+                'wechatLastAuditStatus' => null,
+                'wechatLastAuditReason' => '',
+                'wechatLastAuditSyncedAt' => null,
             ];
             $systemOut = $systemDefault;
             // 仅当 system 行「未包含」maintenanceMode 键时，才用旧表 review_mode 回退（否则关闭审核后会被 review_mode.enabled 再次顶成「已开启」）
@@ -84,6 +93,27 @@ class Settings extends BaseController
                 }
             }
             $systemOut['maintenanceMode'] = $maint;
+            if (!array_key_exists('miniprogramAuditMode', $systemOut)) {
+                $systemOut['miniprogramAuditMode'] = false;
+            }
+            $systemOut['miniprogramAuditMode'] = (bool) ($systemOut['miniprogramAuditMode'] ?? false);
+            if (!array_key_exists('wechatAuditAutoMiniprogramMode', $systemOut)) {
+                $systemOut['wechatAuditAutoMiniprogramMode'] = true;
+            } else {
+                $systemOut['wechatAuditAutoMiniprogramMode'] = $systemOut['wechatAuditAutoMiniprogramMode'] !== false;
+            }
+
+            // 跟随微信审核：非手动请求时按节流调用，避免每次打开页面都打微信接口
+            try {
+                if (WechatAuditSyncService::shouldAutoSync($systemOut)) {
+                    $sync = WechatAuditSyncService::run(false);
+                    if (!empty($sync['systemBroadcast']) && is_array($sync['systemBroadcast'])) {
+                        $systemOut = array_merge($systemOut, $sync['systemBroadcast']);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \think\facade\Log::error('wechat audit sync on settings index: ' . $e->getMessage());
+            }
 
             // 与前端 el-option 的 number value 对齐，避免类型不一致导致下拉不反显
             if (array_key_exists('defaultEnterpriseId', $systemOut)) {
@@ -111,7 +141,7 @@ class Settings extends BaseController
                 'reportRequiresPayment' => $reportRequiresPaymentConfig && !empty($reportRequiresPaymentConfig->value) ? $reportRequiresPaymentConfig->value : ['face' => 1, 'mbti' => 0, 'disc' => 0, 'pdp' => 0],
                 'textConfig' => $textConfigModel && !empty($textConfigModel->value) ? $textConfigModel->value : [
                     'analyzingTitle' => '正在分析中',
-                    'startButtonText' => '开始面相测试',
+                    'startButtonText' => '30秒测出你的性格',
                     'startButtonEnterprise' => '开始面部测试',
                     'reportTitle' => '分析报告',
                     'aiAnalysisText' => '智能分析'
@@ -141,7 +171,7 @@ class Settings extends BaseController
             $input = [];
         }
 
-        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'maintenanceMode', 'maxTestsPerDay', 'trialTestCount', 'defaultEnterpriseId'];
+        $allowedKeys = ['siteName', 'siteDescription', 'miniprogramName', 'maintenanceMode', 'miniprogramAuditMode', 'wechatAuditAutoMiniprogramMode', 'maxTestsPerDay', 'trialTestCount', 'defaultEnterpriseId'];
         $data = array_intersect_key($input, array_flip($allowedKeys));
         // 兼容 fallback：JSON 解析失败时尝试 Request::only
         if (empty($data)) {
@@ -149,6 +179,12 @@ class Settings extends BaseController
         }
         if (array_key_exists('maintenanceMode', $data)) {
             $data['maintenanceMode'] = filter_var($data['maintenanceMode'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('miniprogramAuditMode', $data)) {
+            $data['miniprogramAuditMode'] = filter_var($data['miniprogramAuditMode'], FILTER_VALIDATE_BOOLEAN);
+        }
+        if (array_key_exists('wechatAuditAutoMiniprogramMode', $data)) {
+            $data['wechatAuditAutoMiniprogramMode'] = filter_var($data['wechatAuditAutoMiniprogramMode'], FILTER_VALIDATE_BOOLEAN);
         }
         // 默认企业：0 或空视为不启用
         if (array_key_exists('defaultEnterpriseId', $data)) {
@@ -210,7 +246,7 @@ class Settings extends BaseController
             if (is_array($textConfig)) {
                 $tcKeys = ['analyzingTitle', 'startButtonText', 'startButtonEnterprise', 'reportTitle', 'aiAnalysisText'];
                 $tcData = array_intersect_key($textConfig, array_flip($tcKeys));
-                $tcDefaults = ['analyzingTitle' => '正在分析中', 'startButtonText' => '开始面相测试', 'startButtonEnterprise' => '开始面部测试', 'reportTitle' => '分析报告', 'aiAnalysisText' => '智能分析'];
+                $tcDefaults = ['analyzingTitle' => '正在分析中', 'startButtonText' => '30秒测出你的性格', 'startButtonEnterprise' => '开始面部测试', 'reportTitle' => '分析报告', 'aiAnalysisText' => '智能分析'];
                 $tcConfig = SystemConfigModel::where('key', 'text_config')->where('enterprise_id', 0)->find();
                 if (!$tcConfig) {
                     $tcConfig = new SystemConfigModel();
@@ -225,6 +261,30 @@ class Settings extends BaseController
             return success($config->value, '系统配置已保存');
         } catch (\Exception $e) {
             return error('保存失败：' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * POST /api/v1/superadmin/settings/wechat-audit-sync
+     * 立即请求微信 get_latest_auditstatus 并写入 miniprogramAuditMode（不受节流限制）
+     */
+    public function syncWechatAuditStatus()
+    {
+        $user = $this->request->user ?? null;
+        if (!$user || $user['role'] !== 'superadmin') {
+            return error('无权限访问', 403);
+        }
+
+        try {
+            $sync = WechatAuditSyncService::run(true);
+            return success([
+                'applied'                => !empty($sync['applied']),
+                'miniprogramAuditMode'   => (bool) ($sync['miniprogramAuditMode'] ?? false),
+                'wechat'                 => $sync['wechat'] ?? [],
+                'systemBroadcast'        => $sync['systemBroadcast'] ?? [],
+            ], '已同步微信审核状态');
+        } catch (\Throwable $e) {
+            return error('同步失败：' . $e->getMessage(), 500);
         }
     }
 

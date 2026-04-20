@@ -2,6 +2,7 @@
   "navigationBarTitleText": "拍摄",
   "navigationBarBackgroundColor": "#FFFFFF",
   "navigationBarTextStyle": "black",
+  "disableScroll": true,
   "usingComponents": {
     "custom-tab-bar": "/custom-tab-bar/index"
   }

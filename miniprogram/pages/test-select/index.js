@@ -1,5 +1,6 @@
 // pages/test-select/index.js
 const app = getApp()
+const { isAuditHideAiMode } = require('../../utils/miniprogramAuditGate.js')
 
 Page({
   data: {
@@ -8,9 +9,9 @@ Page({
     permSbti: true,
     permPdp: true,
     permDisc: true,
-    /** AI 测评聚合页（对话 / 拍照）；企业显式关闭 aiHub 时隐藏 */
+    /** AI 对话（神仙 AI）；企业关闭 aiHub 时隐藏 */
     permAiHub: true,
-    /** 四类入口均被企业权限关闭时提示，避免误以为白屏 */
+    /** 四类问卷入口均被企业权限关闭时提示 */
     allTestsDisabled: false
   },
 
@@ -27,17 +28,22 @@ Page({
   },
 
   onShow() {
-    this._syncPerms()
+    if (app.getRuntimeConfig) {
+      app.getRuntimeConfig().finally(() => this._syncPerms())
+    } else {
+      this._syncPerms()
+    }
   },
 
   _syncPerms() {
     const p = app.globalData.enterprisePermissions
+    const hideAi = isAuditHideAiMode(app.globalData)
     const permFace = !p || p.face !== false
     const permMbti = !p || p.mbti !== false
     const permSbti = !p || p.sbti !== false
     const permPdp = !p || p.pdp !== false
     const permDisc = !p || p.disc !== false
-    const permAiHub = !p || p.aiHub !== false
+    const permAiHub = (!p || p.aiHub !== false) && !hideAi
     this.setData({
       permFace,
       permMbti,
@@ -73,13 +79,15 @@ Page({
     wx.navigateTo({ url: '/pages/test/disc' })
   },
 
-  /** AI 对话解读（神仙 AI） */
   goAIChatInterpretation() {
+    if (isAuditHideAiMode(getApp().globalData)) {
+      wx.showToast({ title: '功能升级中', icon: 'none' })
+      return
+    }
     this._trackSelect('ai_chat')
     wx.navigateTo({ url: '/pages/ai-chat/index?src=test_select' })
   },
 
-  /** 拍照面相分析（与底部「拍摄」同页） */
   goAIFaceAnalysis() {
     this._trackSelect('ai_face')
     wx.switchTab({

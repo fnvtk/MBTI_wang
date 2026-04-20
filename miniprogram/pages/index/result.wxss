@@ -2,8 +2,8 @@
 .container {
   min-height: 100vh;
   background-color: #f5f5f5;
-  /* 底部固定操作栏占用 ~180rpx，加 safe-area 余量 */
-  padding: 0 24rpx calc(200rpx + env(safe-area-inset-bottom));
+  /* 底部三按钮栏：min-height+内边距+阴影，略多留空避免末段卡片被挡 */
+  padding: 0 24rpx calc(260rpx + env(safe-area-inset-bottom));
 }
 
 /* ========== 分析中模态框 ========== */

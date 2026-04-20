@@ -22,7 +22,7 @@ Page({
     testCommissionRate: '',
     testCommissionAmount: '',
     testNoPayment: false,
-    withdrawMinYuan: '1.00',
+    withdrawMinYuan: '0.01',
     withdrawMaxYuan: '',
     withdrawFeePct: 0,
     requireWithdrawAudit: true,
@@ -79,7 +79,7 @@ Page({
             testCommissionRate: d.testCommissionRate,
             testCommissionAmount: d.testCommissionAmount,
             testNoPayment: d.testNoPayment,
-            withdrawMinYuan: d.withdrawMinYuan != null ? d.withdrawMinYuan : '1.00',
+            withdrawMinYuan: d.withdrawMinYuan != null ? d.withdrawMinYuan : '0.01',
             withdrawMaxYuan: d.withdrawMaxYuan != null && d.withdrawMaxYuan !== '' ? d.withdrawMaxYuan : '',
             withdrawFeePct: d.withdrawFeePct != null ? d.withdrawFeePct : 0,
             requireWithdrawAudit: d.requireWithdrawAudit !== false,
@@ -150,8 +150,8 @@ Page({
   /** 申请提现：打开自定义金额弹框 */
   handleWithdraw() {
     const balance = parseFloat(this.data.balance)
-    if (balance < 1) {
-      wx.showToast({ title: '余额不足1元，暂无法提现', icon: 'none' })
+    if (!balance || balance <= 0) {
+      wx.showToast({ title: '暂无可提现余额', icon: 'none' })
       return
     }
     const pct = this.data.withdrawFeePct || 0
@@ -198,28 +198,29 @@ Page({
   confirmWithdraw() {
     const balance = parseFloat(this.data.balance)
     const val = parseFloat(this.data.withdrawAmountInput)
-    const minYuan = parseFloat(this.data.withdrawMinYuan) || 1
+    const cfgMin = parseFloat(this.data.withdrawMinYuan)
+    const minYuan = !isNaN(cfgMin) && cfgMin > 0 ? cfgMin : 0.01
     const pct = this.data.withdrawFeePct || 0
 
     if (isNaN(val)) {
       this.setData({ withdrawError: '请输入正确的金额' })
       return
     }
-    if (val < 1) {
-      this.setData({ withdrawError: '单次提现金额至少 1 元' })
+    if (val + 1e-9 < minYuan) {
+      this.setData({ withdrawError: `单次提现金额至少 ¥${minYuan.toFixed(2)}` })
       return
     }
-    if (val > balance) {
+    if (val > balance + 1e-9) {
       this.setData({ withdrawError: '不可超过当前可提现金额' })
       return
     }
     const actualYuan = val - val * pct / 100
-    if (actualYuan < minYuan) {
-      this.setData({ withdrawError: `实际到账金额不得低于最低提现金额 ¥${minYuan.toFixed(2)}` })
+    if (actualYuan + 1e-9 < minYuan) {
+      this.setData({ withdrawError: `实际到账金额不得低于 ¥${minYuan.toFixed(2)}` })
       return
     }
 
-    const amountFen = Math.floor(val * 100)
+    const amountFen = Math.max(1, Math.round(val * 100))
     this.setData({ withdrawError: '' })
 
     try { require('../../utils/analytics').track('tap_promo_withdraw', { amountFen }) } catch (e) {}

@@ -44,7 +44,7 @@
           type="digit"
           focus="true"
           value="{{withdrawAmountInput}}"
-          placeholder="至少 1.00 元"
+          placeholder="输入提现金额"
           bindinput="onWithdrawInput"
         />
       </view>
@@ -101,9 +101,9 @@
       </view>
       <view class="rule-item">
         <text class="rule-bullet">💰</text>
-        <text class="rule-text">单笔提现：最低 <text class="highlight">¥{{withdrawMinYuan}}</text>，</text>
-        <text class="rule-text" tt:if="{{withdrawMaxYuan}}">最高 <text class="highlight">¥{{withdrawMaxYuan}}</text></text>
-        <text class="rule-text" tt:else>不设上限</text>
+        <text class="rule-text">单笔提现：最低 <text class="highlight">¥{{withdrawMinYuan}}</text></text>
+        <text class="rule-text" tt:if="{{withdrawMaxYuan}}">，最高 <text class="highlight">¥{{withdrawMaxYuan}}</text></text>
+        <text class="rule-text" tt:else>，不设上限</text>
       </view>
       <view class="rule-item" tt:if="{{withdrawFeePct > 0}}">
         <text class="rule-bullet">📋</text>

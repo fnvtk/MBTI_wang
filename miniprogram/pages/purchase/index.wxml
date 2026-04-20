@@ -10,8 +10,9 @@
     </view>
     <text class="success-dialog-title">{{successModal.title}}</text>
     <text class="success-dialog-content">{{successModal.content}}</text>
-    <view class="success-dialog-btns">
-      <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
+    <text class="success-dialog-hint">顾问将通过您预留的联系方式与您沟通，请留意来电或短信。</text>
+    <view class="success-dialog-btns success-dialog-btns--single">
+      <button class="success-btn-close success-btn-close--primary" bindtap="closeSuccessModal">我知道了</button>
     </view>
   </view>
 </view>
@@ -34,7 +35,7 @@
     <view class="deep-hero">
       <text class="deep-hero__eyebrow">UNDERSTAND YOURSELF · 了解自己</text>
       <text class="deep-hero__title">更深入地看见你自己</text>
-      <text class="deep-hero__desc">结合 MBTI / DISC / PDP / SBTI / 面相的综合解读；个人 1v1、团队工作坊、VIP 职业发展三档方案。提交后顾问会主动与你联系。</text>
+      <text class="deep-hero__desc">{{deepHeroDesc}}</text>
     </view>
 
     <view class="tabs-container deep-tabs">
@@ -74,7 +75,7 @@
           data-tab="personal"
           data-index="{{index}}"
         >
-          <text class="button-text">下一步</text>
+          <text class="button-text">{{item.purchaseButtonText || '了解自己并付款'}}</text>
         </button>
         <button
           class="purchase-button primary"
@@ -83,7 +84,7 @@
           data-tab="personal"
           data-index="{{index}}"
         >
-          <text class="button-text">下一步</text>
+          <text class="button-text">{{item.purchaseButtonText || '了解自己并付款'}}</text>
         </button>
       </view>
       <view wx:if="{{!loading && activeTab === 'personal' && personalCategories.length === 0}}" class="empty-tip">
@@ -118,7 +119,7 @@
           data-tab="enterprise"
           data-index="{{index}}"
         >
-          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+          <text class="button-text">{{item.buttonText || '申请咨询并降低30%成本'}}</text>
         </button>
         <button
           class="purchase-button secondary"
@@ -127,7 +128,7 @@
           data-tab="enterprise"
           data-index="{{index}}"
         >
-          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+          <text class="button-text">{{item.buttonText || '申请咨询并降低30%成本'}}</text>
         </button>
       </view>
       <view wx:if="{{!loading && activeTab === 'enterprise' && enterpriseCategories.length === 0}}" class="empty-tip">
@@ -138,15 +139,15 @@
     <view class="safety-tips">
       <view class="safety-item">
         <text class="safety-icon">🔒</text>
-        <text class="safety-text">流程在微信内完成</text>
+        <text class="safety-text">全程微信</text>
       </view>
       <view class="safety-item">
         <text class="safety-icon">💼</text>
-        <text class="safety-text">顾问主动联系</text>
+        <text class="safety-text">顾问联络</text>
       </view>
       <view class="safety-item">
         <text class="safety-icon">🧑‍💼</text>
-        <text class="safety-text">团队成本节约 40%+</text>
+        <text class="safety-text">降本30%+</text>
       </view>
     </view>
   </block>

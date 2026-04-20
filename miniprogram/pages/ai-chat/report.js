@@ -1,6 +1,8 @@
 // 神仙 AI · 深度画像报告页
 const { request } = require('../../utils/request.js')
 const analytics = require('../../utils/analytics.js')
+const { wxPay } = require('../../utils/payment.js')
+const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
 
 Page({
   data: {
@@ -12,11 +14,14 @@ Page({
   },
 
   onLoad(options) {
-    const cid = parseInt(options && options.cid, 10) || 0
-    const rid = parseInt(options && options.rid, 10) || 0
-    this.setData({ cid, reportId: rid })
-    analytics.track('page_view', { pagePath: 'pages/ai-chat/report' })
-    this.initReport()
+    const { ensureRuntimeThenGate } = require('../../utils/miniprogramAuditGate.js')
+    ensureRuntimeThenGate(() => {
+      const cid = parseInt(options && options.cid, 10) || 0
+      const rid = parseInt(options && options.rid, 10) || 0
+      this.setData({ cid, reportId: rid })
+      analytics.track('page_view', { pagePath: 'pages/ai-chat/report' })
+      this.initReport()
+    })
   },
 
   onUnload() {
@@ -77,76 +82,66 @@ Page({
     this.loadReport(this.data.reportId)
   },
 
-  /** 付费解锁：先尝试 dev 模式，生产环境走 payment/create 下单 */
+  /** 付费解锁：与全站 payment.js 一致（orderId + openId + 支付后轮询查单触发 markPaid） */
   onTapPay() {
     if (this.data.paying) return
-    this.setData({ paying: true })
-    analytics.track('ai_report_pay_tap', { reportId: this.data.reportId })
-
     const report = this.data.report || {}
-    const orderSn = report.orderSn || ''
+    const orderSn = String(report.orderSn || '').trim()
+    if (!orderSn) {
+      wx.showToast({ title: '订单初始化中，请稍后再试', icon: 'none' })
+      return
+    }
 
-    // 1) 尝试调用现有 /api/payment/create 下单
-    request({
-      url: '/api/payment/create',
-      method: 'POST',
-      data: {
-        productType: 'ai_deep_report',
-        productId: this.data.reportId,
-        amount: report.priceFen || 990,
-        orderSn
-      },
-      success: (res) => {
-        const body = (res && res.data) || {}
-        if (body.code === 200 && body.data && body.data.timeStamp) {
-          const p = body.data
-          wx.requestPayment({
-            timeStamp: p.timeStamp,
-            nonceStr: p.nonceStr,
-            package: p.package,
-            signType: p.signType || 'RSA',
-            paySign: p.paySign,
-            success: () => {
-              wx.showToast({ title: '支付成功', icon: 'success' })
-              analytics.track('ai_report_pay_success', { reportId: this.data.reportId })
-              setTimeout(() => this.loadReport(this.data.reportId), 1500)
-              this.setData({ paying: false })
-            },
-            fail: () => {
-              wx.showToast({ title: '已取消支付', icon: 'none' })
-              this.setData({ paying: false })
-            }
-          })
-        } else {
-          // 2) 下单失败（比如接口不支持该 productType）→ 兜底 dev markPaid（仅超管可用）
-          this._fallbackDevMarkPaid()
-        }
-      },
-      fail: () => this._fallbackDevMarkPaid()
-    })
-  },
-
-  _fallbackDevMarkPaid() {
-    // 仅在配置了 dev 模式或超管账号时生效
-    request({
-      url: `/api/ai/report/${this.data.reportId}/mark-paid-dev`,
-      method: 'POST',
-      success: (res) => {
-        const body = (res && res.data) || {}
-        if (body.code === 200) {
-          wx.showToast({ title: '解锁成功', icon: 'success' })
-          this.setData({ paying: false })
-          setTimeout(() => this.loadReport(this.data.reportId), 800)
-        } else {
-          wx.showToast({ title: body.message || '支付接口未开通', icon: 'none' })
-          this.setData({ paying: false })
-        }
-      },
-      fail: () => {
-        wx.showToast({ title: '支付通道异常，稍后再试', icon: 'none' })
-        this.setData({ paying: false })
+    const runPay = () => {
+      const appInst = getApp()
+      const oid =
+        (appInst && appInst.globalData && appInst.globalData.openId) ||
+        (() => {
+          try {
+            const u = wx.getStorageSync('userInfo')
+            return u ? (u.openid || u.openId || '') : ''
+          } catch (e) {
+            return ''
+          }
+        })()
+      if (!oid) {
+        wx.showToast({ title: '缺少微信支付授权，请重新登录后再试', icon: 'none' })
+        return
       }
-    })
+
+      this.setData({ paying: true })
+      analytics.track('ai_report_pay_tap', { reportId: this.data.reportId })
+
+      const eidRaw = getEnterpriseIdForApiPayload()
+      const enterpriseId = eidRaw != null && Number(eidRaw) > 0 ? Number(eidRaw) : 0
+      const amountFen = Number(report.priceFen) > 0 ? Number(report.priceFen) : 990
+
+      wxPay({
+        orderId: orderSn,
+        amount: amountFen,
+        description: '神仙 AI 深度画像报告',
+        productType: 'ai_deep_report',
+        enterpriseId,
+        success: () => {
+          this.setData({ paying: false })
+          analytics.track('ai_report_pay_success', { reportId: this.data.reportId })
+          setTimeout(() => this.loadReport(this.data.reportId), 800)
+        },
+        fail: () => {
+          this.setData({ paying: false })
+        }
+      })
+    }
+
+    const app = getApp()
+    if (app && typeof app.ensureLogin === 'function') {
+      app.ensureLogin().then((ok) => {
+        if (ok) runPay()
+        else wx.showToast({ title: '请先登录后再购买', icon: 'none' })
+      })
+      return
+    }
+    runPay()
   },
 
   onRetry() {

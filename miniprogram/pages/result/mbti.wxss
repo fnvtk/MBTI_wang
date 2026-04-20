@@ -1,5 +1,4 @@
-/* pages/result/mbti.wxss - 按旧版模板重构 */
-@import "../../styles/result-page-dashboard.wxss";
+/* pages/result/mbti.wxss（dash 样式见 app.wxss） */
 
 .result-page {
   width: 100%;

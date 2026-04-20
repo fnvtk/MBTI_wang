@@ -66,7 +66,7 @@
             @change="handleImport" 
             style="display: none"
           />
-          <el-button size="small" type="primary" color="#ef4444" style="color:#fff" @click="openAdd">
+          <el-button size="small" type="primary" @click="openAdd">
             <el-icon class="mr-1"><Plus /></el-icon>新增题目
           </el-button>
           <el-button size="small" @click="triggerImport">
@@ -193,7 +193,7 @@
       </el-form>
       <template #footer>
         <el-button @click="editDialogVisible = false">取消</el-button>
-        <el-button type="primary" color="#ef4444" :loading="saving" @click="saveQuestion">
+        <el-button type="primary" :loading="saving" @click="saveQuestion">
           {{ isEditing ? '保存修改' : '创建题目' }}
         </el-button>
       </template>

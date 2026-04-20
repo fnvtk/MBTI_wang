@@ -106,10 +106,10 @@
       <view class="type-card" wx:elif="{{result && result.locked && !fromShare && !profileGate}}">
         <view class="paywall-card">
           <view class="paywall-content">
-            <text class="paywall-fake-title">完整报告需完善资料</text>
-            <text class="paywall-fake-line">请补全头像、昵称并绑定手机号后查看完整 PDP 报告。</text>
+            <text class="paywall-fake-title">完整报告暂不可查看</text>
+            <text class="paywall-fake-line">请稍后在「我的」重试；若刚授权手机，可下拉刷新本页。</text>
             <view class="paywall-btn" bindtap="goCompleteProfile">
-              <text class="paywall-btn-main">去完善资料</text>
+              <text class="paywall-btn-main">去个人资料</text>
             </view>
           </view>
         </view>
@@ -144,10 +144,22 @@
             <text class="preview-strength-dot">•</text>
             <text class="preview-strength-text">{{item}}</text>
           </view>
-          <text class="preview-teaser-hint">完善头像、昵称并绑定手机号后可查看团队角色与推荐职业全文。</text>
+          <text class="preview-teaser-hint">授权手机号并设置头像、昵称后即可查看全文（与下方按钮为同一条流程）。</text>
         </view>
-        <button class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
-          <text class="paywall-btn-main">去完善资料 · 解锁全文</text>
+        <button
+          wx:if="{{!hasPhone}}"
+          class="paywall-btn paywall-btn--inline-profile"
+          open-type="getPhoneNumber"
+          bindgetphonenumber="onPhoneLoginForResultGate"
+        >
+            <text class="paywall-btn-main">登录解锁全文</text>
+        </button>
+        <button
+          wx:else
+          class="paywall-btn paywall-btn--inline-profile"
+          bindtap="goCompleteProfile"
+        >
+            <text class="paywall-btn-main">完善资料 · 查看全文</text>
         </button>
       </view>
 
@@ -243,7 +255,7 @@
     <view class="result-bottom-tools__row">
       <view class="result-tool-btn result-tool-btn--primary" bindtap="onTapReadFull">
         <text>{{journey.step1Unlocked ? '查看全文' : '① 解锁全文'}}</text>
-        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? '完善资料即解锁' : '点击解锁')}}</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? (hasPhone ? '完善资料后解锁' : '登录并完善资料') : '点击解锁')}}</text>
       </view>
       <view class="result-tool-btn {{journey.step1Unlocked ? 'result-tool-btn--rose' : 'result-tool-btn--locked'}}" bindtap="onTapShareMoment">
         <text><text wx:if="{{!journey.step1Unlocked}}" class="result-tool-btn__lock">🔒</text>朋友圈</text>

@@ -2,10 +2,5 @@
   "navigationBarTitleText": "SBTI结果",
   "navigationBarBackgroundColor": "#f2f7f3",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#f2f7f3",
-  "enableShareAppMessage": true,
-  "enableShareTimeline": true,
-  "usingComponents": {
-    "result-section-nav": "/components/result-section-nav/index"
-  }
+  "backgroundColor": "#f2f7f3"
 }

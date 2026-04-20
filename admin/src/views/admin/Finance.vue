@@ -3,42 +3,70 @@
     <!-- 嵌入系统设置「企业余额」时单独展示操作区（独立页仍有完整 page-header） -->
     <div v-if="embedded" class="embedded-toolbar">
       <div class="embedded-toolbar-actions">
-        <el-button @click="loadAll" :loading="loading">刷新</el-button>
-        <el-button type="primary" color="#7c3aed" @click="openRechargeDialog">生成充值码</el-button>
+        <el-button :icon="Refresh" @click="loadAll" :loading="loading">刷新</el-button>
+        <el-button type="primary" :icon="Coin" @click="openRechargeDialog">生成充值码</el-button>
       </div>
     </div>
 
     <div v-if="!embedded" class="page-header">
       <div>
-        <h2>企业余额</h2>
-        <p class="subtitle">{{ overview.enterpriseName || '当前企业' }}的余额、测试收入和充值流水</p>
+        <h2>财务管理</h2>
+        <p class="subtitle">{{ overview.enterpriseName || '当前企业' }}的余额、消耗、测试收入与充值流水</p>
       </div>
       <div class="header-actions">
-        <el-button @click="loadAll" :loading="loading">刷新</el-button>
-        <el-button type="primary" color="#7c3aed" @click="openRechargeDialog">生成充值码</el-button>
+        <el-button :icon="Refresh" @click="loadAll" :loading="loading">刷新</el-button>
+        <el-button type="primary" :icon="Coin" @click="openRechargeDialog">生成充值码</el-button>
       </div>
     </div>
 
-    <div class="stats-grid" v-loading="loading">
-      <div class="stat-card">
-        <div class="stat-label">当前余额</div>
+    <div class="stats-grid stats-grid--8" v-loading="loading">
+      <div class="stat-card stat-card--emph">
+        <div class="stat-label">当前余额（可用）</div>
         <div class="stat-value">¥{{ fenToYuan(overview.balanceFen) }}</div>
-        <div class="stat-desc">可用于企业佣金结算</div>
+        <div class="stat-desc">佣金结算与平台扣费共用</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本月已扣款</div>
+        <div class="stat-value stat-value--out">¥{{ fenToYuan(overview.monthConsumeFen) }}</div>
+        <div class="stat-desc">平台扣费 + 佣金等出账</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">今日扣款</div>
+        <div class="stat-value stat-value--out">¥{{ fenToYuan(overview.todayConsumeFen) }}</div>
+        <div class="stat-desc">当日 0 点至今</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">本月日均消耗</div>
+        <div class="stat-value stat-value--muted">¥{{ fenToYuan(overview.avgDailyConsumeFen) }}</div>
+        <div class="stat-desc">按本月已过天数估算</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">建议充值参考</div>
+        <div class="stat-value">
+          <template v-if="(overview.suggestRechargeFen || 0) > 0">¥{{ fenToYuan(overview.suggestRechargeFen) }}</template>
+          <template v-else>—</template>
+        </div>
+        <div class="stat-desc">余额低于约 2 周用量时估算</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">历史手动充值累计</div>
+        <div class="stat-value">¥{{ fenToYuan(overview.manualRechargeFen) }}</div>
+        <div class="stat-desc">扫码充值入账合计</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">今日测试收入</div>
         <div class="stat-value">¥{{ fenToYuan(overview.todayIncomeFen) }}</div>
-        <div class="stat-desc">仅统计 face / MBTI / DISC / PDP</div>
+        <div class="stat-desc">face / MBTI / DISC / PDP / SBTI 等</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">本月测试收入</div>
         <div class="stat-value">¥{{ fenToYuan(overview.monthIncomeFen) }}</div>
-        <div class="stat-desc">企业用户支付后自动入账</div>
+        <div class="stat-desc">用户支付后入账</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">冻结佣金</div>
         <div class="stat-value">¥{{ fenToYuan(overview.frozenCommissionFen) }}</div>
-        <div class="stat-desc">补余额后会自动解冻</div>
+        <div class="stat-desc">余额补足后自动解冻</div>
       </div>
     </div>
 
@@ -98,7 +126,7 @@
       </el-form>
       <template #footer>
         <el-button @click="rechargeDialogVisible = false">取消</el-button>
-        <el-button type="primary" color="#7c3aed" :loading="rechargeLoading" @click="generateRechargeQrcode">生成小程序码</el-button>
+        <el-button type="primary" :loading="rechargeLoading" @click="generateRechargeQrcode">生成小程序码</el-button>
       </template>
     </el-dialog>
   </div>
@@ -107,6 +135,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Refresh, Coin } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 
 withDefaults(defineProps<{ embedded?: boolean }>(), { embedded: false })
@@ -126,7 +155,11 @@ const overview = reactive({
   totalIncomeFen: 0,
   manualRechargeFen: 0,
   frozenCommissionFen: 0,
-  paidOrderCount: 0
+  paidOrderCount: 0,
+  monthConsumeFen: 0,
+  todayConsumeFen: 0,
+  avgDailyConsumeFen: 0,
+  suggestRechargeFen: 0
 })
 
 const records = ref<any[]>([])
@@ -256,34 +289,71 @@ onMounted(() => {
   margin-bottom: 20px;
 }
 
+.stats-grid--8 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (min-width: 1200px) {
+  .stats-grid--8 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stat-card--emph {
+  grid-column: span 1;
+  border: 1px solid #c7d2fe !important;
+  background: linear-gradient(135deg, #eef2ff 0%, #ffffff 60%);
+}
+.stat-card--emph .stat-value {
+  color: #3730a3;
+}
+
+.stat-value--out {
+  color: #b45309;
+}
+
+.stat-value--muted {
+  color: #64748b;
+  font-size: 26px !important;
+}
+
 .stat-card,
 .content-card {
   background: #fff;
-  border-radius: 18px;
-  border: 1px solid #eef2f7;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
 }
 
 .stat-card {
-  padding: 20px;
+  padding: 18px 20px;
+  transition: transform 0.18s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-1px);
+  border-color: #c7d2fe;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
 }
 
 .stat-label {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 13px;
+  color: #64748b;
   margin-bottom: 8px;
+  font-weight: 500;
 }
 
 .stat-value {
-  font-size: 30px;
+  font-size: 26px;
   font-weight: 700;
-  color: #111827;
-  line-height: 1.2;
+  color: #0f172a;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
 }
 
 .stat-desc {
   margin-top: 10px;
-  font-size: 13px;
+  font-size: 12px;
   color: #94a3b8;
 }
 

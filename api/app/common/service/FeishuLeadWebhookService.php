@@ -62,12 +62,28 @@ class FeishuLeadWebhookService
 
     /**
      * 首次绑定手机号（测试完成留资）
+     * 若 7 天内有测评记录：与「测评完成」合并为一条纯文本（与出站 Hook 机器人文案一致），不再单独发「首次绑定手机」
      */
     public static function onPhoneBound(int $userId, string $phone): void
     {
         if ($userId <= 0 || trim($phone) === '') {
             return;
         }
+        $latest = Db::name('test_results')->where('userId', $userId)->order('id', 'desc')->find();
+        if ($latest) {
+            $tid = (int) ($latest['id'] ?? 0);
+            $testTs = isset($latest['createdAt']) ? (int) $latest['createdAt'] : 0;
+            if ($tid > 0 && $testTs > 0 && (time() - $testTs) <= 604800) {
+                $boundAt = date('Y-m-d H:i:s');
+                $plain = OutboundPushHookService::botPlainTextTestResultCompleted($tid, $phone, $boundAt);
+                if ($plain !== null && $plain !== '') {
+                    self::pushPlainDedup('merged_test_phone:' . $tid, $plain);
+
+                    return;
+                }
+            }
+        }
+
         self::pushLead([
             'dedupKey'  => 'phone_bind:' . $userId,
             'userId'    => $userId,
@@ -157,6 +173,31 @@ class FeishuLeadWebhookService
             }
         }
 
+        $ok = self::postWebhook($url, $text);
+        if (!$ok) {
+            self::rollbackDedup($dedupKey);
+        }
+    }
+
+    /**
+     * 仅投递纯文本（无「新获客」头），用于测评+手机号合并等与出站机器人对齐的文案
+     */
+    private static function pushPlainDedup(string $dedupKey, string $text): void
+    {
+        $cfg = self::getConfig();
+        if (empty($cfg['enabled'])) {
+            return;
+        }
+        $url = trim((string) ($cfg['webhookUrl'] ?? ''));
+        if ($url === '' || stripos($url, 'http') !== 0) {
+            return;
+        }
+        if ($dedupKey === '') {
+            return;
+        }
+        if (!self::beginDedup($dedupKey)) {
+            return;
+        }
         $ok = self::postWebhook($url, $text);
         if (!$ok) {
             self::rollbackDedup($dedupKey);

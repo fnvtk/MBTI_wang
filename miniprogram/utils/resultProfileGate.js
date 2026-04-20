@@ -1,12 +1,12 @@
 /**
- * 结果页资料门禁：未完善头像+昵称+手机时，客户端展示约 30% 预览（与后端 locked 互补）
+ * 结果页门禁：非分享落地且资料未齐（手机+头像+昵称）时展示约 30% 预览
  */
-const { isReportProfileComplete } = require('./phoneAuth.js')
+const { needsResultProfileGate } = require('./phoneAuth.js')
 
 /** @param {WechatMiniprogram.Page.TrivialInstance} page */
 function setProfileGateOnPage(page) {
   const fromShare = !!(page.data && page.data.fromShare)
-  const gate = !fromShare && !isReportProfileComplete()
+  const gate = needsResultProfileGate(fromShare)
   page.setData({ profileGate: gate })
 }
 
@@ -50,7 +50,6 @@ function openTimelineShareHint() {
 }
 
 module.exports = {
-  isReportProfileComplete,
   setProfileGateOnPage,
   slicePreviewText,
   slicePreviewList,

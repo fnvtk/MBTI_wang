@@ -22,6 +22,11 @@ Route::group('api', function () {
 Route::group('api', function () {
     Route::get('config/runtime', 'api.AppConfig/runtime');
     Route::get('config/deep-pricing', 'api.AppConfig/deepPricing');
+    // 与 ai/quick-questions 同源；部分线上网关仅放行 /api/config/*，供小程序公开拉取快捷问句
+    Route::get('config/ai-quick-questions', 'api.AiChat/quickQuestions');
+    Route::get('config/quick-questions', 'api.AiChat/quickQuestions');
+    // 与 mp/tabbar 同源；部分线上对 /api/mp/* 返回 nginx 404，与 config/runtime 一并放行
+    Route::get('config/mp-tabbar', 'api.MpConfig/tabbar');
     Route::post('analyze', 'api.Analyze/index');
     // 小程序埋点批量上报（无需登录；带 token 时关联 user_id）
     Route::post('analytics/events', 'api.Analytics/batch');
@@ -92,6 +97,7 @@ Route::group('api', function () {
 
     // ==================== 神仙 AI（需要微信登录）====================
     Route::post('ai/chat', 'api.AiChat/chat');
+    Route::get('ai/chat/job', 'api.AiChat/chatJobStatus');
     Route::get('ai/conversations', 'api.AiChat/conversations');
     Route::get('ai/conversations/:id/messages', 'api.AiChat/messages');
     Route::post('ai/transcribe', 'api.AiChat/transcribe');
@@ -99,7 +105,10 @@ Route::group('api', function () {
     // AI 深度画像报告
     Route::post('ai/report/create', 'api.AiReport/create');
     Route::get('ai/report/my-latest', 'api.AiReport/myLatest');
-    Route::get('ai/report/:id', 'api.AiReport/show');
+    // 无歧义别名（避免网关/旧路由把 my-latest 吞掉或误匹配）
+    Route::get('ai/my-report/latest', 'api.AiReport/myLatest');
+    // :id 仅匹配数字，避免 my-latest 被误路由到 show 导致 404
+    Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
     Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
     Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
 })->middleware(['cors', 'auth']);
@@ -275,6 +284,7 @@ Route::group('api/v1/superadmin', function () {
     Route::get('settings/poster', 'superadmin.Settings/getPosterConfig');
     Route::put('settings/poster', 'superadmin.Settings/updatePosterConfig');
     Route::put('settings/review-mode', 'superadmin.Settings/updateReviewMode');
+    Route::post('settings/wechat-audit-sync', 'superadmin.Settings/syncWechatAuditStatus');
     Route::get('settings', 'superadmin.Settings/index');
     Route::put('settings/system', 'superadmin.Settings/updateSystem');
     Route::put('settings/report-requires-payment', 'superadmin.Settings/updateReportRequiresPayment');

@@ -1,5 +1,4 @@
-/* pages/result/disc.wxss - 按旧版模板重构 */
-@import "../../styles/result-page-dashboard.wxss";
+/* pages/result/disc.wxss（dash 公共样式由 app.wxss 全局引入，避免工具链解析 @import 失败导致白屏） */
 
 .result-page {
   width: 100%;

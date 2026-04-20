@@ -2,10 +2,12 @@
 // 数据来源：app.globalData.tabBar.items（GET /api/mp/tabbar）
 // 兜底：若配置缺失，使用默认 4 项（首页·拍摄·神仙AI·我）
 
+const { isAuditHideAiMode } = require('../utils/miniprogramAuditGate.js')
+
 const DEFAULT_ITEMS = [
   { pagePath: 'pages/index/index',   text: '首页',   iconKey: 'home',    iconUrl: '', highlight: false },
   { pagePath: 'pages/index/camera',  text: '拍摄',   iconKey: 'camera',  iconUrl: '', highlight: true  },
-  { pagePath: 'pages/ai-chat/index', text: '神仙AI', iconKey: 'ai',      iconUrl: '/images/shenxian-oldman-circle.png', highlight: false },
+  { pagePath: 'pages/ai-chat/index', text: '神仙AI', iconKey: 'ai',      iconUrl: '/images/shenxian-ai-logo.png', highlight: false },
   { pagePath: 'pages/profile/index', text: '我',     iconKey: 'profile', iconUrl: '', highlight: false }
 ]
 
@@ -39,16 +41,23 @@ Component({
         const items = rawItems.map((it) => ({
           ...it,
           // 仅神仙AI使用指定 logo；其他图标保持后台配置
-          iconUrl: it.iconKey === 'ai' ? '/images/shenxian-oldman-circle.png' : (it.iconUrl || '')
+          iconUrl: it.iconKey === 'ai' ? '/images/shenxian-ai-logo.png' : (it.iconUrl || '')
         }))
 
         const reviewMode = !!(gd.reviewMode || gd.maintenanceMode)
+        const hideAiTab = isAuditHideAiMode(gd)
         const ep = gd.enterprisePermissions
         const faceOff = !!(ep && ep.face === false)
         const hideMiddleFab = reviewMode || faceOff
 
+        // 提审或面相审核：去掉神仙 AI Tab（与 miniprogramAuditGate 一致）
         // 审核模式 / face 关闭时：隐藏所有 highlight=true 的 Tab
-        const effectiveItems = items.filter(it => !(hideMiddleFab && it.highlight))
+        const effectiveItems = items.filter((it) => {
+          const path = (it.pagePath || '').replace(/^\//, '')
+          if (hideAiTab && (it.iconKey === 'ai' || /ai-chat/.test(path))) return false
+          if (hideMiddleFab && it.highlight) return false
+          return true
+        })
 
         this.setData({
           items: effectiveItems,

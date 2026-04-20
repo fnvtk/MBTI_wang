@@ -44,8 +44,76 @@
       <text class="status-text">{{hasError ? '分析出现异常' : '分析完成，以下是您的个性化报告'}}</text>
     </view>
 
+    <!-- 错误内容 -->
+    <view class="error-content" wx:if="{{hasError}}">
+      <text class="error-title">错误信息</text>
+      <text class="error-message">{{errorMessage}}</text>
+      <view class="retry-btn" bindtap="retake">
+        <text class="retry-text">重新分析</text>
+      </view>
+    </view>
+
+    <!-- 资料未齐：摘要 + 授权手机 / 完善资料（分享落地 fs=1 不挡） -->
+    <block wx:elif="{{phoneLoginGate}}">
+      <view class="report-gate-wrap">
+        <view class="card personality-card">
+          <text class="card-title">性格类型分析</text>
+          <view class="personality-type">
+            <text class="type-code">{{result.mbti}}</text>
+            <text class="type-name">{{result.title}}</text>
+            <text class="type-desc">{{result.summary}}</text>
+          </view>
+          <view class="type-details type-details--wrap">
+            <view class="type-box pdp-box">
+              <text class="type-emoji" wx:if="{{result.pdpEmoji}}">{{result.pdpEmoji}}</text>
+              <text class="type-label">PDP主性格</text>
+              <text class="type-value">{{result.pdp || '--'}}</text>
+              <text class="type-sub" wx:if="{{result.pdpAux}}">辅助: {{result.pdpAux}}</text>
+            </view>
+            <view class="type-box disc-box">
+              <text class="type-emoji type-emoji--disc">◎</text>
+              <text class="type-label">DISC类型</text>
+              <text class="type-value">{{result.disc || '--'}}型</text>
+              <text class="type-sub" wx:if="{{result.discAux}}">辅助: {{result.discAux}}</text>
+            </view>
+            <view
+              class="type-box sbti-box"
+              wx:if="{{showSbtiFace && (result.sbtiCode || result.sbtiCn)}}"
+            >
+              <text class="type-emoji">✨</text>
+              <text class="type-label">SBTI解读</text>
+              <text class="type-value">{{result.sbtiCode}}（{{result.sbtiCn}}）</text>
+              <text class="type-desc-small">{{result.sbtiMainTypeDesc}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="report-gate-cta-wrap phone-login-gate-cta">
+        <view class="report-gate-panel">
+          <text class="paywall-fake-title">查看完整报告</text>
+          <text class="paywall-tip">授权手机号并设置头像、昵称后即可查看完整报告（与下方按钮为同一条流程）。</text>
+          <button
+            wx:if="{{!hasPhone}}"
+            class="paywall-btn paywall-btn-inline paywall-btn--compact"
+            open-type="getPhoneNumber"
+            bindgetphonenumber="onPhoneLoginForFaceResult"
+          >
+            <text class="paywall-btn-main">登录</text>
+          </button>
+          <button
+            wx:else
+            class="paywall-btn paywall-btn-inline paywall-btn--compact"
+            bindtap="goToCompleteProfile"
+          >
+            <text class="paywall-btn-main">完善资料 · 查看完整报告</text>
+          </button>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
     <!-- 支付成功后：引导手机号 → 完善资料（不挡报告阅读） -->
-    <view class="post-pay-guide" wx:if="{{!hasError && payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
+    <view class="post-pay-guide" wx:if="{{payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
       <text class="post-pay-guide-title">再完成两步，报告更好归属到您的账号</text>
       <text class="post-pay-guide-desc">① 授权手机号 ② 完善头像与昵称（「我的」- 个人资料）</text>
       <view class="post-pay-guide-actions">
@@ -59,17 +127,8 @@
       </view>
     </view>
 
-    <!-- 错误内容 -->
-    <view class="error-content" wx:if="{{hasError}}">
-      <text class="error-title">错误信息</text>
-      <text class="error-message">{{errorMessage}}</text>
-      <view class="retry-btn" bindtap="retake">
-        <text class="retry-text">重新分析</text>
-      </view>
-    </view>
-
     <!-- 报告预览区：未解锁时整区加盖高遮罩，避免概述/盖洛普等全文外露 -->
-    <view class="report-gate-wrap" wx:if="{{!hasError}}">
+    <view class="report-gate-wrap">
       <view
         class="card personality-card {{(payInfo.requiresPayment && !payInfo.isPaid) ? 'personality-card--locked' : ''}}"
       >
@@ -184,7 +243,7 @@
     </view>
 
     <!-- ========== 详细分析区（解锁后可见） ========== -->
-    <block wx:if="{{!hasError && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+    <block wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
 
       <!-- 生活场景深度分析（AI 或本地兜底） -->
       <view class="card scene-detail-card" wx:if="{{result.careerDevelopment}}">
@@ -370,10 +429,11 @@
       </view>
 
     </view>
+    </block>
   </view>
 
   <!-- 固定底部操作栏：三按钮常驻 -->
-  <view class="result-action-bar" wx:if="{{!isAnalyzing && showResult && !hasError}}">
+  <view class="result-action-bar" wx:if="{{!isAnalyzing && showResult && !hasError && !phoneLoginGate}}">
     <view class="result-action-bar__btn result-action-bar__btn--test" bindtap="goToQuestionnaireFromFace">
       <text class="result-action-bar__ic">🧠</text>
       <text class="result-action-bar__label">详细性格测试</text>

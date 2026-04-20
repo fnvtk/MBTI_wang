@@ -1,72 +1,75 @@
-<!-- 神仙 AI · 对话页 -->
+<!-- 神仙 AI · 对话页（精选推荐嵌入第 2 轮及以后的助手气泡 · MBTI 去测进测评列表） -->
 <view class="ai-page">
-  <!-- 推荐文章：超管开启后显示；默认折叠（由后台 sectionExpandedDefault 控制首次是否展开） -->
-  <view class="soul-articles-wrap" wx:if="{{articlesDisplayEnabled}}">
-    <view class="articles-fold-bar" bindtap="onToggleArticlesFold">
-      <view class="articles-fold-left">
-        <text class="articles-fold-title">精选推荐</text>
-        <text class="articles-fold-pill">Soul</text>
-        <text class="articles-fold-count" wx:if="{{!articlesBlockExpanded}}">· {{articles.length}} 篇</text>
-      </view>
-      <text class="articles-fold-chevron">{{articlesBlockExpanded ? '▼' : '▶'}}</text>
-    </view>
-    <view class="soul-articles" wx:if="{{articlesBlockExpanded && articles.length > 0}}">
-      <view class="articles-list">
-        <view class="article-card" wx:for="{{articles}}" wx:key="id" bindtap="onTapArticle" data-id="{{item.id}}" data-url="{{item.url}}" data-title="{{item.title}}">
-          <view class="article-cover-wrap">
-            <image class="article-cover" src="{{item.cover || defaultCover}}" mode="aspectFill" />
-          </view>
-          <view class="article-body">
-            <text class="article-title">{{item.title}}</text>
-            <view class="article-meta">
-              <text class="article-pill">{{item.tag || 'MBTI'}}</text>
-              <text class="article-time" wx:if="{{item.publishedAt}}">{{item.publishedAt}}</text>
-            </view>
-          </view>
+  <scroll-view class="chat-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" scroll-with-animation="true" enhanced show-scrollbar="{{false}}">
+    <!-- MBTI 引导：去测 → 详细性格测试列表（不直跳拍摄） -->
+    <view class="mbti-remind-card" wx:if="{{messages.length === 0}}">
+      <image class="mbti-remind-avatar" src="/images/shenxian-ai-logo.png" mode="aspectFill" />
+      <view class="mbti-remind-body">
+        <view class="mbti-remind-title">我是神仙 AI</view>
+        <view class="mbti-remind-sub" wx:if="{{mbtiType}}">
+          已了解你的 <text class="mbti-badge">{{mbtiType}}</text>，继续聊～
+        </view>
+        <view class="mbti-remind-sub" wx:else>先做一下 MBTI 测评，我能帮你聊得更懂你哦～</view>
+        <view class="mbti-remind-actions">
+          <text class="mbti-remind-tag">MBTI</text>
+          <view class="mbti-remind-btn" hover-class="mbti-remind-btn--press" bindtap="onGoMbtiTest">去测 MBTI</view>
         </view>
       </view>
     </view>
-  </view>
 
-  <!-- MBTI 提醒：去测 → 详细性格测试列表 -->
-  <view class="mbti-remind-card">
-    <view class="mbti-remind-row">
-      <image class="mbti-remind-avatar" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
-      <view class="mbti-remind-texts">
-        <view class="mbti-remind-title">我是神仙 AI</view>
-        <view class="mbti-remind-sub">{{mbtiType ? ('已了解你的 ' + mbtiType + '，继续聊～') : '先做一下 MBTI 测评，我能帮你聊得更懂你哦～'}}</view>
-      </view>
-    </view>
-    <view class="mbti-remind-actions">
-      <text class="mbti-remind-tag">MBTI</text>
-      <view class="mbti-remind-btn" hover-class="mbti-remind-btn--press" bindtap="onGoMbtiTest">去测 MBTI</view>
-    </view>
-  </view>
-
-  <!-- 聊天区 -->
-  <scroll-view class="chat-scroll" scroll-y="true" scroll-into-view="{{scrollTarget}}" scroll-with-animation="true" enhanced show-scrollbar="{{false}}">
-    <!-- 消息气泡 -->
     <view class="msg-wrap" wx:for="{{messages}}" wx:key="id" id="msg-{{item.id}}">
       <view wx:if="{{item.role === 'assistant'}}" class="msg msg-ai">
-        <image class="avatar-ai" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
+        <image class="avatar-ai" src="/images/shenxian-ai-logo.png" mode="aspectFill" />
         <view class="bubble bubble-ai {{item.isDegraded ? 'bubble-degraded' : ''}}">
-          <text selectable="true">{{item.content}}</text>
+          <view class="bubble-ai-inner">
+            <text class="bubble-ai-text" user-select="true">{{item.content}}</text>
+          </view>
+          <!-- 精选推荐：周期抽检 + 意图与正文相关；功能卡点击跳转，文章卡走原文/外链 -->
+          <view
+            wx:if="{{item.inlineArticle}}"
+            class="inline-reco"
+            catchtap="onTapArticle"
+            data-id="{{item.inlineArticle.id}}"
+            data-url="{{item.inlineArticle.url}}"
+            data-title="{{item.inlineArticle.title}}"
+            data-source-id="{{item.inlineArticle.sourceId}}"
+            data-nav-path="{{item.inlineArticle.navPath}}"
+          >
+            <view class="inline-reco-icons" wx:if="{{item.inlineArticle.icons && item.inlineArticle.icons.length}}">
+              <text class="inline-reco-ic" wx:for="{{item.inlineArticle.icons}}" wx:for-item="ic" wx:key="*this">{{ic}}</text>
+            </view>
+            <view class="inline-reco-bar">
+              <text class="inline-reco-label">精选推荐</text>
+              <text class="inline-reco-hint">{{item.inlineArticle.readCountLabel || '阅读'}}</text>
+            </view>
+            <view class="inline-reco-card">
+              <image class="inline-reco-cover" src="{{item.inlineArticle.cover || defaultCover}}" mode="aspectFill" />
+              <view class="inline-reco-body">
+                <text class="inline-reco-title">{{item.inlineArticle.title}}</text>
+                <view class="inline-reco-meta">
+                  <text class="inline-reco-tag">{{item.inlineArticle.tag || 'MBTI'}}</text>
+                  <text class="inline-reco-time">{{item.inlineArticle.publishedAt}}</text>
+                </view>
+              </view>
+            </view>
+          </view>
           <view class="bubble-meta" wx:if="{{item.isDegraded}}">（降级兜底）</view>
         </view>
       </view>
       <view wx:else class="msg msg-me">
         <view class="bubble bubble-me">
-          <text selectable="true">{{item.content}}</text>
+          <text user-select="true">{{item.content}}</text>
         </view>
       </view>
     </view>
 
     <view class="typing" wx:if="{{sending}}" id="msg-typing">
-      <image class="avatar-ai" src="/images/shenxian-oldman-circle.png" mode="aspectFill" />
-      <view class="bubble bubble-ai"><text>神仙在思考…</text></view>
+      <image class="avatar-ai" src="/images/shenxian-ai-logo.png" mode="aspectFill" />
+      <view class="bubble bubble-ai">
+        <view class="bubble-ai-inner"><text class="bubble-ai-text">神仙，AI在思考…</text></view>
+      </view>
     </view>
 
-    <!-- 深度报告 CTA：对话 >=10 条且还没付费时显示 -->
     <view class="report-cta" wx:if="{{showReportCta}}" bindtap="onTapReportCta">
       <view class="report-cta-text">✨ 聊了这么多，来份专属 AI 深度画像报告？¥9.9</view>
       <view class="report-cta-btn">立即生成</view>
@@ -75,39 +78,58 @@
     <view class="scroll-bottom" id="bottom"></view>
   </scroll-view>
 
-  <!-- 底部快捷问法（常驻） -->
-  <scroll-view class="quick-bottom-scroll" scroll-x="true" show-scrollbar="{{false}}" wx:if="{{quickQuestions.length > 0}}">
-    <view class="quick-bottom-list">
-      <view class="quick-bottom-item" wx:for="{{quickQuestions}}" wx:for-item="q" wx:key="*this" bindtap="onTapQuick" data-q="{{q}}">
-        {{q}}
-      </view>
+  <!-- 与 Tab 之间的白底垫层，避免聊天记录从输入条/底栏缝隙透出（pointer-events:none 不挡操作） -->
+  <view class="ai-bottom-solid" aria-hidden="true"></view>
+
+  <!-- 底部：快捷语（横滑）+ 输入区，固定在 Tab 之上 -->
+  <view class="composer-wrap">
+    <view class="quick-chips-outer" wx:if="{{quickQuestions.length > 0}}">
+      <scroll-view
+        class="quick-chips-scroll"
+        scroll-x="{{true}}"
+        enhanced="{{true}}"
+        show-scrollbar="{{false}}"
+      >
+        <view class="quick-chips-row">
+          <view
+            class="quick-chip"
+            wx:for="{{quickQuestions}}"
+            wx:for-item="q"
+            wx:key="*this"
+            data-q="{{q}}"
+            bindtap="onTapQuick"
+          >{{q}}</view>
+        </view>
+      </scroll-view>
+      <view class="quick-chips-edge-fade" aria-hidden="true"></view>
     </view>
-  </scroll-view>
+    <view class="input-bar">
+      <view class="resume-entry" bindtap="onTapUploadResume" hover-class="resume-entry--press">
+        <text class="resume-entry-icon">📎</text>
+        <text class="resume-entry-txt">简历</text>
+      </view>
+      <input
+        class="input"
+        placeholder="问你想了解的自己"
+        placeholder-class="input-ph"
+        value="{{draft}}"
+        bindinput="onInput"
+        bindconfirm="onSend"
+        confirm-type="send"
+        confirm-hold="true"
+        adjust-position="{{true}}"
+        maxlength="800"
+        disabled="{{sending}}"
+      />
 
-  <!-- 输入区：输入框 + 发送 -->
-  <view class="input-bar">
-    <input
-      class="input"
-      placeholder="问我你想了解的自己"
-      placeholder-class="input-ph"
-      value="{{draft}}"
-      bindinput="onInput"
-      bindconfirm="onSend"
-      confirm-type="send"
-      confirm-hold="true"
-      adjust-position="{{true}}"
-      maxlength="800"
-      disabled="{{sending}}"
-    />
-
-    <view
-      class="send-btn {{draft && !sending ? 'send-btn--active' : ''}} {{sending || !draft ? 'send-btn--disabled' : ''}}"
-      hover-class="{{draft && !sending ? 'send-btn--press' : ''}}"
-      hover-start-time="0"
-      hover-stay-time="80"
-      bindtap="onSend"
-    >
-      <text class="send-btn__label">发送</text>
+      <button
+        class="send-icon-btn {{draft ? 'send-icon-btn--active' : ''}}"
+        bindtap="onSend"
+        disabled="{{sending || !draft}}"
+        hover-class="send-icon-btn--hover"
+      >
+        <view class="send-icon-plane"></view>
+      </button>
     </view>
   </view>
 </view>

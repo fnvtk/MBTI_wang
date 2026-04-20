@@ -14,6 +14,8 @@ MBTI 王：通过 kr 宝塔面板 API 上传 PHP 与 admin 静态资源并触发
   BT_API_KEY=xxx python3 scripts/deploy_mbti_bt_api.py --api-only
   BT_API_KEY=xxx python3 scripts/deploy_mbti_bt_api.py --admin-only
 
+  也可将密钥写入 scripts/.env.bt（见 scripts/env.bt.example），勿提交；脚本启动时会自动加载。
+
 可选覆盖（自动识别失败时）：
   MBTI_API_CODE_ROOT   服务器上与本地 api/ 同级的目录（含 app/、public/），例：/www/wwwroot/self/mbti-api/api
   MBTI_ADMIN_SITE_ROOT 静态站点根（含 index.html），例：/www/wwwroot/self/mbti-admin
@@ -41,6 +43,31 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 API_LOCAL = REPO_ROOT / "api"
 ADMIN_DIST = REPO_ROOT / "admin" / "dist"
 
+
+def load_env_bt() -> None:
+    """从 scripts/.env.bt 注入环境变量（仅当当前环境未设置同名变量时）。"""
+    p = REPO_ROOT / "scripts" / ".env.bt"
+    if not p.is_file():
+        return
+    try:
+        raw_text = p.read_text(encoding="utf-8")
+    except OSError:
+        return
+    for raw in raw_text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].strip()
+        if "=" not in line:
+            continue
+        key, _, val = line.partition("=")
+        key = key.strip()
+        val = val.strip().strip("'").strip('"')
+        # 跳过空值，避免 .env.bt 里 BT_API_KEY= 占位导致覆盖不了终端里已 export 的密钥
+        if key and val and key not in os.environ:
+            os.environ[key] = val
+
 DEFAULT_API_REL_PATHS = [
     "app/controller/admin/AppUser.php",
     "app/controller/admin/Order.php",
@@ -48,6 +75,45 @@ DEFAULT_API_REL_PATHS = [
     "app/controller/admin/Finance.php",
     "app/controller/admin/concern/ExtractsTestResults.php",
     "app/model/WechatUser.php",
+    # 路由与小程序核心 API
+    "route/api.php",
+    "app/controller/api/Auth.php",
+    "app/controller/api/AppConfig.php",
+    "app/controller/api/MpConfig.php",
+    "app/controller/api/Order.php",
+    # 神仙 AI 异步投递（triggerAiChatDeferredJob → /api/internal/outbound-push/dispatch）
+    "app/controller/api/InternalPushHook.php",
+    # 神仙 AI（对话 + 报告）
+    "app/controller/api/AiChat.php",
+    "app/controller/api/AiReport.php",
+    "app/controller/api/Analyze.php",
+    "app/controller/api/Test.php",
+    "app/common/service/AiCallService.php",
+    "app/common/service/AiChatArticleDisplayService.php",
+    "app/common/service/SoulArticleService.php",
+    "app/common/service/AiReportService.php",
+    # 神仙 AI 依赖模型（避免线上仍为旧版表映射）
+    "app/model/AiConversation.php",
+    "app/model/AiMessage.php",
+    "app/model/AiProvider.php",
+    "app/model/SoulArticle.php",
+    "app/model/SystemConfig.php",
+    # 微信支付 / 转账回调
+    "app/controller/api/Payment.php",
+    "app/controller/api/WechatTransferNotify.php",
+    "app/common/service/WechatService.php",
+    "app/common/service/WechatAuditSyncService.php",
+    "app/common/service/WechatTransferService.php",
+    "app/controller/superadmin/Settings.php",
+    # 认证、配置、埋点/推送依赖
+    "app/common/service/JwtService.php",
+    "app/common/service/MpTabbarService.php",
+    "app/common/service/FeishuLeadWebhookService.php",
+    "app/common/service/OutboundPushHookService.php",
+    "app/common/service/ThirdPartyChannelService.php",
+    # 上线自检 / 冒烟（可选；上传至服务器 api/scripts 供 SSH 执行）
+    "scripts/check_ai_chat_ready.php",
+    "scripts/smoke_ai_provider.php",
 ]
 
 API_DOMAIN_HINT = "mbtiapi"
@@ -222,6 +288,7 @@ def service_admin(name: str, op: str, key: str) -> None:
 
 
 def main() -> int:
+    load_env_bt()
     ap = argparse.ArgumentParser(description="MBTI 宝塔 API 部署")
     ap.add_argument("--list-sites", action="store_true", help="列出站点并匹配 mbti 路径后退出")
     ap.add_argument("--all", action="store_true", help="上传 API 默认文件 + admin/dist")

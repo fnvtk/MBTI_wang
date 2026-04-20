@@ -26,7 +26,7 @@
       <div class="toolbar-right">
         <el-button size="small" :disabled="!selectedId" @click="selectedId = null">取消选择</el-button>
         <el-button size="small" @click="loadConfig">重置</el-button>
-        <el-button size="small" type="primary" color="#7c3aed" :loading="saving" @click="saveConfig">
+        <el-button size="small" type="primary" :loading="saving" @click="saveConfig">
           保存配置
         </el-button>
       </div>

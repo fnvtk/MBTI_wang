@@ -174,7 +174,7 @@ const handleLogout = async () => {
         width: 34px;
         height: 34px;
         border-radius: 8px;
-        background-color: #7c3aed;
+        background-color: var(--admin-primary, #4F46E5);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -273,8 +273,8 @@ const handleLogout = async () => {
       }
 
       &.active {
-        background-color: #f5f3ff;
-        color: #7c3aed;
+        background-color: var(--admin-primary-soft, #EEF2FF);
+        color: var(--admin-primary, #4F46E5);
         font-weight: 500;
 
         &::before {
@@ -284,11 +284,11 @@ const handleLogout = async () => {
           top: 0;
           bottom: 0;
           width: 3px;
-          background-color: #7c3aed;
+          background-color: var(--admin-primary, #4F46E5);
         }
 
         .nav-icon {
-          color: #7c3aed;
+          color: var(--admin-primary, #4F46E5);
         }
       }
 

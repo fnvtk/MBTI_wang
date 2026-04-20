@@ -10,8 +10,9 @@
     </view>
     <text class="success-dialog-title">{{successModal.title}}</text>
     <text class="success-dialog-content">{{successModal.content}}</text>
-    <view class="success-dialog-btns">
-      <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
+    <text class="success-dialog-hint">顾问将通过您预留的联系方式与您沟通，请留意来电或短信。</text>
+    <view class="success-dialog-btns success-dialog-btns--single">
+      <button class="success-btn-close success-btn-close--primary" bindtap="closeSuccessModal">我知道了</button>
     </view>
   </view>
 </view>

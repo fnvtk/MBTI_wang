@@ -8,6 +8,7 @@ use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\Question as QuestionModel;
 use app\model\UserProfile as UserProfileModel;
+use app\common\service\MiniprogramAuditMode;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -107,6 +108,9 @@ class Test extends BaseController
             $orderId = isset($row['orderId']) ? (int) $row['orderId'] : null;
             $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
             $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+            if (MiniprogramAuditMode::isOn()) {
+                $needPayUnlock = false;
+            }
 
             $raw = $row['resultDataLite'] ?? ($row['resultData'] ?? null);
             $data = null;
@@ -125,7 +129,7 @@ class Test extends BaseController
             }
 
             $paymentFields = [
-                'requiresPayment' => $requiresPayment,
+                'requiresPayment' => MiniprogramAuditMode::isOn() ? 0 : $requiresPayment,
                 'isPaid'          => $isPaid,
                 'orderId'         => $orderId,
                 'enterpriseName'  => $enterpriseName,
@@ -423,6 +427,9 @@ class Test extends BaseController
         $isPaid = (int) ($row['isPaid'] ?? 0);
         $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+        if (MiniprogramAuditMode::isOn()) {
+            $needPayUnlock = false;
+        }
         if ($data !== []) {
             if (in_array($testType, ['face', 'ai'], true)) {
                 if ($needPayUnlock || $profileIncomplete) {
@@ -531,7 +538,7 @@ class Test extends BaseController
             'resultText'      => $resultText,
             'testTime'        => $createdAt ? date('Y-m-d', (int) $createdAt) : '',
             'isPaid'          => (int) ($row['isPaid'] ?? 0),
-            'requiresPayment' => (int) ($row['requiresPayment'] ?? 0),
+            'requiresPayment' => MiniprogramAuditMode::isOn() ? 0 : (int) ($row['requiresPayment'] ?? 0),
         ];
         if ($gallupPreview !== '') {
             $out['gallupPreview'] = $gallupPreview;
@@ -662,6 +669,9 @@ class Test extends BaseController
         $paidAmount = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $testType = $row['testType'] ?? '';
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
+        if (MiniprogramAuditMode::isOn()) {
+            $needPaymentToUnlock = false;
+        }
         $subjectUserId = (int) ($row['userId'] ?? 0);
         $profileIncomplete = $subjectUserId > 0 ? !self::isWechatProfileComplete($subjectUserId) : false;
         $applyProfileGate = $profileIncomplete && !$forShareViewer;
@@ -678,16 +688,20 @@ class Test extends BaseController
             }
         }
 
+        $auditMp = MiniprogramAuditMode::isOn();
+        $respRequires = $auditMp ? 0 : $requiresPayment;
+        $respPaidAmount = $auditMp ? 0 : $paidAmount;
+
         return [
             'id'                   => $row['id'],
             'testType'             => $testType,
             'createdAt'            => $row['createdAt'],
             'data'                 => $data,
-            'requiresPayment'      => $requiresPayment,
+            'requiresPayment'      => $respRequires,
             'isPaid'               => $isPaid,
-            'paidAmount'           => $paidAmount,
-            'amountYuan'           => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
-            'needPaymentToUnlock'  => $needPaymentToUnlock,
+            'paidAmount'           => $respPaidAmount,
+            'amountYuan'           => $respPaidAmount > 0 ? round($respPaidAmount / 100, 2) : 0,
+            'needPaymentToUnlock'  => $auditMp ? false : $needPaymentToUnlock,
             'profileIncomplete'    => $forShareViewer ? false : $profileIncomplete,
             'orderId'              => isset($row['orderId']) ? (int) $row['orderId'] : null,
             'paidAt'               => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
@@ -780,6 +794,10 @@ class Test extends BaseController
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
             $standardAmountFen = $requiresPayment ? $this->getStandardAmountFenByTestType($testType, $enterpriseId, $pricingEnterpriseId) : 0;
+            if (MiniprogramAuditMode::isOn()) {
+                $requiresPayment = 0;
+                $standardAmountFen = 0;
+            }
             $id = Db::name('test_results')->insertGetId([
                 'userId'          => $userId,
                 'enterpriseId'    => $writeEnterpriseId,
@@ -1088,29 +1106,41 @@ class Test extends BaseController
     }
 
     /**
-     * 获取当前用户最近的 MBTI / DISC / PDP 测试记录（暂不使用人脸/AI 结果），供简历综合分析使用
+     * 获取当前用户最近的 MBTI / DISC / PDP / 面相(face|ai) 测试记录，供简历综合分析使用
      * @param int $userId 微信用户 ID
      * @param int|null $enterpriseId 当前企业ID（仅返回该企业下的记录；为空则不按企业过滤）
-     * @return array ['face' => row|null, 'mbti' => row|null, 'disc' => row|null, 'pdp' => row|null]，row 含 id, testType, resultData, createdAt
+     * @return array ['face' => row|null, 'mbti' => row|null, 'sbti' => row|null, 'disc' => row|null, 'pdp' => row|null]，row 含 id, testType, resultData, createdAt
      */
     public static function getLatestResultsForResume(int $userId, ?int $enterpriseId = null): array
     {
         if ($userId <= 0) {
-            return ['face' => null, 'mbti' => null, 'disc' => null, 'pdp' => null];
+            return ['face' => null, 'mbti' => null, 'sbti' => null, 'disc' => null, 'pdp' => null];
         }
 
-        $out = ['face' => null, 'mbti' => null, 'disc' => null, 'pdp' => null];
+        $out = ['face' => null, 'mbti' => null, 'sbti' => null, 'disc' => null, 'pdp' => null];
 
         $base = Db::name('test_results')->where('userId', $userId);
         if ($enterpriseId !== null && $enterpriseId > 0) {
             $base = $base->where('enterpriseId', (int) $enterpriseId);
         }
 
-        // face/ai 暂不参与简历分析，保持为 null，避免写入上下文
+        // 面相 / 神仙 AI 拍照分析：取 face 或 ai 最新一条，供 buildResumeContext 拼接
+        $out['face'] = (clone $base)
+            ->whereIn('testType', ['face', 'ai'])
+            ->field('id, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->find();
 
         // mbti
         $out['mbti'] = (clone $base)
             ->where('testType', 'mbti')
+            ->field('id, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->find();
+
+        // sbti
+        $out['sbti'] = (clone $base)
+            ->where('testType', 'sbti')
             ->field('id, testType, resultData, createdAt')
             ->order('createdAt', 'desc')
             ->find();

@@ -20,8 +20,8 @@ class Distribution extends BaseController
     const BINDING_DAYS = 30;
     const BINDING_TTL  = 30 * 86400;
 
-    /** 提现金额下限（分），1元 */
-    const MIN_WITHDRAW_FEN = 100;
+    /** 提现金额下限（分），1 分（0.01 元）；具体规则以超管 minWithdrawFen 为准，不低于本值 */
+    const MIN_WITHDRAW_FEN = 1;
     /** 提现金额上限（分），200元 */
     const MAX_WITHDRAW_FEN = 20000;
     /** 待收款过期时间（秒），24小时 */
@@ -297,7 +297,8 @@ class Distribution extends BaseController
             }
         } catch (\Exception $e) {}
         $cfg = is_array($globalDistConfig) ? $globalDistConfig : [];
-        $minWithdrawFen  = (int)($cfg['minWithdrawFen'] ?? 100);
+        $minWithdrawFen  = (int)($cfg['minWithdrawFen'] ?? 1);
+        $minWithdrawFen  = max(1, min(self::MAX_WITHDRAW_FEN, $minWithdrawFen));
         $maxWithdrawFen  = (int)($cfg['maxWithdrawFen'] ?? 0);
         $withdrawFee     = (float)($cfg['withdrawFee'] ?? 0);
         $requireAudit    = (isset($cfg['requireAudit']) ? $cfg['requireAudit'] : true) !== false;
@@ -495,7 +496,7 @@ class Distribution extends BaseController
         $feeFen    = (int) round($amountFen * $feePct / 100);
         $actualFen = $amountFen - $feeFen;
         if ($actualFen < $minFen) {
-            return error('实际到账金额不得低于最低提现金额 ' . number_format($minFen / 100, 2, '.', '') . ' 元', 400);
+            return error('实际到账金额不得低于最低提现金额 ¥' . number_format($minFen / 100, 2, '.', ''), 400);
         }
 
         $requireAudit = (isset($cfg['requireAudit']) ? $cfg['requireAudit'] : true) !== false;
@@ -1133,7 +1134,8 @@ class Distribution extends BaseController
     private static function getWithdrawLimits(string $scope, ?int $enterpriseId): array
     {
         $cfg    = self::getDistributionConfig($scope, $enterpriseId);
-        $minFen = max(self::MIN_WITHDRAW_FEN, min(self::MAX_WITHDRAW_FEN, (int)($cfg['minWithdrawFen'] ?? self::MIN_WITHDRAW_FEN)));
+        $rawMin = (int)($cfg['minWithdrawFen'] ?? self::MIN_WITHDRAW_FEN);
+        $minFen = max(self::MIN_WITHDRAW_FEN, min(self::MAX_WITHDRAW_FEN, $rawMin));
         $maxFen = (int)($cfg['maxWithdrawFen'] ?? 0);
         if ($maxFen > 0) {
             $maxFen = min(self::MAX_WITHDRAW_FEN, $maxFen);
