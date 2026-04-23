@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\common\service\ResumeUploadsAdminService;
 use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
@@ -495,6 +496,10 @@ class AppUser extends BaseController
                 // 表未迁移时忽略
             }
         }
+
+        $data['resumeUploads'] = ($enterpriseId && (int) $enterpriseId > 0)
+            ? ResumeUploadsAdminService::listForWechatUser((int) $id, (int) $enterpriseId)
+            : [];
 
         return success($data);
     }

@@ -58,8 +58,8 @@ App({
     defaultEnterpriseId: null,
     // API 基础地址：默认走线上；本机/内网调试可在开发者工具执行
     // wx.setStorageSync('apiBaseOverride', 'https://你的调试域名') 后重启小程序
-    //apiBase: 'https://mbtiapi.quwanzhi.com',
-    apiBase: 'http://mbti.com',
+    apiBase: 'https://mbtiapi.quwanzhi.com',
+    //apiBase: 'http://mbti.com',
     // VIP信息
     vipInfo: null,
     // 测试次数

@@ -44,6 +44,10 @@ Page({
     mpAuditMode: false,
     /** 仅 miniprogramAuditMode：隐藏「了解自己」深度套餐入口（虚拟商品合规） */
     showDeepPricingEntry: true,
+    /** 审核/提审（与神仙 AI Tab 同源）：隐藏「匹配工作」入口 */
+    showMatchJobEntry: true,
+    /** 快捷入口网格列类名 quick-grid--2～4，按可见按钮数均分平铺（每行最多 4 个） */
+    quickGridClass: 'quick-grid--4',
     /** 最近记录的数据库 ID，用于跳转时传参 */
     mbtiResultId: null,
     sbtiResultId: null,
@@ -106,6 +110,14 @@ Page({
     )
   },
 
+  /** 性格测试 + 我的订单 + 可选「了解自己」「匹配工作」，按可见数 2～4 列均分 */
+  _computeQuickGridCols(d) {
+    let n = 2
+    if (d.showDeepPricingEntry) n++
+    if (d.showMatchJobEntry) n++
+    return Math.min(Math.max(n, 1), 4)
+  },
+
   onLoad() {
     // 仅在 onLoad 执行一次，onShow 里的 runLoginThenLoad 会导致重复请求
     this.runLoginThenLoad()
@@ -121,11 +133,14 @@ Page({
       permDisc: !p || p.disc !== false,
       permDistribution: !p || p.distribution !== false,
       showDeepPricingEntry: !gd.miniprogramAuditMode,
+      showMatchJobEntry: !isAuditHideAiMode(gd),
       ...overrides
     }
     const d = { ...this.data, ...next }
+    const qCols = this._computeQuickGridCols(d)
     this.setData({
       ...next,
+      quickGridClass: `quick-grid--${qCols}`,
       showLatestTestRow: this._computeShowLatestTestRow(d),
       showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
     })
@@ -717,6 +732,11 @@ Page({
   },
   /** 匹配工作：新入口，跳转匹配工作中间页 */
   goToMatchJob() {
+    const gd = app.globalData || {}
+    if (isAuditHideAiMode(gd)) {
+      wx.showToast({ title: '功能升级中', icon: 'none' })
+      return
+    }
     try { require('../../utils/analytics').track('tap_match_job', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/match-job/index' })
   },

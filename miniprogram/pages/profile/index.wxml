@@ -202,7 +202,7 @@
 
   <!-- 快捷入口图标网格（Soul 风：2×N 图标 + 短标题） -->
   <view class="section px-section" wx:if="{{hasLogin}}">
-    <view class="quick-grid quick-grid--4">
+    <view class="quick-grid {{quickGridClass}}">
       <view class="quick-grid__item" bindtap="goToTestSelect">
         <view class="quick-grid__ic quick-grid__ic--purple">🧠</view>
         <text class="quick-grid__label">性格测试</text>
@@ -215,7 +215,7 @@
         <view class="quick-grid__ic quick-grid__ic--indigo">💎</view>
         <text class="quick-grid__label">了解自己</text>
       </view>
-      <view class="quick-grid__item" bindtap="goToMatchJob">
+      <view class="quick-grid__item" wx:if="{{showMatchJobEntry}}" bindtap="goToMatchJob">
         <view class="quick-grid__ic quick-grid__ic--blue">💼</view>
         <text class="quick-grid__label">匹配工作</text>
       </view>

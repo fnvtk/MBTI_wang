@@ -221,6 +221,41 @@
               <div v-else class="ud-empty-hint">暂无人脸分析照片</div>
             </el-tab-pane>
 
+            <el-tab-pane label="简历文件" name="resumes">
+              <div v-if="resumeUploadList.length" class="ud-resume-files">
+                <el-table :data="resumeUploadList" size="small" stripe class="ud-resume-table">
+                  <el-table-column prop="fileName" label="文件名" min-width="160" show-overflow-tooltip />
+                  <el-table-column
+                    v-if="showEnterpriseMatch"
+                    prop="enterpriseName"
+                    label="归属企业"
+                    min-width="120"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column label="默认简历" width="92" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.isDefault" size="small" type="success">是</el-tag>
+                      <span v-else class="ud-muted">—</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="上传时间" width="124">
+                    <template #default="{ row }">{{ formatDate(row.uploadedAt) }}</template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="88" align="center" fixed="right">
+                    <template #default="{ row }">
+                      <el-button v-if="row.url" link type="primary" size="small" @click="openResumeUrl(row.url)">
+                        打开
+                      </el-button>
+                      <span v-else class="ud-muted">—</span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else class="ud-empty-hint">
+                暂无简历文件。用户在企业版小程序「我的简历」中上传后，将在此列出（OSS 直链，点击打开下载或预览）。
+              </div>
+            </el-tab-pane>
+
             <el-tab-pane label="用户旅程" name="journey">
               <div class="ud-journey">
                 <div class="ud-journey__toolbar">
@@ -402,6 +437,17 @@ const matchingEnterprises = computed(() => {
   const m = props.user?.matchingEnterprises
   return Array.isArray(m) ? m : []
 })
+
+const resumeUploadList = computed(() => {
+  const raw = props.user?.resumeUploads
+  return Array.isArray(raw) ? raw : []
+})
+
+function openResumeUrl(url: string) {
+  const u = (url || '').trim()
+  if (!u) return
+  window.open(u, '_blank', 'noopener,noreferrer')
+}
 
 function shortOrDash(s: string | undefined, max = 6) {
   if (!s) return '—'
@@ -1221,6 +1267,17 @@ function openMail(email: string) {
   width: 100px;
   height: 100px;
   border-radius: 8px;
+}
+
+.ud-resume-files {
+  padding: 4px 0;
+}
+.ud-resume-table {
+  width: 100%;
+}
+.ud-muted {
+  color: #9ca3af;
+  font-size: 13px;
 }
 
 .ud-journey {

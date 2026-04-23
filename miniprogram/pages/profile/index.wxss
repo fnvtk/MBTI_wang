@@ -920,6 +920,8 @@ custom-tab-bar {
   box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05);
   border: 1rpx solid #f1f5f9;
 }
+.quick-grid--1 { grid-template-columns: repeat(1, 1fr); }
+.quick-grid--2 { grid-template-columns: repeat(2, 1fr); }
 .quick-grid--3 { grid-template-columns: repeat(3, 1fr); }
 .quick-grid--4 { grid-template-columns: repeat(4, 1fr); }
 .quick-grid__item {

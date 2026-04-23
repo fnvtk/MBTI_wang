@@ -284,7 +284,7 @@
         <text class="deep-cta-desc">结合面相、MBTI、PDP、DISC 的综合报告；或为团队做岗位适配与沟通建议。邀请好友测评可参与推广分润（以活动规则为准）。</text>
         <view class="deep-cta-actions">
           <view class="deep-cta-btn deep-cta-btn--primary" bindtap="onTapDeepService">深度解读方案</view>
-          <view class="deep-cta-btn deep-cta-btn--ghost" bindtap="onTapPromoCenter">推广中心</view>
+          <view wx:if="{{!hideInviteCodeEntry}}" class="deep-cta-btn deep-cta-btn--ghost" bindtap="onTapPromoCenter">推广中心</view>
         </view>
       </view>
     </view>

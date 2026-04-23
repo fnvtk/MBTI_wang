@@ -2,6 +2,7 @@
 namespace app\controller\superadmin;
 
 use app\BaseController;
+use app\common\service\ResumeUploadsAdminService;
 use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
@@ -560,6 +561,8 @@ class AppUser extends BaseController
             (string) ($data['pdpType'] ?? ''),
             (string) ($data['discType'] ?? '')
         );
+
+        $data['resumeUploads'] = ResumeUploadsAdminService::listForWechatUser((int) $id, null);
 
         return success($data);
     }
