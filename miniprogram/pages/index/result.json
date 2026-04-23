@@ -4,5 +4,7 @@
   "navigationBarTextStyle": "black",
   "enableShareAppMessage": true,
   "enableShareTimeline": true,
-  "usingComponents": {}
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
 }

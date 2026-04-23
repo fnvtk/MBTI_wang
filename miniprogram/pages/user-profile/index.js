@@ -20,7 +20,16 @@ Page({
     saving: false
   },
 
-  onLoad() {
+  onLoad(options) {
+    const raw = options && options.redirect ? String(options.redirect) : ''
+    if (raw) {
+      try {
+        const redirect = decodeURIComponent(raw)
+        if (redirect.charAt(0) === '/') {
+          app.globalData._navigateAfterProfile = redirect
+        }
+      } catch (e) {}
+    }
     this.loadUserInfo()
   },
 

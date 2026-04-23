@@ -1,0 +1,52 @@
+/* 填写好友邀请码入口（推广中心与各结果页共用） */
+.invite-fill-entry {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 32rpx;
+  padding: 26rpx 28rpx;
+  background: #f8fafc;
+  border-radius: 20rpx;
+  border: 1rpx solid #e2e8f0;
+  box-sizing: border-box;
+}
+.invite-fill-entry:active {
+  opacity: 0.92;
+}
+.invite-fill-entry__icon {
+  font-size: 40rpx;
+  line-height: 1;
+}
+.invite-fill-entry__main {
+  flex: 1;
+  min-width: 0;
+}
+.invite-fill-entry__title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f172a;
+}
+.invite-fill-entry__sub {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 22rpx;
+  color: #64748b;
+  line-height: 1.35;
+}
+.invite-fill-entry__arrow {
+  font-size: 36rpx;
+  color: #94a3b8;
+  font-weight: 300;
+}
+
+/* 面相结果页 container 无 scroll 内边距时用 */
+.invite-fill-entry--face {
+  margin-left: 32rpx;
+  margin-right: 32rpx;
+}
+
+/* 简历结果页 hero 下方 */
+.invite-fill-entry--resume {
+  margin: 0 32rpx 24rpx;
+}

@@ -44,6 +44,15 @@
       <text class="status-text">{{hasError ? '分析出现异常' : '分析完成，以下是您的个性化报告'}}</text>
     </view>
 
+    <view class="invite-fill-entry invite-fill-entry--face" wx:if="{{!hasError && !fromShare && !hideInviteCodeEntry}}" bindtap="openInviteCodeFill">
+      <text class="invite-fill-entry__icon">🔗</text>
+      <view class="invite-fill-entry__main">
+        <text class="invite-fill-entry__title">填写好友邀请码</text>
+        <text class="invite-fill-entry__sub">绑定推广关系 · 可选</text>
+      </view>
+      <text class="invite-fill-entry__arrow">›</text>
+    </view>
+
     <!-- 错误内容 -->
     <view class="error-content" wx:if="{{hasError}}">
       <text class="error-title">错误信息</text>
@@ -88,7 +97,7 @@
           </view>
         </view>
       </view>
-      <view class="report-gate-cta-wrap phone-login-gate-cta">
+      <view class="report-gate-cta-wrap phone-login-gate-cta" id="unlock-gate-anchor">
         <view class="report-gate-panel">
           <text class="paywall-fake-title">查看完整报告</text>
           <text class="paywall-tip">授权手机号并设置头像、昵称后即可查看完整报告（与下方按钮为同一条流程）。</text>
@@ -113,7 +122,7 @@
 
     <block wx:else>
     <!-- 支付成功后：引导手机号 → 完善资料（不挡报告阅读） -->
-    <view class="post-pay-guide" wx:if="{{payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
+    <view class="post-pay-guide" id="unlock-gate-anchor" wx:if="{{payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
       <text class="post-pay-guide-title">再完成两步，报告更好归属到您的账号</text>
       <text class="post-pay-guide-desc">① 授权手机号 ② 完善头像与昵称（「我的」- 个人资料）</text>
       <view class="post-pay-guide-actions">
@@ -229,7 +238,7 @@
         wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}"
       >
         <view class="report-gate-gradient"></view>
-        <view class="report-gate-cta-wrap">
+        <view class="report-gate-cta-wrap" id="unlock-gate-anchor">
           <view class="report-gate-panel">
             <text class="paywall-fake-title">完整版深度解析</text>
             <text class="paywall-tip">含面相、骨相、人际与职业 / 家庭 / 合伙三大场景</text>
@@ -450,4 +459,10 @@
       </view>
     </button>
   </view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
 </view>

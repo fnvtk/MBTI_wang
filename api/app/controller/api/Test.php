@@ -8,7 +8,6 @@ use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\Question as QuestionModel;
 use app\model\UserProfile as UserProfileModel;
-use app\common\service\MiniprogramAuditMode;
 use think\facade\Db;
 use think\facade\Request;
 
@@ -108,7 +107,7 @@ class Test extends BaseController
             $orderId = isset($row['orderId']) ? (int) $row['orderId'] : null;
             $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
             $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
-            if (MiniprogramAuditMode::isOn()) {
+            if (miniprogram_audit_mode_on()) {
                 $needPayUnlock = false;
             }
 
@@ -129,7 +128,7 @@ class Test extends BaseController
             }
 
             $paymentFields = [
-                'requiresPayment' => MiniprogramAuditMode::isOn() ? 0 : $requiresPayment,
+                'requiresPayment' => miniprogram_audit_mode_on() ? 0 : $requiresPayment,
                 'isPaid'          => $isPaid,
                 'orderId'         => $orderId,
                 'enterpriseName'  => $enterpriseName,
@@ -427,7 +426,7 @@ class Test extends BaseController
         $isPaid = (int) ($row['isPaid'] ?? 0);
         $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $needPayUnlock = false;
         }
         if ($data !== []) {
@@ -538,7 +537,7 @@ class Test extends BaseController
             'resultText'      => $resultText,
             'testTime'        => $createdAt ? date('Y-m-d', (int) $createdAt) : '',
             'isPaid'          => (int) ($row['isPaid'] ?? 0),
-            'requiresPayment' => MiniprogramAuditMode::isOn() ? 0 : (int) ($row['requiresPayment'] ?? 0),
+            'requiresPayment' => miniprogram_audit_mode_on() ? 0 : (int) ($row['requiresPayment'] ?? 0),
         ];
         if ($gallupPreview !== '') {
             $out['gallupPreview'] = $gallupPreview;
@@ -669,7 +668,7 @@ class Test extends BaseController
         $paidAmount = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $testType = $row['testType'] ?? '';
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $needPaymentToUnlock = false;
         }
         $subjectUserId = (int) ($row['userId'] ?? 0);
@@ -688,7 +687,7 @@ class Test extends BaseController
             }
         }
 
-        $auditMp = MiniprogramAuditMode::isOn();
+        $auditMp = miniprogram_audit_mode_on();
         $respRequires = $auditMp ? 0 : $requiresPayment;
         $respPaidAmount = $auditMp ? 0 : $paidAmount;
 
@@ -794,7 +793,7 @@ class Test extends BaseController
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
             $standardAmountFen = $requiresPayment ? $this->getStandardAmountFenByTestType($testType, $enterpriseId, $pricingEnterpriseId) : 0;
-            if (MiniprogramAuditMode::isOn()) {
+            if (miniprogram_audit_mode_on()) {
                 $requiresPayment = 0;
                 $standardAmountFen = 0;
             }

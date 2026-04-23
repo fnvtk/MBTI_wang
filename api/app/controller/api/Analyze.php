@@ -10,7 +10,6 @@ use app\model\SystemConfig as SystemConfigModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
-use app\common\service\MiniprogramAuditMode;
 use think\facade\Db;
 use think\facade\Log;
 use think\facade\Request;
@@ -141,7 +140,7 @@ class Analyze extends BaseController
         // $enterpriseId=非null 时走企业版定价；=null 时走个人版定价（含绑定企业的 admin_personal）
         $standardAmountFen = $this->getStandardAmountByTestType('face', $enterpriseId, $pricingEnterpriseId);
         $requiresPayment = $standardAmountFen > 0 ? 1 : 0;
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $standardAmountFen = 0;
             $requiresPayment = 0;
         }
@@ -315,7 +314,7 @@ class Analyze extends BaseController
         $pricingEnterpriseId = $enterpriseId > 0 ? $enterpriseId : null;
         $standardAmountFen   = $this->getStandardAmountByTestType('resume', $pricingEnterpriseId, $pricingEnterpriseId);
         $requiresPayment     = $standardAmountFen > 0 ? 1 : 0;
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $standardAmountFen = 0;
             $requiresPayment = 0;
         }

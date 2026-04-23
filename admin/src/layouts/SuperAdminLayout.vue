@@ -133,17 +133,7 @@ interface NavItem {
 
 const navMainItems: NavItem[] = [
   { path: '/superadmin/ops', icon: TrendCharts, label: '总览' },
-  {
-    path: '/superadmin/enterprises',
-    icon: OfficeBuilding,
-    label: '企业管理',
-    children: [
-      { path: '/superadmin/enterprises', icon: OfficeBuilding, label: '企业列表' },
-      { path: '/superadmin/soul-articles', icon: Share, label: 'Soul 引流文章' },
-      { path: '/superadmin/mp-tabbar', icon: Setting, label: '小程序底部菜单' },
-      { path: '/superadmin/profit-rules', icon: Share, label: '分账规则' }
-    ]
-  },
+  { path: '/superadmin/enterprises', icon: OfficeBuilding, label: '企业管理' },
   { path: '/superadmin/commerce', icon: ShoppingCart, label: '订单和财务' },
   { path: '/superadmin/distribution', icon: Share, label: '分销管理' },
   { path: '/superadmin/ai-config', icon: Cpu, label: '智能算力' }

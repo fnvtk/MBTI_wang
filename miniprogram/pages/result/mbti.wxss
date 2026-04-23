@@ -1,4 +1,4 @@
-/* pages/result/mbti.wxss（dash 样式见 app.wxss） */
+/* pages/result/mbti.wxss（dash 样式见 app.wxss；邀请码入口样式见 app.wxss → invite-fill-entry） */
 
 .result-page {
   width: 100%;

@@ -783,6 +783,106 @@ custom-tab-bar {
   font-weight: 400;
 }
 
+/* ===== 邀请码横条（与推广中心同源）===== */
+.invite-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin: 8rpx 32rpx 16rpx;
+  padding: 22rpx 26rpx;
+  background: linear-gradient(135deg, #fdf2f8 0%, #fff 50%);
+  border-radius: 20rpx;
+  border: 1rpx solid #fbcfe8;
+}
+.invite-strip:active {
+  opacity: 0.92;
+}
+.invite-strip__text {
+  flex: 1;
+  min-width: 0;
+}
+.invite-strip__label {
+  display: block;
+  font-size: 22rpx;
+  color: #9d174d;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+.invite-strip__code {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #0f172a;
+}
+.invite-strip__side {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8rpx;
+}
+.invite-strip__copy {
+  margin: 0;
+  padding: 0 22rpx;
+  height: 56rpx;
+  line-height: 56rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #ff6b8a 0%, #ec4899 100%);
+  border-radius: 999rpx;
+  border: none;
+}
+.invite-strip__copy::after {
+  border: none;
+}
+.invite-strip__hint {
+  font-size: 20rpx;
+  color: #64748b;
+}
+.invite-strip__muted {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #94a3b8;
+}
+.invite-strip__err {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.4;
+  color: #b45309;
+}
+.invite-strip__retry-hint {
+  font-size: 22rpx;
+  color: #e11d48;
+  font-weight: 600;
+}
+
+.invite-fill-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 32rpx 12rpx;
+  padding: 20rpx 24rpx;
+  background: #fff;
+  border-radius: 16rpx;
+  border: 1rpx solid #e2e8f0;
+  box-shadow: 0 2rpx 12rpx rgba(15, 23, 42, 0.04);
+}
+.invite-fill-row:active {
+  opacity: 0.94;
+}
+.invite-fill-row__label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #334155;
+}
+.invite-fill-row__arrow {
+  font-size: 32rpx;
+  color: #94a3b8;
+}
+
 /* ===== 小节标题（与数据条间距收紧）===== */
 .sec-head {
   display: flex;

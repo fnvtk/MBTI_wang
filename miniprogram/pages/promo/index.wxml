@@ -31,6 +31,40 @@
     </view>
   </view>
 
+  <block wx:if="{{!hideInviteCodeEntry}}">
+  <view class="my-invite-card">
+    <view class="my-invite-card__head">
+      <text class="my-invite-card__title">我的邀请码</text>
+      <view wx:if="{{myInviteCodeLoadState === 'ready' && myInviteCode}}" class="my-invite-card__copy" bindtap="copyMyInviteCode">复制</view>
+      <view wx:elif="{{myInviteCodeLoadState === 'error'}}" class="my-invite-card__retry" bindtap="retryMyInviteCode">重试</view>
+    </view>
+    <block wx:if="{{myInviteCodeLoadState === 'loading'}}">
+      <text class="my-invite-card__code my-invite-card__code--muted">加载中…</text>
+    </block>
+    <block wx:elif="{{myInviteCodeLoadState === 'error'}}">
+      <text class="my-invite-card__err">{{myInviteCodeErrMsg}}</text>
+      <text class="my-invite-card__tip">若提示功能未就绪，请在数据库执行 api/database/add_invite_codes.sql 建表后再试。</text>
+    </block>
+    <block wx:elif="{{myInviteCodeLoadState === 'ready' && myInviteCode}}">
+      <text class="my-invite-card__code" user-select="true">{{myInviteCode}}</text>
+      <text class="my-invite-card__tip">好友在付费解锁前填写此码，即可与你建立推广绑定</text>
+    </block>
+    <block wx:else>
+      <text class="my-invite-card__err">{{myInviteCodeHint}}</text>
+      <text wx:if="{{myInviteCodeLoadState === 'nodata'}}" class="my-invite-card__tip">你可稍后下拉刷新或联系管理员。</text>
+    </block>
+  </view>
+
+  <view class="invite-fill-entry" bindtap="openInviteCodeFill">
+    <text class="invite-fill-entry__icon">🔗</text>
+    <view class="invite-fill-entry__main">
+      <text class="invite-fill-entry__title">填写好友邀请码</text>
+      <text class="invite-fill-entry__sub">绑定推广关系 · 付费前也可在此填写</text>
+    </view>
+    <text class="invite-fill-entry__arrow">›</text>
+  </view>
+  </block>
+
   <!-- 自定义提现金额弹框 -->
   <view class="withdraw-mask" wx:if="{{showWithdrawDialog}}">
     <view class="withdraw-dialog">
@@ -216,4 +250,10 @@
   </view>
 
   <view class="safe-bottom"></view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
 </view>

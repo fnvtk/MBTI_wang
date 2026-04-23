@@ -149,18 +149,20 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'mp-tabbar',
         name: 'SuperAdminMpTabBar',
-        redirect: to => ({
-          path: '/superadmin/enterprises',
-          query: { ...to.query, tab: 'mpTabbar' }
-        })
+        redirect: to => {
+          const q = { ...to.query } as Record<string, unknown>
+          delete q.tab
+          return { path: '/superadmin/enterprises', query: q }
+        }
       },
       {
         path: 'profit-rules',
         name: 'SuperAdminProfitRules',
-        redirect: to => ({
-          path: '/superadmin/enterprises',
-          query: { ...to.query, tab: 'profitRules' }
-        })
+        redirect: to => {
+          const q = { ...to.query } as Record<string, unknown>
+          delete q.tab
+          return { path: '/superadmin/enterprises', query: q }
+        }
       },
       {
         path: 'settings',

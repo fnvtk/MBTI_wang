@@ -1,4 +1,7 @@
 {
-  "navigationBarTitleText": "简历综合分析"
+  "navigationBarTitleText": "简历综合分析",
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
 }
 

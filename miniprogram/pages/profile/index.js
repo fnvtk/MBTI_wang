@@ -4,6 +4,7 @@ const { getTypeOnly } = require('../../utils/resultFormat')
 const { request } = require('../../utils/request')
 const { buildRecoMiniProgramPath } = require('../../utils/recoMiniProgram.js')
 const { isAuditHideAiMode } = require('../../utils/miniprogramAuditGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
 
 /** 与超管「小程序 · 推荐文章展示」中「区块标题」一致；接口无字段时的兜底 */
 const PROFILE_RECO_LABEL_FALLBACK = '我的由来'
@@ -79,7 +80,13 @@ Page({
     profileRecoSectionLabel: '',
     profileRecoArticle: null,
     /** 与神仙 AI 精选推荐同源：配置了 AppID 时优先跳转目标小程序 */
-    profileRecoJump: null
+    profileRecoJump: null,
+    /** 拉取自 /api/distribution/my-invite-code，与推广中心一致 */
+    myInviteCode: '',
+    myInviteCodeLoadState: 'idle',
+    myInviteCodeErrMsg: '',
+    myInviteCodeHint: '',
+    showInviteCodeDialog: false
   },
 
   _computeShowLatestTestRow(d) {
@@ -223,17 +230,125 @@ Page({
 
     // 2. 已登录则从服务端拉取最近记录；失败降级读 localStorage
     if (token || userInfo) {
+      if (token && this.data.permDistribution) {
+        this.setData({ myInviteCodeLoadState: 'loading', myInviteCodeErrMsg: '' })
+      }
       this._loadRecentFromAPI()
       this._loadPromoStats()
+      this._loadMyInviteCode()
       this._loadProfileRecoTeaser()
     } else {
       this.setData({
         profileRecoShow: false,
         profileRecoArticle: null,
         profileRecoSectionLabel: '',
-        profileRecoJump: null
+        profileRecoJump: null,
+        myInviteCode: '',
+        myInviteCodeLoadState: 'idle',
+        myInviteCodeErrMsg: '',
+        myInviteCodeHint: '',
+        showInviteCodeDialog: false
       })
     }
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  _loadMyInviteCode() {
+    const token = app.globalData.token || wx.getStorageSync('token')
+    if (!token || !this.data.permDistribution) {
+      this.setData({
+        myInviteCode: '',
+        myInviteCodeLoadState: 'idle',
+        myInviteCodeErrMsg: '',
+        myInviteCodeHint: ''
+      })
+      return
+    }
+    this.setData({
+      myInviteCodeLoadState: 'loading',
+      myInviteCodeErrMsg: ''
+    })
+    request({
+      url: '/api/distribution/my-invite-code',
+      method: 'GET',
+      success: (res) => {
+        const payload = res && res.data
+        const httpOk = res.statusCode >= 200 && res.statusCode < 300
+        const bizOk = payload && Number(payload.code) === 200
+        if (!httpOk || !bizOk) {
+          const msg =
+            (payload && payload.message) ||
+            (typeof res.statusCode === 'number' ? `请求失败 (${res.statusCode})` : '加载失败')
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeLoadState: 'error',
+            myInviteCodeErrMsg: msg,
+            myInviteCodeHint: ''
+          })
+          return
+        }
+        const data = payload.data || {}
+        const raw = data.code != null ? String(data.code).trim() : ''
+        const code = raw ? raw.toUpperCase() : ''
+        const hint = (data.hint && String(data.hint).trim()) || ''
+        if (code) {
+          this.setData({
+            myInviteCode: code,
+            myInviteCodeLoadState: 'ready',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: ''
+          })
+        } else {
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeLoadState: 'nodata',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: hint || '暂无可用邀请码'
+          })
+        }
+      },
+      fail: () =>
+        this.setData({
+          myInviteCode: '',
+          myInviteCodeLoadState: 'error',
+          myInviteCodeErrMsg: '网络异常',
+          myInviteCodeHint: ''
+        })
+    })
+  },
+
+  onInviteStripTap() {
+    if (this.data.myInviteCodeLoadState === 'error') {
+      this._loadMyInviteCode()
+      return
+    }
+    this.goToPromo()
+  },
+
+  copyMyInviteCode() {
+    const code = (this.data.myInviteCode || '').trim()
+    if (!code) return
+    wx.setClipboardData({
+      data: code,
+      success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' })
+    })
   },
 
   _parseRecoJumpFromDisplay(d) {

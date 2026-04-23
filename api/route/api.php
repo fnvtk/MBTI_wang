@@ -80,6 +80,7 @@ Route::group('api', function () {
     Route::get('orders', 'api.Order/index');
     // 分销
     Route::post('distribution/bind', 'api.Distribution/bind');
+    Route::get('distribution/my-invite-code', 'api.Distribution/myInviteCode');
     Route::get('distribution/stats', 'api.Distribution/stats');
     Route::get('distribution/bindings', 'api.Distribution/bindings');
     Route::get('distribution/commissions', 'api.Distribution/commissions');
@@ -108,6 +109,22 @@ Route::group('api', function () {
     // 无歧义别名（避免网关/旧路由把 my-latest 吞掉或误匹配）
     Route::get('ai/my-report/latest', 'api.AiReport/myLatest');
     // :id 仅匹配数字，避免 my-latest 被误路由到 show 导致 404
+    Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
+    Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
+    Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
+})->middleware(['cors', 'auth']);
+
+// ==================== 兼容 /api/v1 前缀（与上方 api 组同权、同中间件）====================
+// 部分 CDN / 网关 / 旧客户端只放行 /api/v1/*，会导致 POST /api/ai/chat 404；此处镜像神仙 AI 相关路由
+Route::group('api/v1', function () {
+    Route::post('ai/chat', 'api.AiChat/chat');
+    Route::get('ai/chat/job', 'api.AiChat/chatJobStatus');
+    Route::get('ai/conversations', 'api.AiChat/conversations');
+    Route::get('ai/conversations/:id/messages', 'api.AiChat/messages');
+    Route::post('ai/transcribe', 'api.AiChat/transcribe');
+    Route::post('ai/report/create', 'api.AiReport/create');
+    Route::get('ai/report/my-latest', 'api.AiReport/myLatest');
+    Route::get('ai/my-report/latest', 'api.AiReport/myLatest');
     Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
     Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
     Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');

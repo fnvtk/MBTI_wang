@@ -27,8 +27,6 @@
       <Enterprises v-if="activeTab === 'companies'" embedded />
       <Users v-if="activeTab === 'users'" :key="usersRefreshKey" embedded />
       <SoulArticles v-if="activeTab === 'soulArticles'" />
-      <MpTabBar v-if="activeTab === 'mpTabbar'" />
-      <ProfitRules v-if="activeTab === 'profitRules'" />
     </div>
   </div>
 </template>
@@ -41,17 +39,18 @@ import { request } from '@/utils/request'
 import Enterprises from './Enterprises.vue'
 import Users from './Users.vue'
 import SoulArticles from './SoulArticles.vue'
-import MpTabBar from './MpTabBar.vue'
-import ProfitRules from './ProfitRules.vue'
 import SaPageHeader from '@/components/superadmin/SaPageHeader.vue'
 import SaTabs from '@/components/superadmin/SaTabs.vue'
 
-const TAB_IDS = ['companies', 'users', 'soulArticles', 'mpTabbar', 'profitRules'] as const
+const TAB_IDS = ['companies', 'users', 'soulArticles'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
   return (TAB_IDS as readonly string[]).includes(s)
 }
+
+/** 已从页签隐藏的 tab（旧链接兼容） */
+const LEGACY_TAB_IDS = ['mpTabbar', 'profitRules']
 
 const route = useRoute()
 const router = useRouter()
@@ -97,14 +96,28 @@ async function runOrphanMigrate() {
 const innerTabs: { label: string; value: TabId }[] = [
   { label: '企业列表', value: 'companies' },
   { label: '用户总览', value: 'users' },
-  { label: '引流文章', value: 'soulArticles' },
-  { label: '底部菜单', value: 'mpTabbar' },
-  { label: '分账规则', value: 'profitRules' }
+  { label: '引流文章', value: 'soulArticles' }
 ]
 
+function queryWithoutTab(): Record<string, string> {
+  const q: Record<string, string> = {}
+  Object.entries(route.query).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && k !== 'tab') {
+      q[k] = Array.isArray(v) ? String(v[0]) : String(v)
+    }
+  })
+  return q
+}
+
 const applyRouteTab = () => {
-  const t = route.query.tab
-  if (typeof t === 'string' && isTabId(t)) {
+  const t = typeof route.query.tab === 'string' ? route.query.tab : ''
+  if (t && LEGACY_TAB_IDS.includes(t)) {
+    activeTab.value = 'companies'
+    const q = queryWithoutTab()
+    router.replace({ path: '/superadmin/enterprises', query: Object.keys(q).length ? q : {} })
+    return
+  }
+  if (isTabId(t)) {
     activeTab.value = t
   } else {
     activeTab.value = 'companies'

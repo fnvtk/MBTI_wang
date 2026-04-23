@@ -3,7 +3,6 @@ namespace app\controller\api;
 
 use app\BaseController;
 use app\common\service\AiReportService;
-use app\common\service\MiniprogramAuditMode;
 use think\facade\Request;
 
 /**
@@ -22,7 +21,7 @@ class AiReport extends BaseController
     {
         $userId = $this->jwtSubjectUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('功能升级中', 503);
         }
         $conversationId = (int) Request::param('conversationId', 0);
@@ -35,7 +34,7 @@ class AiReport extends BaseController
     public function myLatest()
     {
         try {
-            if (MiniprogramAuditMode::isOn()) {
+            if (miniprogram_audit_mode_on()) {
                 return success(['status' => '']);
             }
             $userId = $this->jwtSubjectUserId();
@@ -57,7 +56,7 @@ class AiReport extends BaseController
     {
         $userId = $this->jwtSubjectUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('报告不存在', 404);
         }
         $r = AiReportService::get((int) $id, $userId);
@@ -93,7 +92,7 @@ class AiReport extends BaseController
     {
         $userId = $this->jwtSubjectUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('功能升级中', 503);
         }
         $r = AiReportService::get((int) $id, $userId);

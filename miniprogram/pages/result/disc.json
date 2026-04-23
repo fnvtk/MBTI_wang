@@ -1,5 +1,8 @@
 {
   "navigationBarTitleText": "DISC结果",
   "navigationBarBackgroundColor": "#3B82F6",
-  "navigationBarTextStyle": "white"
+  "navigationBarTextStyle": "white",
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
 }

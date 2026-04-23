@@ -3,6 +3,7 @@
   "navigationBarBackgroundColor": "#F9FAFB",
   "navigationBarTextStyle": "black",
   "usingComponents": {
-    "custom-tab-bar": "/custom-tab-bar/index"
+    "custom-tab-bar": "/custom-tab-bar/index",
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
   }
 }

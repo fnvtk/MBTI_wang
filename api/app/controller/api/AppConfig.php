@@ -7,7 +7,6 @@ use app\model\PricingConfig as PricingConfigModel;
 use app\common\service\AiCallService;
 use app\common\service\AiChatArticleDisplayService;
 use app\common\service\JwtService;
-use app\common\service\MiniprogramAuditMode;
 use app\common\service\MpTabbarService;
 use think\facade\Db;
 
@@ -278,7 +277,7 @@ class AppConfig extends BaseController
     public function deepPricing()
     {
         $scope = (string) ($this->request->param('scope', 'personal') ?? 'personal');
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return success(['scope' => $scope, 'categories' => []]);
         }
         $categories = $this->normalizeDeepPricingCategories($scope);

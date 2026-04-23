@@ -1,6 +1,7 @@
 /* app.wxss - 全局样式 */
 
 @import "./styles/result-page-dashboard.wxss";
+@import "./styles/invite-fill-entry.wxss";
 
 /* 主题颜色 */
 page {
@@ -193,4 +194,18 @@ page {
 
 .tabbar-pad-fixed {
   bottom: var(--tabbar-pad) !important;
+}
+
+/* 解锁前滚动的留资区锚点 */
+.unlock-gate-anchor {
+  height: 2rpx;
+  width: 100%;
+}
+
+.unlock-gate-anchor-btn-wrap {
+  width: 100%;
+}
+
+.unlock-gate-profile-block {
+  width: 100%;
 }

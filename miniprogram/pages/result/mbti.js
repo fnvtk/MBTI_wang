@@ -7,6 +7,9 @@ const {
   needsResultProfileGate,
   navigateToCompleteProfileAfterPhoneIfNeeded
 } = require('../../utils/phoneAuth.js')
+const unlockGate = require('../../utils/unlockGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 const {
   slicePreviewText,
   slicePreviewList,
@@ -71,7 +74,10 @@ Page({
       { id: 'sec-cta', label: '深度方案', emoji: '💎' }
     ],
     scrollTarget: '',
-    activeSection: ''
+    activeSection: '',
+    showInviteCodeDialog: false,
+    /** 审核/提审时隐藏填写邀请码入口（与 runtime 开关同步） */
+    hideInviteCodeEntry: false
   },
 
   onTapSectionNav(e) {
@@ -118,7 +124,11 @@ Page({
   },
 
   onShow() {
-    this.setData({ hasPhone: hasPhone() })
+    const gd = app.globalData || {}
+    this.setData({
+      hasPhone: hasPhone(),
+      hideInviteCodeEntry: shouldHideInviteCodeEntry(gd)
+    })
     if (this.data.testResultId && this.data.result) {
       this.applyResult(this.data.result)
     } else if (!this.data.testResultId) {
@@ -316,8 +326,9 @@ Page({
   onTapReadFull() {
     try { require('../../utils/analytics').track('tap_read_full', { type: 'mbti' }) } catch (e) {}
     if (this.data.profileGate) {
+      unlockGate.scrollToUnlockAnchor(this, { scrollIntoView: true })
       wx.showToast({
-        title: this.data.hasPhone ? '请先完善头像与昵称' : '请先点击下方「登录解锁全文」',
+        title: this.data.hasPhone ? '请先完善头像与昵称' : '请在上滑区域内完成手机号授权',
         icon: 'none'
       })
       return
@@ -394,20 +405,44 @@ Page({
         wx.showToast({ title: '请先登录', icon: 'none' })
         return
       }
-      payment.purchaseMbtiTest({
-        testResultId: testResultId || undefined,
-        success: () => {
-          wx.showToast({ title: '已解锁完整报告', icon: 'success' })
-          this.setData({ 'payInfo.isPaid': true })
-          this._syncJourney()
-          if (testResultId && !hasReloadedAfterPay) {
-            this.setData({ hasReloadedAfterPay: true })
-            setTimeout(() => this.loadDetail(testResultId), 500)
-          }
-        },
-        fail: () => {}
+      unlockGate.ensureUnlockPrerequisitesBeforePay(this, { scrollIntoView: true }).then((ok) => {
+        if (!ok) return
+        inviteCodeGate.ensureInviteCodeGate(this).then((go) => {
+          if (!go) return
+          payment.purchaseMbtiTest({
+            testResultId: testResultId || undefined,
+            success: () => {
+              wx.showToast({ title: '已解锁完整报告', icon: 'success' })
+              this.setData({ 'payInfo.isPaid': true })
+              this._syncJourney()
+              if (testResultId && !hasReloadedAfterPay) {
+                this.setData({ hasReloadedAfterPay: true })
+                setTimeout(() => this.loadDetail(testResultId), 500)
+              }
+            },
+            fail: () => {}
+          })
+        })
       })
     })
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   // 付费解锁按钮：就地触发微信手机号授权，然后调用 unlockFullReport

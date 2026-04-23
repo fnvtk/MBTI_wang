@@ -8,6 +8,9 @@ const {
   needsResultProfileGate,
   navigateToCompleteProfileAfterPhoneIfNeeded
 } = require('../../utils/phoneAuth.js')
+const unlockGate = require('../../utils/unlockGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
@@ -114,7 +117,9 @@ Page({
     showSbtiFace: true,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    showInviteCodeDialog: false,
+    hideInviteCodeEntry: false
   },
 
   onLoad(options) {
@@ -255,12 +260,14 @@ Page({
   },
 
   onShow() {
-    const ep = app.globalData.enterprisePermissions
+    const gd = app.globalData || {}
+    const ep = gd.enterprisePermissions
     const showSbtiFace = !ep || ep.sbti !== false
     this.setData({
       hasPhone: hasPhone(),
       isProfileComplete: isProfileComplete(),
-      showSbtiFace
+      showSbtiFace,
+      hideInviteCodeEntry: shouldHideInviteCodeEntry(gd)
     })
     if (this.data.showResult) this._syncPhoneLoginGate()
     const tc = app.globalData.textConfig
@@ -534,7 +541,7 @@ Page({
     this.unlockFullReport()
   },
 
-  // 解锁完整报告：发起人脸测试付费（不要求先完善资料）
+  // 解锁完整报告：先留资门禁，再发起人脸测试付费
   unlockFullReport() {
     const { payInfo, testResultId, hasReloadedAfterPay } = this.data
     if (!payInfo.requiresPayment || payInfo.isPaid) return
@@ -544,27 +551,51 @@ Page({
         wx.showToast({ title: '请先登录后再解锁', icon: 'none' })
         return
       }
-      payment.purchaseFaceTest({
-        testResultId,
-        success: () => {
-          wx.showToast({ title: '已解锁完整报告', icon: 'success' })
+      unlockGate.ensureUnlockPrerequisitesBeforePay(this).then((ok) => {
+        if (!ok) return
+        inviteCodeGate.ensureInviteCodeGate(this).then((go) => {
+          if (!go) return
+          payment.purchaseFaceTest({
+            testResultId,
+            success: () => {
+              wx.showToast({ title: '已解锁完整报告', icon: 'success' })
 
-          this.setData({
-            'payInfo.isPaid': true,
-            hasPhone: hasPhone(),
-            isProfileComplete: isProfileComplete()
+              this.setData({
+                'payInfo.isPaid': true,
+                hasPhone: hasPhone(),
+                isProfileComplete: isProfileComplete()
+              })
+
+              if (testResultId && !hasReloadedAfterPay) {
+                this.setData({ hasReloadedAfterPay: true })
+                setTimeout(() => {
+                  this.reloadFullDetail(testResultId)
+                }, 500)
+              }
+            },
+            fail: () => {}
           })
-
-          if (testResultId && !hasReloadedAfterPay) {
-            this.setData({ hasReloadedAfterPay: true })
-            setTimeout(() => {
-              this.reloadFullDetail(testResultId)
-            }, 500)
-          }
-        },
-        fail: () => {}
+        })
       })
     })
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   /** 支付成功后：仅绑定手机号，不重复发起支付 */

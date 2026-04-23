@@ -1,6 +1,8 @@
 // pages/result/resume.js - 简历综合分析结果页
 const app = getApp()
 const payment = require('../../utils/payment')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
 const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
@@ -23,7 +25,9 @@ Page({
     },
     testResultId: 0,
     paying: false,
-    profileGate: false
+    profileGate: false,
+    showInviteCodeDialog: false,
+    hideInviteCodeEntry: false
   },
 
   onLoad(options) {
@@ -56,6 +60,8 @@ Page({
   },
 
   onShow() {
+    const gd = app.globalData || {}
+    this.setData({ hideInviteCodeEntry: shouldHideInviteCodeEntry(gd) })
     const id = this.data.testResultId
     if (id && this.data.profileGate) {
       this.loadFromHistory(String(id))
@@ -246,22 +252,43 @@ Page({
   // 支付解锁
   doPay() {
     if (this.data.paying) return
-    this.setData({ paying: true })
-    const testResultId = this.data.testResultId || 0
-    payment.purchaseResumeAnalysis({
-      testResultId: testResultId > 0 ? testResultId : undefined,
-      success: () => {
-        this.setData({ paying: false, 'payInfo.requiresPayment': false, 'payInfo.isPaid': true })
-        // 支付成功后重新拉取完整内容
-        if (testResultId > 0) {
-          this.loadFromHistory(testResultId)
+    inviteCodeGate.ensureInviteCodeGate(this).then((go) => {
+      if (!go) return
+      this.setData({ paying: true })
+      const testResultId = this.data.testResultId || 0
+      payment.purchaseResumeAnalysis({
+        testResultId: testResultId > 0 ? testResultId : undefined,
+        success: () => {
+          this.setData({ paying: false, 'payInfo.requiresPayment': false, 'payInfo.isPaid': true })
+          // 支付成功后重新拉取完整内容
+          if (testResultId > 0) {
+            this.loadFromHistory(testResultId)
+          }
+        },
+        fail: (err) => {
+          this.setData({ paying: false })
+          wx.showToast({ title: (err && err.message) || '支付失败，请重试', icon: 'none' })
         }
-      },
-      fail: (err) => {
-        this.setData({ paying: false })
-        wx.showToast({ title: (err && err.message) || '支付失败，请重试', icon: 'none' })
-      }
+      })
     })
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   goHome() {

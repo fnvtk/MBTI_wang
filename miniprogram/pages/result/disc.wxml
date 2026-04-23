@@ -33,6 +33,15 @@
         </view>
       </view>
 
+      <view class="invite-fill-entry" wx:if="{{result && !fromShare && !hideInviteCodeEntry}}" bindtap="openInviteCodeFill">
+        <text class="invite-fill-entry__icon">🔗</text>
+        <view class="invite-fill-entry__main">
+          <text class="invite-fill-entry__title">填写好友邀请码</text>
+          <text class="invite-fill-entry__sub">绑定推广关系 · 可选</text>
+        </view>
+        <text class="invite-fill-entry__arrow">›</text>
+      </view>
+
       <!-- 深度洞察 -->
       <block wx:if="{{discInsight}}">
         <view class="section-head" id="sec-insight">
@@ -95,9 +104,11 @@
               <text class="paywall-fake-line">• 职业匹配建议</text>
             </view>
             <view class="paywall-mask"></view>
-            <view class="paywall-btn" bindtap="unlockFullReport">
-              <text class="paywall-btn-main">解锁完整报告</text>
-              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            <view id="unlock-gate-anchor" class="unlock-gate-anchor-btn-wrap">
+              <view class="paywall-btn" bindtap="unlockFullReport">
+                <text class="paywall-btn-main">解锁完整报告</text>
+                <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+              </view>
             </view>
           </view>
         </view>
@@ -137,7 +148,7 @@
       </block>
 
       <!-- 资料门禁预览 -->
-      <view wx:if="{{profileGate && result && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+      <view wx:if="{{profileGate && result && (!payInfo.requiresPayment || payInfo.isPaid)}}" id="unlock-gate-anchor" class="unlock-gate-profile-block">
         <view class="preview-teaser-card" wx:if="{{previewDiscStrengths.length}}">
           <text class="preview-teaser-title">优势摘录（预览约 30%）</text>
           <view class="preview-strength-row" wx:for="{{previewDiscStrengths}}" wx:key="*this">
@@ -262,4 +273,10 @@
       <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
     </view>
   </view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
 </view>

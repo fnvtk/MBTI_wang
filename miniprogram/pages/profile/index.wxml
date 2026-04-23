@@ -96,6 +96,39 @@
     </view>
   </view>
 
+  <!-- <view
+    class="invite-strip"
+    wx:if="{{hasLogin && permDistribution && !reviewMode && !mpAuditMode}}"
+    bindtap="onInviteStripTap"
+  >
+    <view class="invite-strip__text">
+      <text class="invite-strip__label">我的邀请码</text>
+      <text wx:if="{{myInviteCodeLoadState === 'loading'}}" class="invite-strip__muted">加载中…</text>
+      <text wx:elif="{{myInviteCodeLoadState === 'error'}}" class="invite-strip__err">{{myInviteCodeErrMsg}}</text>
+      <text wx:elif="{{myInviteCodeLoadState === 'ready' && myInviteCode}}" class="invite-strip__code">{{myInviteCode}}</text>
+      <text wx:else class="invite-strip__err">{{myInviteCodeHint}}</text>
+    </view>
+    <view class="invite-strip__side">
+      <button
+        wx:if="{{myInviteCodeLoadState === 'ready' && myInviteCode}}"
+        class="invite-strip__copy"
+        hover-class="none"
+        catchtap="copyMyInviteCode"
+      >复制</button>
+      <text wx:elif="{{myInviteCodeLoadState === 'error'}}" class="invite-strip__retry-hint">点击重试</text>
+      <text wx:else class="invite-strip__hint">{{myInviteCodeLoadState === 'loading' ? '请稍候' : '解锁付费前填写 ›'}}</text>
+    </view>
+  </view> -->
+
+  <!-- <view
+    class="invite-fill-row"
+    wx:if="{{hasLogin && permDistribution && !reviewMode && !mpAuditMode}}"
+    bindtap="openInviteCodeFill"
+  >
+    <text class="invite-fill-row__label">我有好友邀请码</text>
+    <text class="invite-fill-row__arrow">›</text>
+  </view> -->
+
   <!-- 我的测评：最新测试横滑 + 功能图标网格（Soul 风：图标网格代替长列表） -->
   <view class="section px-section" wx:if="{{hasLogin}}">
     <view class="sec-head">
@@ -209,6 +242,12 @@
   </view>
 
   <!-- 分销/提现入口已上移至数据条下方（promo-quick-bar） -->
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
 
   <view class="bottom-safe"></view>
   <custom-tab-bar />

@@ -2,5 +2,8 @@
   "navigationBarTitleText": "SBTI结果",
   "navigationBarBackgroundColor": "#f2f7f3",
   "navigationBarTextStyle": "black",
-  "backgroundColor": "#f2f7f3"
+  "backgroundColor": "#f2f7f3",
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
 }

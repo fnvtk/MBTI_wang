@@ -1,6 +1,8 @@
 // pages/promo/index.js
 const app = getApp()
 const { request } = require('../../utils/request')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 
 Page({
   data: {
@@ -30,7 +32,16 @@ Page({
     withdrawAmountInput: '',
     withdrawError: '',
     withdrawFeeYuan: '0.00',
-    withdrawActualYuan: '0.00'
+    withdrawActualYuan: '0.00',
+    myInviteCode: '',
+    myInviteCodeMeta: null,
+    /** loading | ready | error | nodata — 避免因接口失败整块不渲染 */
+    myInviteCodeLoadState: 'loading',
+    myInviteCodeErrMsg: '',
+    myInviteCodeHint: '',
+    showInviteCodeDialog: false,
+    /** 与结果页一致：审核/提审不展示邀请码相关块 */
+    hideInviteCodeEntry: false
   },
 
   onLoad() {
@@ -41,7 +52,10 @@ Page({
           wx.showToast({ title: '请先登录后查看推广中心', icon: 'none' })
           return
         }
+        const hide = shouldHideInviteCodeEntry(app.globalData || {})
+        this.setData({ hideInviteCodeEntry: hide })
         this.loadStats()
+        if (!hide) this.loadMyInviteCode()
         this.loadBindings(true)
       })
       .catch(() => {
@@ -50,8 +64,104 @@ Page({
   },
 
   onShow() {
+    const hide = shouldHideInviteCodeEntry(app.globalData || {})
+    this.setData({ hideInviteCodeEntry: hide })
     const token = app.globalData.token || wx.getStorageSync('token')
-    if (token) this.loadStats()
+    if (token) {
+      this.loadStats()
+      if (!hide) this.loadMyInviteCode()
+    }
+  },
+
+  loadMyInviteCode() {
+    this.setData({
+      myInviteCodeLoadState: 'loading',
+      myInviteCodeErrMsg: ''
+    })
+    request({
+      url: '/api/distribution/my-invite-code',
+      method: 'GET',
+      success: (res) => {
+        const payload = res && res.data
+        const httpOk = res.statusCode >= 200 && res.statusCode < 300
+        const bizOk = payload && Number(payload.code) === 200
+        if (!httpOk || !bizOk) {
+          const msg =
+            (payload && payload.message) ||
+            (typeof res.statusCode === 'number' ? `请求失败 (${res.statusCode})` : '加载失败')
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeMeta: null,
+            myInviteCodeLoadState: 'error',
+            myInviteCodeErrMsg: msg,
+            myInviteCodeHint: ''
+          })
+          return
+        }
+        const data = payload.data || {}
+        const raw = data.code != null ? String(data.code).trim() : ''
+        const code = raw ? raw.toUpperCase() : ''
+        const hint = (data.hint && String(data.hint).trim()) || ''
+        if (code) {
+          this.setData({
+            myInviteCode: code,
+            myInviteCodeMeta: data,
+            myInviteCodeLoadState: 'ready',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: ''
+          })
+        } else {
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeMeta: data,
+            myInviteCodeLoadState: 'nodata',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: hint || '暂无可用邀请码'
+          })
+        }
+      },
+      fail: () => {
+        this.setData({
+          myInviteCode: '',
+          myInviteCodeMeta: null,
+          myInviteCodeLoadState: 'error',
+          myInviteCodeErrMsg: '网络异常，请稍后重试',
+          myInviteCodeHint: ''
+        })
+      }
+    })
+  },
+
+  retryMyInviteCode() {
+    this.loadMyInviteCode()
+  },
+
+  copyMyInviteCode() {
+    const code = (this.data.myInviteCode || '').trim()
+    if (!code) return
+    wx.setClipboardData({
+      data: code,
+      success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' })
+    })
+  },
+
+  /** 填写他人邀请码（与结果页支付前弹框同一组件） */
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   /** 加载推广统计数据 */

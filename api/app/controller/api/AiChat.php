@@ -5,7 +5,6 @@ use app\BaseController;
 use app\common\service\AiCallService;
 use app\common\service\AiChatArticleDisplayService;
 use app\common\service\OutboundPushHookService;
-use app\common\service\MiniprogramAuditMode;
 use app\common\service\ResumeFileExtractService;
 use app\common\service\SoulArticleService;
 use app\model\AiConversation as AiConversationModel;
@@ -176,7 +175,7 @@ class AiChat extends BaseController
     {
         $userId = $this->currentUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('对话功能升级中，请稍后再试', 503);
         }
 
@@ -418,7 +417,7 @@ class AiChat extends BaseController
 
         $jobKey = self::chatJobCacheKey($userId, $jobId);
 
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $msg = '当前为提审模式，对话暂不可用';
             self::jobTableTrySetError($userId, $jobId, $conversationId, $msg);
             Cache::set($jobKey, [
@@ -621,7 +620,7 @@ class AiChat extends BaseController
      */
     public function recommendedArticles()
     {
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return success([
                 'list'      => [],
                 'recoCount' => 0,
@@ -692,7 +691,7 @@ class AiChat extends BaseController
      */
     public function profileArticleTeaser()
     {
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return success([
                 'enabled'                => false,
                 'sectionLabel'           => '',
@@ -764,7 +763,7 @@ class AiChat extends BaseController
      */
     public function quickQuestions()
     {
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return success([
                 'mbtiType'  => '',
                 'nickname'  => '',
@@ -829,7 +828,7 @@ class AiChat extends BaseController
     {
         $userId = $this->currentUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             $page = max(1, (int) Request::get('page', 1));
             $pageSize = min(50, max(1, (int) Request::get('pageSize', 20)));
 
@@ -857,7 +856,7 @@ class AiChat extends BaseController
     {
         $userId = $this->currentUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('会话不存在', 404);
         }
 
@@ -904,7 +903,7 @@ class AiChat extends BaseController
     {
         $userId = $this->currentUserId();
         if ($userId <= 0) return error('请先登录', 401);
-        if (MiniprogramAuditMode::isOn()) {
+        if (miniprogram_audit_mode_on()) {
             return error('功能升级中', 503);
         }
 

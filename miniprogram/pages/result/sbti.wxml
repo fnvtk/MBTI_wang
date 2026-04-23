@@ -33,6 +33,15 @@
         </view>
       </view>
 
+      <view class="invite-fill-entry" wx:if="{{result && !fromShare && !hideInviteCodeEntry}}" bindtap="openInviteCodeFill">
+        <text class="invite-fill-entry__icon">🔗</text>
+        <view class="invite-fill-entry__main">
+          <text class="invite-fill-entry__title">填写好友邀请码</text>
+          <text class="invite-fill-entry__sub">绑定推广关系 · 可选</text>
+        </view>
+        <text class="invite-fill-entry__arrow">›</text>
+      </view>
+
       <!-- 类型插画（若有） -->
       <view class="card main-type-card" wx:if="{{typeImageUrl && !typeImageLoadFailed}}">
         <image
@@ -54,23 +63,25 @@
             <text class="paywall-fake-line">• 匹配度与兜底说明</text>
           </view>
           <view class="paywall-mask"></view>
-          <button
-            class="paywall-btn"
-            wx:if="{{!hasPhone}}"
-            open-type="getPhoneNumber"
-            bindgetphonenumber="onGetPhoneNumberForSbtiPay"
-          >
-            <text class="paywall-btn-main">解锁完整报告</text>
-            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
-          </button>
-          <button
-            class="paywall-btn"
-            wx:elif="{{hasPhone}}"
-            bindtap="unlockFullReport"
-          >
-            <text class="paywall-btn-main">解锁完整报告</text>
-            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
-          </button>
+          <view id="unlock-gate-anchor" class="unlock-gate-anchor-btn-wrap">
+            <button
+              class="paywall-btn"
+              wx:if="{{!hasPhone}}"
+              open-type="getPhoneNumber"
+              bindgetphonenumber="onGetPhoneNumberForSbtiPay"
+            >
+              <text class="paywall-btn-main">解锁完整报告</text>
+              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            </button>
+            <button
+              class="paywall-btn"
+              wx:elif="{{hasPhone}}"
+              bindtap="unlockFullReport"
+            >
+              <text class="paywall-btn-main">解锁完整报告</text>
+              <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+            </button>
+          </view>
         </view>
       </view>
 
@@ -140,7 +151,7 @@
           </view>
         </block>
 
-        <view wx:if="{{profileGate}}" class="card profile-gate-cta-card">
+        <view wx:if="{{profileGate}}" id="unlock-gate-anchor" class="card profile-gate-cta-card">
           <text class="preview-teaser-hint sbti-gate-hint">授权手机号并设置头像、昵称后即可查看全文（与下方按钮为同一条流程）。</text>
           <button
             wx:if="{{!hasPhone}}"
@@ -216,4 +227,10 @@
       <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
     </view>
   </view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
 </view>

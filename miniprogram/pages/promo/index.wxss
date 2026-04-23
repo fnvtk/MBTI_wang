@@ -19,6 +19,70 @@ page {
   margin-bottom: 40rpx;
 }
 
+/* 我的邀请码 */
+.my-invite-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 32rpx;
+  border: 2rpx solid #fce7f3;
+  box-shadow: 0 4rpx 24rpx rgba(244, 63, 94, 0.06);
+}
+.my-invite-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.my-invite-card__title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
+}
+.my-invite-card__copy {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #e11d48;
+  padding: 10rpx 24rpx;
+  background: #fff1f2;
+  border-radius: 999rpx;
+}
+.my-invite-card__code {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #0f172a;
+  margin-bottom: 12rpx;
+}
+.my-invite-card__tip {
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: #64748b;
+}
+.my-invite-card__code--muted {
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: #94a3b8;
+}
+.my-invite-card__err {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #b45309;
+  margin-bottom: 8rpx;
+}
+.my-invite-card__retry {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #e11d48;
+  padding: 10rpx 24rpx;
+  background: #fff1f2;
+  border-radius: 999rpx;
+}
+
 .hero-header-row {
   display: flex;
   justify-content: space-between;

@@ -42,6 +42,19 @@ class Distribution extends BaseController
         $inviterId   = (int) Request::param('inviterId', 0);
         $enterpriseId = Request::param('eid', null);
         $enterpriseId = $enterpriseId !== null ? (int) $enterpriseId : null;
+
+        $inviteCodeRaw = trim((string) Request::param('inviteCode', ''));
+        if ($inviteCodeRaw !== '') {
+            $parsed = $this->resolveInviterFromInviteCode($inviteCodeRaw, $enterpriseId);
+            if ($parsed === null || (int) ($parsed['inviterId'] ?? 0) <= 0) {
+                return error('邀请码无效或已失效', 400);
+            }
+            $inviterId = (int) $parsed['inviterId'];
+            if (array_key_exists('enterpriseId', $parsed) && $parsed['enterpriseId'] !== null && $parsed['enterpriseId'] > 0) {
+                $enterpriseId = (int) $parsed['enterpriseId'];
+            }
+        }
+
         $scope       = $enterpriseId ? 'enterprise' : 'personal';
 
         // 自绑校验
@@ -139,6 +152,77 @@ class Distribution extends BaseController
         }
 
         return success(['expireAt' => $expireAt], '绑定成功');
+    }
+
+    /**
+     * GET /api/distribution/my-invite-code
+     * 返回当前用户名下可用邀请码；若无记录则自动生成一条（便于前端直接展示）
+     */
+    public function myInviteCode()
+    {
+        $user = $this->resolveUser();
+        if (!$user) {
+            return error('未登录', 401);
+        }
+
+        $inviterId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
+        if ($inviterId <= 0) {
+            return error('用户异常', 400);
+        }
+
+        try {
+            $rows = Db::name('invite_codes')
+                ->where('inviterId', $inviterId)
+                ->where('status', 'active')
+                ->order('id', 'asc')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('myInviteCode select: ' . $e->getMessage());
+
+            return error('邀请码功能未就绪，请确认已执行数据库迁移', 503);
+        }
+
+        $now = time();
+        foreach ($rows as $r) {
+            $exp = isset($r['expiresAt']) ? (int) $r['expiresAt'] : 0;
+            if ($exp <= 0 || $exp > $now) {
+                $code = trim((string) ($r['code'] ?? ''));
+                if ($code !== '') {
+                    return success([
+                        'code'       => strtoupper($code),
+                        'createdNew' => false,
+                    ]);
+                }
+            }
+        }
+
+        try {
+            $newCode = $this->generateUniqueInviteCode();
+            Db::name('invite_codes')->insert([
+                'code'           => $newCode,
+                'inviterId'      => $inviterId,
+                'enterpriseId'   => null,
+                'status'         => 'active',
+                'expiresAt'      => null,
+                'remark'         => 'auto_my_invite_code',
+                'createdAt'      => $now,
+                'updatedAt'      => $now,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('myInviteCode insert: ' . $e->getMessage());
+
+            return success([
+                'code'       => null,
+                'createdNew' => false,
+                'hint'       => '暂时无法生成邀请码，请稍后重试或联系管理员',
+            ]);
+        }
+
+        return success([
+            'code'       => $newCode,
+            'createdNew' => true,
+        ]);
     }
 
     /**
@@ -1476,5 +1560,67 @@ class Distribution extends BaseController
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * 活动邀请码 → inviterId（需表 invite_codes，见 database/add_invite_codes.sql）
+     *
+     * @param string      $raw
+     * @param int|null    $requestEnterpriseId 请求里已带的 eid，用于与码上企业校验
+     * @return array{inviterId:int, enterpriseId:int|null}|null
+     */
+    /**
+     * 生成不与 invite_codes.code 冲突的随机码（易辨认字符集）
+     */
+    private function generateUniqueInviteCode(): string
+    {
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $max   = strlen($chars) - 1;
+        for ($attempt = 0; $attempt < 24; $attempt++) {
+            $code = '';
+            for ($i = 0; $i < 8; $i++) {
+                $code .= $chars[random_int(0, $max)];
+            }
+            $exists = Db::name('invite_codes')->where('code', $code)->find();
+            if (!$exists) {
+                return $code;
+            }
+        }
+        throw new \RuntimeException('invite code collision');
+    }
+
+    private function resolveInviterFromInviteCode(string $raw, ?int $requestEnterpriseId): ?array
+    {
+        $norm = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw));
+        if ($norm === '') {
+            return null;
+        }
+        try {
+            $row = Db::name('invite_codes')
+                ->where('code', $norm)
+                ->where('status', 'active')
+                ->find();
+        } catch (\Throwable $e) {
+            Log::warning('invite_codes lookup failed: ' . $e->getMessage());
+
+            return null;
+        }
+        if (!$row) {
+            return null;
+        }
+        $exp = isset($row['expiresAt']) ? (int) $row['expiresAt'] : 0;
+        if ($exp > 0 && $exp < time()) {
+            return null;
+        }
+        $codeEid = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : 0;
+        $codeEid = $codeEid > 0 ? $codeEid : null;
+        if ($requestEnterpriseId !== null && $requestEnterpriseId > 0 && $codeEid !== null && $codeEid !== $requestEnterpriseId) {
+            return null;
+        }
+
+        return [
+            'inviterId'    => (int) ($row['inviterId'] ?? 0),
+            'enterpriseId' => $codeEid,
+        ];
     }
 }

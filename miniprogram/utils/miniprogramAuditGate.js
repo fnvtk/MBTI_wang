@@ -32,6 +32,16 @@ function isAuditHideAiMode(gd) {
   return !!(gd.miniprogramAuditMode || gd.maintenanceMode || gd.reviewMode)
 }
 
+/**
+ * 隐藏「填写邀请码 / 展示我的邀请码」等分销向入口（与「我的」页推广区策略一致：
+ * reviewMode / maintenanceMode / miniprogramAuditMode 任一开启即隐藏）
+ */
+function shouldHideInviteCodeEntry(gd) {
+  if (TEMP_FORCE_SHOW_ALL_HIDDEN_UI) return false
+  if (!gd) return false
+  return !!(gd.reviewMode || gd.maintenanceMode || gd.miniprogramAuditMode)
+}
+
 function redirectIfMiniprogramAudit(message) {
   const app = getApp()
   const gd = app && app.globalData
@@ -67,6 +77,7 @@ module.exports = {
   applyAuditUiOverride,
   shouldHideTabBarHighlightFab,
   isAuditHideAiMode,
+  shouldHideInviteCodeEntry,
   redirectIfMiniprogramAudit,
   ensureRuntimeThenGate
 }
