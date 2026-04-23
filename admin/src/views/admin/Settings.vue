@@ -62,6 +62,71 @@
                 </el-button>
               </div>
             </template>
+
+            <div v-if="isEnterpriseAdmin()" class="coop-embed-section" v-loading="coopLoading">
+              <div class="cunkebao-embed-header">
+                <h4 class="cunkebao-embed-title">合作模式</h4>
+                <p class="hint-muted cunkebao-embed-desc">
+                  用户在本企业版完成简历、面相与 MBTI 后，可择一合作意向；与超管侧配置一致，仅影响本企业。代码为小写英文、数字、下划线（1–32 位），已保存的代码不可改。
+                </p>
+              </div>
+              <div class="coop-embed-toolbar">
+                <el-button type="primary" link @click="addCoopRow">+ 新增合作模式</el-button>
+              </div>
+              <el-table
+                v-if="coopModes.length"
+                :data="coopModes"
+                border
+                size="small"
+                class="w-full"
+                style="width: 100%"
+              >
+                <el-table-column label="代码" width="160">
+                  <template #default="{ row }">
+                    <el-input
+                      v-model="row.code"
+                      size="small"
+                      placeholder="如 partner_project"
+                      :disabled="row.codeLocked"
+                      maxlength="32"
+                      @blur="() => normalizeSettingsCoopCode(row)"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column label="启用" width="78" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.enabled" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="排序" width="104" align="center">
+                  <template #default="{ row }">
+                    <el-input-number v-model="row.sortOrder" :min="0" :max="9999" size="small" controls-position="right" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="标题" min-width="120">
+                  <template #default="{ row }">
+                    <el-input v-model="row.title" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="说明" min-width="160">
+                  <template #default="{ row }">
+                    <el-input v-model="row.description" type="textarea" :rows="2" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="72" align="center" fixed="right">
+                  <template #default="{ $index }">
+                    <el-button type="danger" link size="small" @click="removeCoopRow($index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <p v-else class="hint-muted">暂无配置，可点击「新增合作模式」添加。</p>
+              <div class="save-actions">
+                <el-button type="primary" class="save-btn" :loading="coopSaving" @click="saveCooperationModes">
+                  保存合作模式
+                </el-button>
+              </div>
+            </div>
+
             <template v-if="canConfigureCunkebaoKeys()">
               <div class="cunkebao-embed-section" v-loading="cunkebaoLoading">
                 <div class="cunkebao-embed-header">
@@ -274,6 +339,117 @@ const cunkebaoUnified = reactive({
 const cunkebaoLoading = ref(false)
 const cunkebaoSaving = ref(false)
 
+/** 企业管理员：合作模式 */
+type CoopModeRow = {
+  code: string
+  title: string
+  description: string
+  sortOrder: number
+  enabled: boolean
+  codeLocked: boolean
+}
+
+const coopModes = ref<CoopModeRow[]>([])
+const coopLoading = ref(false)
+const coopSaving = ref(false)
+
+const COOP_CODE_RE = /^[a-z0-9_]{1,32}$/
+
+const normalizeSettingsCoopCode = (row: CoopModeRow) => {
+  row.code = String(row.code || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+}
+
+const addCoopRow = () => {
+  const maxSort = coopModes.value.reduce((m, r) => Math.max(m, Number(r.sortOrder) || 0), 0)
+  coopModes.value.push({
+    code: '',
+    title: '',
+    description: '',
+    sortOrder: maxSort + 10,
+    enabled: true,
+    codeLocked: false
+  })
+}
+
+const removeCoopRow = (index: number) => {
+  coopModes.value = coopModes.value.filter((_, i) => i !== index)
+}
+
+const loadCooperationModes = async () => {
+  if (!isEnterpriseAdmin()) return
+  coopLoading.value = true
+  try {
+    const res: any = await request.get('/admin/enterprise/cooperation-modes')
+    const list = res?.data?.list ?? []
+    coopModes.value = Array.isArray(list)
+      ? list.map((row: any) => ({
+          code: String(row.code || ''),
+          title: String(row.title || ''),
+          description: String(row.description || ''),
+          sortOrder: Number(row.sortOrder) || 0,
+          enabled: !!row.enabled,
+          codeLocked: true
+        }))
+      : []
+  } catch (e: any) {
+    coopModes.value = []
+    ElMessage.error(e?.message || '加载合作模式失败')
+  } finally {
+    coopLoading.value = false
+  }
+}
+
+const saveCooperationModes = async () => {
+  if (!isEnterpriseAdmin()) return
+  const seen = new Set<string>()
+  const modes: Record<string, unknown>[] = []
+  for (const r of coopModes.value) {
+    const code = String(r.code || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '')
+    if (!code) {
+      ElMessage.error('每行需填写模式代码，或先删除空行再保存')
+      return
+    }
+    if (!COOP_CODE_RE.test(code)) {
+      ElMessage.error(`模式代码不合法：${code}（仅 1–32 位小写字母、数字、下划线）`)
+      return
+    }
+    if (seen.has(code)) {
+      ElMessage.error(`模式代码重复：${code}`)
+      return
+    }
+    seen.add(code)
+    modes.push({
+      modeCode: code,
+      enabled: r.enabled,
+      sortOrder: r.sortOrder,
+      title: r.title,
+      description: r.description
+    })
+  }
+  if (modes.length === 0) {
+    ElMessage.error('请至少保留一条合作模式')
+    return
+  }
+  coopSaving.value = true
+  try {
+    const res: any = await request.put('/admin/enterprise/cooperation-modes', { modes })
+    if (res.code === 200) {
+      ElMessage.success('合作模式已保存')
+      await loadCooperationModes()
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    coopSaving.value = false
+  }
+}
+
 const loadCunkebaoKeys = async () => {
   if (!canConfigureCunkebaoKeys()) return
   cunkebaoLoading.value = true
@@ -410,6 +586,7 @@ watch(
     if (tab === 'features') {
       if (isEnterpriseAdmin()) {
         loadAdminPermissions()
+        loadCooperationModes()
       }
       if (canConfigureCunkebaoKeys()) {
         loadCunkebaoKeys()
@@ -427,6 +604,7 @@ onMounted(() => {
   if (activeTab.value === 'features') {
     if (isEnterpriseAdmin()) {
       loadAdminPermissions()
+      loadCooperationModes()
     }
     if (canConfigureCunkebaoKeys()) {
       loadCunkebaoKeys()
@@ -467,6 +645,16 @@ onMounted(() => {
   font-size: 13px;
   color: #6b7280;
   margin: 0;
+}
+
+.coop-embed-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.coop-embed-toolbar {
+  margin-bottom: 10px;
 }
 
 .cunkebao-embed-section {

@@ -12,7 +12,7 @@
       </div>
     </div>
 
-    <div class="profile-summary profile-summary--five">
+    <div class="profile-summary profile-summary--six">
       <div class="summary-card">
         <div class="summary-ic ic-blue">👥</div>
         <div class="summary-body">
@@ -57,6 +57,16 @@
           <div class="summary-label">至少一项测试</div>
           <div class="summary-value">
             {{ profileStats.anyTestCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-coop">🤝</div>
+        <div class="summary-body">
+          <div class="summary-label">已选合作意向</div>
+          <div class="summary-value">
+            {{ profileStats.cooperationCount }}
             <span class="summary-sub">/ {{ pageUserCount }}</span>
           </div>
         </div>
@@ -146,6 +156,20 @@
               <el-tag v-if="row.facePdpType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.facePdpType }}</el-tag>
               <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
             </div>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="合作意向" min-width="150" show-overflow-tooltip>
+          <template #default="{ row }">
+            <div v-if="row.cooperationModeTitle || row.cooperationModeCode" class="coop-cell">
+              <span class="coop-title">{{ row.cooperationModeTitle || row.cooperationModeCode || '—' }}</span>
+              <span
+                v-if="row.cooperationModeCode && row.cooperationModeTitle && row.cooperationModeCode !== row.cooperationModeTitle"
+                class="coop-code"
+              >{{ row.cooperationModeCode }}</span>
+              <div v-if="row.cooperationChosenAt" class="coop-time">{{ formatDate(row.cooperationChosenAt) }}</div>
+            </div>
+            <span v-else class="coop-empty">—</span>
           </template>
         </el-table-column>
 
@@ -751,6 +775,7 @@ const profileStats = computed(() => {
   let mbtiCount = 0
   let sbtiCount = 0
   let anyTestCount = 0
+  let cooperationCount = 0
   for (const u of list) {
     const hasFace = !!(
       u.faceMbtiType ||
@@ -767,8 +792,9 @@ const profileStats = computed(() => {
     if (hasMbti) mbtiCount++
     if (hasSbti) sbtiCount++
     if (hasFace || hasMbti || hasSbti || hasDisc || hasPdp) anyTestCount++
+    if (u.cooperationModeCode || u.cooperationModeTitle || u.cooperationChosenAt) cooperationCount++
   }
-  return { faceCount, mbtiCount, sbtiCount, anyTestCount }
+  return { faceCount, mbtiCount, sbtiCount, anyTestCount, cooperationCount }
 })
 
 async function loadUsers() {
@@ -1242,6 +1268,16 @@ onMounted(() => {
     }
   }
 
+  &.profile-summary--six {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    @media (max-width: 1280px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
   @media (max-width: 900px) {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1278,6 +1314,7 @@ onMounted(() => {
     &.ic-indigo { background: #eef2ff; }
     &.ic-violet { background: #f5f3ff; }
     &.ic-amber { background: #fffbeb; }
+    &.ic-coop { background: #f0fdf4; }
   }
 
   .summary-body {
@@ -1378,6 +1415,29 @@ onMounted(() => {
     td {
       padding: 12px 16px;
     }
+  }
+
+  .coop-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.35;
+  }
+  .coop-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+  }
+  .coop-code {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .coop-time {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .coop-empty {
+    color: #d1d5db;
   }
 
   .user-info-cell {

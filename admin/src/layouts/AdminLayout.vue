@@ -76,7 +76,8 @@ import {
   User,
   ShoppingCart,
   Share,
-  Setting
+  Setting,
+  Connection
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -90,6 +91,7 @@ const navItems = [
   { path: '/admin/users', icon: User, label: '用户运营' },
   { path: '/admin/orders', icon: ShoppingCart, label: '订单运营' },
   { path: '/admin/distribution', icon: Share, label: '分销推广' },
+  { path: '/admin/cooperation-choices', icon: Connection, label: '合作意向' },
   { path: '/admin/settings', icon: Setting, label: '企业设置' },
 ]
 
@@ -102,6 +104,9 @@ const isActive = (path: string) => {
   }
   if (path === '/admin/orders') {
     return route.path === '/admin/orders'
+  }
+  if (path === '/admin/cooperation-choices') {
+    return route.path === '/admin/cooperation-choices'
   }
   return route.path === path
 }

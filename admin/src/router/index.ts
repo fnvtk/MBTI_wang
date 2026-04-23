@@ -48,6 +48,12 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '分销推广' }
       },
       {
+        path: 'cooperation-choices',
+        name: 'AdminCooperationChoices',
+        component: () => import('@/views/admin/CooperationChoices.vue'),
+        meta: { title: '合作意向' }
+      },
+      {
         path: 'questions',
         redirect: { path: '/admin/orders', query: { tab: 'questions' } }
       },

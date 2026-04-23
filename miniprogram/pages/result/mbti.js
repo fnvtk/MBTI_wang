@@ -28,6 +28,7 @@ const {
   markCamera
 } = require('../../utils/resultJourneyState.js')
 const resultScrollSync = require('../../utils/resultSectionScrollSync.js')
+const enterpriseCooperation = require('../../utils/enterpriseCooperation.js')
 
 Page({
   data: {
@@ -77,7 +78,9 @@ Page({
     activeSection: '',
     showInviteCodeDialog: false,
     /** 审核/提审时隐藏填写邀请码入口（与 runtime 开关同步） */
-    hideInviteCodeEntry: false
+    hideInviteCodeEntry: false,
+    showCooperationModal: false,
+    cooperationModes: []
   },
 
   onTapSectionNav(e) {
@@ -136,6 +139,7 @@ Page({
       if (raw) this.applyResult(raw)
     }
     this._syncJourney()
+    enterpriseCooperation.maybeShowCooperationModal(this)
   },
 
   goCompleteProfile() {
@@ -443,6 +447,10 @@ Page({
 
   onInviteCodeSuccess() {
     inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onCooperationSuccess() {
+    this.setData({ showCooperationModal: false, cooperationModes: [] })
   },
 
   // 付费解锁按钮：就地触发微信手机号授权，然后调用 unlockFullReport

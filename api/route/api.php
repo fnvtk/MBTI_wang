@@ -54,6 +54,10 @@ Route::group('api', function () {
     Route::post('enterprise/resume-uploads/set-default', 'api.EnterpriseResume/setDefault');
     Route::post('enterprise/resume-uploads/delete', 'api.EnterpriseResume/delete');
     Route::post('enterprise/resume-uploads', 'api.EnterpriseResume/add');
+    // 企业合作模式（需微信登录且绑定企业）
+    Route::get('enterprise/cooperation-modes', 'api.Cooperation/modes');
+    Route::get('user/cooperation-status', 'api.Cooperation/status');
+    Route::post('user/cooperation-preference', 'api.Cooperation/submitPreference');
     // 小程序用户更新资料
     Route::put('auth/wechat/profile', 'api.Auth/updateWechatProfile');
     // 小程序用户上传图片（头像等）
@@ -203,6 +207,10 @@ Route::group('api/v1/admin', function () {
     // 企业功能开关（企业管理员，受超管 permissionsCeiling 约束）
     Route::get('enterprise/permissions', 'admin.EnterprisePermissions/index');
     Route::put('enterprise/permissions', 'admin.EnterprisePermissions/update');
+    Route::get('enterprise/cooperation-modes', 'admin.EnterpriseCooperation/get');
+    Route::put('enterprise/cooperation-modes', 'admin.EnterpriseCooperation/update');
+    Route::get('enterprise/cooperation-choices/export', 'admin.EnterpriseCooperation/exportChoices');
+    Route::get('enterprise/cooperation-choices', 'admin.EnterpriseCooperation/listChoices');
     
     // 分销管理（企业管理员）
     Route::get('distribution/overview', 'admin.Distribution/overview');
@@ -247,6 +255,10 @@ Route::group('api/v1/superadmin', function () {
     
     // 企业管理（超管专用）
     // 注意：带参数的路由要放在不带参数的路由之前，避免路由匹配冲突
+    Route::get('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/get')->pattern(['id' => '\d+']);
+    Route::put('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/update')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices/export', 'superadmin.EnterpriseCooperation/exportUserChoices')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices', 'superadmin.EnterpriseCooperation/listUserChoices')->pattern(['id' => '\d+']);
     Route::get('enterprises/:id/detail', 'superadmin.Enterprise/detail'); // 详细详情接口
     Route::get('enterprises/:id', 'superadmin.Enterprise/detail');
     Route::get('enterprises', 'superadmin.Enterprise/index');
@@ -406,6 +418,10 @@ Route::group('api/v1', function () {
     
     // 企业管理（超管，兼容旧版）
     // 注意：带参数的路由要放在不带参数的路由之前，避免路由匹配冲突
+    Route::get('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/get')->pattern(['id' => '\d+']);
+    Route::put('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/update')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices/export', 'superadmin.EnterpriseCooperation/exportUserChoices')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices', 'superadmin.EnterpriseCooperation/listUserChoices')->pattern(['id' => '\d+']);
     Route::get('enterprises/:id/detail', 'superadmin.Enterprise/detail'); // 详细详情接口
     Route::get('enterprises/:id', 'superadmin.Enterprise/detail');
     Route::get('enterprises', 'superadmin.Enterprise/index');

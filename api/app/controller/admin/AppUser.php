@@ -170,6 +170,7 @@ class AppUser extends BaseController
             $ent = Db::name('enterprises')->where('id', $enterpriseId)->find();
             $enterpriseName = $ent['name'] ?? ('企业' . $enterpriseId);
         }
+        $coopMap = [];
         if (!empty($ids)) {
             // 测试统计严格按 test_results.enterpriseId 归属企业过滤
             $trBase = Db::name('test_results')->where('userId', 'in', $ids);
@@ -284,6 +285,33 @@ class AppUser extends BaseController
             } catch (\Throwable $e) {
                 $coldFaceMap = [];
             }
+
+            // 本企业下用户合作意向（user_cooperation_choices 唯一 key：userId + enterpriseId）
+            if ($enterpriseId) {
+                try {
+                    $eid = (int) $enterpriseId;
+                    $coopRows = Db::name('user_cooperation_choices')->alias('uc')
+                        ->leftJoin('enterprise_cooperation_modes ecm', 'ecm.enterpriseId = uc.enterpriseId AND ecm.modeCode = uc.modeCode')
+                        ->whereIn('uc.userId', $ids)
+                        ->where('uc.enterpriseId', $eid)
+                        ->field('uc.userId, uc.modeCode, uc.chosenAt, uc.updatedAt, ecm.title as modeTitle')
+                        ->select()
+                        ->toArray();
+                    foreach ($coopRows as $cr) {
+                        $uCo = (int) ($cr['userId'] ?? 0);
+                        if ($uCo > 0) {
+                            $coopMap[$uCo] = [
+                                'modeCode'  => (string) ($cr['modeCode'] ?? ''),
+                                'modeTitle' => (string) ($cr['modeTitle'] ?? ''),
+                                'chosenAt'  => (int) ($cr['chosenAt'] ?? 0),
+                                'updatedAt' => (int) ($cr['updatedAt'] ?? 0),
+                            ];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $coopMap = [];
+                }
+            }
         }
 
         foreach ($list as &$row) {
@@ -317,6 +345,18 @@ class AppUser extends BaseController
             $row['coldFaceScore'] = $cf && $cf['score'] !== null ? (int) $cf['score'] : null;
             $row['coldFaceLevel'] = $cf && !empty($cf['level']) ? (string) $cf['level'] : null;
             $row['coldFaceUpdatedAt'] = $cf ? ($cf['updatedAt'] ?? null) : null;
+
+            $co = $coopMap[$id] ?? null;
+            if ($co && ($co['modeCode'] !== '' || $co['modeTitle'] !== '' || (int) ($co['chosenAt'] ?? 0) > 0)) {
+                $row['cooperationModeCode']  = $co['modeCode'] !== '' ? $co['modeCode'] : null;
+                $row['cooperationModeTitle'] = $co['modeTitle'] !== '' ? $co['modeTitle'] : null;
+                $chAt                        = (int) ($co['chosenAt'] ?? 0);
+                $row['cooperationChosenAt']  = $chAt > 0 ? $chAt : null;
+            } else {
+                $row['cooperationModeCode']  = null;
+                $row['cooperationModeTitle'] = null;
+                $row['cooperationChosenAt']  = null;
+            }
         }
 
         return paginate_response($list, $total, $page, $pageSize);
@@ -431,6 +471,30 @@ class AppUser extends BaseController
         $data['coldFaceScore'] = $coldFace['score'] ?? null;
         $data['coldFaceLevel'] = $coldFace['level'] ?? null;
         $data['coldFaceUpdatedAt'] = $coldFace['updatedAt'] ?? null;
+
+        $data['cooperationModeCode'] = null;
+        $data['cooperationModeTitle'] = null;
+        $data['cooperationChosenAt'] = null;
+        if ($enterpriseId) {
+            try {
+                $cr = Db::name('user_cooperation_choices')->alias('uc')
+                    ->leftJoin('enterprise_cooperation_modes ecm', 'ecm.enterpriseId = uc.enterpriseId AND ecm.modeCode = uc.modeCode')
+                    ->where('uc.userId', $id)
+                    ->where('uc.enterpriseId', (int) $enterpriseId)
+                    ->field('uc.modeCode, uc.chosenAt, ecm.title as modeTitle')
+                    ->find();
+                if ($cr) {
+                    $mc  = trim((string) ($cr['modeCode'] ?? ''));
+                    $mt  = trim((string) ($cr['modeTitle'] ?? ''));
+                    $data['cooperationModeCode']  = $mc !== '' ? $mc : null;
+                    $data['cooperationModeTitle'] = $mt !== '' ? $mt : null;
+                    $chAt = (int) ($cr['chosenAt'] ?? 0);
+                    $data['cooperationChosenAt'] = $chAt > 0 ? $chAt : null;
+                }
+            } catch (\Throwable $e) {
+                // 表未迁移时忽略
+            }
+        }
 
         return success($data);
     }

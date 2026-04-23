@@ -107,5 +107,10 @@
     bind:skip="onInviteCodeSkip"
     bind:success="onInviteCodeSuccess"
   />
+  <cooperation-mode-dialog
+    visible="{{showCooperationModal}}"
+    modes="{{cooperationModes}}"
+    bind:success="onCooperationSuccess"
+  />
 </view>
 

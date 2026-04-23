@@ -5,6 +5,7 @@ const inviteCodeGate = require('../../utils/inviteCodeGate.js')
 const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
 const { triggerTestResultCompleted } = require('../../utils/pushHook')
+const enterpriseCooperation = require('../../utils/enterpriseCooperation.js')
 
 Page({
   data: {
@@ -27,7 +28,9 @@ Page({
     paying: false,
     profileGate: false,
     showInviteCodeDialog: false,
-    hideInviteCodeEntry: false
+    hideInviteCodeEntry: false,
+    showCooperationModal: false,
+    cooperationModes: []
   },
 
   onLoad(options) {
@@ -66,6 +69,7 @@ Page({
     if (id && this.data.profileGate) {
       this.loadFromHistory(String(id))
     }
+    enterpriseCooperation.maybeShowCooperationModal(this)
   },
 
   goCompleteProfile() {
@@ -289,6 +293,10 @@ Page({
 
   onInviteCodeSuccess() {
     inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onCooperationSuccess() {
+    this.setData({ showCooperationModal: false, cooperationModes: [] })
   },
 
   goHome() {

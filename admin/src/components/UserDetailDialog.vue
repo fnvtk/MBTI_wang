@@ -51,6 +51,17 @@
               </div>
             </el-tooltip>
           </div>
+          <div v-if="user.cooperationModeTitle || user.cooperationModeCode" class="ud-coop-box">
+            <div class="ud-coop-box__head"><el-icon><Connection /></el-icon> 合作意向</div>
+            <div class="ud-coop-box__main">{{ user.cooperationModeTitle || user.cooperationModeCode }}</div>
+            <div
+              v-if="user.cooperationModeCode && user.cooperationModeTitle && user.cooperationModeCode !== user.cooperationModeTitle"
+              class="ud-coop-box__code"
+            >
+              {{ user.cooperationModeCode }}
+            </div>
+            <div v-if="user.cooperationChosenAt" class="ud-coop-box__time">选择时间 {{ formatDate(user.cooperationChosenAt) }}</div>
+          </div>
           <div class="ud-dimension-tags" v-if="profileTags.length">
             <div class="ud-dimension-tags__title">维度标签</div>
             <el-tag v-for="t in profileTags" :key="t" size="small" class="ud-dimension-tags__item">{{ t }}</el-tag>
@@ -840,6 +851,44 @@ function openMail(email: string) {
 
 .ud-dimension-tags__item {
   margin: 0 4px 4px 0;
+}
+
+.ud-coop-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+}
+.ud-coop-box__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 6px;
+  .el-icon {
+    font-size: 14px;
+    color: #15803d;
+  }
+}
+.ud-coop-box__main {
+  font-size: 13px;
+  font-weight: 600;
+  color: #14532d;
+  line-height: 1.4;
+}
+.ud-coop-box__code {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  font-family: ui-monospace, monospace;
+}
+.ud-coop-box__time {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
 }
 
 .ud-main-pane {

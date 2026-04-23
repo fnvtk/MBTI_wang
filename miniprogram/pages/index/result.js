@@ -54,6 +54,7 @@ function mergeSceneBlocks(apiData, baseResult) {
   }
 }
 const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
+const enterpriseCooperation = require('../../utils/enterpriseCooperation.js')
 
 Page({
   data: {
@@ -119,7 +120,9 @@ Page({
     reportTitle: '分析报告',
     aiAnalysisText: '智能分析',
     showInviteCodeDialog: false,
-    hideInviteCodeEntry: false
+    hideInviteCodeEntry: false,
+    showCooperationModal: false,
+    cooperationModes: []
   },
 
   onLoad(options) {
@@ -278,6 +281,7 @@ Page({
         aiAnalysisText: tc.aiAnalysisText || '智能分析'
       })
     }
+    enterpriseCooperation.maybeShowCooperationModal(this)
   },
 
   // 面相/骨相 Tab 切换
@@ -596,6 +600,10 @@ Page({
 
   onInviteCodeSuccess() {
     inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onCooperationSuccess() {
+    this.setData({ showCooperationModal: false, cooperationModes: [] })
   },
 
   /** 支付成功后：仅绑定手机号，不重复发起支付 */

@@ -265,7 +265,7 @@
     <el-dialog
       v-model="showEditDialog"
       title="编辑企业"
-      width="440px"
+      width="min(720px, 96vw)"
       class="custom-dialog"
       :show-close="true"
       align-center
@@ -328,6 +328,62 @@
             <div class="perm-switch-item" v-for="p in permItems" :key="p.key">
               <span class="perm-label">{{ p.label }}</span>
               <el-switch v-model="editEnterprise.permissions[p.key]" />
+            </div>
+          </div>
+        </el-form-item>
+
+        <el-form-item label="合作模式（企业版小程序）">
+          <div v-loading="editCoopLoading" class="coop-edit-block">
+            <p class="perm-form-hint">
+              用户在该企业完成简历、面相与 MBTI 后将弹出选择；关闭项不会对用户展示。代码为小写英文、数字、下划线（1–32 位），保存后不可改。
+            </p>
+            <div class="coop-edit-toolbar">
+              <el-button type="primary" link @click="addEditCoopRow">+ 新增合作模式</el-button>
+            </div>
+            <el-table v-if="editCoopModes.length" :data="editCoopModes" border size="small" class="coop-edit-table">
+              <el-table-column label="代码" width="160">
+                <template #default="{ row }">
+                  <el-input
+                    v-model="row.code"
+                    size="small"
+                    placeholder="如 partner_project"
+                    :disabled="row.codeLocked"
+                    maxlength="32"
+                    @blur="() => normalizeCoopCode(row)"
+                  />
+                </template>
+              </el-table-column>
+              <el-table-column label="启用" width="78" align="center">
+                <template #default="{ row }">
+                  <el-switch v-model="row.enabled" />
+                </template>
+              </el-table-column>
+              <el-table-column label="排序" width="104" align="center">
+                <template #default="{ row }">
+                  <el-input-number v-model="row.sortOrder" :min="0" :max="9999" size="small" controls-position="right" />
+                </template>
+              </el-table-column>
+              <el-table-column label="标题" min-width="120">
+                <template #default="{ row }">
+                  <el-input v-model="row.title" size="small" />
+                </template>
+              </el-table-column>
+              <el-table-column label="说明" min-width="160">
+                <template #default="{ row }">
+                  <el-input v-model="row.description" type="textarea" :rows="2" size="small" />
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="72" align="center" fixed="right">
+                <template #default="{ $index }">
+                  <el-button type="danger" link size="small" @click="removeEditCoopRow($index)">删除</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            <p v-else class="hint-muted">暂无配置，可点击「新增合作模式」添加；保存后未包含的旧记录将从数据库删除。</p>
+            <div class="coop-edit-actions">
+              <el-button type="primary" plain size="small" :loading="editCoopSaving" @click="saveEditCooperationModes">
+                保存合作模式
+              </el-button>
             </div>
           </div>
         </el-form-item>
@@ -808,6 +864,119 @@ const inviteQrcodeEnterpriseB64 = ref('')
 const inviteQrcodePersonalB64 = ref('')
 const inviteQrcodeError = ref('')
 
+/** 编辑弹窗：合作模式（GET/PUT enterprises/:id/cooperation-modes） */
+type EditCoopRow = {
+  code: string
+  title: string
+  description: string
+  sortOrder: number
+  enabled: boolean
+  /** 服务端已有记录为 true，保存后代码不可改 */
+  codeLocked: boolean
+}
+
+const editCoopModes = ref<EditCoopRow[]>([])
+const editCoopLoading = ref(false)
+const editCoopSaving = ref(false)
+
+const normalizeCoopCode = (row: EditCoopRow) => {
+  row.code = String(row.code || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+}
+
+const addEditCoopRow = () => {
+  const maxSort = editCoopModes.value.reduce((m, r) => Math.max(m, Number(r.sortOrder) || 0), 0)
+  editCoopModes.value.push({
+    code: '',
+    title: '',
+    description: '',
+    sortOrder: maxSort + 10,
+    enabled: true,
+    codeLocked: false
+  })
+}
+
+const removeEditCoopRow = (index: number) => {
+  editCoopModes.value = editCoopModes.value.filter((_, i) => i !== index)
+}
+
+const loadEditCooperationModes = async () => {
+  const id = currentEditId.value
+  if (!id) return
+  editCoopLoading.value = true
+  try {
+    const res: any = await request.get(`/enterprises/${id}/cooperation-modes`)
+    const list = res?.data?.list ?? []
+    editCoopModes.value = Array.isArray(list)
+      ? list.map((row: any) => ({
+          code: String(row.code || ''),
+          title: String(row.title || ''),
+          description: String(row.description || ''),
+          sortOrder: Number(row.sortOrder) || 0,
+          enabled: !!row.enabled,
+          codeLocked: true
+        }))
+      : []
+  } catch (e: any) {
+    editCoopModes.value = []
+    ElMessage.error(e?.message || '加载合作模式失败')
+  } finally {
+    editCoopLoading.value = false
+  }
+}
+
+const saveEditCooperationModes = async () => {
+  const id = currentEditId.value
+  if (!id) return
+  const COOP_CODE_RE = /^[a-z0-9_]{1,32}$/
+  const seen = new Set<string>()
+  const modes: Record<string, unknown>[] = []
+  for (const r of editCoopModes.value) {
+    const code = String(r.code || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '')
+    if (!code) {
+      ElMessage.error('每行需填写模式代码，或先删除空行再保存')
+      return
+    }
+    if (!COOP_CODE_RE.test(code)) {
+      ElMessage.error(`模式代码不合法：${code}（仅 1–32 位小写字母、数字、下划线）`)
+      return
+    }
+    if (seen.has(code)) {
+      ElMessage.error(`模式代码重复：${code}`)
+      return
+    }
+    seen.add(code)
+    modes.push({
+      modeCode: code,
+      enabled: r.enabled,
+      sortOrder: r.sortOrder,
+      title: r.title,
+      description: r.description
+    })
+  }
+  if (modes.length === 0) {
+    ElMessage.error('请至少保留一条合作模式')
+    return
+  }
+  editCoopSaving.value = true
+  try {
+    const res: any = await request.put(`/enterprises/${id}/cooperation-modes`, { modes })
+    if (res.code === 200) {
+      ElMessage.success('合作模式已保存')
+      await loadEditCooperationModes()
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    editCoopSaving.value = false
+  }
+}
+
 const resetInviteQrcodeDialog = () => {
   inviteDialogEnterprise.value = null
   inviteQrcodeEnterpriseB64.value = ''
@@ -1248,6 +1417,7 @@ const handleEditDialogOpen = async () => {
     
     console.log('表单数据已填充:', editEnterprise)
     pendingEditData.value = null
+    await loadEditCooperationModes()
   }
 }
 
@@ -2198,6 +2368,10 @@ watch([searchTerm, statusFilter], () => {
   color: #6b7280;
   margin: 0 0 10px 0;
   line-height: 1.45;
+}
+
+.coop-edit-toolbar {
+  margin-bottom: 10px;
 }
 
 /* 权限开关组（编辑 / 创建弹窗） */

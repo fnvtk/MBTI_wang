@@ -27,6 +27,7 @@
       <Enterprises v-if="activeTab === 'companies'" embedded />
       <Users v-if="activeTab === 'users'" :key="usersRefreshKey" embedded />
       <SoulArticles v-if="activeTab === 'soulArticles'" />
+      <CooperationChoicesPanel v-if="activeTab === 'cooperation'" />
     </div>
   </div>
 </template>
@@ -39,10 +40,11 @@ import { request } from '@/utils/request'
 import Enterprises from './Enterprises.vue'
 import Users from './Users.vue'
 import SoulArticles from './SoulArticles.vue'
+import CooperationChoicesPanel from './CooperationChoicesPanel.vue'
 import SaPageHeader from '@/components/superadmin/SaPageHeader.vue'
 import SaTabs from '@/components/superadmin/SaTabs.vue'
 
-const TAB_IDS = ['companies', 'users', 'soulArticles'] as const
+const TAB_IDS = ['companies', 'users', 'soulArticles', 'cooperation'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -96,7 +98,8 @@ async function runOrphanMigrate() {
 const innerTabs: { label: string; value: TabId }[] = [
   { label: '企业列表', value: 'companies' },
   { label: '用户总览', value: 'users' },
-  { label: '引流文章', value: 'soulArticles' }
+  { label: '引流文章', value: 'soulArticles' },
+  { label: '合作意向', value: 'cooperation' }
 ]
 
 function queryWithoutTab(): Record<string, string> {

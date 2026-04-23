@@ -11,7 +11,7 @@ VITE_LOG="$LOG_DIR/vite-dev-server.log"
 PHP_PID_FILE="$LOG_DIR/dev-php.pid"
 VITE_PID_FILE="$LOG_DIR/dev-vite.pid"
 API_PORT="${MBTI_API_PORT:-8787}"
-ADMIN_PORT="${MBTI_ADMIN_PORT:-5173}"
+ADMIN_PORT_DESIRED="${MBTI_ADMIN_PORT:-5173}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -48,6 +48,30 @@ done
 [[ -f "$API_PUBLIC/router.php" ]] || die "Missing router.php"
 mkdir -p "$LOG_DIR"
 
+_port_listen_pids() {
+  lsof -tiTCP:"$1" -sTCP:LISTEN 2>/dev/null || true
+}
+
+_pick_next_free_admin_port_from() {
+  local start="$1"
+  local max_jump=80
+  local p="$start"
+  local end=$((start + max_jump))
+  while [[ "$p" -le "$end" ]]; do
+    if [[ -z "$(_port_listen_pids "$p")" ]]; then
+      echo "$p"
+      return 0
+    fi
+    p=$((p + 1))
+  done
+  die "无法在端口 ${start}-${end} 内找到空闲端口（请先关闭多余前端或设置 MBTI_ADMIN_PORT）"
+}
+
+ADMIN_PORT="$(_pick_next_free_admin_port_from "$ADMIN_PORT_DESIRED")"
+if [[ "$ADMIN_PORT" != "$ADMIN_PORT_DESIRED" ]]; then
+  echo "WARN: 端口 ${ADMIN_PORT_DESIRED} 已被占用，前端改用 ${ADMIN_PORT}"
+fi
+
 free_port() {
   local port="$1"
   local pids
@@ -61,7 +85,6 @@ free_port() {
 }
 
 free_port "$API_PORT"
-free_port "$ADMIN_PORT"
 rm -f "$PHP_PID_FILE" "$VITE_PID_FILE"
 
 echo "Starting PHP API on 127.0.0.1:${API_PORT} ..."

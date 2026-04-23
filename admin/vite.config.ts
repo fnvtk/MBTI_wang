@@ -35,7 +35,8 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // 允许局域网访问
     port: Number(process.env.MBTI_ADMIN_PORT) || 5173,
-    strictPort: true, // 端口被占用则直接失败，避免静默改端口导致「打不开」
+    // false：与其它 Vite 项目（如万推同用 5173）并存时，占用则自动用 5174、5175…；请以终端打印的 Local 为准
+    strictPort: false,
     proxy: {
       '/api': {
         // 与 .env.development 配合：VITE_API_BASE_URL 留空时，浏览器请求 /api/* 由这里转发到本机 ThinkPHP

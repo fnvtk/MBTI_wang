@@ -19,7 +19,7 @@ function showBizErrorOnce(message: string) {
 }
 
 // 获取API基础URL（开发环境留空 VITE_API_BASE_URL 时走同源 /api/v1，由 Vite 代理到本机后端）
-const getBaseURL = (): string => {
+export const getApiV1BaseURL = (): string => {
   const raw = import.meta.env.VITE_API_BASE_URL as string | undefined
   const envURL = typeof raw === 'string' ? raw.trim() : ''
   if (envURL) {
@@ -27,6 +27,8 @@ const getBaseURL = (): string => {
   }
   return '/api/v1'
 }
+
+const getBaseURL = getApiV1BaseURL
 
 // 本地连云库时接口可能较慢：开发环境默认放宽；可用 VITE_REQUEST_TIMEOUT_MS 覆盖
 const requestTimeoutMs = (() => {
