@@ -79,6 +79,55 @@
             </div>
           </div>
         </div>
+
+        <!-- 分销排行榜：TOP 分销员 + 邀请与分润 -->
+        <div class="content-card top-agents-card">
+          <div class="card-title">
+            分销排行榜 · TOP {{ topAgents.length || 0 }}
+            <span class="card-title-sub">按累计分润排序 · 近 {{ topAgentsDays }} 天</span>
+          </div>
+          <div class="filter-group top-days-group">
+            <div
+              v-for="d in [7, 30, 90]"
+              :key="d"
+              :class="['filter-item', { active: topAgentsDays === d }]"
+              @click="changeTopAgentsDays(d)"
+            >近 {{ d }} 天</div>
+          </div>
+          <el-table
+            :data="topAgents"
+            class="custom-table"
+            v-loading="loadingTopAgents"
+            empty-text="暂无分销记录"
+          >
+            <el-table-column label="名次" width="72">
+              <template #default="{ $index }">
+                <span
+                  class="rank-badge"
+                  :class="{ 'rank-badge--gold': $index === 0, 'rank-badge--silver': $index === 1, 'rank-badge--bronze': $index === 2 }"
+                >{{ $index + 1 }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="分销员" min-width="200">
+              <template #default="{ row }">
+                <div class="agent-cell">
+                  <el-avatar :src="row.avatar" :size="28" v-if="row.avatar" />
+                  <div>
+                    <div class="agent-name">{{ row.nickname || '未命名' }}</div>
+                    <div class="agent-meta">ID {{ row.userId }} · {{ row.phone || '无手机号' }}</div>
+                  </div>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column label="分享次数" width="110" align="center" prop="shareCount" />
+            <el-table-column label="邀请绑定" width="110" align="center" prop="inviteBound" />
+            <el-table-column label="累计分润(元)" width="150" align="right">
+              <template #default="{ row }">
+                <strong class="amount-positive">¥{{ (Number(row.totalCommissionFen || 0) / 100).toFixed(2) }}</strong>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </div>
 
       <!-- 提现管理 -->
@@ -208,7 +257,7 @@
             <div class="form-grid">
               <div class="form-item">
                 <label>最低提现金额 (元)</label>
-                <el-input-number v-model="minWithdraw" :min="1" :max="200" :precision="2" class="w-full" />
+                <el-input-number v-model="minWithdraw" :min="0.01" :max="200" :precision="2" class="w-full" />
               </div>
               <div class="form-item">
                 <label>最高提现金额 (元)</label>
@@ -266,7 +315,7 @@
           </div>
         </div>
         <div class="save-actions">
-          <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
+          <el-button type="primary" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
         </div>
       </div>
     </div>
@@ -331,10 +380,13 @@ const overview = reactive({
 
 const withdrawals = ref<any[]>([])
 const commissions = ref<any[]>([])
+const topAgents = ref<any[]>([])
+const topAgentsDays = ref(30)
+const loadingTopAgents = ref(false)
 
 const distEnabled = ref(true)
 const promoCenterTitle = ref('推广中心')
-const minWithdraw = ref(1)
+const minWithdraw = ref(0.01)
 const maxWithdraw = ref(0)
 const requireAudit = ref(true)
 const withdrawFee = ref(0)
@@ -345,6 +397,7 @@ const testTypeItems = [
   { key: 'sbti',   label: 'SBTI 测试' },
   { key: 'disc',   label: 'DISC 测试' },
   { key: 'pdp',    label: 'PDP 测试' },
+  { key: 'gaokao', label: '高考志愿报告' },
 ]
 type TestSetting = { enabled: boolean; commissionType: 'ratio' | 'amount'; commissionRate: number; commissionAmount: number; noPayment: boolean }
 const makeDefaultTs = (): TestSetting => ({ enabled: true, commissionType: 'ratio', commissionRate: 90, commissionAmount: 0, noPayment: false })
@@ -354,6 +407,7 @@ const testSettings = reactive<Record<string, TestSetting>>({
   sbti:  makeDefaultTs(),
   disc:  makeDefaultTs(),
   pdp:   makeDefaultTs(),
+  gaokao: makeDefaultTs(),
 })
 
 // 拒绝弹窗
@@ -392,6 +446,26 @@ const loadOverview = async () => {
     const res: any = await request.get('/superadmin/distribution/overview')
     if (res.code === 200 && res.data) Object.assign(overview, res.data)
   } catch (e) {}
+}
+
+// ── 分销 TOP 榜（依赖 /superadmin/analytics/share-stats）
+const loadTopAgents = async () => {
+  loadingTopAgents.value = true
+  try {
+    const res: any = await request.get('/superadmin/analytics/share-stats', {
+      params: { days: topAgentsDays.value, page: 1, pageSize: 20 }
+    })
+    topAgents.value = res?.data?.list || []
+  } catch (e) {
+    topAgents.value = []
+  } finally {
+    loadingTopAgents.value = false
+  }
+}
+
+const changeTopAgentsDays = (d: number) => {
+  topAgentsDays.value = d
+  void loadTopAgents()
 }
 
 // ── 提现列表
@@ -468,7 +542,7 @@ const loadSettings = async () => {
       const d = res.data
       distEnabled.value      = d.enabled ?? true
       promoCenterTitle.value = d.promoCenterTitle ?? '推广中心'
-      minWithdraw.value      = d.minWithdraw ?? 1
+      minWithdraw.value      = d.minWithdraw ?? 0.01
       maxWithdraw.value      = d.maxWithdraw ?? 0
       requireAudit.value     = d.requireAudit !== false
       withdrawFee.value      = d.withdrawFee ?? 0
@@ -508,7 +582,7 @@ const saveSettings = async () => {
 }
 
 watch(activeTab, (t) => {
-  if (t === 'overview')     loadOverview()
+  if (t === 'overview') { loadOverview(); loadTopAgents() }
   else if (t === 'withdrawals') loadWithdrawals()
   else if (t === 'commissions') loadCommissions()
   else if (t === 'settings')    loadSettings()
@@ -518,13 +592,13 @@ watch(withFilter,  () => { if (activeTab.value === 'withdrawals')  loadWithdrawa
 watch(commFilter,  () => { if (activeTab.value === 'commissions')  loadCommissions() })
 
 const refresh = async () => {
-  if (activeTab.value === 'overview')     await loadOverview()
+  if (activeTab.value === 'overview')     { await loadOverview(); await loadTopAgents() }
   else if (activeTab.value === 'withdrawals') await loadWithdrawals()
   else if (activeTab.value === 'commissions') await loadCommissions()
   ElMessage.success('数据已刷新')
 }
 
-onMounted(() => { loadOverview() })
+onMounted(() => { loadOverview(); loadTopAgents() })
 </script>
 
 <style scoped lang="scss">
@@ -545,21 +619,7 @@ onMounted(() => { loadOverview() })
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6; padding: 4px;
-  border-radius: 8px; display: flex; margin-bottom: 24px; width: 100%;
-  .custom-tabs {
-    display: flex; gap: 4px; width: 100%;
-    .tab-item {
-      flex: 1; display: flex; align-items: center; justify-content: center;
-      padding: 8px 0; font-size: 13px; color: #6b7280;
-      cursor: pointer; border-radius: 6px; transition: all 0.2s;
-      white-space: nowrap;
-      &:hover { color: #111827; }
-      &.active { background: #fff; color: #111827; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .overview-section {
   .stats-grid {
@@ -645,7 +705,10 @@ onMounted(() => { loadOverview() })
   &.full-width-card { grid-column: 1 / -1; }
   .setting-list { display: flex; flex-direction: column; gap: 12px; }
   .ts-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid;
+    /* 一行最多 4 个测试佣金卡片 */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
     .ts-card {
       background: #f9fafb; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
       .ts-head {
@@ -694,9 +757,79 @@ onMounted(() => { loadOverview() })
 @media (max-width: 1200px) {
   .overview-section .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .overview-section .two-cols { grid-template-columns: 1fr; }
+  .settings-card .ts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .settings-card .ts-grid { grid-template-columns: 1fr; }
 }
 
 .page-container.is-embedded {
   min-height: auto;
+}
+
+/* 分销 TOP 榜卡 */
+.top-agents-card {
+  margin-top: 16px;
+  padding: 20px;
+
+  .card-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    .card-title-sub {
+      font-size: 12px;
+      color: #6b7280;
+      font-weight: 400;
+    }
+  }
+  .top-days-group {
+    display: inline-flex;
+    gap: 6px;
+    margin: 8px 0 12px;
+    background: #f3f4f6;
+    padding: 4px;
+    border-radius: 10px;
+
+    .filter-item {
+      padding: 6px 14px;
+      font-size: 12px;
+      color: #6b7280;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .filter-item.active {
+      background: #fff;
+      color: #1e40af;
+      font-weight: 600;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #6b7280;
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .rank-badge--gold   { background: linear-gradient(135deg, #fde68a, #f59e0b); color: #78350f; }
+  .rank-badge--silver { background: linear-gradient(135deg, #e5e7eb, #9ca3af); color: #1f2937; }
+  .rank-badge--bronze { background: linear-gradient(135deg, #fecaca, #b45309); color: #fff; }
+
+  .agent-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    .agent-name { font-weight: 600; color: #111827; font-size: 13px; }
+    .agent-meta { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  }
+
+  .amount-positive { color: #d97706; }
 }
 </style>

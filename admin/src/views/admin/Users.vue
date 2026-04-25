@@ -2,8 +2,8 @@
   <div class="page-container">
     <div class="page-header">
       <div class="header-left">
-        <h2>用户数据</h2>
-        <p class="subtitle">按企业用户池分类查看和管理用户数据</p>
+        <h2>用户测试画像</h2>
+        <p class="subtitle">以用户为核心 · 面容分析、MBTI / SBTI / DISC / PDP 分类展示，点标签进对应测评记录</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" size="small" @click="exportData">
@@ -12,8 +12,69 @@
       </div>
     </div>
 
+    <div class="profile-summary profile-summary--six">
+      <div class="summary-card">
+        <div class="summary-ic ic-blue">👥</div>
+        <div class="summary-body">
+          <div class="summary-label">用户数量</div>
+          <div class="summary-value">{{ pageUserCount }}</div>
+          <div class="summary-foot">符合条件的用户共 <strong>{{ total }}</strong> 人</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-teal">🪞</div>
+        <div class="summary-body">
+          <div class="summary-label">已面容 / 面相</div>
+          <div class="summary-value">
+            {{ profileStats.faceCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-indigo">🧠</div>
+        <div class="summary-body">
+          <div class="summary-label">已完成 MBTI</div>
+          <div class="summary-value">
+            {{ profileStats.mbtiCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-violet">🃏</div>
+        <div class="summary-body">
+          <div class="summary-label">已完成 SBTI</div>
+          <div class="summary-value">
+            {{ profileStats.sbtiCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-amber">📊</div>
+        <div class="summary-body">
+          <div class="summary-label">至少一项测试</div>
+          <div class="summary-value">
+            {{ profileStats.anyTestCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-coop">🤝</div>
+        <div class="summary-body">
+          <div class="summary-label">已选合作意向</div>
+          <div class="summary-value">
+            {{ profileStats.cooperationCount }}
+            <span class="summary-sub">/ {{ pageUserCount }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 搜索栏 -->
-    <div class="search-section">
+    <div class="search-section admin-filter-bar">
         <el-input
           v-model="searchTerm"
         placeholder="搜索昵称、手机号、地区、MBTI..."
@@ -26,133 +87,108 @@
             <el-icon><Search /></el-icon>
           </template>
         </el-input>
+        <el-select
+          v-model="coldFaceFilter"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="冷脸分析"
+          class="coldface-select"
+          @change="() => { currentPage = 1; loadUsers() }"
+        >
+          <el-option label="暖" value="warm" />
+          <el-option label="中" value="neutral" />
+          <el-option label="冷" value="cold" />
+        </el-select>
         <el-button type="primary" @click="loadUsers">搜索</el-button>
       </div>
 
     <!-- 用户列表表格 -->
     <div class="table-card">
       <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table">
-        <el-table-column label="用户信息" min-width="180">
+        <el-table-column label="用户" min-width="220">
           <template #default="{ row }">
-            <div class="user-info-cell">
-              <img
-                v-if="displayAvatarUrl(row.avatar)"
-                :src="displayAvatarUrl(row.avatar)"
-                class="user-avatar user-avatar-img"
-                referrerpolicy="no-referrer"
-                alt=""
-              />
-              <div
-                v-else
-                class="user-avatar user-avatar-letter"
-                :style="{ backgroundColor: avatarBgColor(row) }"
-              >
-                {{ avatarLetter(row) }}
+            <div class="user-cell">
+              <div class="user-avatar">
+                <img
+                  v-if="displayAvatarUrl(row.avatar)"
+                  :src="displayAvatarUrl(row.avatar)"
+                  referrerpolicy="no-referrer"
+                  alt=""
+                />
+                <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
+                  {{ avatarLetter(row) }}
+                </span>
               </div>
-              <div class="user-details">
-                <div class="username">{{ row.username || '未设置昵称' }}</div>
-                <div class="openid-line">{{ row.openid || '—' }}</div>
-                <div class="phone-line">{{ row.phone}}</div>
+              <div class="user-meta">
+                <div class="user-name">{{ row.username || '未设置昵称' }}</div>
+                <div class="user-sub">
+                  <span
+                    v-if="row.coldFaceLevel"
+                    :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]"
+                    :title="coldFaceTooltip(row)"
+                  >{{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template></span>
+                  <span v-else class="empty-hint">未测面相</span>
+                </div>
               </div>
             </div>
           </template>
         </el-table-column>
 
-    
-
-        <el-table-column label="人脸分析" width="180" align="center">
+        <el-table-column label="联系方式" min-width="160">
           <template #default="{ row }">
-            <div class="test-results">
-              <template v-if="row.faceMbtiType || row.faceDiscType || row.facePdpType">
-                <el-tag
-                  v-if="row.faceMbtiType"
-                  size="small"
-                  class="result-tag"
-                  type="success"
-                  @click.stop="handleClickTestTag(row, 'face')"
-                >
-                  {{ row.faceMbtiType }}
-                </el-tag>
-                <el-tag
-                  v-if="row.faceDiscType"
-                  size="small"
-                  class="result-tag"
-                  type="info"
-                  @click.stop="handleClickTestTag(row, 'face')"
-                >
-                  {{ row.faceDiscType }}
-                </el-tag>
-                <el-tag
-                  v-if="row.facePdpType"
-                  size="small"
-                  class="result-tag"
-                  type="warning"
-                  @click.stop="handleClickTestTag(row, 'face')"
-                >
-                  {{ row.facePdpType }}
-                </el-tag>
-              </template>
-              <span v-else class="no-test">—</span>
+            <div class="contact-cell">
+              <div class="phone">{{ row.phone || '—' }}</div>
+              <div class="openid-line" :title="row.openid || ''">{{ row.openid ? (String(row.openid).length > 16 ? String(row.openid).slice(0,16) + '…' : row.openid) : '—' }}</div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="MBTI" width="120" align="center">
+        <el-table-column label="测评标签" min-width="220">
           <template #default="{ row }">
             <div class="test-results">
-              <template v-if="row.mbtiType">
-                <el-tag size="small" class="result-tag" @click.stop="handleClickTestTag(row, 'mbti')">
-                  {{ row.mbtiType }}
-                </el-tag>
-              </template>
-              <span v-else class="no-test">—</span>
+              <el-tag v-if="row.mbtiType" size="small" class="result-tag tag-mbti" @click.stop="handleClickTestTag(row, 'mbti')">MBTI · {{ row.mbtiType }}</el-tag>
+              <el-tag v-if="row.sbtiType" size="small" class="result-tag tag-sbti" @click.stop="handleClickTestTag(row, 'sbti')">SBTI · {{ row.sbtiType }}</el-tag>
+              <el-tag v-if="row.discType" size="small" class="result-tag tag-disc" type="info" @click.stop="handleClickTestTag(row, 'disc')">DISC · {{ row.discType }}</el-tag>
+              <el-tag v-if="row.pdpType" size="small" class="result-tag tag-pdp" type="warning" @click.stop="handleClickTestTag(row, 'pdp')">PDP · {{ row.pdpType }}</el-tag>
+              <el-tag v-if="row.faceMbtiType" size="small" class="result-tag tag-face" type="success" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceMbtiType }}</el-tag>
+              <el-tag v-if="row.faceDiscType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceDiscType }}</el-tag>
+              <el-tag v-if="row.facePdpType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.facePdpType }}</el-tag>
+              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="PDP" width="120" align="center">
+        <el-table-column label="合作意向" min-width="150" show-overflow-tooltip>
           <template #default="{ row }">
-            <div class="test-results">
-              <template v-if="row.pdpType">
-                <el-tag
-                  size="small"
-                  class="result-tag"
-                  type="warning"
-                  @click.stop="handleClickTestTag(row, 'pdp')"
-                >
-                  {{ row.pdpType }}
-                </el-tag>
-              </template>
-              <span v-else class="no-test">—</span>
+            <div v-if="row.cooperationModeTitle || row.cooperationModeCode" class="coop-cell">
+              <span class="coop-title">{{ row.cooperationModeTitle || row.cooperationModeCode || '—' }}</span>
+              <span
+                v-if="row.cooperationModeCode && row.cooperationModeTitle && row.cooperationModeCode !== row.cooperationModeTitle"
+                class="coop-code"
+              >{{ row.cooperationModeCode }}</span>
+              <div v-if="row.cooperationChosenAt" class="coop-time">{{ formatDate(row.cooperationChosenAt) }}</div>
+            </div>
+            <span v-else class="coop-empty">—</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column label="测评次数 · 最近活跃" width="180">
+          <template #default="{ row }">
+            <div class="activity-cell">
+              <div class="activity-row">测评 <strong>{{ row.testCount || 0 }}</strong> 次</div>
+              <div class="activity-row sub">{{ row.lastTestAt ? formatDate(row.lastTestAt) : '—' }}</div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="DISC" width="120" align="center">
-          <template #default="{ row }">
-            <div class="test-results">
-              <template v-if="row.discType">
-                <el-tag
-                  size="small"
-                  class="result-tag"
-                  type="info"
-                  @click.stop="handleClickTestTag(row, 'disc')"
-                >
-                  {{ row.discType }}
-                </el-tag>
-              </template>
-              <span v-else class="no-test">—</span>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="注册时间" width="150">
+        <el-table-column label="注册时间" width="130">
           <template #default="{ row }">
             <span class="time-cell">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="100" fixed="right">
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
             <el-button link @click="handleView(row)">
               <el-icon><View /></el-icon>
@@ -171,7 +207,7 @@
           v-model:current-page="currentPage"
           :page-size="pageSize"
           :total="total"
-          layout="prev, pager, next"
+          layout="total, prev, pager, next"
           @current-change="handlePageChange"
         />
       </div>
@@ -713,6 +749,7 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = 10
 const searchTerm = ref('')
+const coldFaceFilter = ref<string[]>([])
 const showDetailDialog = ref(false)
 const detailUser = ref<Record<string, any> | null>(null)
 
@@ -729,6 +766,37 @@ const currentTestType = computed(() => (currentTest.value?.testType || '').toLow
 
 const users = ref<any[]>([])
 
+const pageUserCount = computed(() => (users.value || []).length)
+
+/** 页内画像汇总（严格只遍历当前表格 users，与分页接口返回的本页 list 一致） */
+const profileStats = computed(() => {
+  const list = users.value || []
+  let faceCount = 0
+  let mbtiCount = 0
+  let sbtiCount = 0
+  let anyTestCount = 0
+  let cooperationCount = 0
+  for (const u of list) {
+    const hasFace = !!(
+      u.faceMbtiType ||
+      u.faceDiscType ||
+      u.facePdpType ||
+      u.faceType ||
+      u.coldFaceLevel
+    )
+    const hasMbti = !!u.mbtiType
+    const hasSbti = !!u.sbtiType
+    const hasDisc = !!u.discType
+    const hasPdp = !!u.pdpType
+    if (hasFace) faceCount++
+    if (hasMbti) mbtiCount++
+    if (hasSbti) sbtiCount++
+    if (hasFace || hasMbti || hasSbti || hasDisc || hasPdp) anyTestCount++
+    if (u.cooperationModeCode || u.cooperationModeTitle || u.cooperationChosenAt) cooperationCount++
+  }
+  return { faceCount, mbtiCount, sbtiCount, anyTestCount, cooperationCount }
+})
+
 async function loadUsers() {
   loading.value = true
   try {
@@ -737,13 +805,17 @@ async function loadUsers() {
         pageSize,
         keyword: searchTerm.value
       }
+    if (coldFaceFilter.value.length > 0) {
+      params.coldFaceLevel = coldFaceFilter.value.join(',')
+    }
     const res: any = await request.get('/admin/app-users', { params })
-    const list = res.data?.list ?? res?.list ?? []
+    const payload = res.data ?? res
+    const list = Array.isArray(payload?.list) ? payload.list : Array.isArray(payload) ? payload : []
     users.value = list.map((row: any) => ({
       ...row,
       username: row.username ?? row.nickname ?? ('用户' + row.id)
     }))
-    total.value = res.data?.total ?? res?.total ?? 0
+    total.value = Number(payload?.total ?? 0) || 0
   } catch {
     users.value = []
     total.value = 0
@@ -771,6 +843,20 @@ function avatarBgColor(row: { username?: string; nickname?: string }) {
   let hash = 0
   for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i)
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length]
+}
+
+function coldFaceLabel(level: string | null | undefined) {
+  if (level === 'cold') return '冷'
+  if (level === 'warm') return '暖'
+  if (level === 'neutral') return '中'
+  return ''
+}
+
+function coldFaceTooltip(row: any) {
+  const parts: string[] = []
+  if (row?.coldFaceScore != null) parts.push(`冷脸分：${row.coldFaceScore}`)
+  if (row?.coldFaceUpdatedAt) parts.push(`更新于 ${formatDate(row.coldFaceUpdatedAt)}`)
+  return parts.join(' · ') || '尚未完成面相分析'
 }
 
 function formatPhone(phone: string) {
@@ -1169,11 +1255,112 @@ onMounted(() => {
   }
 }
 
+.profile-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+
+  &.profile-summary--five {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    @media (max-width: 1100px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  &.profile-summary--six {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    @media (max-width: 1280px) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    border: 1px solid #eef2f7;
+    border-radius: 10px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    transition: all 0.2s;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.08);
+    }
+  }
+
+  .summary-ic {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+
+    &.ic-blue { background: #eff6ff; }
+    &.ic-teal { background: #f0fdfa; }
+    &.ic-indigo { background: #eef2ff; }
+    &.ic-violet { background: #f5f3ff; }
+    &.ic-amber { background: #fffbeb; }
+    &.ic-coop { background: #f0fdf4; }
+  }
+
+  .summary-body {
+    min-width: 0;
+  }
+
+  .summary-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+  }
+
+  .summary-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: #111827;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+
+    .summary-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: #9ca3af;
+      margin-left: 6px;
+    }
+  }
+
+  .summary-foot {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #6b7280;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+}
+
 .search-section {
   margin-bottom: 20px;
   display: flex;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+
+  .coldface-select {
+    width: 180px;
+  }
 
   .search-input {
     flex: 1;
@@ -1228,6 +1415,29 @@ onMounted(() => {
     td {
       padding: 12px 16px;
     }
+  }
+
+  .coop-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.35;
+  }
+  .coop-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #111827;
+  }
+  .coop-code {
+    font-size: 12px;
+    color: #6b7280;
+  }
+  .coop-time {
+    font-size: 12px;
+    color: #9ca3af;
+  }
+  .coop-empty {
+    color: #d1d5db;
   }
 
   .user-info-cell {
@@ -1294,12 +1504,42 @@ onMounted(() => {
 
     .result-tag {
       font-size: 12px;
+      cursor: pointer;
   }
+
+    :deep(.tag-sbti.el-tag) {
+      --el-tag-bg-color: #f5f3ff;
+      --el-tag-border-color: #ddd6fe;
+      --el-tag-text-color: #5b21b6;
+    }
 
     .no-test {
     font-size: 13px;
       color: #9ca3af;
     }
+  }
+
+  .contact-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    .phone { color: #0f172a; font-size: 13px; font-weight: 500; }
+    .openid-line { color: #94a3b8; font-size: 11px; font-family: 'SF Mono', Menlo, monospace; }
+  }
+
+  .activity-cell {
+    font-size: 13px;
+    color: #334155;
+
+    strong {
+      color: #4f46e5;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .activity-row.sub { color: #94a3b8; font-size: 12px; margin-top: 2px; }
   }
 
   .time-cell {

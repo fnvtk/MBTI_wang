@@ -2,5 +2,7 @@
   "navigationBarTitleText": "PDP结果",
   "navigationBarBackgroundColor": "#F59E0B",
   "navigationBarTextStyle": "white",
-  "usingComponents": {}
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
 }

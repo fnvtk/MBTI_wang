@@ -1,6 +1,7 @@
 // pages/test/sbti.js — SBTI：服务端全量拉题 + 组卷（闸口 DG1/DG2）+ sbtiEngine 计分
 const { fetchQuestionBank } = require('../../utils/questionBank')
 const { buildShuffledPaper, getVisibleQuestions, computeSbtiResult } = require('../../utils/sbtiEngine')
+const { afterTestSubmitNavigate } = require('../../utils/phoneAuth')
 const app = getApp()
 
 const SBTI_TIME_SEC = 45 * 60
@@ -256,11 +257,8 @@ Page({
 
     app.saveTestResult('sbti', resultData).then((extra) => {
       const rid = extra && extra.id
-      if (rid) {
-        wx.redirectTo({ url: `/pages/result/sbti?id=${rid}&type=sbti` })
-      } else {
-        wx.redirectTo({ url: '/pages/result/sbti' })
-      }
+      const target = rid ? `/pages/result/sbti?id=${rid}&type=sbti` : '/pages/result/sbti'
+      afterTestSubmitNavigate(target)
     })
   },
 

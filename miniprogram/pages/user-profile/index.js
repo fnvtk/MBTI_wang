@@ -1,7 +1,7 @@
 // pages/user-profile/index.js - 个人资料页
 const app = getApp()
 const { request } = require('../../utils/request')
-const { bindPhoneByCode } = require('../../utils/phoneAuth')
+const { bindPhoneByCode, isReportProfileComplete } = require('../../utils/phoneAuth')
 
 Page({
   data: {
@@ -20,7 +20,16 @@ Page({
     saving: false
   },
 
-  onLoad() {
+  onLoad(options) {
+    const raw = options && options.redirect ? String(options.redirect) : ''
+    if (raw) {
+      try {
+        const redirect = decodeURIComponent(raw)
+        if (redirect.charAt(0) === '/') {
+          app.globalData._navigateAfterProfile = redirect
+        }
+      } catch (e) {}
+    }
     this.loadUserInfo()
   },
 
@@ -28,6 +37,20 @@ Page({
     // 从其他页返回时刷新
     if (app.globalData.userInfo) {
       this.loadUserInfo()
+    }
+    this._flushPendingNavigate()
+  },
+
+  _flushPendingNavigate() {
+    const pending = app.globalData._navigateAfterProfile
+    if (
+      pending &&
+      typeof pending === 'string' &&
+      pending.startsWith('/') &&
+      isReportProfileComplete()
+    ) {
+      app.globalData._navigateAfterProfile = ''
+      wx.redirectTo({ url: pending, fail: () => {} })
     }
   },
 
@@ -124,7 +147,7 @@ Page({
     }
     bindPhoneByCode(code).then((user) => {
       const phone = ((user && (user.phone || user.phoneNumber)) || '').trim()
-      this.setData({ phone })
+      this.setData({ phone }, () => this._flushPendingNavigate())
     }).catch(() => {})
   },
 
@@ -213,6 +236,7 @@ Page({
           app.globalData.userInfo = updated
           wx.setStorageSync('userInfo', updated)
           wx.showToast({ title: '已保存', icon: 'success' })
+          setTimeout(() => this._flushPendingNavigate(), 400)
         } else {
           wx.showToast({ title: payload?.message || '保存失败', icon: 'none' })
         }

@@ -1,6 +1,7 @@
 // pages/test/pdp.js
 const { loadQuestions } = require('../../utils/questionBank')
 const { pdpDescriptions } = require('../../utils/descriptions')
+const { afterTestSubmitNavigate } = require('../../utils/phoneAuth')
 const app = getApp()
 
 const PDP_TIME_SEC = 15 * 60
@@ -204,14 +205,11 @@ Page({
     if (app && typeof app.saveTestResult === 'function') {
       app.saveTestResult('pdp', resultData).then((extra) => {
         const rid = extra && extra.id
-        if (rid) {
-          wx.redirectTo({ url: `/pages/result/pdp?id=${rid}&type=pdp` })
-        } else {
-          wx.redirectTo({ url: '/pages/result/pdp' })
-        }
+        const target = rid ? `/pages/result/pdp?id=${rid}&type=pdp` : '/pages/result/pdp'
+        afterTestSubmitNavigate(target)
       })
     } else {
-      wx.redirectTo({ url: '/pages/result/pdp' })
+      afterTestSubmitNavigate('/pages/result/pdp')
     }
   },
 

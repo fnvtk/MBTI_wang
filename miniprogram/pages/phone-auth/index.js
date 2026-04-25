@@ -47,7 +47,7 @@ Page({
           wx.setStorageSync('userInfo', newUser)
           wx.showToast({ title: '授权成功', icon: 'success' })
           const nextPath = this.data.next && this.data.next.startsWith('/') ? this.data.next : ''
-          const tabBarPaths = ['/pages/index/index', '/pages/index/camera', '/pages/profile/index']
+          const tabBarPaths = ['/pages/index/index', '/pages/index/camera', '/pages/ai-chat/index', '/pages/profile/index']
           const isTabBar = tabBarPaths.some(p => nextPath === p || nextPath.startsWith(p + '?'))
           if (nextPath) {
             setTimeout(() => {

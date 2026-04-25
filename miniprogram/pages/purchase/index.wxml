@@ -10,13 +10,9 @@
     </view>
     <text class="success-dialog-title">{{successModal.title}}</text>
     <text class="success-dialog-content">{{successModal.content}}</text>
-    <view wx:if="{{successModal.wechat}}" class="success-wechat-wrap">
-      <text class="success-wechat-label">客服微信</text>
-      <text class="success-wechat-val">{{successModal.wechat}}</text>
-    </view>
-    <view class="success-dialog-btns">
-      <button wx:if="{{successModal.wechat}}" class="success-btn-copy" bindtap="copyWechat">复制微信号</button>
-      <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
+    <text class="success-dialog-hint">顾问将通过您预留的联系方式与您沟通，请留意来电或短信。</text>
+    <view class="success-dialog-btns success-dialog-btns--single">
+      <button class="success-btn-close success-btn-close--primary" bindtap="closeSuccessModal">我知道了</button>
     </view>
   </view>
 </view>
@@ -27,9 +23,19 @@
     <text class="loading-text">加载中...</text>
   </view>
 
+  <view wx:elif="{{loadError}}" class="purchase-error-state">
+    <view class="purchase-error-ic">⚠️</view>
+    <text class="purchase-error-title">加载失败</text>
+    <text class="purchase-error-msg">{{loadErrorMsg || '网络异常，请检查后重试'}}</text>
+    <view class="purchase-error-btn" bindtap="retryLoad">重新加载</view>
+    <text class="purchase-error-hint">若持续失败，请在微信中关闭小程序后再次打开</text>
+  </view>
+
   <block wx:else>
-    <view class="deep-intro">
-      <text class="deep-intro-text">先选服务类型，查看说明与权益；具体安排可在下一步与顾问沟通确认。</text>
+    <view class="deep-hero">
+      <text class="deep-hero__eyebrow">UNDERSTAND YOURSELF · 了解自己</text>
+      <text class="deep-hero__title">更深入地看见你自己</text>
+      <text class="deep-hero__desc">{{deepHeroDesc}}</text>
     </view>
 
     <view class="tabs-container deep-tabs">
@@ -69,7 +75,7 @@
           data-tab="personal"
           data-index="{{index}}"
         >
-          <text class="button-text">下一步</text>
+          <text class="button-text">{{item.purchaseButtonText || '了解自己并付款'}}</text>
         </button>
         <button
           class="purchase-button primary"
@@ -78,7 +84,7 @@
           data-tab="personal"
           data-index="{{index}}"
         >
-          <text class="button-text">下一步</text>
+          <text class="button-text">{{item.purchaseButtonText || '了解自己并付款'}}</text>
         </button>
       </view>
       <view wx:if="{{!loading && activeTab === 'personal' && personalCategories.length === 0}}" class="empty-tip">
@@ -113,7 +119,7 @@
           data-tab="enterprise"
           data-index="{{index}}"
         >
-          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+          <text class="button-text">{{item.buttonText || '申请咨询并降低30%成本'}}</text>
         </button>
         <button
           class="purchase-button secondary"
@@ -122,7 +128,7 @@
           data-tab="enterprise"
           data-index="{{index}}"
         >
-          <text class="button-text">{{item.buttonText || '预约沟通'}}</text>
+          <text class="button-text">{{item.buttonText || '申请咨询并降低30%成本'}}</text>
         </button>
       </view>
       <view wx:if="{{!loading && activeTab === 'enterprise' && enterpriseCategories.length === 0}}" class="empty-tip">
@@ -133,15 +139,15 @@
     <view class="safety-tips">
       <view class="safety-item">
         <text class="safety-icon">🔒</text>
-        <text class="safety-text">流程在微信内完成</text>
+        <text class="safety-text">全程微信</text>
       </view>
       <view class="safety-item">
-        <text class="safety-icon">✅</text>
-        <text class="safety-text">顾问跟进确认</text>
+        <text class="safety-icon">💼</text>
+        <text class="safety-text">顾问联络</text>
       </view>
       <view class="safety-item">
-        <text class="safety-icon">📞</text>
-        <text class="safety-text">支持咨询与售后</text>
+        <text class="safety-icon">🧑‍💼</text>
+        <text class="safety-text">降本30%+</text>
       </view>
     </view>
   </block>

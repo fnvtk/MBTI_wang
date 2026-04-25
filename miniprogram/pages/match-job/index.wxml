@@ -1,0 +1,150 @@
+<!--pages/match-job/index.wxml 匹配工作：性格画像同「我的」+ 简历 + 面相 + AI 综合分析（紧凑一屏优先）-->
+<view class="match-page">
+  <scroll-view class="match-scroll" scroll-y>
+    <view class="match-container">
+
+      <view class="match-hero">
+        <text class="match-hero__eyebrow">MATCH JOB · AI</text>
+        <text class="match-hero__title">简历 + 性格画像</text>
+        <text class="match-hero__desc">上传简历；性格数据与「我的」页一致（含面相）。点击底部按钮生成岗位匹配建议。</text>
+      </view>
+
+      <view class="match-steps">
+        <view class="match-step">
+          <view class="match-step__no">1</view>
+          <view class="match-step__body">
+            <text class="match-step__title">性格 / 面相</text>
+            <text class="match-step__desc">问卷或底部「拍摄」面相，至少一项</text>
+          </view>
+          <text class="match-step__state {{hasAnyTest ? 'match-step__state--done' : ''}}">{{hasAnyTest ? '已就绪' : '未完成'}}</text>
+        </view>
+        <view class="match-step">
+          <view class="match-step__no">2</view>
+          <view class="match-step__body">
+            <text class="match-step__title">简历文件</text>
+            <text class="match-step__desc">PDF / Word / 图片，≤10MB</text>
+          </view>
+          <text class="match-step__state {{resumeUrl ? 'match-step__state--done' : ''}}">{{resumeUrl ? '已上传' : '待上传'}}</text>
+        </view>
+        <view class="match-step">
+          <view class="match-step__no">3</view>
+          <view class="match-step__body">
+            <text class="match-step__title">AI 综合分析</text>
+            <text class="match-step__desc">结合简历与测评/面相</text>
+          </view>
+          <text class="match-step__state {{analyzed ? 'match-step__state--done' : ''}}">{{analyzed ? '已生成' : '未生成'}}</text>
+        </view>
+      </view>
+
+      <view class="match-card match-card--tight">
+        <view class="match-card__head">
+          <text class="match-card__title">我的性格画像</text>
+          <text class="match-card__sub" bindtap="goToTestSelect">问卷 ›</text>
+        </view>
+        <view class="match-tags">
+          <view class="match-tag match-tag--mbti" wx:if="{{mbtiType}}">MBTI · {{mbtiType}}</view>
+          <view class="match-tag match-tag--pdp" wx:if="{{pdpType}}">PDP · {{pdpType}}</view>
+          <view class="match-tag match-tag--disc" wx:if="{{discType}}">DISC · {{discType}}</view>
+          <view class="match-tag match-tag--sbti" wx:if="{{sbtiType}}">SBTI · {{sbtiType}}</view>
+          <view class="match-tag match-tag--face" wx:if="{{faceType}}">面相 · {{faceType}}</view>
+          <view class="match-tag match-tag--empty" wx:if="{{!hasAnyTest}}">暂无数据</view>
+        </view>
+        <view class="match-face-cta" wx:if="{{!hasFaceReport}}">
+          <text class="match-face-cta__hint">面相分析可补充视觉维度，与简历一起参与 AI 综合</text>
+          <view class="match-face-cta__btn" bindtap="goCamera">去拍摄面相</view>
+        </view>
+      </view>
+
+      <view class="match-card match-card--tight" wx:if="{{hasAnyTest}}">
+        <view class="match-card__head match-card__head--tap" bindtap="toggleRuleDetail">
+          <text class="match-card__title">性格 → 岗位参考</text>
+          <text class="match-card__sub">{{showRuleDetail ? '收起' : '展开'}}</text>
+        </view>
+        <view wx:if="{{showRuleDetail}}">
+          <view class="match-rule-row" wx:if="{{mbtiType}}">
+            <text class="match-rule-row__key">MBTI</text>
+            <text class="match-rule-row__val">{{mbtiJobHint || '—'}}</text>
+          </view>
+          <view class="match-rule-row" wx:if="{{pdpType}}">
+            <text class="match-rule-row__key">PDP</text>
+            <text class="match-rule-row__val">{{pdpJobHint || '—'}}</text>
+          </view>
+          <view class="match-rule-row" wx:if="{{discType}}">
+            <text class="match-rule-row__key">DISC</text>
+            <text class="match-rule-row__val">{{discJobHint || '—'}}</text>
+          </view>
+          <view class="match-rule-hint">
+            <text>以下为通用参考，最终以 AI 结合简历的输出为准。</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="match-card match-card--tight">
+        <view class="match-card__head">
+          <text class="match-card__title">简历</text>
+          <text class="match-card__sub" wx:if="{{resumeUrl}}" bindtap="previewResume">预览 ›</text>
+        </view>
+        <view class="match-upload" bindtap="chooseResume">
+          <view class="match-upload__icon">{{resumeUrl ? '📄' : '📤'}}</view>
+          <text class="match-upload__title">{{resumeUrl ? (resumeFileName || '已上传') : '点击上传 / 替换'}}</text>
+          <text class="match-upload__sub">{{resumeUrl ? '可替换为新版本' : 'PDF / Word / 图片'}}</text>
+        </view>
+      </view>
+
+      <view class="match-card match-card--tight" wx:if="{{analyzeResult}}">
+        <view class="match-card__head">
+          <text class="match-card__title">AI 综合分析</text>
+          <text class="match-card__sub" wx:if="{{analyzeResult.score != null}}">{{analyzeResult.score}}%</text>
+        </view>
+
+        <view class="match-fit-card" wx:if="{{analyzeResult.fitRoles.length}}">
+          <text class="match-fit-card__title">岗位方向</text>
+          <view class="match-fit-list">
+            <view class="match-fit-item" wx:for="{{analyzeResult.fitRoles}}" wx:key="*this">
+              <text class="match-fit-item__no">★</text>
+              <text class="match-fit-item__name">{{item}}</text>
+            </view>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.summary}}">
+          <text class="match-block__label">摘要</text>
+          <text class="match-block__text">{{analyzeResult.summary}}</text>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.strengths.length}}">
+          <text class="match-block__label">亮点</text>
+          <view class="match-chip-row">
+            <text class="match-chip match-chip--good" wx:for="{{analyzeResult.strengths}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.weaknesses.length}}">
+          <text class="match-block__label">注意</text>
+          <view class="match-chip-row">
+            <text class="match-chip match-chip--warn" wx:for="{{analyzeResult.weaknesses}}" wx:key="*this">{{item}}</text>
+          </view>
+        </view>
+
+        <view class="match-block" wx:if="{{analyzeResult.advice}}">
+          <text class="match-block__label">建议</text>
+          <text class="match-block__text">{{analyzeResult.advice}}</text>
+        </view>
+      </view>
+    </view>
+  </scroll-view>
+
+  <view class="match-foot">
+    <button
+      class="match-foot__btn {{(!hasAnyTest || !resumeUrl || analyzing) ? 'match-foot__btn--disabled' : ''}}"
+      bindtap="runAnalyze"
+      disabled="{{!hasAnyTest || !resumeUrl || analyzing}}"
+    >
+      <text wx:if="{{analyzing}}">分析中…</text>
+      <text wx:elif="{{!hasAnyTest}}">请先完成问卷或面相</text>
+      <text wx:elif="{{!resumeUrl}}">请先上传简历</text>
+      <text wx:else>立即 AI 综合分析</text>
+    </button>
+    <text class="match-foot__tip">结果可在「我的订单」回看</text>
+  </view>
+</view>

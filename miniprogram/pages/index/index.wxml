@@ -1,5 +1,5 @@
 <!--pages/index/index.wxml - 首页-->
-<view class="container" style="padding-top: {{navbarHeight}}px;">
+<view class="container tabbar-pad" style="padding-top: {{navbarHeight}}px;">
   <!-- 自定义导航栏 -->
   <view class="custom-navbar" style="padding-top: {{statusBarHeight}}rpx;">
     <view class="navbar-content">
@@ -74,7 +74,7 @@
   </view>
 
   <view class="start-button" bindtap="startCamera">
-    <text class="button-text">{{startButtonText || '开始性格测试'}}</text>
+    <text class="button-text">{{startButtonText || '30秒测出你的性格'}}</text>
   </view>
 
   <!-- 自定义底部导航 -->

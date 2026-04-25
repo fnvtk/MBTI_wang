@@ -174,6 +174,23 @@
           </template>
         </el-table-column>
 
+        <el-table-column label="SBTI" width="120" align="center">
+          <template #default="{ row }">
+            <div class="test-results">
+              <template v-if="row.sbtiType">
+                <el-tag
+                  size="small"
+                  class="result-tag tag-sbti"
+                  @click.stop="handleClickTestTag(row, 'sbti')"
+                >
+                  {{ row.sbtiType }}
+                </el-tag>
+              </template>
+              <span v-else class="no-test">—</span>
+            </div>
+          </template>
+        </el-table-column>
+
         <el-table-column label="PDP" width="120" align="center">
           <template #default="{ row }">
             <div class="test-results">
@@ -1669,6 +1686,12 @@ onMounted(() => {
 
     .result-tag {
       font-size: 12px;
+    }
+
+    :deep(.tag-sbti.el-tag) {
+      --el-tag-bg-color: #f5f3ff;
+      --el-tag-border-color: #ddd6fe;
+      --el-tag-text-color: #5b21b6;
     }
 
     .no-test {

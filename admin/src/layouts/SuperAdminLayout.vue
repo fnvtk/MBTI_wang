@@ -35,21 +35,43 @@
     <aside :class="['layout-sidebar', { 'sidebar-open': sidebarOpen }]">
       <nav class="sidebar-nav">
         <div class="nav-main">
-          <el-button
-            v-for="item in navMainItems"
-            :key="item.path"
-            :class="['nav-item', { active: isActive(item.path) }]"
-            text
-            @click="navigateTo(item.path)"
-          >
-            <el-icon class="nav-icon">
-              <component :is="item.icon" />
-            </el-icon>
-            <span class="nav-label">{{ item.label }}</span>
-          </el-button>
+          <div class="nav-group-label">运营总控</div>
+          <template v-for="item in navMainItems" :key="item.path">
+            <!-- 一级条目 -->
+            <el-button
+              :class="['nav-item', { active: isActive(item.path) || hasActiveChild(item) }]"
+              text
+              @click="onNavClick(item)"
+            >
+              <el-icon class="nav-icon">
+                <component :is="item.icon" />
+              </el-icon>
+              <span class="nav-label">{{ item.label }}</span>
+              <el-icon v-if="item.children && item.children.length" class="nav-arrow">
+                <component :is="isExpanded(item.path) ? ArrowDown : ArrowRight" />
+              </el-icon>
+            </el-button>
+            <!-- 二级子菜单 -->
+            <div
+              v-if="item.children && item.children.length && (isExpanded(item.path) || hasActiveChild(item))"
+              class="nav-sub"
+            >
+              <el-button
+                v-for="sub in item.children"
+                :key="sub.path"
+                :class="['nav-item nav-item--sub', { active: isActive(sub.path) }]"
+                text
+                @click="navigateTo(sub.path)"
+              >
+                <span class="nav-sub-dot"></span>
+                <span class="nav-label">{{ sub.label }}</span>
+              </el-button>
+            </div>
+          </template>
         </div>
 
         <div class="nav-footer-block">
+          <div class="nav-group-label">系统</div>
           <el-button
             v-for="item in navFooterItems"
             :key="item.path"
@@ -91,7 +113,9 @@ import {
   Setting,
   OfficeBuilding,
   Share,
-  Monitor
+  Monitor,
+  ArrowDown,
+  ArrowRight
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -100,7 +124,14 @@ const authStore = useAuthStore()
 
 const sidebarOpen = ref(false)
 
-const navMainItems: { path: string; icon: typeof TrendCharts; label: string }[] = [
+interface NavItem {
+  path: string
+  icon: any
+  label: string
+  children?: NavItem[]
+}
+
+const navMainItems: NavItem[] = [
   { path: '/superadmin/ops', icon: TrendCharts, label: '总览' },
   { path: '/superadmin/enterprises', icon: OfficeBuilding, label: '企业管理' },
   { path: '/superadmin/commerce', icon: ShoppingCart, label: '订单和财务' },
@@ -108,12 +139,38 @@ const navMainItems: { path: string; icon: typeof TrendCharts; label: string }[] 
   { path: '/superadmin/ai-config', icon: Cpu, label: '智能算力' }
 ]
 
-const navFooterItems: { path: string; icon: typeof Setting; label: string }[] = [
+const navFooterItems: NavItem[] = [
   { path: '/superadmin/settings', icon: Setting, label: '系统设置' }
 ]
 
+const expandedPaths = ref<Set<string>>(new Set())
+
 const isActive = (path: string) => {
   return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+const hasActiveChild = (item: NavItem): boolean => {
+  if (!item.children) return false
+  return item.children.some(c => isActive(c.path))
+}
+
+const isExpanded = (p: string) => expandedPaths.value.has(p)
+
+const onNavClick = (item: NavItem) => {
+  if (item.children && item.children.length) {
+    // 有子菜单 → 切换展开
+    if (expandedPaths.value.has(item.path)) {
+      expandedPaths.value.delete(item.path)
+    } else {
+      expandedPaths.value.add(item.path)
+    }
+    // 首次展开时，若当前没选中任何子项，就默认跳第一个子项
+    if (expandedPaths.value.has(item.path) && !hasActiveChild(item)) {
+      navigateTo(item.children[0].path)
+    }
+  } else {
+    navigateTo(item.path)
+  }
 }
 
 const goAdminConsole = () => {
@@ -146,7 +203,7 @@ const handleLogout = async () => {
 <style scoped lang="scss">
 .superadmin-layout {
   min-height: 100vh;
-  background-color: #f9fafb;
+  background-color: #f8fafc;
 }
 
 .layout-header {
@@ -187,12 +244,13 @@ const handleLogout = async () => {
         width: 36px;
         height: 36px;
         border-radius: 8px;
-        background-color: #ef4444;
+        background-image: linear-gradient(135deg, #1E40AF 0%, #3730A3 100%);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-size: 18px;
+        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
       }
 
       .logo-text {
@@ -227,12 +285,12 @@ const handleLogout = async () => {
       }
 
       &.admin-entry {
-        color: #b91c1c;
+        color: #1E40AF;
         font-weight: 600;
       }
 
       &.logout {
-        color: #ef4444;
+        color: #64748b;
       }
 
       .el-icon {
@@ -300,8 +358,8 @@ const handleLogout = async () => {
     }
 
     &.active {
-      background-color: #fef2f2;
-      color: #ef4444;
+      background-color: #E0E7FF;
+      color: #1E40AF;
       font-weight: 600;
 
       &::before {
@@ -311,7 +369,11 @@ const handleLogout = async () => {
         top: 0;
         bottom: 0;
         width: 4px;
-        background-color: #ef4444;
+        background-color: #1E40AF;
+      }
+
+      .nav-icon {
+        color: #1E40AF;
       }
     }
 
@@ -322,6 +384,42 @@ const handleLogout = async () => {
     .nav-label {
       flex: 1;
       text-align: left;
+    }
+
+    .nav-arrow {
+      font-size: 12px;
+      color: #9CA3AF;
+    }
+  }
+
+  .nav-sub {
+    display: flex;
+    flex-direction: column;
+    background: #f9fafb;
+    border-left: 2px solid #e5e7eb;
+    margin: 0 0 4px 24px;
+  }
+
+  .nav-item--sub {
+    height: 40px;
+    padding: 0 20px;
+    font-size: 13px;
+    color: #6B7280;
+
+    .nav-sub-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #D1D5DB;
+    }
+
+    &.active {
+      background-color: #EEF2FF;
+      color: #1E40AF;
+
+      .nav-sub-dot {
+        background: #1E40AF;
+      }
     }
   }
 }

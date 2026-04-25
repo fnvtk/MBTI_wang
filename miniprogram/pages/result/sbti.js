@@ -1,8 +1,27 @@
 // pages/result/sbti.js — SBTI 结果页
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, isReportProfileComplete } = require('../../utils/phoneAuth.js')
+const {
+  hasPhone,
+  bindPhoneByCode,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded
+} = require('../../utils/phoneAuth.js')
+const unlockGate = require('../../utils/unlockGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
+const {
+  slicePreviewText,
+  openTimelineShareHint
+} = require('../../utils/resultProfileGate.js')
+const { decorateSbtiDims, groupSbtiDims, splitSbtiDesc } = require('../../utils/sbtiDisplay.js')
 const { TYPE_IMAGES } = require('../../utils/sbtiEngine.js')
+const {
+  computeJourney,
+  markShared,
+  markCamera
+} = require('../../utils/resultJourneyState.js')
+const resultScrollSync = require('../../utils/resultSectionScrollSync.js')
 
 /** 根据结果类型代码取展示图（与 sbtiData.TYPE_IMAGES 一致） */
 /** 旧版结果仅有 badge / bestNormal，补全 matchPercent、hitDimCount */
@@ -31,12 +50,6 @@ function resolveSbtiTypeImageUrl(result) {
   return typeof url === 'string' ? url : ''
 }
 
-function toProfileLockedSbti(full) {
-  if (!full) return full
-  const code = full.sbtiType || full.finalType?.code || ''
-  return { sbtiType: code, sbtiCn: full.sbtiCn || full.finalType?.cn || '', locked: true }
-}
-
 Page({
   data: {
     result: null,
@@ -55,11 +68,54 @@ Page({
     shareToken: '',
     hasReloadedAfterPay: false,
     hasPhone: false,
-    /** 分享落地（path 带 fs=1 或旧版仅 id+st），用于隐藏「去完善资料」、展示底部「我也要测试」 */
-    fromShare: false
+    /** 分享落地（path 带 fs=1 或旧版仅 id+st），用于隐藏「登录解锁」区、展示底部「我也要测试」 */
+    fromShare: false,
+    profileGate: false,
+    previewSbtiIntro: '',
+    previewSbtiDesc: '',
+    previewSbtiDescParts: [],
+    descParts: [],
+    dimGroups: [],
+    openGroup: '',
+    journey: { step1Unlocked: false, step2Unlocked: false, step3Unlocked: false, activeStep: 1 },
+    sectionNav: [
+      { id: 'sec-hero', label: 'SBTI 画像', emoji: '🎭' },
+      { id: 'sec-desc', label: '人格描述', emoji: '📝' },
+      { id: 'sec-dim', label: '十五维度', emoji: '📊' },
+      { id: 'sec-cta', label: '深度方案', emoji: '💎' }
+    ],
+    scrollTarget: '',
+    activeSection: '',
+    showInviteCodeDialog: false,
+    hideInviteCodeEntry: false
+  },
+
+  onTapSectionNav(e) {
+    const id = e && e.detail && e.detail.id
+    if (!id) return
+    this.setData({ scrollTarget: '', activeSection: id }, () => {
+      this.setData({ scrollTarget: id })
+    })
+  },
+
+  onSectionScroll(e) {
+    resultScrollSync.onScroll(this, e)
+  },
+
+  _syncJourney() {
+    this.setData({
+      journey: computeJourney({
+        profileGate: !!this.data.profileGate,
+        payRequired: !!(this.data.payInfo && this.data.payInfo.requiresPayment),
+        isPaid: !!(this.data.payInfo && this.data.payInfo.isPaid)
+      })
+    })
   },
 
   onLoad(options) {
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {}
     const fromShareFs =
       options && (String(options.fs) === '1' || options.from === 'share')
     const id = options && options.id != null && options.id !== '' ? String(options.id) : ''
@@ -81,8 +137,7 @@ Page({
 
     const raw = wx.getStorageSync('sbtiResult')
     if (raw) {
-      const result = isReportProfileComplete() ? raw : toProfileLockedSbti(raw)
-      this.applyResult(result)
+      this.applyResult(raw)
       this.initPayInfoFromRuntime('sbti')
     } else {
       wx.showToast({ title: '暂无测试结果', icon: 'none' })
@@ -91,16 +146,22 @@ Page({
   },
 
   onShow() {
-    this.setData({ hasPhone: hasPhone() })
-    if (this.data.testResultId) return
-    const raw = wx.getStorageSync('sbtiResult')
-    if (raw) {
-      const result = isReportProfileComplete() ? raw : toProfileLockedSbti(raw)
-      this.applyResult(result)
+    const gd = app.globalData || {}
+    this.setData({
+      hasPhone: hasPhone(),
+      hideInviteCodeEntry: shouldHideInviteCodeEntry(gd)
+    })
+    if (this.data.testResultId && this.data.result) {
+      this.applyResult(this.data.result)
+    } else if (!this.data.testResultId) {
+      const raw = wx.getStorageSync('sbtiResult')
+      if (raw) this.applyResult(raw)
     }
+    this._syncJourney()
   },
 
   goCompleteProfile() {
+    try { require('../../utils/analytics').track('tap_complete_profile', { from: 'sbti' }) } catch (e) {}
     wx.navigateTo({ url: '/pages/user-profile/index' })
   },
 
@@ -124,6 +185,7 @@ Page({
       patch.testResultId = String(payload.id)
     }
     this.setData(patch)
+    this._reportPaywallOnce('sbti', payInfo)
   },
 
   loadDetail(id) {
@@ -180,15 +242,117 @@ Page({
   applyResult(result) {
     if (!result) return
     const normalized = normalizeSbtiResultForDisplay(result)
-    const dimExplainList = (!normalized.locked && normalized.dimExplainList) ? normalized.dimExplainList : []
+    const fromShare = !!this.data.fromShare
+    const profileGate = needsResultProfileGate(fromShare)
+    const src = Array.isArray(normalized.dimExplainList) ? normalized.dimExplainList : []
+    const allowDims = profileGate || !normalized.locked
+    let dimExplainList = []
+    if (src.length && allowDims) {
+      dimExplainList = profileGate
+        ? src.slice(0, Math.max(1, Math.ceil(src.length * 0.3)))
+        : src
+    }
+    dimExplainList = decorateSbtiDims(dimExplainList)
+    const dimGroups = groupSbtiDims(dimExplainList)
+    const descParts = profileGate ? [] : splitSbtiDesc(normalized.desc || '', 12)
+    const previewSbtiDescParts = profileGate ? splitSbtiDesc(slicePreviewText(normalized.desc || '', 0.3), 4) : []
     const typeImageUrl = resolveSbtiTypeImageUrl(normalized)
     this.setData({
       result: normalized,
+      profileGate,
+      previewSbtiIntro: slicePreviewText(normalized.intro || '', 0.3),
+      previewSbtiDesc: slicePreviewText(normalized.desc || '', 0.3),
+      previewSbtiDescParts,
+      descParts,
       dimExplainList,
+      dimGroups,
+      openGroup: dimGroups[0] ? dimGroups[0].key : '',
       typeImageUrl,
       typeImageLoadFailed: false,
       typeImageLoaded: false
     })
+    this._syncJourney()
+  },
+
+  toggleGroup(e) {
+    const key = e.currentTarget.dataset.key
+    if (!key) return
+    this.setData({ openGroup: this.data.openGroup === key ? '' : key })
+  },
+
+  onTapDeepService() {
+    try { require('../../utils/analytics').track('tap_deep_service_from_sbti', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+
+  onTapPromoCenter() {
+    try { require('../../utils/analytics').track('tap_promo_from_sbti', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+
+  onPhoneLoginForResultGate(e) {
+    const { code, errMsg } = e.detail || {}
+    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
+      wx.showToast({ title: '需要授权手机号才能查看完整报告', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '获取手机号失败', icon: 'none' })
+      return
+    }
+    bindPhoneByCode(code)
+      .then(() => {
+        this.setData({ hasPhone: hasPhone() })
+        const r = this.data.result || wx.getStorageSync('sbtiResult')
+        if (r) this.applyResult(r)
+        navigateToCompleteProfileAfterPhoneIfNeeded()
+      })
+      .catch(() => {})
+  },
+
+  onTapReadFull() {
+    try { require('../../utils/analytics').track('tap_read_full', { type: 'sbti' }) } catch (e) {}
+    if (this.data.profileGate) {
+      unlockGate.scrollToUnlockAnchor(this, { scrollIntoView: true })
+      wx.showToast({
+        title: this.data.hasPhone ? '请先完善头像与昵称' : '请在上滑区域内完成手机号授权',
+        icon: 'none'
+      })
+      return
+    }
+    if (this.data.payInfo.requiresPayment && !this.data.payInfo.isPaid) {
+      this.unlockFullReport()
+      return
+    }
+    wx.showToast({ title: '当前已是完整报告', icon: 'none' })
+  },
+
+  onTapShareMoment() {
+    try { require('../../utils/analytics').track('tap_share_moment', { type: 'sbti' }) } catch (e) {}
+    if (!this.data.journey.step1Unlocked) {
+      wx.showToast({ title: '请先解锁全文', icon: 'none' })
+      this.onTapReadFull()
+      return
+    }
+    markShared()
+    this._syncJourney()
+    openTimelineShareHint()
+  },
+
+  onTapFaceCamera() {
+    try { require('../../utils/analytics').track('tap_face_camera', { from: 'sbti' }) } catch (e) {}
+    if (!this.data.journey.step2Unlocked) {
+      wx.showToast({ title: '请先分享朋友圈', icon: 'none' })
+      return
+    }
+    markCamera()
+    this._syncJourney()
+    wx.switchTab({ url: '/pages/index/camera' })
+  },
+
+  goReadFullFromShare() {
+    try { require('../../utils/analytics').track('tap_read_full', { type: 'sbti', from: 'share' }) } catch (e) {}
+    wx.switchTab({ url: '/pages/profile/index' })
   },
 
   onTypeImageLoad() {
@@ -199,6 +363,15 @@ Page({
     this.setData({ typeImageLoadFailed: true, typeImageLoaded: false })
   },
 
+  _reportPaywallOnce(testType, payInfo) {
+    if (!payInfo || !payInfo.requiresPayment || payInfo.isPaid) return
+    if (this._paywallReported) return
+    this._paywallReported = true
+    try {
+      require('../../utils/analytics').track('paywall_view', { type: testType, amountYuan: payInfo.amountYuan })
+    } catch (e) {}
+  },
+
   initPayInfoFromRuntime(testType) {
     app.getRuntimeConfig()
       .then((cfg) => {
@@ -206,13 +379,10 @@ Page({
         const reportRequires = cfg.reportRequiresPayment || {}
         const requiresPayment = !!(reportRequires && reportRequires[testType])
         const amountYuan = Number(pricing[testType]) || (requiresPayment ? 1.98 : 0)
-        this.setData({
-          payInfo: {
-            requiresPayment,
-            isPaid: false,
-            amountYuan
-          }
-        })
+        const payInfo = { requiresPayment, isPaid: false, amountYuan }
+        this.setData({ payInfo })
+        this._reportPaywallOnce(testType, payInfo)
+        this._syncJourney()
       })
       .catch(() => {
         this.setData({
@@ -224,24 +394,50 @@ Page({
   unlockFullReport() {
     const { payInfo, testResultId, hasReloadedAfterPay } = this.data
     if (!payInfo.requiresPayment || payInfo.isPaid) return
+    try { require('../../utils/analytics').track('tap_unlock_full', { type: 'sbti', amountYuan: payInfo.amountYuan }) } catch (e) {}
     app.ensureLogin && app.ensureLogin().then((logged) => {
       if (!logged) {
         wx.showToast({ title: '请先登录', icon: 'none' })
         return
       }
-      payment.purchaseSbtiTest({
-        testResultId: testResultId || undefined,
-        success: () => {
-          wx.showToast({ title: '已解锁完整报告', icon: 'success' })
-          this.setData({ 'payInfo.isPaid': true })
-          if (testResultId && !hasReloadedAfterPay) {
-            this.setData({ hasReloadedAfterPay: true })
-            setTimeout(() => this.loadDetail(testResultId), 500)
-          }
-        },
-        fail: () => {}
+      unlockGate.ensureUnlockPrerequisitesBeforePay(this, { scrollIntoView: true }).then((ok) => {
+        if (!ok) return
+        inviteCodeGate.ensureInviteCodeGate(this).then((go) => {
+          if (!go) return
+          payment.purchaseSbtiTest({
+            testResultId: testResultId || undefined,
+            success: () => {
+              wx.showToast({ title: '已解锁完整报告', icon: 'success' })
+              this.setData({ 'payInfo.isPaid': true })
+              this._syncJourney()
+              if (testResultId && !hasReloadedAfterPay) {
+                this.setData({ hasReloadedAfterPay: true })
+                setTimeout(() => this.loadDetail(testResultId), 500)
+              }
+            },
+            fail: () => {}
+          })
+        })
       })
     })
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   onGetPhoneNumberForSbtiPay(e) {
@@ -264,7 +460,7 @@ Page({
     }
     bindPhoneByCode(code)
       .then(() => {
-        this.setData({ hasPhone: true })
+        this.setData({ hasPhone: hasPhone() })
         this.unlockFullReport()
       })
       .catch(() => {})

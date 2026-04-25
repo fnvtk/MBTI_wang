@@ -1,6 +1,8 @@
 // pages/promo/index.js
 const app = getApp()
 const { request } = require('../../utils/request')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 
 Page({
   data: {
@@ -22,7 +24,7 @@ Page({
     testCommissionRate: '',
     testCommissionAmount: '',
     testNoPayment: false,
-    withdrawMinYuan: '1.00',
+    withdrawMinYuan: '0.01',
     withdrawMaxYuan: '',
     withdrawFeePct: 0,
     requireWithdrawAudit: true,
@@ -30,7 +32,16 @@ Page({
     withdrawAmountInput: '',
     withdrawError: '',
     withdrawFeeYuan: '0.00',
-    withdrawActualYuan: '0.00'
+    withdrawActualYuan: '0.00',
+    myInviteCode: '',
+    myInviteCodeMeta: null,
+    /** loading | ready | error | nodata — 避免因接口失败整块不渲染 */
+    myInviteCodeLoadState: 'loading',
+    myInviteCodeErrMsg: '',
+    myInviteCodeHint: '',
+    showInviteCodeDialog: false,
+    /** 与结果页一致：审核/提审不展示邀请码相关块 */
+    hideInviteCodeEntry: false
   },
 
   onLoad() {
@@ -41,7 +52,10 @@ Page({
           wx.showToast({ title: '请先登录后查看推广中心', icon: 'none' })
           return
         }
+        const hide = shouldHideInviteCodeEntry(app.globalData || {})
+        this.setData({ hideInviteCodeEntry: hide })
         this.loadStats()
+        if (!hide) this.loadMyInviteCode()
         this.loadBindings(true)
       })
       .catch(() => {
@@ -50,8 +64,104 @@ Page({
   },
 
   onShow() {
+    const hide = shouldHideInviteCodeEntry(app.globalData || {})
+    this.setData({ hideInviteCodeEntry: hide })
     const token = app.globalData.token || wx.getStorageSync('token')
-    if (token) this.loadStats()
+    if (token) {
+      this.loadStats()
+      if (!hide) this.loadMyInviteCode()
+    }
+  },
+
+  loadMyInviteCode() {
+    this.setData({
+      myInviteCodeLoadState: 'loading',
+      myInviteCodeErrMsg: ''
+    })
+    request({
+      url: '/api/distribution/my-invite-code',
+      method: 'GET',
+      success: (res) => {
+        const payload = res && res.data
+        const httpOk = res.statusCode >= 200 && res.statusCode < 300
+        const bizOk = payload && Number(payload.code) === 200
+        if (!httpOk || !bizOk) {
+          const msg =
+            (payload && payload.message) ||
+            (typeof res.statusCode === 'number' ? `请求失败 (${res.statusCode})` : '加载失败')
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeMeta: null,
+            myInviteCodeLoadState: 'error',
+            myInviteCodeErrMsg: msg,
+            myInviteCodeHint: ''
+          })
+          return
+        }
+        const data = payload.data || {}
+        const raw = data.code != null ? String(data.code).trim() : ''
+        const code = raw ? raw.toUpperCase() : ''
+        const hint = (data.hint && String(data.hint).trim()) || ''
+        if (code) {
+          this.setData({
+            myInviteCode: code,
+            myInviteCodeMeta: data,
+            myInviteCodeLoadState: 'ready',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: ''
+          })
+        } else {
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeMeta: data,
+            myInviteCodeLoadState: 'nodata',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: hint || '暂无可用邀请码'
+          })
+        }
+      },
+      fail: () => {
+        this.setData({
+          myInviteCode: '',
+          myInviteCodeMeta: null,
+          myInviteCodeLoadState: 'error',
+          myInviteCodeErrMsg: '网络异常，请稍后重试',
+          myInviteCodeHint: ''
+        })
+      }
+    })
+  },
+
+  retryMyInviteCode() {
+    this.loadMyInviteCode()
+  },
+
+  copyMyInviteCode() {
+    const code = (this.data.myInviteCode || '').trim()
+    if (!code) return
+    wx.setClipboardData({
+      data: code,
+      success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' })
+    })
+  },
+
+  /** 填写他人邀请码（与结果页支付前弹框同一组件） */
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
   },
 
   /** 加载推广统计数据 */
@@ -79,7 +189,7 @@ Page({
             testCommissionRate: d.testCommissionRate,
             testCommissionAmount: d.testCommissionAmount,
             testNoPayment: d.testNoPayment,
-            withdrawMinYuan: d.withdrawMinYuan != null ? d.withdrawMinYuan : '1.00',
+            withdrawMinYuan: d.withdrawMinYuan != null ? d.withdrawMinYuan : '0.01',
             withdrawMaxYuan: d.withdrawMaxYuan != null && d.withdrawMaxYuan !== '' ? d.withdrawMaxYuan : '',
             withdrawFeePct: d.withdrawFeePct != null ? d.withdrawFeePct : 0,
             requireWithdrawAudit: d.requireWithdrawAudit !== false,
@@ -150,8 +260,8 @@ Page({
   /** 申请提现：打开自定义金额弹框 */
   handleWithdraw() {
     const balance = parseFloat(this.data.balance)
-    if (balance < 1) {
-      wx.showToast({ title: '余额不足1元，暂无法提现', icon: 'none' })
+    if (!balance || balance <= 0) {
+      wx.showToast({ title: '暂无可提现余额', icon: 'none' })
       return
     }
     const pct = this.data.withdrawFeePct || 0
@@ -198,29 +308,32 @@ Page({
   confirmWithdraw() {
     const balance = parseFloat(this.data.balance)
     const val = parseFloat(this.data.withdrawAmountInput)
-    const minYuan = parseFloat(this.data.withdrawMinYuan) || 1
+    const cfgMin = parseFloat(this.data.withdrawMinYuan)
+    const minYuan = !isNaN(cfgMin) && cfgMin > 0 ? cfgMin : 0.01
     const pct = this.data.withdrawFeePct || 0
 
     if (isNaN(val)) {
       this.setData({ withdrawError: '请输入正确的金额' })
       return
     }
-    if (val < 1) {
-      this.setData({ withdrawError: '单次提现金额至少 1 元' })
+    if (val + 1e-9 < minYuan) {
+      this.setData({ withdrawError: `单次提现金额至少 ¥${minYuan.toFixed(2)}` })
       return
     }
-    if (val > balance) {
+    if (val > balance + 1e-9) {
       this.setData({ withdrawError: '不可超过当前可提现金额' })
       return
     }
     const actualYuan = val - val * pct / 100
-    if (actualYuan < minYuan) {
-      this.setData({ withdrawError: `实际到账金额不得低于最低提现金额 ¥${minYuan.toFixed(2)}` })
+    if (actualYuan + 1e-9 < minYuan) {
+      this.setData({ withdrawError: `实际到账金额不得低于 ¥${minYuan.toFixed(2)}` })
       return
     }
 
-    const amountFen = Math.floor(val * 100)
+    const amountFen = Math.max(1, Math.round(val * 100))
     this.setData({ withdrawError: '' })
+
+    try { require('../../utils/analytics').track('tap_promo_withdraw', { amountFen }) } catch (e) {}
 
     request({
       url: '/api/distribution/withdraw',
@@ -254,11 +367,13 @@ Page({
 
   /** 生成海报 */
   generatePoster() {
+    try { require('../../utils/analytics').track('tap_promo_poster', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/promo/poster' })
   },
 
   /** 分享到朋友圈：引导用户使用右上角菜单 */
   shareToTimeline() {
+    try { require('../../utils/analytics').track('tap_promo_share', { channel: 'timeline_hint' }) } catch (e) {}
     wx.showToast({ title: '请点击右上角 ··· 选择「分享到朋友圈」', icon: 'none', duration: 2500 })
   },
 

@@ -1,7 +1,16 @@
 // pages/index/result.js - AI分析结果页（按旧版模板重构）
 const app = getApp()
 const payment = require('../../utils/payment')
-const { hasPhone, bindPhoneByCode, isProfileComplete } = require('../../utils/phoneAuth.js')
+const {
+  hasPhone,
+  bindPhoneByCode,
+  isProfileComplete,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded
+} = require('../../utils/phoneAuth.js')
+const unlockGate = require('../../utils/unlockGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+const { shouldHideInviteCodeEntry } = require('../../utils/miniprogramAuditGate.js')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const { triggerTestResultCompleted } = require('../../utils/pushHook')
 
@@ -45,6 +54,7 @@ function mergeSceneBlocks(apiData, baseResult) {
   }
 }
 const { getEnterpriseIdForApiPayload } = require('../../utils/enterpriseContext.js')
+const enterpriseCooperation = require('../../utils/enterpriseCooperation.js')
 
 Page({
   data: {
@@ -100,15 +110,26 @@ Page({
     // 是否已在本地拥有手机号（决定是否还需要弹出微信手机号授权）
     hasPhone: false,
     isProfileComplete: false,
+    /** fs=1 等分享落地：不挡手机登录门禁 */
+    fromShare: false,
+    /** 非分享且本会话未 getPhoneNumber 成功：遮挡完整报告 */
+    phoneLoginGate: false,
     /** 企业后台关闭 SBTI 时不展示人脸报告中的 SBTI（与 enterprisePermissions.sbti 一致） */
     showSbtiFace: true,
     analyzingTitle: '正在分析中',
     reportTitle: '分析报告',
-    aiAnalysisText: '智能分析'
+    aiAnalysisText: '智能分析',
+    showInviteCodeDialog: false,
+    hideInviteCodeEntry: false,
+    showCooperationModal: false,
+    cooperationModes: []
   },
 
   onLoad(options) {
     this._payInfoSetByDetail = false
+    try {
+      wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
+    } catch (e) {}
 
     // 加载文案配置（分析中提示、报告标题等）
     const tc = app.globalData.textConfig
@@ -142,7 +163,8 @@ Page({
 
     // 带记录 id：只读库展示，禁止落入 startAnalysis 造成「二次分析」
     if (idStr && (faceType === 'ai' || faceType === 'face')) {
-      this.setData({ testResultId: idStr })
+      const fromShareFs = options && (String(options.fs) === '1' || options.from === 'share')
+      this.setData({ testResultId: idStr, fromShare: !!fromShareFs })
       this.loadFaceRecordById(idStr, st, faceType)
       return
     }
@@ -231,14 +253,26 @@ Page({
     })
   },
 
+  _syncPhoneLoginGate() {
+    if (this.data.hasError) {
+      this.setData({ phoneLoginGate: false })
+      return
+    }
+    const gate = needsResultProfileGate(!!this.data.fromShare)
+    this.setData({ phoneLoginGate: gate })
+  },
+
   onShow() {
-    const ep = app.globalData.enterprisePermissions
+    const gd = app.globalData || {}
+    const ep = gd.enterprisePermissions
     const showSbtiFace = !ep || ep.sbti !== false
     this.setData({
       hasPhone: hasPhone(),
       isProfileComplete: isProfileComplete(),
-      showSbtiFace
+      showSbtiFace,
+      hideInviteCodeEntry: shouldHideInviteCodeEntry(gd)
     })
+    if (this.data.showResult) this._syncPhoneLoginGate()
     const tc = app.globalData.textConfig
     if (tc) {
       this.setData({
@@ -247,6 +281,7 @@ Page({
         aiAnalysisText: tc.aiAnalysisText || '智能分析'
       })
     }
+    enterpriseCooperation.maybeShowCooperationModal(this)
   },
 
   // 面相/骨相 Tab 切换
@@ -290,6 +325,7 @@ Page({
     wx.request({
       url: `${app.globalData.apiBase}/api/analyze`,
       method: 'POST',
+      timeout: 120000,
       header: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${wx.getStorageSync('token') || ''}`
@@ -398,6 +434,7 @@ Page({
     }
 
     this.setData(updates)
+    this._syncPhoneLoginGate()
 
     // 优先使用后端 /api/analyze 返回的价格信息，避免二次请求
     if (apiData._payment) {
@@ -508,7 +545,7 @@ Page({
     this.unlockFullReport()
   },
 
-  // 解锁完整报告：发起人脸测试付费（不要求先完善资料）
+  // 解锁完整报告：先留资门禁，再发起人脸测试付费
   unlockFullReport() {
     const { payInfo, testResultId, hasReloadedAfterPay } = this.data
     if (!payInfo.requiresPayment || payInfo.isPaid) return
@@ -518,27 +555,55 @@ Page({
         wx.showToast({ title: '请先登录后再解锁', icon: 'none' })
         return
       }
-      payment.purchaseFaceTest({
-        testResultId,
-        success: () => {
-          wx.showToast({ title: '已解锁完整报告', icon: 'success' })
+      unlockGate.ensureUnlockPrerequisitesBeforePay(this).then((ok) => {
+        if (!ok) return
+        inviteCodeGate.ensureInviteCodeGate(this).then((go) => {
+          if (!go) return
+          payment.purchaseFaceTest({
+            testResultId,
+            success: () => {
+              wx.showToast({ title: '已解锁完整报告', icon: 'success' })
 
-          this.setData({
-            'payInfo.isPaid': true,
-            hasPhone: hasPhone(),
-            isProfileComplete: isProfileComplete()
+              this.setData({
+                'payInfo.isPaid': true,
+                hasPhone: hasPhone(),
+                isProfileComplete: isProfileComplete()
+              })
+
+              if (testResultId && !hasReloadedAfterPay) {
+                this.setData({ hasReloadedAfterPay: true })
+                setTimeout(() => {
+                  this.reloadFullDetail(testResultId)
+                }, 500)
+              }
+            },
+            fail: () => {}
           })
-
-          if (testResultId && !hasReloadedAfterPay) {
-            this.setData({ hasReloadedAfterPay: true })
-            setTimeout(() => {
-              this.reloadFullDetail(testResultId)
-            }, 500)
-          }
-        },
-        fail: () => {}
+        })
       })
     })
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onCooperationSuccess() {
+    this.setData({ showCooperationModal: false, cooperationModes: [] })
   },
 
   /** 支付成功后：仅绑定手机号，不重复发起支付 */
@@ -555,7 +620,29 @@ Page({
     bindPhoneByCode(code)
       .then(() => {
         this.setData({ hasPhone: true, isProfileComplete: isProfileComplete() })
+        this._syncPhoneLoginGate()
         wx.showToast({ title: '已绑定手机号', icon: 'success' })
+        navigateToCompleteProfileAfterPhoneIfNeeded()
+      })
+      .catch(() => {})
+  },
+
+  /** 结果页主流程：微信手机号快捷登录后解锁完整报告区 */
+  onPhoneLoginForFaceResult(e) {
+    const { code, errMsg } = e.detail || {}
+    if (errMsg && errMsg.indexOf('getPhoneNumber:fail') === 0) {
+      wx.showToast({ title: '需要授权手机号才能查看完整报告', icon: 'none' })
+      return
+    }
+    if (!code) {
+      wx.showToast({ title: '获取手机号失败', icon: 'none' })
+      return
+    }
+    bindPhoneByCode(code)
+      .then(() => {
+        this.setData({ hasPhone: true, isProfileComplete: isProfileComplete() })
+        this._syncPhoneLoginGate()
+        navigateToCompleteProfileAfterPhoneIfNeeded()
       })
       .catch(() => {})
   },
@@ -582,6 +669,7 @@ Page({
     bindPhoneByCode(code)
       .then(() => {
         this.setData({ hasPhone: true })
+        this._syncPhoneLoginGate()
         this.unlockFullReport()
       })
       .catch(() => {
@@ -646,7 +734,8 @@ Page({
       isAnalyzing: false,
       showResult: true,
       hasError: true,
-      errorMessage: message || '分析失败，请稍后重试'
+      errorMessage: message || '分析失败，请稍后重试',
+      phoneLoginGate: false
     })
   },
 
@@ -672,6 +761,27 @@ Page({
     } else {
       wx.switchTab({ url: '/pages/index/index' })
     }
+  },
+
+  goToDeepServiceFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_deep_service_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+
+  goToPromoFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_promo_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+
+  goToQuestionnaireFromFace() {
+    try {
+      require('../../utils/analytics').track('tap_questionnaire_face_result', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/test-select/index' })
   },
 
   onShareAppMessage() {

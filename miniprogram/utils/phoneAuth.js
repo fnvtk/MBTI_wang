@@ -3,6 +3,67 @@
  * 手机号与个人资料：详见 isProfileComplete 规则
  */
 
+/** 本会话/本机「已用手机号授权登录」标记（与是否库里已有手机无关；换 userId 自动失效） */
+const PHONE_LOGIN_SESSION_KEY = 'mbti_phone_login_v1'
+const PHONE_LOGIN_TTL_MS = 90 * 86400000
+
+function getLoginUserId() {
+  try {
+    const app = getApp()
+    const u = (app && app.globalData && app.globalData.userInfo) || wx.getStorageSync('userInfo')
+    if (!u || typeof u !== 'object') return ''
+    const id = u.id != null ? u.id : u.userId
+    return id != null && id !== '' ? String(id) : ''
+  } catch (e) {
+    return ''
+  }
+}
+
+/**
+ * 与当前登录用户一致且未过期时，视为已在结果页完成过「手机登录」授权
+ * @returns {boolean}
+ */
+function hasPhoneLoginSession() {
+  const uid = getLoginUserId()
+  if (!uid) return false
+  try {
+    const row = wx.getStorageSync(PHONE_LOGIN_SESSION_KEY)
+    if (!row || typeof row !== 'object') return false
+    if (String(row.uid || '') !== uid) return false
+    const at = Number(row.at || 0)
+    if (at > 0 && Date.now() - at > PHONE_LOGIN_TTL_MS) return false
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+function markPhoneLoginSession() {
+  const uid = getLoginUserId()
+  if (!uid) return
+  try {
+    wx.setStorageSync(PHONE_LOGIN_SESSION_KEY, { uid, at: Date.now() })
+  } catch (e) {}
+}
+
+function clearPhoneLoginSession() {
+  try {
+    wx.removeStorageSync(PHONE_LOGIN_SESSION_KEY)
+  } catch (e) {}
+}
+
+/** 静默登录写入新用户后调用：userId 变化则清掉旧会话标记 */
+function syncPhoneLoginStorageWithUser(user) {
+  const uid = user && (user.id != null ? String(user.id) : (user.userId != null ? String(user.userId) : ''))
+  if (!uid) return
+  try {
+    const row = wx.getStorageSync(PHONE_LOGIN_SESSION_KEY)
+    if (row && row.uid && String(row.uid) !== uid) {
+      wx.removeStorageSync(PHONE_LOGIN_SESSION_KEY)
+    }
+  } catch (e) {}
+}
+
 /**
  * 个人资料是否已满足业务门禁（避免反复跳转「完善资料」）
  * - 已绑定手机号：视为可用（付费/深度服务以手机为准；仅首字头像无 URL 不再卡死）
@@ -31,6 +92,25 @@ function isReportProfileComplete() {
   const nickname = (user.nickname || user.nickName || user.username || '').trim()
   const avatar = (user.avatar || user.avatarUrl || '').trim()
   return nickname.length > 0 && avatar.length > 0 && phone.length > 0
+}
+
+/**
+ * 问卷/结果页预览门禁：分享落地不遮挡；否则需手机号+昵称+头像齐全后才可看全文
+ */
+function needsResultProfileGate(fromShare) {
+  if (fromShare) return false
+  return !isReportProfileComplete()
+}
+
+/**
+ * 结果页 getPhoneNumber 成功后：若资料未齐，进入「我的-资料」与查看全文同一套规则
+ */
+function navigateToCompleteProfileAfterPhoneIfNeeded() {
+  if (isReportProfileComplete()) return
+  wx.showToast({ title: '请完善头像与昵称', icon: 'none' })
+  setTimeout(() => {
+    wx.navigateTo({ url: '/pages/user-profile/index?from=result_gate', fail: () => {} })
+  }, 450)
 }
 
 /**
@@ -104,6 +184,7 @@ function bindPhoneByCode(code) {
           const newUser = { ...user, phone }
           app.globalData.userInfo = newUser
           wx.setStorageSync('userInfo', newUser)
+          markPhoneLoginSession()
           wx.showToast({ title: '授权成功', icon: 'success' })
           resolve(newUser)
         } else {
@@ -121,10 +202,26 @@ function bindPhoneByCode(code) {
   })
 }
 
+/**
+ * 测评提交后直接进结果页；完整报告是否在结果页展示由「资料齐全」门禁控制（见 needsResultProfileGate / isReportProfileComplete）
+ * @param {string} targetUrl 必须以 / 开头的本地路径，如 /pages/result/mbti?id=1&type=mbti
+ */
+function afterTestSubmitNavigate(targetUrl) {
+  const url = (targetUrl && String(targetUrl).trim()) || '/pages/index/index'
+  wx.redirectTo({ url, fail: () => wx.reLaunch({ url: '/pages/index/index' }) })
+}
+
 module.exports = {
   hasPhone,
   bindPhoneByCode,
   isProfileComplete,
   isReportProfileComplete,
+  needsResultProfileGate,
+  navigateToCompleteProfileAfterPhoneIfNeeded,
+  hasPhoneLoginSession,
+  markPhoneLoginSession,
+  clearPhoneLoginSession,
+  syncPhoneLoginStorageWithUser,
   ensureProfileCompleteAndRedirect,
+  afterTestSubmitNavigate,
 }

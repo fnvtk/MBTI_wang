@@ -6,7 +6,7 @@
         <p class="subtitle">管理数据库连接、备份和恢复</p>
       </div>
       <div class="header-actions">
-        <el-button type="primary" color="#ef4444" @click="handleBackup">
+        <el-button type="primary" @click="handleBackup">
           <el-icon class="mr-1"><DocumentCopy /></el-icon>备份数据库
         </el-button>
       </div>

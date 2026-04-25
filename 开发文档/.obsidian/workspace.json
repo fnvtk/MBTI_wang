@@ -1,0 +1,241 @@
+{
+  "main": {
+    "id": "fb8803b28ded0c44",
+    "type": "split",
+    "children": [
+      {
+        "id": "53eaf562c6fec024",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "04ee3f5585a0c786",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "1、需求/已完成/ai功能202600417 -6.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ai功能202600417 -6"
+            }
+          },
+          {
+            "id": "8fa67d0b72afbe24",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "1、需求/修改/管理后台202600418 -plan 2.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "管理后台202600418 -plan 2"
+            }
+          }
+        ],
+        "currentTab": 1
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a99d4f33caed1487",
+    "type": "split",
+    "children": [
+      {
+        "id": "1891d994166d5de9",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ed7d1fd20f6701eb",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "文件列表"
+            }
+          },
+          {
+            "id": "24eb2a86dce4c282",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "搜索"
+            }
+          },
+          {
+            "id": "0df5254da14e3039",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "书签"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "ece63c547e5d23cd",
+    "type": "split",
+    "children": [
+      {
+        "id": "ae326756db690ad8",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "c2ad5fba706024d8",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "1、需求/修改/管理后台202600418 -plan 2.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "管理后台202600418 -plan 2 的反向链接列表"
+            }
+          },
+          {
+            "id": "7509ed92ca7980bc",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "1、需求/修改/管理后台202600418 -plan 2.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "管理后台202600418 -plan 2 的出链列表"
+            }
+          },
+          {
+            "id": "249e5e35e84c2aac",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "标签"
+            }
+          },
+          {
+            "id": "f4c2ee7b212a2f9c",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "添加笔记属性"
+            }
+          },
+          {
+            "id": "ba091845c34cfd35",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "1、需求/修改/管理后台202600418 -plan 2.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "管理后台202600418 -plan 2 的大纲"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:打开快速切换": false,
+      "graph:查看关系图谱": false,
+      "canvas:新建白板": false,
+      "daily-notes:打开/创建今天的日记": false,
+      "templates:插入模板": false,
+      "command-palette:打开命令面板": false,
+      "bases:新建数据库": false
+    }
+  },
+  "active": "8fa67d0b72afbe24",
+  "lastOpenFiles": [
+    "1、需求/修改/用户运营参考Soul规则.md",
+    "1、需求/修改/images/超级管理后台20260417-plan-1 1.md",
+    "Pasted image 20260418185357.png",
+    "Pasted image 20260418185309.png",
+    "Pasted image 20260418185217.png",
+    "Pasted image 20260418185026.png",
+    "Pasted image 20260418185001.png",
+    "Pasted image 20260418184929.png",
+    "Pasted image 20260418184818.png",
+    "1、需求/修改/小程序202600418 -plan 1.md",
+    "1、需求/修改/管理后台202600418 -plan 2.md",
+    "Pasted image 20260418183810.png",
+    "Pasted image 20260418100914.png",
+    "Pasted image 20260418100757.png",
+    "1、需求/修改/ai功能202600417 -7.plan.md",
+    "1、需求/已完成/ai功能202600417 -6.plan.md",
+    "1、需求/已完成/ai功能202600417 -6.md",
+    "1、需求/修改/管理后台20260417-plan-1.md",
+    "1、需求/修改/管理后台20260417.plan.md",
+    "6、后端/神仙AI异步对话_排障手册.md",
+    "1、需求/修改/管理后台20260327-1.md",
+    "1、需求/修改/小程序20260327.md",
+    "1、需求/修改/小程序20260327 -2.md",
+    "1、需求/修改/全站全链路测试与缺陷_20260327.md",
+    "1、需求/已完成/网站全站修改202600417 -1.md",
+    "1、需求/已完成/超级管理后台20260417-exec.md",
+    "未命名.md",
+    "1、需求/修改/超级管理后台20260417-plan-1 1.md",
+    "1、需求/已完成/网站全站修改202600417 -4.md",
+    "1、需求/修改/网站全站修改202600417 -5.plan.md",
+    "1、需求/已完成/网站全站修改202600417 -5.md",
+    "1、需求/已完成/网站全站修改202600417 -3.qa.md",
+    "1、需求/已完成/网站全站修改202600417 -2.plan.md",
+    "1、需求/已完成/全站全链路测试与缺陷_20260327.md",
+    "1、需求/已完成/网站全站修改202600417 -1.plan.md",
+    "1、需求/修改/推广模块202600416 -1.plan.md",
+    "1、需求/已完成"
+  ]
+}

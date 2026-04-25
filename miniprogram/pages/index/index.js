@@ -8,7 +8,7 @@ Page({
     navbarHeight: 88,
     showEnterpriseEntry: false,
     siteTitle: '神仙团队性格测试',
-    startButtonText: '开始性格测试',
+    startButtonText: '30秒测出你的性格',
     aiAnalysisText: '分析',
     reviewMode: true,
     permFace: true
@@ -33,7 +33,7 @@ Page({
       navbarHeight: navbarHeightRpx,
       showEnterpriseEntry: userInfo.hasEnterprise === true,
       siteTitle: rm0 ? (gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-      startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+      startButtonText: rm0 ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '30秒测出你的性格'),
       aiAnalysisText: rm0 ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm0,
       permFace: pf
@@ -46,19 +46,23 @@ Page({
         if (cfg.maintenanceMode !== undefined) {
           getApp().globalData.maintenanceMode = !!cfg.maintenanceMode
         }
+        try {
+          require('../../utils/miniprogramAuditGate.js').applyAuditUiOverride(getApp())
+        } catch (e) {}
+        const rmEff = !!(getApp().globalData.reviewMode || getApp().globalData.maintenanceMode)
         if (cfg.siteTitle) {
           getApp().globalData.siteTitle = cfg.siteTitle
-          this.setData({ siteTitle: rm ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
+          this.setData({ siteTitle: rmEff ? cfg.siteTitle.replace(/AI/gi, '') : cfg.siteTitle })
         }
         if (cfg.textConfig) {
           getApp().globalData.textConfig = cfg.textConfig
           this.setData({
-            startButtonText: rm ? '开始性格测试' : (cfg.textConfig.startButtonText || '拍摄'),
-            aiAnalysisText: rm ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
+            startButtonText: rmEff ? '开始性格测试' : (cfg.textConfig.startButtonText || '30秒测出你的性格'),
+            aiAnalysisText: rmEff ? '分析' : (cfg.textConfig.aiAnalysisText || '分析')
           })
         }
         const ep2 = getApp().globalData.enterprisePermissions
-        this.setData({ reviewMode: rm, permFace: !ep2 || ep2.face !== false })
+        this.setData({ reviewMode: rmEff, permFace: !ep2 || ep2.face !== false })
         try {
           const tb = typeof this.getTabBar === 'function' ? this.getTabBar() : null
           if (tb && typeof tb.updateSelected === 'function') tb.updateSelected()
@@ -120,7 +124,7 @@ Page({
     const ep3 = g.enterprisePermissions
     this.setData({
       siteTitle: rm ? (g.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (g.siteTitle || '神仙团队性格测试'),
-      startButtonText: (rm || (ep3 && ep3.face === false)) ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '拍摄'),
+      startButtonText: (rm || (ep3 && ep3.face === false)) ? '开始性格测试' : ((g.textConfig && g.textConfig.startButtonText) || '30秒测出你的性格'),
       aiAnalysisText: rm ? '分析' : ((g.textConfig && g.textConfig.aiAnalysisText) || '分析'),
       reviewMode: rm,
       permFace: !ep3 || ep3.face !== false
@@ -145,23 +149,26 @@ Page({
     }
   },
 
-  // 审核态：主按钮进问卷选测试；否则进拍摄 Tab
+  // 主按钮：面相/拍摄链路直进「拍摄」Tab（与底栏拍摄一致）；审核模式或企业关闭面相时进测试列表
   startCamera() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    const gd = getApp().globalData
-    const ep = gd.enterprisePermissions
+    const g = getApp().globalData
+    const rm = !!(g.reviewMode || g.maintenanceMode)
+    const ep = g.enterprisePermissions
     const faceOff = ep && ep.face === false
-    if (gd.reviewMode || gd.maintenanceMode || faceOff) {
+    if (rm || faceOff) {
+      try { require('../../utils/analytics').track('tap_home_test_select', {}) } catch (e) {}
       wx.navigateTo({ url: '/pages/test-select/index' })
       return
     }
+    try { require('../../utils/analytics').track('tap_home_camera_tab', {}) } catch (e) {}
     wx.switchTab({ url: '/pages/index/camera' })
   },
 
   // 上传照片（个人版入口：强制本次链路为个人定价）
   uploadPhoto() {
     try { getApp().globalData.appScope = 'personal' } catch (e) {}
-    // 这里仅负责跳转到全新的「拍摄或上传照片」页面，具体拍摄/上传逻辑在新页面实现
+    try { require('../../utils/analytics').track('tap_upload_photo_home', {}) } catch (e) {}
     wx.navigateTo({
       url: '/pages/index/upload'
     })
@@ -169,6 +176,7 @@ Page({
 
   // 切换到企业版（仅已绑定企业的用户可进入，优先用登录返回的 hasEnterprise，避免多请求）
   switchToEnterprise() {
+    try { require('../../utils/analytics').track('tap_enterprise_entry', {}) } catch (e) {}
     const app = getApp()
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo') || {}
     if (userInfo.hasEnterprise === true) {

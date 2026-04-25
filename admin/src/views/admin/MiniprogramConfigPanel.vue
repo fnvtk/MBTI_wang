@@ -23,7 +23,7 @@
           </div>
           <div class="form-item">
             <label>开始按钮（个人版）</label>
-            <el-input v-model="miniprogramConfig.textConfig.startButtonText" placeholder="默认：开始面相测试" class="w-full" />
+            <el-input v-model="miniprogramConfig.textConfig.startButtonText" placeholder="默认：30秒测出你的性格" class="w-full" />
           </div>
           <div class="form-item">
             <label>开始按钮（企业版）</label>
@@ -41,7 +41,7 @@
       </div>
     </div>
     <div class="save-actions">
-      <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveMiniprogramConfig" :loading="miniprogramLoading">
+      <el-button type="primary" class="save-btn" @click="saveMiniprogramConfig" :loading="miniprogramLoading">
         保存小程序配置
       </el-button>
     </div>
@@ -58,7 +58,7 @@ const miniprogramConfig = reactive({
   miniprogramName: '神仙团队AI性格测试',
   textConfig: {
     analyzingTitle: '正在分析中',
-    startButtonText: '开始面相测试',
+    startButtonText: '30秒测出你的性格',
     startButtonEnterprise: '开始面部测试',
     reportTitle: '分析报告',
     aiAnalysisText: '智能分析'

@@ -1,8 +1,14 @@
 <template>
   <div class="dashboard-viewport" v-loading="loading">
     <header class="dash-head">
-      <h1 class="dash-title">数据概览</h1>
-      <p class="dash-tagline"></p>
+      <div class="dash-head-left">
+        <h1 class="dash-title">企业概览</h1>
+        <p class="dash-tagline">用户规模与测评完成情况 · 分布与近 14 日趋势</p>
+      </div>
+      <div class="dash-head-right">
+        <span v-if="lastUpdatedText" class="dash-updated">{{ lastUpdatedText }}</span>
+        <el-button size="small" :icon="Refresh" @click="refreshAll" :loading="loading">刷新</el-button>
+      </div>
     </header>
 
     <div class="dash-kpis">
@@ -13,20 +19,6 @@
         </div>
         <div :class="['stat-icon', card.tone]">
           <el-icon><component :is="card.icon" /></el-icon>
-        </div>
-      </div>
-      <div class="stat-card stat-card-recharge" :style="{ animationDelay: `${kpiCards.length * 45}ms` }">
-        <div class="stat-card-recharge-inner">
-          <div class="stat-info stat-info--recharge">
-            <div class="stat-label">企业余额</div>
-            <div class="stat-value-row">
-              <span class="stat-value">{{ enterpriseBalanceDisplay }}</span>
-              <el-button link type="primary" size="small" class="recharge-btn-inline" @click="goEnterpriseRecharge">充值</el-button>
-            </div>
-          </div>
-        </div>
-        <div class="stat-icon amber">
-          <el-icon><Wallet /></el-icon>
         </div>
       </div>
     </div>
@@ -54,9 +46,9 @@
 
     <div class="dash-main">
       <section class="panel panel-chart">
-        <div class="panel-head">
-          <h2 class="panel-title">近 14 日测试趋势</h2>
-          <p class="panel-desc">人脸 · MBTI · PDP · DISC 完成量；下方为性格结果分布（与本企业测评数据一致）</p>
+        <div class="panel-section-head">
+          <h2 class="panel-title">测评结果分布</h2>
+          <span class="panel-meta">各类型高频结果（TOP）</span>
         </div>
         <div v-if="hasDistribution" class="distr-band">
           <div v-for="block in distributionBlocks" :key="block.key" class="distr-col">
@@ -79,6 +71,37 @@
             </div>
           </div>
         </div>
+        <div v-else class="panel-empty tight">暂无分布数据</div>
+
+        <div class="panel-section-head panel-section-head--chart">
+          <h2 class="panel-title">近 14 日 · 测评完成趋势</h2>
+          <div class="chart-legend" role="tablist">
+            <button
+              v-for="key in chartModeOptions"
+              :key="key.value"
+              class="chart-mode-btn"
+              :class="{ 'is-active': chartMode === key.value }"
+              @click="chartMode = key.value"
+            >
+              {{ key.label }}
+            </button>
+          </div>
+        </div>
+        <div class="chart-sub-meta">
+          <span class="chart-meta-item">
+            <em class="chart-meta-dot bar-mbti"></em>MBTI
+          </span>
+          <span class="chart-meta-item">
+            <em class="chart-meta-dot bar-pdp"></em>PDP
+          </span>
+          <span class="chart-meta-item">
+            <em class="chart-meta-dot bar-disc"></em>DISC
+          </span>
+          <span class="chart-meta-item">
+            <em class="chart-meta-dot bar-face"></em>人脸
+          </span>
+          <span class="chart-meta-sum" v-if="trendTotalsText">累计 {{ trendTotalsText }}</span>
+        </div>
         <div class="chart-box">
           <VChart v-if="testTrends.length" class="trend-chart" :option="chartOption" autoresize />
           <div v-else class="panel-empty">暂无趋势数据</div>
@@ -86,43 +109,10 @@
       </section>
 
       <aside class="panel panel-side">
-        <div class="side-block side-users">
-          <div class="panel-head row">
-            <div>
-              <h2 class="panel-title">测试 Top 20</h2>
-              <p class="panel-desc">按完成次数 · 本企业口径</p>
-            </div>
-            <el-button type="primary" link size="small" @click="router.push('/admin/users')">全部用户</el-button>
-          </div>
-          <div ref="tableWrapRef" class="table-wrap">
-            <el-table
-              v-if="topTestUsers.length"
-              :data="topTestUsers"
-              size="small"
-              stripe
-              class="compact-table"
-              :height="sideTableHeight"
-            >
-              <el-table-column label="#" width="42">
-                <template #default="{ $index }">{{ $index + 1 }}</template>
-              </el-table-column>
-              <el-table-column label="用户" min-width="88" show-overflow-tooltip>
-                <template #default="{ row }">{{ row.username || '未命名' }}</template>
-              </el-table-column>
-              <el-table-column prop="testCount" label="次数" width="52" align="center" />
-              <el-table-column label="摘要" min-width="100" show-overflow-tooltip>
-                <template #default="{ row }">{{ summarizeTypes(row) }}</template>
-              </el-table-column>
-            </el-table>
-            <div v-else class="panel-empty tight">暂无测试记录</div>
-          </div>
-        </div>
-
         <div class="side-block side-invite">
           <div class="panel-head row">
             <div>
               <h2 class="panel-title">邀请小程序码</h2>
-              <p class="panel-desc">企业版进企业测评，个人版进小程序首页</p>
             </div>
             <el-button size="small" type="primary" @click="loadInviteQrcode" :loading="inviteLoading">
               {{ inviteQrcodeEnterprise || inviteQrcodePersonal ? '刷新' : '生成' }}
@@ -148,8 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, computed, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, onMounted, computed } from 'vue'
 import {
   User,
   Document,
@@ -158,33 +147,17 @@ import {
   Reading,
   Histogram,
   Medal,
-  Wallet
+  Refresh
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
+import { LineChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
-
-const router = useRouter()
-
-interface TopUserRow {
-  id: number
-  username: string
-  phone: string
-  testCount: number
-  lastTestAt: number | null
-  mbtiType: string
-  pdpType: string
-  discType: string
-  faceMbtiType: string
-  faceDiscType: string
-  facePdpType: string
-}
+use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const stats = reactive({
   totalUsers: 0,
@@ -192,17 +165,9 @@ const stats = reactive({
   activeToday: 0
 })
 
-/** 企业余额（分），来自 /admin/finance/overview，与财务页一致 */
-const balanceFen = ref(0)
-
-const fenToYuan = (fen: number) => (Number(fen || 0) / 100).toFixed(2)
-
-const enterpriseBalanceDisplay = computed(() => `¥${fenToYuan(balanceFen.value)}`)
-
 const testTrends = ref<
   Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>
 >([])
-const topTestUsers = ref<TopUserRow[]>([])
 const testCatalog = ref<
   Array<{ key: string; label: string; records: number; uniqueUsers: number }>
 >([])
@@ -220,32 +185,39 @@ const inviteLoading = ref(false)
 const inviteQrcodeEnterprise = ref<string>('')
 const inviteQrcodePersonal = ref<string>('')
 const inviteLoadError = ref<string>('')
+const lastUpdatedAt = ref<number>(0)
 
-/** 侧栏表格高度：随 `.table-wrap` 可用空间变化（适配 Top 20，避免固定 220px 导致大片留白） */
-const tableWrapRef = ref<HTMLElement | null>(null)
-const sideTableHeight = ref(360)
-let tableWrapResizeObserver: ResizeObserver | null = null
+const chartModeOptions = [
+  { label: '堆叠', value: 'stack' as const },
+  { label: '折线', value: 'line' as const }
+]
+const chartMode = ref<'stack' | 'line'>('stack')
 
-function updateSideTableHeight() {
-  const el = tableWrapRef.value
-  if (!el) {
-    return
+const lastUpdatedText = computed(() => {
+  if (!lastUpdatedAt.value) return ''
+  const d = new Date(lastUpdatedAt.value)
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `更新 ${hh}:${mm}`
+})
+
+const trendTotalsText = computed(() => {
+  const sum = { face: 0, mbti: 0, pdp: 0, disc: 0 }
+  for (const d of testTrends.value) {
+    sum.face += Number(d.face) || 0
+    sum.mbti += Number(d.mbti) || 0
+    sum.pdp += Number(d.pdp) || 0
+    sum.disc += Number(d.disc) || 0
   }
-  const h = Math.floor(el.getBoundingClientRect().height)
-  if (h >= 120) {
-    sideTableHeight.value = h
-  }
-}
+  const total = sum.face + sum.mbti + sum.pdp + sum.disc
+  return total ? `${total} 人次` : ''
+})
 
 const kpiCards = computed(() => [
   { key: 'u', label: '总用户数', value: stats.totalUsers, icon: User, tone: 'blue' },
   { key: 't', label: '已完成测试', value: stats.testsCompleted, icon: Document, tone: 'green' },
   { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' }
 ])
-
-function goEnterpriseRecharge() {
-  void router.push({ path: '/admin/settings', query: { tab: 'finance' } })
-}
 
 const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
   face: { icon: Camera, tone: 'teal' },
@@ -272,9 +244,9 @@ function sliceItems(items: Array<{ label: string; count: number }>, n: number) {
 }
 
 const distributionBlocks = computed(() => {
-  const mbti = sliceItems(distributionMbti.value, 6)
-  const disc = sliceItems(distributionDisc.value, 6)
-  const pdp = sliceItems(distributionPdp.value, 6)
+  const mbti = sliceItems(distributionMbti.value, 8)
+  const disc = sliceItems(distributionDisc.value, 8)
+  const pdp = sliceItems(distributionPdp.value, 8)
   const faceMerged: Array<{ label: string; count: number }> = []
   const fh = faceSubtypeHints.value || { mbti: [], disc: [], pdp: [] }
   const pushPref = (prefix: string, arr: Array<{ label: string; count: number }>, max: number) => {
@@ -285,9 +257,9 @@ const distributionBlocks = computed(() => {
       k++
     }
   }
-  pushPref('面·MBTI ', fh.mbti, 2)
-  pushPref('面·DISC ', fh.disc, 2)
-  pushPref('面·PDP ', fh.pdp, 2)
+  pushPref('面·MBTI ', fh.mbti, 3)
+  pushPref('面·DISC ', fh.disc, 3)
+  pushPref('面·PDP ', fh.pdp, 3)
 
   const blocks = [
     { key: 'mbti', title: 'MBTI（答题）', items: mbti, icon: Reading, barClass: 'bar-mbti' },
@@ -310,101 +282,110 @@ function barWidthPct(max: number, count: number) {
   return `${Math.round((count / max) * 100)}%`
 }
 
+const seriesColors: Record<'face' | 'mbti' | 'pdp' | 'disc', { color: string; fill: string }> = {
+  mbti: { color: '#4F46E5', fill: 'rgba(79, 70, 229, 0.16)' },
+  pdp: { color: '#F59E0B', fill: 'rgba(245, 158, 11, 0.16)' },
+  disc: { color: '#0EA5E9', fill: 'rgba(14, 165, 233, 0.16)' },
+  face: { color: '#10B981', fill: 'rgba(16, 185, 129, 0.16)' }
+}
+
 const chartOption = computed(() => {
   const dates = testTrends.value.map(d => d.date.slice(5))
+  const rows = testTrends.value
+  const mode = chartMode.value
+
+  const buildSeries = (name: string, key: 'face' | 'mbti' | 'pdp' | 'disc') => {
+    const c = seriesColors[key]
+    if (mode === 'stack') {
+      return {
+        name,
+        type: 'bar' as const,
+        stack: 'total',
+        barMaxWidth: 22,
+        itemStyle: {
+          color: c.color,
+          borderRadius: key === 'face' ? [4, 4, 0, 0] : 0
+        },
+        emphasis: { focus: 'series' as const },
+        data: rows.map(d => d[key])
+      }
+    }
+    return {
+      name,
+      type: 'line' as const,
+      smooth: 0.25,
+      showSymbol: false,
+      lineStyle: { width: 2.4, color: c.color },
+      itemStyle: { color: c.color },
+      areaStyle: { color: c.fill },
+      emphasis: { focus: 'series' as const },
+      data: rows.map(d => d[key])
+    }
+  }
+
   return {
     animationDuration: 480,
-    animationEasing: 'cubicOut',
-    tooltip: { trigger: 'axis' },
-    legend: {
-      data: ['人脸', 'MBTI', 'PDP', 'DISC'],
-      top: 0,
-      textStyle: { fontSize: 11, color: '#6b7280' }
+    animationEasing: 'cubicOut' as const,
+    color: [seriesColors.mbti.color, seriesColors.pdp.color, seriesColors.disc.color, seriesColors.face.color],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: mode === 'stack' ? 'shadow' : 'line', lineStyle: { color: '#cbd5e1' } },
+      backgroundColor: '#ffffff',
+      borderColor: '#e2e8f0',
+      borderWidth: 1,
+      padding: [8, 12],
+      textStyle: { color: '#0f172a', fontSize: 12 },
+      extraCssText: 'box-shadow:0 6px 16px rgba(15,23,42,0.08);border-radius:10px;',
+      formatter: (params: any) => {
+        const arr = Array.isArray(params) ? params : params ? [params] : []
+        if (!arr.length) return ''
+        const first = arr[0]
+        let html = `<div style="font-weight:600;margin-bottom:6px;color:#0f172a">${first.axisValueLabel ?? first.axisValue ?? ''}</div>`
+        let sum = 0
+        for (const p of arr) {
+          const v = Number(p.data) || 0
+          sum += v
+          html += `<div style="display:flex;align-items:center;gap:6px;margin:2px 0;font-size:12px;color:#475569">${p.marker || ''}<span style="flex:1">${p.seriesName}</span><b style="color:#0f172a;font-variant-numeric:tabular-nums">${v}</b></div>`
+        }
+        html += `<div style="margin-top:6px;padding-top:6px;border-top:1px dashed #e2e8f0;font-size:12px;color:#64748b">当日合计 <b style="color:#0f172a">${sum}</b> 人次</div>`
+        return html
+      }
     },
-    grid: { left: 36, right: 12, top: 36, bottom: 24 },
+    grid: { left: 44, right: 16, top: 16, bottom: 28 },
     xAxis: {
       type: 'category',
       data: dates,
-      boundaryGap: false,
-      axisLine: { lineStyle: { color: '#e5e7eb' } },
-      axisLabel: { color: '#9ca3af', fontSize: 10 }
+      boundaryGap: mode === 'stack',
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b', fontSize: 11, margin: 10 }
     },
     yAxis: {
       type: 'value',
       minInterval: 1,
-      splitLine: { lineStyle: { color: '#f3f4f6' } },
-      axisLabel: { color: '#9ca3af', fontSize: 10 }
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: '#f1f5f9', type: 'dashed' } },
+      axisLabel: { color: '#94a3b8', fontSize: 11 }
     },
     series: [
-      {
-        name: '人脸',
-        type: 'line',
-        smooth: 0.35,
-        showSymbol: false,
-        lineStyle: { width: 2 },
-        itemStyle: { color: '#22c55e' },
-        data: testTrends.value.map(d => d.face)
-      },
-      {
-        name: 'MBTI',
-        type: 'line',
-        smooth: 0.35,
-        showSymbol: false,
-        lineStyle: { width: 2 },
-        itemStyle: { color: '#3b82f6' },
-        data: testTrends.value.map(d => d.mbti)
-      },
-      {
-        name: 'PDP',
-        type: 'line',
-        smooth: 0.35,
-        showSymbol: false,
-        lineStyle: { width: 2 },
-        itemStyle: { color: '#f97316' },
-        data: testTrends.value.map(d => d.pdp)
-      },
-      {
-        name: 'DISC',
-        type: 'line',
-        smooth: 0.35,
-        showSymbol: false,
-        lineStyle: { width: 2 },
-        itemStyle: { color: '#6366f1' },
-        data: testTrends.value.map(d => d.disc)
-      }
+      buildSeries('MBTI', 'mbti'),
+      buildSeries('PDP', 'pdp'),
+      buildSeries('DISC', 'disc'),
+      buildSeries('人脸', 'face')
     ]
   }
 })
 
-function summarizeTypes(row: TopUserRow) {
-  const parts: string[] = []
-  if (row.mbtiType) parts.push(row.mbtiType)
-  if (row.pdpType) parts.push(row.pdpType)
-  if (row.discType) parts.push(row.discType)
-  const faceBits = [row.faceMbtiType, row.facePdpType, row.faceDiscType].filter(Boolean)
-  if (faceBits.length) parts.push('面:' + faceBits.join('/'))
-  return parts.length ? parts.join(' · ') : '—'
-}
-
-async function loadFinanceBalance() {
-  try {
-    const res: any = await request.get('/admin/finance/overview')
-    balanceFen.value = Number(res?.data?.balanceFen ?? 0)
-  } catch {
-    balanceFen.value = 0
-  }
-}
-
 const loadData = async () => {
   loading.value = true
   try {
-    const [response] = await Promise.all([request.get('/admin/dashboard'), loadFinanceBalance()])
+    const response: any = await request.get('/admin/dashboard')
     if (response.code === 200 && response.data) {
       stats.totalUsers = response.data.totalUsers || 0
       stats.testsCompleted = response.data.testsCompleted || 0
       stats.activeToday = response.data.activeToday || 0
       testTrends.value = response.data.testTrends || []
-      topTestUsers.value = Array.isArray(response.data.topTestUsers) ? response.data.topTestUsers : []
       testCatalog.value = Array.isArray(response.data.testCatalog) ? response.data.testCatalog : []
       distributionMbti.value = Array.isArray(response.data.distributionMbti)
         ? response.data.distributionMbti
@@ -424,33 +405,24 @@ const loadData = async () => {
               pdp: Array.isArray(fh.pdp) ? fh.pdp : []
             }
           : { mbti: [], disc: [], pdp: [] }
+      lastUpdatedAt.value = Date.now()
     }
   } catch (error: any) {
     console.error('加载数据失败:', error)
     ElMessage.error(error.message || '加载数据失败')
   } finally {
     loading.value = false
-    void nextTick(() => updateSideTableHeight())
   }
 }
 
+const refreshAll = async () => {
+  await Promise.all([loadData(), loadInviteQrcode()])
+  ElMessage.success('数据已刷新')
+}
+
 onMounted(() => {
-  void nextTick(() => {
-    updateSideTableHeight()
-    if (tableWrapRef.value && typeof ResizeObserver !== 'undefined') {
-      tableWrapResizeObserver = new ResizeObserver(() => updateSideTableHeight())
-      tableWrapResizeObserver.observe(tableWrapRef.value)
-    }
-  })
-  window.addEventListener('resize', updateSideTableHeight)
   void loadData()
   void loadInviteQrcode()
-})
-
-onUnmounted(() => {
-  tableWrapResizeObserver?.disconnect()
-  tableWrapResizeObserver = null
-  window.removeEventListener('resize', updateSideTableHeight)
 })
 
 const loadInviteQrcode = async () => {
@@ -508,6 +480,19 @@ const loadInviteQrcode = async () => {
   flex: 0 0 auto;
   margin-bottom: 10px;
   animation: dashFadeUp 0.4s ease-out both;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.dash-head-left { min-width: 0; }
+.dash-head-right { display: flex; align-items: center; gap: 10px; }
+.dash-updated {
+  font-size: 11px;
+  color: #94a3b8;
+  font-variant-numeric: tabular-nums;
 }
 
 .dash-title {
@@ -526,10 +511,72 @@ const loadInviteQrcode = async () => {
   max-width: 920px;
 }
 
-.dash-kpis {
+.wallet-strip {
   flex: 0 0 auto;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.wallet-card {
+  position: relative;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+  animation: dashFadeUp 0.45s ease-out both;
+}
+
+.wallet-info { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.wallet-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.wallet-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+.wallet-foot { font-size: 11px; color: #94a3b8; }
+.wallet-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+.wallet-card--primary { background: linear-gradient(135deg, #eef2ff 0%, #ffffff 60%); }
+.wallet-card--primary .wallet-icon { background: #eef2ff; color: #4f46e5; }
+.wallet-card--primary .wallet-value { color: #3730a3; }
+.wallet-card--consume .wallet-icon { background: #ecfdf5; color: #10b981; }
+.wallet-card--frozen .wallet-icon { background: #fffbeb; color: #b45309; }
+.wallet-card--suggest .wallet-icon { background: #fef2f2; color: #ef4444; }
+.wallet-action {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 4px 12px;
+  font-weight: 600;
+  height: auto;
+}
+
+.recharge-dialog { display: flex; flex-direction: column; gap: 12px; }
+.recharge-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.recharge-action { display: flex; align-items: center; gap: 10px; }
+.recharge-tip { font-size: 12px; color: #94a3b8; }
+.recharge-qr { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 6px; }
+.recharge-qr img { width: 200px; height: 200px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; padding: 8px; }
+.recharge-qr-text { font-size: 13px; color: #475569; }
+
+.dash-kpis {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-bottom: 8px;
 }
@@ -548,17 +595,19 @@ const loadInviteQrcode = async () => {
   gap: 10px;
   padding: 10px 12px;
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   animation: dashFadeUp 0.45s ease-out both;
   transition:
     transform 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.06);
+    border-color: #c7d2fe;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
   }
 }
 
@@ -573,23 +622,23 @@ const loadInviteQrcode = async () => {
   flex-shrink: 0;
 
   &.teal {
-    background: #f0fdfa;
-    color: #0d9488;
+    background: #ecfdf5;
+    color: #10b981;
   }
 
   &.blue {
-    background: #eff6ff;
-    color: #3b82f6;
+    background: #eef2ff;
+    color: #4f46e5;
   }
 
   &.indigo {
-    background: #eef2ff;
-    color: #6366f1;
+    background: #e0f2fe;
+    color: #0ea5e9;
   }
 
   &.amber {
     background: #fffbeb;
-    color: #d97706;
+    color: #f59e0b;
   }
 }
 
@@ -665,21 +714,23 @@ const loadInviteQrcode = async () => {
 
 .stat-card {
   background: #fff;
-  border-radius: 10px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 14px 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   animation: dashFadeUp 0.45s ease-out both;
   transition:
     transform 0.2s ease,
-    box-shadow 0.2s ease;
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 
   &:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.08);
+    border-color: #c7d2fe;
+    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.08);
   }
 
   .stat-label {
@@ -707,16 +758,16 @@ const loadInviteQrcode = async () => {
     font-size: 18px;
 
     &.blue {
-      background: #eff6ff;
-      color: #3b82f6;
+      background: #eef2ff;
+      color: #4f46e5;
     }
     &.green {
-      background: #f0fdf4;
-      color: #22c55e;
+      background: #ecfdf5;
+      color: #10b981;
     }
     &.purple {
-      background: #faf5ff;
-      color: #a855f7;
+      background: #f5f3ff;
+      color: #7c3aed;
     }
     &.orange {
       background: #fffbeb;
@@ -729,17 +780,17 @@ const loadInviteQrcode = async () => {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1fr minmax(280px, 30%);
-  gap: 10px;
+  grid-template-columns: 1fr minmax(280px, 32%);
+  gap: 12px;
   animation: dashFadeUp 0.5s ease-out 0.08s both;
 }
 
 .panel {
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -818,20 +869,86 @@ const loadInviteQrcode = async () => {
   transition: width 0.35s ease;
 
   &.bar-mbti {
-    background: #3b82f6;
+    background: #4f46e5;
   }
 
   &.bar-disc {
-    background: #6366f1;
+    background: #0ea5e9;
   }
 
   &.bar-pdp {
-    background: #f97316;
+    background: #f59e0b;
   }
 
   &.bar-face {
-    background: #14b8a6;
+    background: #10b981;
   }
+}
+
+.chart-legend {
+  display: inline-flex;
+  background: #f1f5f9;
+  padding: 3px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.chart-mode-btn {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.18s;
+  font-weight: 500;
+
+  &:hover {
+    color: #0f172a;
+  }
+
+  &.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  }
+}
+
+.chart-sub-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+.chart-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-meta-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+
+  &.bar-mbti { background: #4f46e5; }
+  &.bar-pdp { background: #f59e0b; }
+  &.bar-disc { background: #0ea5e9; }
+  &.bar-face { background: #10b981; }
+}
+
+.chart-meta-sum {
+  margin-left: auto;
+  color: #475569;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
 }
 
 .distr-num {
@@ -843,6 +960,28 @@ const loadInviteQrcode = async () => {
 .panel-side {
   gap: 10px;
   padding: 10px;
+}
+
+.panel-section-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f3f4f6;
+
+  &--chart {
+    margin-top: 14px;
+  }
+}
+
+.panel-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 500;
 }
 
 .panel-head {
@@ -858,16 +997,10 @@ const loadInviteQrcode = async () => {
 }
 
 .panel-title {
-  margin: 0 0 2px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 700;
   color: #111827;
-}
-
-.panel-desc {
-  margin: 0;
-  font-size: 11px;
-  color: #9ca3af;
 }
 
 .chart-box {
@@ -879,7 +1012,7 @@ const loadInviteQrcode = async () => {
 .trend-chart {
   width: 100%;
   height: 100%;
-  min-height: 140px;
+  min-height: 220px;
 }
 
 .panel-empty {
@@ -983,10 +1116,16 @@ const loadInviteQrcode = async () => {
   }
 }
 
+@media (max-width: 1100px) {
+  .wallet-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 @media (max-width: 640px) {
   .dash-kpis {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  .wallet-strip { grid-template-columns: 1fr; }
 
   .dash-catalog {
     grid-template-columns: repeat(2, 1fr);

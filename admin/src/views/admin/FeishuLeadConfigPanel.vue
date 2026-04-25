@@ -31,7 +31,7 @@
       </p>
     </div>
     <div class="save-actions">
-      <el-button type="primary" color="#7c3aed" class="save-btn" :loading="loading" @click="save">
+      <el-button type="primary" class="save-btn" :loading="loading" @click="save">
         保存配置
       </el-button>
     </div>

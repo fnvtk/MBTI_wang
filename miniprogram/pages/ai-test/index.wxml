@@ -1,1 +1,28 @@
-<!-- placeholder -->
+<view class="container">
+  <view class="card intro-card">
+    <text class="intro-title">选择 AI 测评方式</text>
+    <text class="intro-desc">与神仙 AI 对话获得解读；或通过拍照完成面相与性格分析</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goAiChat" wx:if="{{showAiChat}}">
+    <view class="entry-icon-wrap chat">
+      <text class="entry-emoji">💬</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">神仙 AI 对话</text>
+      <text class="entry-brief">结合测评画像 · 问答式深度解读</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goFaceCamera" wx:if="{{permFace}}">
+    <view class="entry-icon-wrap face">
+      <text class="entry-emoji">📷</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">AI 拍照分析</text>
+      <text class="entry-brief">上传照片 · 面相 / 骨相与性格报告</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+</view>

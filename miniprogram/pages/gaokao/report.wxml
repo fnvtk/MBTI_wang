@@ -1,0 +1,262 @@
+<view class="gaokao-report-page">
+  <!-- 综合分析：与人脸结果页类似的加载态 -->
+  <view class="analyzing-modal" wx:if="{{isPendingAnalyze}}">
+    <view class="analyzing-content">
+      <view class="analyzing-icon">
+        <view class="analyzing-spinner"></view>
+      </view>
+      <text class="analyzing-title">{{analyzingTitle}}</text>
+      <text class="analyzing-desc">{{analyzingTip}}</text>
+      <view class="analyzing-bar">
+        <view class="analyzing-bar-fill" style="width: {{analyzeProgress}}%"></view>
+      </view>
+      <text class="analyzing-hint">AI 生成可能需要 30 秒～1 分钟，请稍候…</text>
+    </view>
+  </view>
+
+  <view
+    class="container {{report && !fromShare ? 'container--with-bottom-tools' : ''}} {{report && fromShare ? 'container--with-share-footer' : ''}}"
+    wx:if="{{report}}"
+  >
+    <view class="header-card">
+      <view class="header-hero">
+        <view class="header-top">
+          <view class="user-info">
+            <view class="user-name">{{inputEcho.name || '同学'}}</view>
+            <view class="user-tags">
+              <text class="tag tag-province" wx:if="{{inputEcho.province}}">{{inputEcho.province}}</text>
+              <text class="tag tag-stream" wx:if="{{inputEcho.streamSubjects}}">{{inputEcho.streamSubjects}}</text>
+            </view>
+          </view>
+          <view class="score-box">
+            <text class="score-num">{{inputEcho.estimatedScore || 0}}</text>
+            <text class="score-unit">分</text>
+          </view>
+        </view>
+      </view>
+      <view class="header-body" wx:if="{{inputEcho.mbti || inputEcho.pdp || inputEcho.disc}}">
+        <view class="personality-tags">
+          <view class="p-tag" wx:if="{{inputEcho.mbti}}">
+            <text class="p-label">MBTI</text>
+            <text class="p-value">{{inputEcho.mbti}}</text>
+          </view>
+          <view class="p-tag" wx:if="{{inputEcho.pdp}}">
+            <text class="p-label">PDP</text>
+            <text class="p-value">{{inputEcho.pdp}}</text>
+          </view>
+          <view class="p-tag" wx:if="{{inputEcho.disc}}">
+            <text class="p-label">DISC</text>
+            <text class="p-value">{{inputEcho.disc}}</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="card paywall-card" wx:if="{{payInfo.requiresPayment && !payInfo.isPaid && !fromShare}}">
+      <view class="paywall-content paywall-content--preview40">
+        <view class="paywall-blur">
+          <text class="paywall-fake-title">完整高考志愿分析报告</text>
+          <text class="paywall-fake-line paywall-fake-line--compact">解锁后可查看冲稳保院校、专业推荐与性格解读全文。</text>
+          <view class="paywall-preview-wrap" wx:if="{{report.overview}}">
+            <text class="paywall-preview-label">综合总评（预览）</text>
+            <view class="paywall-preview-inner">
+              <text class="paywall-preview-text">{{report.overview}}</text>
+              <view class="paywall-preview-fade"></view>
+            </view>
+          </view>
+          <block wx:else>
+            <text class="paywall-fake-line">• 冲稳保院校与推荐理由</text>
+            <text class="paywall-fake-line">• 专业推荐与匹配说明</text>
+            <text class="paywall-fake-line">• 性格与志愿方向解读</text>
+          </block>
+        </view>
+        <view class="paywall-mask paywall-mask--from40"></view>
+        <view id="unlock-gate-anchor" class="unlock-gate-anchor-btn-wrap">
+          <button
+            class="paywall-btn"
+            wx:if="{{!hasPhone}}"
+            open-type="getPhoneNumber"
+            bindgetphonenumber="onGetPhoneNumberForGaokaoPay"
+          >
+            <text class="paywall-btn-main">解锁完整报告</text>
+            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+          </button>
+          <button class="paywall-btn" wx:elif="{{hasPhone}}" bindtap="unlockFullReport">
+            <text class="paywall-btn-main">解锁完整报告</text>
+            <text class="paywall-btn-price">￥{{payInfo.amountYuan}} / 次</text>
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view class="card paywall-card" wx:elif="{{report.locked && !fromShare && !profileGate}}">
+      <view class="paywall-content">
+        <text class="paywall-fake-title">完整报告暂不可查看</text>
+        <text class="paywall-fake-line">请稍后在「我的」重试或联系客服；若刚授权手机，可下拉刷新本页。</text>
+        <button class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
+          <text class="paywall-btn-main">去个人资料</text>
+        </button>
+      </view>
+    </view>
+
+    <view
+      wx:if="{{profileGate && report && (!payInfo.requiresPayment || payInfo.isPaid) && !fromShare}}"
+      id="unlock-gate-anchor"
+      class="unlock-gate-profile-block"
+    >
+      <view class="preview-teaser-card" wx:if="{{report.overview}}">
+        <text class="preview-teaser-title">综合总评（预览）</text>
+        <text class="preview-teaser-desc">{{report.overview}}</text>
+        <text class="preview-teaser-hint">授权手机号并设置头像、昵称后即可查看全文。</text>
+      </view>
+      <button
+        wx:if="{{!hasPhone}}"
+        class="paywall-btn paywall-btn--inline-profile"
+        open-type="getPhoneNumber"
+        bindgetphonenumber="onPhoneLoginForResultGate"
+      >
+        <text class="paywall-btn-main">登录解锁全文</text>
+      </button>
+      <button wx:else class="paywall-btn paywall-btn--inline-profile" bindtap="goCompleteProfile">
+        <text class="paywall-btn-main">完善资料 · 查看全文</text>
+      </button>
+    </view>
+
+    <view id="unlock-scroll-tail"></view>
+
+    <view class="card" wx:if="{{!report.locked}}">
+      <view class="title-wrap">
+        <view class="title-icon">📊</view>
+        <view class="title">综合总评</view>
+      </view>
+      <view class="content">{{report.overview}}</view>
+    </view>
+
+    <view class="card" wx:if="{{!report.locked}}">
+      <view class="title-wrap">
+        <view class="title-icon">🎯</view>
+        <view class="title">冲稳保建议</view>
+      </view>
+      <block wx:if="{{hasSchoolFlat}}">
+        <view class="sub-counts" wx:if="{{schoolChongCount || schoolWenCount || schoolBaoCount}}">
+          <view class="count-tag count-chong">冲 {{schoolChongCount}}所</view>
+          <view class="count-tag count-wen">稳 {{schoolWenCount}}所</view>
+          <view class="count-tag count-bao">保 {{schoolBaoCount}}所</view>
+        </view>
+        <view class="sub-counts" wx:else>
+          <view class="count-tag count-total">院校参考（共 {{schoolListFlat.length}} 所）</view>
+        </view>
+
+        <view class="school-list">
+          <block wx:for="{{schoolListFlat}}" wx:for-item="sch" wx:for-index="sidx" wx:key="sidx">
+            <view class="school-item">
+              <view class="school-header">
+                <view
+                  class="school-band-tag band-{{sch.band === '冲' ? 'chong' : (sch.band === '稳' ? 'wen' : (sch.band === '保' ? 'bao' : 'none'))}}"
+                  wx:if="{{sch.band}}"
+                >{{sch.band}}</view>
+                <view class="school-name">{{sch.schoolName}}</view>
+              </view>
+              <view class="school-meta-row" wx:if="{{sch.city || sch.level}}">
+                <text class="meta-item" wx:if="{{sch.city}}"><text class="meta-icon">📍</text>{{sch.city}}</text>
+                <text class="meta-item" wx:if="{{sch.level}}"><text class="meta-icon">🎓</text>{{sch.level}}</text>
+              </view>
+              <view class="school-reason" wx:if="{{sch.reason}}">
+                <text class="quote-mark">“</text>
+                {{sch.reason}}
+              </view>
+            </view>
+          </block>
+        </view>
+      </block>
+      <view wx:else class="sub-counts">
+        <view class="count-tag count-chong">冲 {{schoolChongCount}}所</view>
+        <view class="count-tag count-wen">稳 {{schoolWenCount}}所</view>
+        <view class="count-tag count-bao">保 {{schoolBaoCount}}所</view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{!report.locked}}">
+      <view class="title-wrap">
+        <view class="title-icon">💼</view>
+        <view class="title">专业建议</view>
+      </view>
+      <view class="major-list" wx:if="{{!hasNoMajors}}">
+        <block wx:for="{{majorList}}" wx:for-item="row" wx:for-index="idx" wx:key="idx">
+          <view class="major-item">
+            <view class="major-rank rank-{{idx < 3 ? idx + 1 : 'other'}}">{{idx + 1}}</view>
+            <view class="major-name">{{row.name}}</view>
+            <view class="major-score" wx:if="{{row.fitLabel}}">{{row.fitLabel}}</view>
+          </view>
+        </block>
+      </view>
+      <view wx:if="{{hasNoMajors}}" class="sub">暂无专业推荐</view>
+    </view>
+
+    <view class="card" wx:if="{{!report.locked}}">
+      <view class="title-wrap">
+        <view class="title-icon">🧠</view>
+        <view class="title">性格匹配说明</view>
+      </view>
+      <view class="content">{{report.personalityReason}}</view>
+    </view>
+
+    <view class="card disclaimer-card" wx:if="{{!report.locked}}">
+      <view class="title-wrap">
+        <view class="title-icon">⚠️</view>
+        <view class="title">免责声明</view>
+      </view>
+      <view class="content disclaimer-text">{{report.disclaimers}}</view>
+    </view>
+  </view>
+
+  <view class="empty" wx:elif="{{!isPendingAnalyze}}">
+    <view class="empty-icon">📄</view>
+    <view class="empty-text">暂无报告，请先完成综合分析</view>
+  </view>
+
+  <view class="result-bottom-tools" wx:if="{{report && !fromShare}}">
+    <view class="journey-stepper journey-stepper--two">
+      <view class="journey-stepper__item">
+        <view
+          class="journey-stepper__dot {{journey.step1Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===1 ? 'journey-stepper__dot--active' : '')}}"
+        >1</view>
+        <text class="journey-stepper__label {{journey.activeStep===1 ? 'journey-stepper__label--active' : ''}}">看全文</text>
+      </view>
+      <view class="journey-stepper__bar {{journey.step1Unlocked ? 'journey-stepper__bar--done' : ''}}"></view>
+      <view class="journey-stepper__item">
+        <view
+          class="journey-stepper__dot {{journey.step2Unlocked ? 'journey-stepper__dot--done' : (journey.activeStep===2 ? 'journey-stepper__dot--active' : '')}}"
+        >2</view>
+        <text class="journey-stepper__label {{journey.activeStep===2 ? 'journey-stepper__label--active' : ''}}">分享朋友圈</text>
+      </view>
+    </view>
+    <view class="result-bottom-tools__row result-bottom-tools__row--two">
+      <view class="result-tool-btn result-tool-btn--primary" bindtap="onTapReadFull">
+        <text>{{journey.step1Unlocked ? '查看全文' : '① 解锁全文'}}</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? '已解锁' : (profileGate ? (hasPhone ? '完善资料后解锁' : '登录并完善资料') : '点击解锁')}}</text>
+      </view>
+      <view
+        class="result-tool-btn {{journey.step1Unlocked ? 'result-tool-btn--rose' : 'result-tool-btn--locked'}}"
+        bindtap="onTapShareMoment"
+      >
+        <text><text wx:if="{{!journey.step1Unlocked}}" class="result-tool-btn__lock">🔒</text>朋友圈</text>
+        <text class="result-tool-sub">{{journey.step1Unlocked ? (journey.step2Unlocked ? '已分享' : '点击分享') : '先解锁全文'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="result-share-footer result-share-footer--stack" wx:if="{{report && fromShare}}">
+    <button class="result-share-footer-btn" bindtap="goWantTest">我也要测试</button>
+    <view class="result-share-footer-row2">
+      <button class="result-share-footer-btn result-share-footer-btn--ghost" bindtap="goReadFullFromShare">看全文</button>
+      <button class="result-share-footer-btn result-share-footer-btn--share" open-type="share">分享给好友</button>
+    </view>
+  </view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
+</view>

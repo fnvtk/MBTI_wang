@@ -31,6 +31,9 @@ Page({
         if (cfg.reviewMode !== undefined) app.globalData.reviewMode = !!cfg.reviewMode
         else if (cfg.maintenanceMode !== undefined) app.globalData.reviewMode = !!cfg.maintenanceMode
         if (cfg.maintenanceMode !== undefined) app.globalData.maintenanceMode = !!cfg.maintenanceMode
+        try {
+          require('../../utils/miniprogramAuditGate.js').applyAuditUiOverride(app)
+        } catch (e) {}
         if (cfg.textConfig) {
           app.globalData.textConfig = cfg.textConfig
           this.setData({

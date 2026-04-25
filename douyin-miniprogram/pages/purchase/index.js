@@ -1,7 +1,53 @@
 // pages/purchase/index.js - 开通会员（深度服务价格：个人/企业区分，类目由后端配置可新增）
-const app = getApp()
 const payment = require('../../utils/payment')
 const { hasPhone, bindPhoneByCode, ensureProfileCompleteAndRedirect } = require('../../utils/phoneAuth.js')
+
+function appSafe() {
+  try {
+    return getApp()
+  } catch (e) {
+    return { globalData: {} }
+  }
+}
+
+function embeddedDeepCategories(scope) {
+  const gd = appSafe().globalData || {}
+  const list = scope === 'enterprise' ? gd.deepPricingEnterprise : gd.deepPricingPersonal
+  return Array.isArray(list) && list.length ? list : null
+}
+
+function rememberCategoryKeys(cat, seen) {
+  const id = String((cat && cat.id) || '')
+  const pk = String((cat && cat.productKey) || '')
+  if (id) seen.add('id:' + id)
+  if (pk) seen.add('pk:' + pk)
+}
+
+function categorySeenInSet(cat, seen) {
+  const id = String((cat && cat.id) || '')
+  const pk = String((cat && cat.productKey) || '')
+  if (id && seen.has('id:' + id)) return true
+  if (pk && seen.has('pk:' + pk)) return true
+  return false
+}
+
+function mergeDeepPricingFromRuntime(scope, apiList) {
+  let list = Array.isArray(apiList) ? apiList.slice() : []
+  const emb = embeddedDeepCategories(scope)
+  if (!emb || !emb.length) return list
+  if (!list.length) return emb.slice()
+  if (list.length === 1 && emb.length > list.length) return emb.slice()
+
+  const seen = new Set()
+  list.forEach((c) => rememberCategoryKeys(c, seen))
+  emb.forEach((c) => {
+    if (!categorySeenInSet(c, seen)) {
+      list.push(c)
+      rememberCategoryKeys(c, seen)
+    }
+  })
+  return list
+}
 
 Page({
   data: {
@@ -14,12 +60,12 @@ Page({
     successModal: {
       visible: false,
       title: '',
-      content: '',
-      wechat: ''
+      content: ''
     }
   },
 
   onLoad(options) {
+    this._deepPersonalRecheckScheduled = false
     const tab = (options && options.tab === 'enterprise') ? 'enterprise' : 'personal'
     this.setData({ activeTab: tab })
     tt.setNavigationBarTitle({ title: '深度服务' })
@@ -29,43 +75,65 @@ Page({
   onShow() {
     if (!ensureProfileCompleteAndRedirect()) return
     this.setData({ hasPhone: hasPhone() })
+    const raw = this._rawPersonalCategories
+    if (!this._deepPersonalRecheckScheduled && Array.isArray(raw) && raw.length === 1) {
+      this._deepPersonalRecheckScheduled = true
+      setTimeout(() => this.loadDeepPricing(), 500)
+    }
   },
 
   loadDeepPricing() {
+    const app = appSafe()
     const apiBase = app.globalData.apiBase || ''
     if (!apiBase) {
       this.setData({ loading: false })
       return
     }
     this.setData({ loading: true })
-    Promise.all([
-      this.requestDeepPricing('personal'),
-      this.requestDeepPricing('enterprise')
-    ]).then(([personal, enterprise]) => {
-      this.setData({
-        personalCategories: personal || [],
-        enterpriseCategories: enterprise || [],
-        loading: false
+    const pre =
+      app.getRuntimeConfig && typeof app.getRuntimeConfig === 'function'
+        ? app.getRuntimeConfig().catch(() => null)
+        : Promise.resolve(null)
+    pre
+      .then(() => Promise.all([this.requestDeepPricing('personal'), this.requestDeepPricing('enterprise')]))
+      .then(([personal, enterprise]) => {
+        let pList = Array.isArray(personal) ? personal : []
+        let eList = Array.isArray(enterprise) ? enterprise : []
+        pList = mergeDeepPricingFromRuntime('personal', pList)
+        eList = mergeDeepPricingFromRuntime('enterprise', eList)
+        this._rawPersonalCategories = pList
+        this._rawEnterpriseCategories = eList
+        this.setData({
+          personalCategories: pList,
+          enterpriseCategories: eList,
+          loading: false
+        })
       })
-    }).catch(() => {
-      this.setData({ loading: false })
-    })
+      .catch(() => {
+        this.setData({ loading: false })
+      })
   },
 
   requestDeepPricing(scope) {
+    const app = appSafe()
     return new Promise((resolve) => {
       tt.request({
         url: `${app.globalData.apiBase.replace(/\/$/, '')}/api/config/deep-pricing`,
         method: 'GET',
         data: { scope },
+        timeout: 25000,
         success: (res) => {
           if (res.statusCode === 200 && res.data && res.data.code === 200 && Array.isArray(res.data.data && res.data.data.categories)) {
-            resolve(res.data.data.categories)
+            resolve(mergeDeepPricingFromRuntime(scope, res.data.data.categories))
           } else {
-            resolve([])
+            const emb = embeddedDeepCategories(scope)
+            resolve(emb ? emb.slice() : [])
           }
         },
-        fail: () => resolve([])
+        fail: () => {
+          const emb = embeddedDeepCategories(scope)
+          resolve(emb ? emb.slice() : [])
+        }
       })
     })
   },
@@ -148,8 +216,7 @@ Page({
         this.setData({ purchasing: false })
         this._reportCrmLead(category, 'buy')
         const successMsg = (category.successMessage || '购买成功！我们的顾问会尽快与您联系，为您提供专属深度解读服务。').trim()
-        const wechat = (category.serviceWechat || '').trim()
-        this._showSuccessModal('购买成功', successMsg, wechat)
+        this._showSuccessModal('购买成功', successMsg)
       },
       fail: () => {
         tt.hideLoading()
@@ -159,27 +226,21 @@ Page({
   },
 
   applyConsult(category) {
-    // serviceWechat 展示给用户，consultWechat 是存客宝 API key
-    const wechat = (category.serviceWechat || '').trim()
-    const apiKey = (category.consultWechat || '').trim()
     const successMsg = (category.successMessage || '感谢您的申请，我们的顾问会尽快与您联系！').trim()
     tt.showLoading({ title: '提交中...', mask: true })
-    if (apiKey) {
-      this._reportCrmLead(category, 'consult')
-    }
-    setTimeout(() => {
+    const done = () => {
       tt.hideLoading()
-      this._showSuccessModal('申请成功', successMsg, wechat)
-    }, 600)
+      this._showSuccessModal('申请成功', successMsg)
+    }
+    this._reportCrmLead(category, 'consult', done)
   },
 
-  _showSuccessModal(title, content, wechat) {
+  _showSuccessModal(title, content) {
     this.setData({
       successModal: {
         visible: true,
         title: title || '成功',
-        content: content || '',
-        wechat: wechat || ''
+        content: content || ''
       }
     })
   },
@@ -190,32 +251,39 @@ Page({
     this.setData({ 'successModal.visible': false })
   },
 
-  copyWechat() {
-    const wechat = this.data.successModal.wechat
-    if (!wechat) return
-    tt.setClipboardData({
-      data: wechat,
-      success: () => tt.showToast({ title: '已复制微信号', icon: 'success' })
-    })
-  },
-
   /**
-   * 向后端上报存客宝线索，后端负责签名和调用存客宝 API
-   * @param {Object} category  深度服务类目对象（需含 consultWechat / title）
-   * @param {string} actionType  'buy'（付款完成）| 'consult'（申请咨询）
+   * 向后端上报线索：存客宝（有 KEY 时）+ 飞书群（申请咨询且 deepConsult）
+   * @param {Object} category  深度服务类目对象
+   * @param {string} actionType  'buy' | 'consult'
+   * @param {Function} [onDone] 请求结束回调（含失败）
    */
-  _reportCrmLead(category, actionType) {
-    const apiKey = category.consultWechat || ''
-    if (!apiKey) return
-    const apiBase = app.globalData.apiBase || ''
-    if (!apiBase) return
+  _reportCrmLead(category, actionType, onDone) {
+    const app = appSafe()
+    const apiKey = (category.consultWechat || '').trim()
+    const apiBase = (app.globalData.apiBase || '').replace(/\/$/, '')
+    const isConsult = actionType === 'consult'
+    const deepConsult = isConsult
+
+    const finish = () => {
+      if (typeof onDone === 'function') onDone()
+    }
+
+    if (!apiBase) {
+      finish()
+      return
+    }
+
+    if (!deepConsult && !apiKey) {
+      finish()
+      return
+    }
 
     const isEnterprise = this.data.activeTab === 'enterprise'
     const source = (isEnterprise ? '企业深度服务' : '个人深度服务') + (category.title ? `-${category.title}` : '')
     const remark = actionType === 'buy' ? '完成付款' : '申请咨询'
 
     tt.request({
-      url: `${apiBase.replace(/\/$/, '')}/api/crm/report`,
+      url: `${apiBase}/api/crm/report`,
       method: 'POST',
       header: {
         Authorization: `Bearer ${tt.getStorageSync('token') || ''}`,
@@ -226,6 +294,7 @@ Page({
         source,
         remark,
         siteTags: category.title || '',
+        deepConsult: deepConsult ? true : false,
       },
       success(res) {
         console.log('[CRM] 线索上报结果', res.data)
@@ -233,6 +302,7 @@ Page({
       fail(err) {
         console.warn('[CRM] 线索上报请求失败', err)
       },
+      complete: finish,
     })
   },
 

@@ -19,6 +19,70 @@ page {
   margin-bottom: 40rpx;
 }
 
+/* 我的邀请码 */
+.my-invite-card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 28rpx 32rpx;
+  margin-bottom: 32rpx;
+  border: 2rpx solid #fce7f3;
+  box-shadow: 0 4rpx 24rpx rgba(244, 63, 94, 0.06);
+}
+.my-invite-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16rpx;
+}
+.my-invite-card__title {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
+}
+.my-invite-card__copy {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #e11d48;
+  padding: 10rpx 24rpx;
+  background: #fff1f2;
+  border-radius: 999rpx;
+}
+.my-invite-card__code {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #0f172a;
+  margin-bottom: 12rpx;
+}
+.my-invite-card__tip {
+  display: block;
+  font-size: 22rpx;
+  line-height: 1.45;
+  color: #64748b;
+}
+.my-invite-card__code--muted {
+  font-size: 30rpx;
+  font-weight: 600;
+  letter-spacing: normal;
+  color: #94a3b8;
+}
+.my-invite-card__err {
+  display: block;
+  font-size: 26rpx;
+  line-height: 1.5;
+  color: #b45309;
+  margin-bottom: 8rpx;
+}
+.my-invite-card__retry {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #e11d48;
+  padding: 10rpx 24rpx;
+  background: #fff1f2;
+  border-radius: 999rpx;
+}
+
 .hero-header-row {
   display: flex;
   justify-content: space-between;
@@ -546,5 +610,89 @@ page {
 .dialog-actions .btn.confirm {
   background: #f43f5e;
   color: #ffffff;
+}
+
+/* ===== 视觉对齐：推广中心与「我的 · 分润卡」统一紫色品牌渐变 ===== */
+.hero-card {
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 55%, #4f46e5 100%) !important;
+  box-shadow: 0 14rpx 36rpx rgba(99, 102, 241, 0.22) !important;
+  border-radius: 32rpx !important;
+  color: #fff !important;
+  position: relative;
+}
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 32rpx;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(255,255,255,0.22) 0 120rpx, transparent 200rpx),
+    radial-gradient(circle at 0% 100%, rgba(255,255,255,0.10) 0 180rpx, transparent 320rpx);
+}
+.hero-card .wallet-icon {
+  background: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+}
+.hero-card .title-text .label {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+.hero-card .badge .dot {
+  background: #fde047 !important;
+}
+.hero-card .badge-text {
+  color: #fde047 !important;
+}
+.hero-card .amount {
+  color: #ffffff !important;
+}
+.hero-card .amount-sub {
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.hero-card .withdraw-btn {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #6366f1 !important;
+  box-shadow: 0 6rpx 16rpx rgba(0, 0, 0, 0.08) !important;
+  font-weight: 700 !important;
+}
+.hero-card .withdraw-btn.disabled {
+  background: rgba(255, 255, 255, 0.28) !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  box-shadow: none !important;
+}
+.hero-card .record-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+.hero-card .record-link .arrow {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* 四格统计 · 卡片化、圆角与阴影对齐 */
+.stats-grid {
+  border-radius: 24rpx !important;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05) !important;
+  border: 1rpx solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+.stats-grid .stat-val {
+  letter-spacing: -0.01em !important;
+}
+.stats-grid .stat-val.highlight {
+  color: #f97316 !important;
+}
+
+/* 卡片外壳统一圆角/阴影 */
+.section.rule-section,
+.section.user-section,
+.menu-card {
+  border-radius: 24rpx !important;
+  box-shadow: 0 4rpx 20rpx rgba(15, 23, 42, 0.05) !important;
+  border: 1rpx solid #f1f5f9 !important;
+  background: #ffffff !important;
+}
+
+/* 底部提示：品牌色统一 */
+.footer-tip .highlight {
+  color: #6366f1 !important;
 }
 

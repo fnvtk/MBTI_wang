@@ -2,6 +2,12 @@
 const app = getApp()
 const { getTypeOnly } = require('../../utils/resultFormat')
 const { request } = require('../../utils/request')
+const { buildRecoMiniProgramPath } = require('../../utils/recoMiniProgram.js')
+const { isAuditHideAiMode } = require('../../utils/miniprogramAuditGate.js')
+const inviteCodeGate = require('../../utils/inviteCodeGate.js')
+
+/** 与超管「小程序 · 推荐文章展示」中「区块标题」一致；接口无字段时的兜底 */
+const PROFILE_RECO_LABEL_FALLBACK = '我的由来'
 
 /** recent 单条：优先用 resultMeta 与结果页一致的「双项」文案 */
 function summaryFromRecentRecord(rec, testType) {
@@ -34,6 +40,14 @@ Page({
     pdpTime: '',
     aiTime: '',
     reviewMode: false,
+    /** 超管「小程序提审模式」：与 reviewMode 一样隐藏推广/部分营销入口 */
+    mpAuditMode: false,
+    /** 仅 miniprogramAuditMode：隐藏「了解自己」深度套餐入口（虚拟商品合规） */
+    showDeepPricingEntry: true,
+    /** 审核/提审（与神仙 AI Tab 同源）：隐藏「匹配工作」入口 */
+    showMatchJobEntry: true,
+    /** 快捷入口网格列类名 quick-grid--2～4，按可见按钮数均分平铺（每行最多 4 个） */
+    quickGridClass: 'quick-grid--4',
     /** 最近记录的数据库 ID，用于跳转时传参 */
     mbtiResultId: null,
     sbtiResultId: null,
@@ -65,12 +79,23 @@ Page({
     /** 最新测试横滑区：有问卷/面相权限即显示；无记录时卡片灰阶占位，不隐藏 */
     showLatestTestRow: false,
     /** 用户卡片下性格标签：在「当前权限下无任何问卷结果」时显示灰色提示 */
-    showEmptyPersonalityTags: true
+    showEmptyPersonalityTags: true,
+    profileRecoShow: false,
+    profileRecoSectionLabel: '',
+    profileRecoArticle: null,
+    /** 与神仙 AI 精选推荐同源：配置了 AppID 时优先跳转目标小程序 */
+    profileRecoJump: null,
+    /** 拉取自 /api/distribution/my-invite-code，与推广中心一致 */
+    myInviteCode: '',
+    myInviteCodeLoadState: 'idle',
+    myInviteCodeErrMsg: '',
+    myInviteCodeHint: '',
+    showInviteCodeDialog: false
   },
 
   _computeShowLatestTestRow(d) {
-    const rm = !!(d.reviewMode)
-    if (rm) {
+    const hideFace = !!(d.reviewMode || d.mpAuditMode)
+    if (hideFace) {
       return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc)
     }
     return !!(d.permMbti || d.permSbti || d.permPdp || d.permDisc || d.permFace)
@@ -85,12 +110,21 @@ Page({
     )
   },
 
+  /** 性格测试 + 我的订单 + 可选「了解自己」「匹配工作」，按可见数 2～4 列均分 */
+  _computeQuickGridCols(d) {
+    let n = 2
+    if (d.showDeepPricingEntry) n++
+    if (d.showMatchJobEntry) n++
+    return Math.min(Math.max(n, 1), 4)
+  },
+
   onLoad() {
     // 仅在 onLoad 执行一次，onShow 里的 runLoginThenLoad 会导致重复请求
     this.runLoginThenLoad()
   },
   _syncPerms(overrides = {}) {
-    const p = app.globalData.enterprisePermissions
+    const gd = app.globalData || {}
+    const p = gd.enterprisePermissions
     const next = {
       permFace: !p || p.face !== false,
       permMbti: !p || p.mbti !== false,
@@ -98,11 +132,15 @@ Page({
       permPdp:  !p || p.pdp  !== false,
       permDisc: !p || p.disc !== false,
       permDistribution: !p || p.distribution !== false,
+      showDeepPricingEntry: !gd.miniprogramAuditMode,
+      showMatchJobEntry: !isAuditHideAiMode(gd),
       ...overrides
     }
     const d = { ...this.data, ...next }
+    const qCols = this._computeQuickGridCols(d)
     this.setData({
       ...next,
+      quickGridClass: `quick-grid--${qCols}`,
       showLatestTestRow: this._computeShowLatestTestRow(d),
       showEmptyPersonalityTags: this._computeShowEmptyPersonalityTags(d)
     })
@@ -110,7 +148,10 @@ Page({
 
   onShow() {
     const gd = app.globalData
-    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+    this._syncPerms({
+      reviewMode: !!(gd.reviewMode || gd.maintenanceMode),
+      mpAuditMode: isAuditHideAiMode(gd)
+    })
     // 如果是从其他页面返回，且已经登录，则只刷新数据而不重新执行登录流程
     if (this.data.hasLogin) {
       this.loadData()
@@ -169,7 +210,10 @@ Page({
 
   loadData() {
     const gd = app.globalData
-    this._syncPerms({ reviewMode: !!(gd.reviewMode || gd.maintenanceMode) })
+    this._syncPerms({
+      reviewMode: !!(gd.reviewMode || gd.maintenanceMode),
+      mpAuditMode: isAuditHideAiMode(gd)
+    })
 
     const userInfo = app.globalData.userInfo || wx.getStorageSync('userInfo')
     const token = app.globalData.token || wx.getStorageSync('token')
@@ -201,9 +245,277 @@ Page({
 
     // 2. 已登录则从服务端拉取最近记录；失败降级读 localStorage
     if (token || userInfo) {
+      if (token && this.data.permDistribution) {
+        this.setData({ myInviteCodeLoadState: 'loading', myInviteCodeErrMsg: '' })
+      }
       this._loadRecentFromAPI()
       this._loadPromoStats()
+      this._loadMyInviteCode()
+      this._loadProfileRecoTeaser()
+    } else {
+      this.setData({
+        profileRecoShow: false,
+        profileRecoArticle: null,
+        profileRecoSectionLabel: '',
+        profileRecoJump: null,
+        myInviteCode: '',
+        myInviteCodeLoadState: 'idle',
+        myInviteCodeErrMsg: '',
+        myInviteCodeHint: '',
+        showInviteCodeDialog: false
+      })
     }
+  },
+
+  openInviteCodeFill() {
+    app.ensureLogin().then((ok) => {
+      if (!ok) {
+        wx.showToast({ title: '请先登录', icon: 'none' })
+        return
+      }
+      inviteCodeGate.openInviteCodeDialog(this)
+    })
+  },
+
+  onInviteCodeSkip() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  onInviteCodeSuccess() {
+    inviteCodeGate.finishInviteCodeGate(this, true)
+  },
+
+  _loadMyInviteCode() {
+    const token = app.globalData.token || wx.getStorageSync('token')
+    if (!token || !this.data.permDistribution) {
+      this.setData({
+        myInviteCode: '',
+        myInviteCodeLoadState: 'idle',
+        myInviteCodeErrMsg: '',
+        myInviteCodeHint: ''
+      })
+      return
+    }
+    this.setData({
+      myInviteCodeLoadState: 'loading',
+      myInviteCodeErrMsg: ''
+    })
+    request({
+      url: '/api/distribution/my-invite-code',
+      method: 'GET',
+      success: (res) => {
+        const payload = res && res.data
+        const httpOk = res.statusCode >= 200 && res.statusCode < 300
+        const bizOk = payload && Number(payload.code) === 200
+        if (!httpOk || !bizOk) {
+          const msg =
+            (payload && payload.message) ||
+            (typeof res.statusCode === 'number' ? `请求失败 (${res.statusCode})` : '加载失败')
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeLoadState: 'error',
+            myInviteCodeErrMsg: msg,
+            myInviteCodeHint: ''
+          })
+          return
+        }
+        const data = payload.data || {}
+        const raw = data.code != null ? String(data.code).trim() : ''
+        const code = raw ? raw.toUpperCase() : ''
+        const hint = (data.hint && String(data.hint).trim()) || ''
+        if (code) {
+          this.setData({
+            myInviteCode: code,
+            myInviteCodeLoadState: 'ready',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: ''
+          })
+        } else {
+          this.setData({
+            myInviteCode: '',
+            myInviteCodeLoadState: 'nodata',
+            myInviteCodeErrMsg: '',
+            myInviteCodeHint: hint || '暂无可用邀请码'
+          })
+        }
+      },
+      fail: () =>
+        this.setData({
+          myInviteCode: '',
+          myInviteCodeLoadState: 'error',
+          myInviteCodeErrMsg: '网络异常',
+          myInviteCodeHint: ''
+        })
+    })
+  },
+
+  onInviteStripTap() {
+    if (this.data.myInviteCodeLoadState === 'error') {
+      this._loadMyInviteCode()
+      return
+    }
+    this.goToPromo()
+  },
+
+  copyMyInviteCode() {
+    const code = (this.data.myInviteCode || '').trim()
+    if (!code) return
+    wx.setClipboardData({
+      data: code,
+      success: () => wx.showToast({ title: '已复制邀请码', icon: 'success' })
+    })
+  },
+
+  _parseRecoJumpFromDisplay(d) {
+    if (!d || typeof d !== 'object') return null
+    const appId = ((d.recoJumpMiniAppId || '') + '').trim()
+    if (!appId || !/^wx[0-9a-f]{16}$/i.test(appId)) return null
+    const envRaw = ((d.recoJumpMiniEnvVersion || 'release') + '').trim().toLowerCase()
+    const env = envRaw === 'trial' || envRaw === 'develop' ? envRaw : 'release'
+    let path = ((d.recoJumpMiniPath || 'pages/index/index') + '').trim().replace(/^\//, '')
+    if (!path) path = 'pages/index/index'
+    return { appId: appId.toLowerCase(), path, envVersion: env }
+  },
+
+  _applyProfileTeaserPayload(d) {
+    const art = d.article && d.article.url ? d.article : null
+    const show = !!(d.enabled && art)
+    this.setData({
+      profileRecoShow: show,
+      profileRecoSectionLabel: (d.sectionLabel && String(d.sectionLabel).trim()) || PROFILE_RECO_LABEL_FALLBACK,
+      profileRecoArticle: show ? art : null,
+      profileRecoJump: show ? this._parseRecoJumpFromDisplay(d) : null
+    })
+  },
+
+  _loadProfileRecoTeaser() {
+    const t = Date.now()
+    const finishFail = () =>
+      this.setData({
+        profileRecoShow: false,
+        profileRecoArticle: null,
+        profileRecoSectionLabel: '',
+        profileRecoJump: null
+      })
+
+    const tryLegacyPath = () => {
+      request({
+        url: `/api/ai/articles/profile-teaser?_t=${Date.now()}`,
+        method: 'GET',
+        needAuth: false,
+        success: (res) => {
+          const payload = res && res.data
+          if (!payload || payload.code !== 200 || !payload.data) {
+            finishFail()
+            return
+          }
+          this._applyProfileTeaserPayload(payload.data)
+        },
+        fail: finishFail
+      })
+    }
+
+    // 优先走 recommended?usage=profile（与已放行路径一致）；部署新 API 后与 profile-teaser 结构相同
+    request({
+      url: `/api/ai/articles/recommended?usage=profile&_t=${t}`,
+      method: 'GET',
+      needAuth: false,
+      success: (res) => {
+        const payload = res && res.data
+        if (!payload || payload.code !== 200 || !payload.data) {
+          tryLegacyPath()
+          return
+        }
+        const d = payload.data
+        if (Object.prototype.hasOwnProperty.call(d, 'article')) {
+          this._applyProfileTeaserPayload(d)
+          return
+        }
+        if (Array.isArray(d.list) && d.list.length) {
+          const disp = d.display || {}
+          const first = d.list[0]
+          if (disp.enabled !== false && first && first.url) {
+            this.setData({
+              profileRecoShow: true,
+              profileRecoSectionLabel: (disp.profileSectionLabel && String(disp.profileSectionLabel).trim()) || PROFILE_RECO_LABEL_FALLBACK,
+              profileRecoArticle: first,
+              profileRecoJump: this._parseRecoJumpFromDisplay(disp)
+            })
+            return
+          }
+        }
+        tryLegacyPath()
+      },
+      fail: tryLegacyPath
+    })
+  },
+
+  onTapProfileReco(e) {
+    const ds = (e && e.currentTarget && e.currentTarget.dataset) || {}
+    const id = ds.id
+    const url = ds.url
+    const title = ds.title
+    const sourceId = ds.sourceId
+    try {
+      require('../../utils/analytics').track('tap_ai_article', {
+        articleId: id,
+        url,
+        title,
+        from: 'profile_teaser'
+      })
+    } catch (err) {}
+    if (id) {
+      request({
+        url: `/api/ai/articles/${id}/click`,
+        method: 'POST',
+        needAuth: false,
+        success() {},
+        fail() {}
+      })
+    }
+    const jump = this.data.profileRecoJump
+    if (jump && jump.appId) {
+      const path = buildRecoMiniProgramPath(jump.path, {
+        id,
+        title,
+        sourceId,
+        fromTag: 'mbti_profile_reco'
+      })
+      const env = jump.envVersion === 'trial' || jump.envVersion === 'develop' ? jump.envVersion : 'release'
+      wx.navigateToMiniProgram({
+        appId: jump.appId,
+        path,
+        envVersion: env,
+        fail: (err) => {
+          if (url) {
+            const enc = encodeURIComponent(url)
+            wx.navigateTo({
+              url: `/pages/webview/index?url=${enc}`,
+              fail: () => {
+                wx.setClipboardData({
+                  data: url,
+                  success: () => wx.showToast({ title: '已复制链接', icon: 'none' })
+                })
+              }
+            })
+          } else {
+            wx.showToast({ title: (err && err.errMsg) || '无法打开目标小程序', icon: 'none' })
+          }
+        }
+      })
+      return
+    }
+    if (!url) return
+    const enc = encodeURIComponent(url)
+    wx.navigateTo({
+      url: `/pages/webview/index?url=${enc}`,
+      fail: () => {
+        wx.setClipboardData({
+          data: url,
+          success: () => wx.showToast({ title: '已复制链接', icon: 'none' })
+        })
+      }
+    })
   },
 
   /** 从 /api/test/recent 拉取各类型最新记录 */
@@ -359,8 +671,20 @@ Page({
     wx.navigateTo({ url: '/pages/history/index' })
   },
   goToUserProfile() { wx.navigateTo({ url: '/pages/user-profile/index' }) },
+  /** 合并后的用户卡片点击：按登录态分发 */
+  onUserCardTap() {
+    if (this.data.hasLogin) {
+      this.goToUserProfile()
+    } else {
+      this.doLogin()
+    }
+  },
   /** 深度服务统一入口（页内 Tab：个人 / 团队与企业） */
   goToDeepService() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
     try { require('../../utils/analytics').track('tap_deep_service', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/purchase/index' })
   },
@@ -372,12 +696,50 @@ Page({
     try { require('../../utils/analytics').track('tap_my_orders', {}) } catch (e) {}
     wx.navigateTo({ url: '/pages/order/index' })
   },
-  goToPurchase() { wx.navigateTo({ url: '/pages/purchase/index' }) },
-  goToPurchasePersonal() { wx.navigateTo({ url: '/pages/purchase/index?tab=personal' }) },
-  goToPurchaseEnterprise() { wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' }) },
+  goToPurchase() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index' })
+  },
+  goToPurchasePersonal() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index?tab=personal' })
+  },
+  goToPurchaseEnterprise() {
+    if (app.globalData && app.globalData.miniprogramAuditMode) {
+      wx.showToast({ title: '版本审核中暂不可用', icon: 'none' })
+      return
+    }
+    wx.navigateTo({ url: '/pages/purchase/index?tab=enterprise' })
+  },
   goToEnterprise() { wx.navigateTo({ url: '/pages/enterprise/index' }) },
-  goToPromo() { wx.navigateTo({ url: '/pages/promo/index' }) },
-  goToMyResume() { wx.navigateTo({ url: '/pages/enterprise/resume-history' }) },
+  goToPromoWithdrawals() {
+    try { require('../../utils/analytics').track('tap_promo_withdrawals', { from: 'profile' }) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/withdrawals' })
+  },
+  goToPromo() {
+    try { require('../../utils/analytics').track('tap_promo_center', { from: 'profile' }) } catch (e) {}
+    wx.navigateTo({ url: '/pages/promo/index' })
+  },
+  goToMyResume() {
+    try { require('../../utils/analytics').track('tap_my_resume', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/enterprise/resume-history' })
+  },
+  /** 匹配工作：新入口，跳转匹配工作中间页 */
+  goToMatchJob() {
+    const gd = app.globalData || {}
+    if (isAuditHideAiMode(gd)) {
+      wx.showToast({ title: '功能升级中', icon: 'none' })
+      return
+    }
+    try { require('../../utils/analytics').track('tap_match_job', {}) } catch (e) {}
+    wx.navigateTo({ url: '/pages/match-job/index' })
+  },
   goToSettings() {
     wx.showToast({ title: '开发中', icon: 'none' })
   },
@@ -436,7 +798,10 @@ Page({
 
   onShareAppMessage() {
     const { getSharePathByScope } = require('../../utils/share')
-    const rm = !!app.globalData.reviewMode
+    const gd = app.globalData || {}
+    if (gd.miniprogramAuditMode || gd.reviewMode || gd.maintenanceMode) {
+      return { title: '性格测试', path: '/pages/index/index' }
+    }
     return {
       title: '神仙团队性格测试 - 发现你的MBTI类型',
       path: getSharePathByScope('/pages/index/index')
@@ -445,7 +810,10 @@ Page({
 
   onShareTimeline() {
     const { buildShareQuery } = require('../../utils/share')
-    const rm = !!app.globalData.reviewMode
+    const gd = app.globalData || {}
+    if (gd.miniprogramAuditMode || gd.reviewMode || gd.maintenanceMode) {
+      return { title: '性格测试', query: '' }
+    }
     return {
       title: '神仙团队性格测试 - 发现你的MBTI类型',
       query: buildShareQuery()

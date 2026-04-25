@@ -1,0 +1,72 @@
+<view class="container">
+  <view class="card">
+    <view class="item">
+      <view class="label">姓名</view>
+      <input class="input" data-key="name" value="{{form.name}}" bindinput="onInput" placeholder="请输入姓名" />
+    </view>
+    <view class="item">
+      <view class="label">所在地区</view>
+      <picker mode="region" level="city" value="{{regionPickerValue}}" bindchange="onRegionChange">
+        <view class="input input-picker {{!regionLine ? 'input-picker-empty' : ''}}">
+          <text>{{regionLine ? regionLine : '点选高考生源省、市'}}</text>
+        </view>
+      </picker>
+    </view>
+    <view class="item">
+      <view class="label">科类/选科</view>
+      <picker mode="selector" range="{{subjectOptions}}" value="{{streamOrSubjectsIndex}}" bindchange="onSubjectChange">
+        <view class="input input-picker">
+          <text wx:if="{{form.streamOrSubjects}}">{{form.streamOrSubjects}}</text>
+          <text wx:else class="ph">请点选科类或选科组合</text>
+        </view>
+      </picker>
+    </view>
+    <view class="item">
+      <view class="label">估分</view>
+      <input class="input" type="number" data-key="estimatedScore" value="{{form.estimatedScore}}" bindinput="onInput" placeholder="选填" />
+    </view>
+    <view class="item">
+      <view class="label">成绩说明</view>
+      <textarea class="textarea" data-key="scoreText" value="{{form.scoreText}}" bindinput="onInput" placeholder="可选，填写模考成绩说明"></textarea>
+    </view>
+    <view class="item">
+      <view class="label">志愿草表</view>
+      <textarea class="textarea" data-key="wishListText" value="{{form.wishListText}}" bindinput="onInput" placeholder="可选，填写当前志愿方案"></textarea>
+    </view>
+    <view class="item item-intended">
+      <view class="label">意向地区</view>
+      <picker class="intended-mode-picker" mode="selector" range="{{intendedModeOptions}}" value="{{intendedModeIndex}}" bindchange="onIntendedModeChange">
+        <view class="input input-picker input-sub">
+          <text>粒度：{{intendedModeLine}}</text>
+        </view>
+      </picker>
+      <view class="intended-region-pickers">
+        <block wx:if="{{intendedModeIndex == 0}}">
+          <picker mode="region" level="province" value="{{intendedProvPicker}}" bindchange="onIntendedRegionProv">
+            <view class="input input-picker {{!intendedRegionLine ? 'input-picker-empty' : ''}}">
+              <text>{{intendedRegionLine ? intendedRegionLine : '点选省份（可只到省）'}}</text>
+            </view>
+          </picker>
+        </block>
+        <block wx:else>
+          <picker mode="region" level="city" value="{{intendedCityPicker}}" bindchange="onIntendedRegionCity">
+            <view class="input input-picker {{!intendedRegionLine ? 'input-picker-empty' : ''}}">
+              <text>{{intendedRegionLine ? intendedRegionLine : '点选省、市（含直辖市）'}}</text>
+            </view>
+          </picker>
+        </block>
+      </view>
+    </view>
+    <view class="item">
+      <view class="label">意向专业</view>
+      <picker mode="selector" range="{{majorOptions}}" value="{{preferredFieldsIndex}}" bindchange="onPreferredFieldChange">
+        <view class="input input-picker">
+          <text wx:if="{{form.preferredFields}}">{{form.preferredFields}}</text>
+          <text wx:else class="ph">可选，点选专业方向</text>
+        </view>
+      </picker>
+    </view>
+  </view>
+  <button class="save-btn" loading="{{saving}}" bindtap="onSave">保存表单</button>
+</view>
+

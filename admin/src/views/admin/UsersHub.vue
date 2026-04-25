@@ -2,31 +2,29 @@
   <div class="users-hub">
     <div class="hub-header">
       <h2>用户运营</h2>
-      <p class="hub-subtitle">测试用户数据、小程序展示文案与分销海报一站式维护</p>
     </div>
 
-    <div class="custom-tabs-container tabs-scroll">
-      <div class="custom-tabs tabs-many">
-        <div
-          v-for="t in innerTabs"
-          :key="t.value"
-          :class="['tab-item', { active: activeTab === t.value }]"
-          @click="selectTab(t.value)"
-        >
-          {{ t.label }}
-        </div>
-      </div>
+    <div class="pill-tabs" role="tablist">
+      <button
+        v-for="t in innerTabs"
+        :key="t.value"
+        type="button"
+        class="pill-tab"
+        :class="{ 'is-active': activeTab === t.value }"
+        @click="selectTab(t.value)"
+      >
+        {{ t.label }}
+      </button>
     </div>
 
     <div
       class="hub-card"
-      :class="{ 'no-pad': activeTab === 'poster', 'flat-embed': activeTab === 'users' }"
+      :class="{ 'flat-embed': activeTab === 'users' || activeTab === 'journey' || activeTab === 'rfm' }"
     >
       <Users v-if="activeTab === 'users'" embedded />
-      <MiniprogramConfigPanel v-if="activeTab === 'miniprogram'" ref="miniRef" />
-      <div v-if="activeTab === 'poster'" class="poster-wrap">
-        <PosterEditor />
-      </div>
+      <TopTestUsersPanel v-else-if="activeTab === 'top20'" />
+      <UserJourneyPanel v-else-if="activeTab === 'journey'" />
+      <UserRfmPanel v-else-if="activeTab === 'rfm'" />
     </div>
   </div>
 </template>
@@ -35,10 +33,11 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Users from './Users.vue'
-import PosterEditor from './PosterEditor.vue'
-import MiniprogramConfigPanel from './MiniprogramConfigPanel.vue'
+import TopTestUsersPanel from '@/components/TopTestUsersPanel.vue'
+import UserJourneyPanel from '@/components/UserJourneyPanel.vue'
+import UserRfmPanel from '@/components/UserRfmPanel.vue'
 
-const TAB_IDS = ['users', 'miniprogram', 'poster'] as const
+const TAB_IDS = ['users', 'journey', 'rfm', 'top20'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -48,16 +47,21 @@ function isTabId(s: string): s is TabId {
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref<TabId>('users')
-const miniRef = ref<InstanceType<typeof MiniprogramConfigPanel> | null>(null)
 
 const innerTabs: { label: string; value: TabId }[] = [
   { label: '用户列表', value: 'users' },
-  { label: '小程序配置', value: 'miniprogram' },
-  { label: '海报配置', value: 'poster' }
+  { label: '旅程漏斗', value: 'journey' },
+  { label: 'RFM 价值分层', value: 'rfm' },
+  { label: '测评 Top 20', value: 'top20' }
 ]
 
 const applyRouteTab = () => {
   const t = route.query.tab
+  if (t === 'miniprogram' || t === 'poster') {
+    router.replace({ path: '/admin/settings', query: { tab: 'terminal' } })
+    activeTab.value = 'users'
+    return
+  }
   if (typeof t === 'string' && isTabId(t)) {
     activeTab.value = t
   } else {
@@ -83,23 +87,11 @@ watch(
   () => route.query.tab,
   () => {
     applyRouteTab()
-    if (activeTab.value === 'miniprogram') {
-      miniRef.value?.loadMiniprogramConfig?.()
-    }
   }
 )
 
-watch(activeTab, (tab) => {
-  if (tab === 'miniprogram') {
-    miniRef.value?.loadMiniprogramConfig?.()
-  }
-})
-
 onMounted(() => {
   applyRouteTab()
-  if (activeTab.value === 'miniprogram') {
-    miniRef.value?.loadMiniprogramConfig?.()
-  }
 })
 </script>
 
@@ -114,77 +106,55 @@ onMounted(() => {
   margin-bottom: 20px;
 
   h2 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: 22px;
     font-weight: 700;
     color: #111827;
   }
-
-  .hub-subtitle {
-    margin: 0;
-    font-size: 14px;
-    color: #6b7280;
-  }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
+.pill-tabs {
+  display: inline-flex;
+  background: #f1f5f9;
   padding: 4px;
-  border-radius: 8px;
+  border-radius: 10px;
+  gap: 2px;
   margin-bottom: 20px;
-  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-  &.tabs-scroll {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+.pill-tab {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
+
+  &:hover {
+    color: #0f172a;
   }
 
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    min-width: min-content;
-
-    &.tabs-many .tab-item {
-      flex: 0 0 auto;
-      padding: 8px 16px;
-      font-size: 13px;
-    }
-
-    .tab-item {
-      flex: 1;
-      padding: 8px 18px;
-      font-size: 14px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      white-space: nowrap;
-      text-align: center;
-      transition: all 0.2s;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-      }
-    }
+  &.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   }
 }
 
 .hub-card {
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f3f4f6;
-  padding: 28px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  &.no-pad {
-    padding: 16px;
-  }
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 24px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
 
   &.flat-embed {
     background: transparent;
@@ -192,9 +162,5 @@ onMounted(() => {
     box-shadow: none;
     padding: 0;
   }
-}
-
-.poster-wrap {
-  min-height: 720px;
 }
 </style>

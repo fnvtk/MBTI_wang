@@ -10,13 +10,9 @@
     </view>
     <text class="success-dialog-title">{{successModal.title}}</text>
     <text class="success-dialog-content">{{successModal.content}}</text>
-    <view tt:if="{{successModal.wechat}}" class="success-wechat-wrap">
-      <text class="success-wechat-label">客服微信</text>
-      <text class="success-wechat-val">{{successModal.wechat}}</text>
-    </view>
-    <view class="success-dialog-btns">
-      <button tt:if="{{successModal.wechat}}" class="success-btn-copy" bindtap="copyWechat">复制微信号</button>
-      <button class="success-btn-close" bindtap="closeSuccessModal">我知道了</button>
+    <text class="success-dialog-hint">顾问将通过您预留的联系方式与您沟通，请留意来电或短信。</text>
+    <view class="success-dialog-btns success-dialog-btns--single">
+      <button class="success-btn-close success-btn-close--primary" bindtap="closeSuccessModal">我知道了</button>
     </view>
   </view>
 </view>

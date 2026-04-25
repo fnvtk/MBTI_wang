@@ -31,6 +31,7 @@ class Order extends BaseController
         $keyword = trim(Request::param('keyword', ''));
         $status = trim(Request::param('status', ''));
         $productType = trim(Request::param('productType', ''));
+        $inviterId = (int) Request::param('inviterId', 0);
 
         // 超管：全平台订单；其余管理员仅本企业
         $enterpriseId = null;
@@ -52,6 +53,24 @@ class Order extends BaseController
         }
         if ($productType !== '') {
             $query->where('productType', $productType);
+        }
+        if ($inviterId > 0) {
+            // 通过分销绑定表过滤「该分销商带来的订单」：orders.userId = distribution_bindings.inviteeId，inviter=inviterId
+            try {
+                $inviteeIds = Db::name('distribution_bindings')
+                    ->where('inviterId', $inviterId)
+                    ->column('inviteeId');
+                $inviteeIds = array_values(array_filter(array_map('intval', $inviteeIds ?: [])));
+                if (empty($inviteeIds)) {
+                    return success([
+                        'list' => [], 'total' => 0, 'page' => $page, 'pageSize' => $pageSize,
+                        'hasMore' => false, 'paidCompletedCount' => 0, 'totalRevenueFen' => 0,
+                    ]);
+                }
+                $query->whereIn('userId', $inviteeIds);
+            } catch (\Throwable $e) {
+                // 表不存在或字段差异：忽略筛选
+            }
         }
         if ($keyword !== '') {
             if (is_numeric($keyword)) {
@@ -119,12 +138,58 @@ class Order extends BaseController
             }
         }
 
+        // 当前页订单的分销分润记录
+        $commissionsByOrder = [];
+        if (!empty($orderIds)) {
+            try {
+                $crRows = Db::name('commission_records')
+                    ->where('orderId', 'in', $orderIds)
+                    ->field('id, orderId, inviterId, commissionFen, rate, status, paidAt, createdAt')
+                    ->order('createdAt', 'asc')
+                    ->select()
+                    ->toArray();
+                $inviterIds = array_values(array_unique(array_filter(array_column($crRows, 'inviterId'))));
+                $inviterMap = [];
+                if (!empty($inviterIds)) {
+                    $inviters = Db::name('wechat_users')
+                        ->where('id', 'in', $inviterIds)
+                        ->field('id, nickname, phone')
+                        ->select()
+                        ->toArray();
+                    foreach ($inviters as $iv) {
+                        $inviterMap[(int) $iv['id']] = $iv;
+                    }
+                }
+                foreach ($crRows as $cr) {
+                    $oid = (int) ($cr['orderId'] ?? 0);
+                    if ($oid <= 0) {
+                        continue;
+                    }
+                    $iv = $inviterMap[(int) ($cr['inviterId'] ?? 0)] ?? null;
+                    $commissionsByOrder[$oid][] = [
+                        'id' => (int) $cr['id'],
+                        'inviterId' => (int) ($cr['inviterId'] ?? 0),
+                        'inviterName' => $iv['nickname'] ?? null,
+                        'inviterPhone' => $iv['phone'] ?? null,
+                        'commissionFen' => (int) ($cr['commissionFen'] ?? 0),
+                        'rate' => isset($cr['rate']) ? (float) $cr['rate'] : null,
+                        'status' => (string) ($cr['status'] ?? ''),
+                        'paidAt' => isset($cr['paidAt']) ? (int) $cr['paidAt'] : null,
+                        'createdAt' => isset($cr['createdAt']) ? (int) $cr['createdAt'] : null,
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $commissionsByOrder = [];
+            }
+        }
+
         foreach ($list as &$row) {
             $uid = (int) ($row['userId'] ?? 0);
             $u = $usersMap[$uid] ?? null;
             $row['userName'] = $u ? ($u['nickname'] ?? ('用户' . $uid)) : ('用户' . $uid);
             $row['userPhone'] = $u ? ($u['phone'] ?? '') : '';
             $row['testData'] = $testsByOrder[$row['id']] ?? [];
+            $row['commissions'] = $commissionsByOrder[$row['id']] ?? [];
         }
 
         return success([

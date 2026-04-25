@@ -1,0 +1,698 @@
+@import '../../styles/result-page-dashboard.wxss';
+
+.gaokao-report-page {
+  min-height: 100vh;
+  background: #f4f6f9;
+}
+
+.container {
+  min-height: 100vh;
+  background: #f4f6f9;
+  padding: 24rpx;
+  padding-bottom: calc(48rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+}
+
+.container.container--with-bottom-tools {
+  padding-bottom: calc(120rpx + 400rpx + env(safe-area-inset-bottom));
+}
+
+.container.container--with-share-footer {
+  padding-bottom: calc(220rpx + env(safe-area-inset-bottom));
+}
+
+.journey-stepper--two {
+  max-width: 520rpx;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.result-bottom-tools__row--two .result-tool-btn:nth-child(1)::before {
+  content: '01';
+}
+.result-bottom-tools__row--two .result-tool-btn:nth-child(2)::before {
+  content: '02';
+}
+
+/* 付费墙（与 MBTI 结果页同款布局，配色贴近高考页主色） */
+.paywall-card {
+  margin-bottom: 24rpx;
+  border-radius: 24rpx;
+  overflow: hidden;
+}
+.paywall-content {
+  position: relative;
+  min-height: 360rpx;
+}
+/* 有总评预览时拉高容器，便于展示约 40vh 正文 */
+.paywall-content--preview40 {
+  min-height: 48vh;
+}
+.paywall-blur {
+  padding: 32rpx 24rpx 200rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(6rpx);
+}
+.paywall-mask {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 24rpx;
+  z-index: 1;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.28) 38%,
+    rgba(255, 255, 255, 0.58) 100%
+  );
+  pointer-events: none;
+}
+/* 顶部约 40% 区域不压暗，以下渐强引导至解锁按钮 */
+.paywall-mask--from40 {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0) 40%,
+    rgba(255, 255, 255, 0.35) 58%,
+    rgba(255, 255, 255, 0.72) 78%,
+    rgba(255, 255, 255, 0.94) 100%
+  );
+}
+.paywall-fake-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #444;
+  margin-bottom: 16rpx;
+}
+.paywall-fake-line {
+  display: block;
+  font-size: 26rpx;
+  color: #888;
+  line-height: 1.8;
+}
+.paywall-fake-line--compact {
+  margin-bottom: 20rpx;
+  font-size: 24rpx;
+  color: #64748b;
+}
+.paywall-preview-wrap {
+  margin-top: 8rpx;
+}
+.paywall-preview-label {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #6366f1;
+  margin-bottom: 12rpx;
+}
+.paywall-preview-inner {
+  position: relative;
+  max-height: 40vh;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: #f8fafc;
+  padding: 20rpx 20rpx 48rpx;
+  box-sizing: border-box;
+}
+.paywall-preview-text {
+  display: block;
+  font-size: 28rpx;
+  color: #334155;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.paywall-preview-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 100rpx;
+  background: linear-gradient(to bottom, rgba(248, 250, 252, 0), rgba(248, 250, 252, 1));
+  pointer-events: none;
+}
+.paywall-btn {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  width: 90%;
+  bottom: 132rpx;
+  z-index: 3;
+  padding: 20rpx 0;
+  border-radius: 999rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 8rpx 24rpx rgba(99, 102, 241, 0.35);
+  display: flex;
+  flex-direction: row;
+  align-items: baseline;
+  justify-content: center;
+  gap: 12rpx;
+}
+.paywall-btn-main {
+  font-size: 30rpx;
+  color: #fff;
+  font-weight: 600;
+}
+.paywall-btn-price {
+  font-size: 24rpx;
+  color: #e0e7ff;
+}
+.paywall-btn--inline-profile {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  margin-top: 28rpx;
+  z-index: 1;
+}
+
+.result-share-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 200;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 20rpx 32rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  background: #f5f5f5;
+  box-shadow: 0 -8rpx 24rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.result-share-footer-btn {
+  width: 100% !important;
+  box-sizing: border-box;
+  display: block;
+  margin: 0;
+  padding: 0;
+  min-height: 96rpx;
+  line-height: 96rpx;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+}
+.result-share-footer-btn::after {
+  border: none;
+}
+.result-share-footer-row2 .result-share-footer-btn {
+  flex: 1;
+  min-height: 88rpx;
+  line-height: 88rpx;
+}
+
+.sub {
+  font-size: 26rpx;
+  color: #94a3b8;
+}
+
+/* Header Card：渐变区随内容增高，避免省/科类标签落到白底上被「裁切」看不见 */
+.header-card {
+  position: relative;
+  background: #fff;
+  border-radius: 24rpx;
+  margin-bottom: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.header-hero {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  padding: 32rpx 32rpx 36rpx;
+}
+
+.header-body {
+  padding: 24rpx 32rpx 32rpx;
+  background: #fff;
+}
+
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20rpx;
+}
+
+.user-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.user-name {
+  font-size: 36rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-bottom: 16rpx;
+  line-height: 1.35;
+  text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
+}
+
+.user-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.tag {
+  font-size: 22rpx;
+  padding: 8rpx 18rpx;
+  line-height: 1.3;
+  border-radius: 100rpx;
+  font-weight: 500;
+}
+
+.tag-province {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
+}
+
+.tag-stream {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border: 1rpx solid rgba(255, 255, 255, 0.4);
+}
+
+.score-box {
+  background: #fff;
+  padding: 16rpx 24rpx;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 16rpx rgba(99, 102, 241, 0.15);
+  display: flex;
+  align-items: baseline;
+  flex-shrink: 0;
+}
+
+.score-num {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #6366f1;
+  line-height: 1;
+}
+
+.score-unit {
+  font-size: 24rpx;
+  color: #666;
+  margin-left: 4rpx;
+  font-weight: 500;
+}
+
+.personality-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding-top: 4rpx;
+  border-top: 1rpx dashed #e2e8f0;
+}
+
+.p-tag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  background: #f8fafc;
+  border-radius: 12rpx;
+  overflow: visible;
+  border: 1rpx solid #e2e8f0;
+  max-width: 100%;
+}
+
+.p-label {
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 20rpx;
+  font-weight: bold;
+  padding: 6rpx 12rpx;
+}
+
+.p-value {
+  color: #334155;
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 6rpx 16rpx;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 460rpx;
+  box-sizing: border-box;
+}
+
+/* Common Card */
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.03);
+}
+
+.title-wrap {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+
+.title-icon {
+  font-size: 32rpx;
+  margin-right: 12rpx;
+}
+
+.title {
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1e293b;
+}
+
+.content {
+  font-size: 28rpx;
+  color: #475569;
+  line-height: 1.7;
+  text-align: justify;
+}
+
+/* Sub Counts (冲稳保) */
+.sub-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 24rpx;
+}
+
+.count-tag {
+  font-size: 24rpx;
+  font-weight: 600;
+  padding: 8rpx 20rpx;
+  border-radius: 12rpx;
+}
+
+.count-chong {
+  background: #fff1f2;
+  color: #e11d48;
+}
+
+.count-wen {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.count-bao {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.count-total {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* School List */
+.school-list {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.school-item {
+  background: #f8fafc;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  border: 1rpx solid #f1f5f9;
+}
+
+.school-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.school-band-tag {
+  font-size: 22rpx;
+  font-weight: bold;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.band-chong {
+  background: #ffe4e6;
+  color: #e11d48;
+}
+
+.band-wen {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.band-bao {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.band-none {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.school-name {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #1e293b;
+  flex: 1;
+}
+
+.school-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24rpx;
+  margin-bottom: 16rpx;
+}
+
+.meta-item {
+  font-size: 24rpx;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+}
+
+.meta-icon {
+  margin-right: 6rpx;
+  font-size: 24rpx;
+}
+
+.school-reason {
+  font-size: 26rpx;
+  color: #475569;
+  line-height: 1.6;
+  background: #fff;
+  padding: 16rpx 20rpx;
+  border-radius: 12rpx;
+  position: relative;
+}
+
+.quote-mark {
+  color: #cbd5e1;
+  font-size: 40rpx;
+  font-family: serif;
+  position: absolute;
+  top: 8rpx;
+  left: 12rpx;
+  line-height: 1;
+}
+
+.school-reason {
+  padding-left: 40rpx;
+}
+
+/* Major List */
+.major-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.major-item {
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+}
+
+.major-rank {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  font-weight: bold;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+
+.rank-1 {
+  background: #fef08a;
+  color: #b45309;
+}
+
+.rank-2 {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.rank-3 {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.rank-other {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.major-name {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #334155;
+  flex: 1;
+}
+
+.major-score {
+  font-size: 24rpx;
+  color: #64748b;
+  background: #fff;
+  padding: 4rpx 12rpx;
+  border-radius: 100rpx;
+}
+
+/* Disclaimer */
+.disclaimer-card {
+  background: #fef2f2;
+}
+
+.disclaimer-card .title {
+  color: #9f1239;
+}
+
+.disclaimer-text {
+  color: #be123c;
+  font-size: 24rpx;
+}
+
+/* Empty State */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 200rpx;
+}
+
+.empty-icon {
+  font-size: 100rpx;
+  margin-bottom: 32rpx;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 30rpx;
+  color: #64748b;
+}
+
+/* 综合分析加载（与人脸结果页同款结构，配色贴近高考页） */
+.analyzing-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(15, 23, 42, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.analyzing-content {
+  background-color: #fff;
+  border-radius: 24rpx;
+  padding: 80rpx 56rpx;
+  width: 560rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 16rpx 48rpx rgba(99, 102, 241, 0.2);
+}
+
+.analyzing-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.analyzing-spinner {
+  width: 120rpx;
+  height: 120rpx;
+  border: 8rpx solid #e2e8f0;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: gaokao-analyzing-spin 0.9s linear infinite;
+}
+
+@keyframes gaokao-analyzing-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.analyzing-title {
+  font-size: 36rpx;
+  font-weight: 600;
+  color: #1e293b;
+  margin-bottom: 16rpx;
+}
+
+.analyzing-desc {
+  font-size: 28rpx;
+  color: #6366f1;
+  margin-bottom: 24rpx;
+  text-align: center;
+  font-weight: 500;
+}
+
+.analyzing-bar {
+  width: 400rpx;
+  height: 12rpx;
+  background: #e2e8f0;
+  border-radius: 6rpx;
+  overflow: hidden;
+  margin-bottom: 24rpx;
+}
+
+.analyzing-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #a855f7);
+  border-radius: 6rpx;
+  transition: width 0.3s ease;
+}
+
+.analyzing-hint {
+  font-size: 24rpx;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.6;
+}

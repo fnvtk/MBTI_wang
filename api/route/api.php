@@ -22,11 +22,24 @@ Route::group('api', function () {
 Route::group('api', function () {
     Route::get('config/runtime', 'api.AppConfig/runtime');
     Route::get('config/deep-pricing', 'api.AppConfig/deepPricing');
+    // 与 ai/quick-questions 同源；部分线上网关仅放行 /api/config/*，供小程序公开拉取快捷问句
+    Route::get('config/ai-quick-questions', 'api.AiChat/quickQuestions');
+    Route::get('config/quick-questions', 'api.AiChat/quickQuestions');
+    // 与 mp/tabbar 同源；部分线上对 /api/mp/* 返回 nginx 404，与 config/runtime 一并放行
+    Route::get('config/mp-tabbar', 'api.MpConfig/tabbar');
     Route::post('analyze', 'api.Analyze/index');
     // 小程序埋点批量上报（无需登录；带 token 时关联 user_id）
     Route::post('analytics/events', 'api.Analytics/batch');
     // 好友打开分享卡片：凭 st 校验查看他人测试结果（无需登录）
     Route::get('test/share-detail', 'api.Test/shareDetail');
+    // 神仙 AI · 推荐文章（无需登录也可拉取，首屏展示）
+    Route::get('ai/articles/recommended', 'api.AiChat/recommendedArticles');
+    Route::get('ai/articles/profile-teaser', 'api.AiChat/profileArticleTeaser');
+    Route::post('ai/articles/:id/click', 'api.AiChat/articleClick');
+    // 快捷问句：公开接口；若请求头带有效微信 token 则按用户 MBTI 个性化
+    Route::get('ai/quick-questions', 'api.AiChat/quickQuestions');
+    // 小程序 TabBar 动态配置（无需登录，启动拉取）
+    Route::get('mp/tabbar', 'api.MpConfig/tabbar');
 })->middleware('cors');
 
 // 前端需要认证的API路由
@@ -41,6 +54,10 @@ Route::group('api', function () {
     Route::post('enterprise/resume-uploads/set-default', 'api.EnterpriseResume/setDefault');
     Route::post('enterprise/resume-uploads/delete', 'api.EnterpriseResume/delete');
     Route::post('enterprise/resume-uploads', 'api.EnterpriseResume/add');
+    // 企业合作模式（需微信登录且绑定企业）
+    Route::get('enterprise/cooperation-modes', 'api.Cooperation/modes');
+    Route::get('user/cooperation-status', 'api.Cooperation/status');
+    Route::post('user/cooperation-preference', 'api.Cooperation/submitPreference');
     // 小程序用户更新资料
     Route::put('auth/wechat/profile', 'api.Auth/updateWechatProfile');
     // 小程序用户上传图片（头像等）
@@ -67,6 +84,7 @@ Route::group('api', function () {
     Route::get('orders', 'api.Order/index');
     // 分销
     Route::post('distribution/bind', 'api.Distribution/bind');
+    Route::get('distribution/my-invite-code', 'api.Distribution/myInviteCode');
     Route::get('distribution/stats', 'api.Distribution/stats');
     Route::get('distribution/bindings', 'api.Distribution/bindings');
     Route::get('distribution/commissions', 'api.Distribution/commissions');
@@ -81,6 +99,46 @@ Route::group('api', function () {
     Route::post('wechat/transfer/notify', 'api.WechatTransferNotify/notify')->middleware('cors');
     // 存客宝获客线索上报
     Route::post('crm/report', 'api.CrmReport/report');
+
+    // ==================== 神仙 AI（需要微信登录）====================
+    Route::post('ai/chat', 'api.AiChat/chat');
+    Route::get('ai/chat/job', 'api.AiChat/chatJobStatus');
+    Route::get('ai/conversations', 'api.AiChat/conversations');
+    Route::get('ai/conversations/:id/messages', 'api.AiChat/messages');
+    Route::post('ai/transcribe', 'api.AiChat/transcribe');
+
+    // AI 深度画像报告
+    Route::post('ai/report/create', 'api.AiReport/create');
+    Route::get('ai/report/my-latest', 'api.AiReport/myLatest');
+    // 无歧义别名（避免网关/旧路由把 my-latest 吞掉或误匹配）
+    Route::get('ai/my-report/latest', 'api.AiReport/myLatest');
+    // :id 仅匹配数字，避免 my-latest 被误路由到 show 导致 404
+    Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
+    Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
+    Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
+    // 高考志愿（小程序登录后）
+    Route::get('gaokao/task-status', 'api.Gaokao/taskStatus');
+    Route::get('gaokao/form', 'api.Gaokao/myForm');
+    Route::post('gaokao/form', 'api.Gaokao/saveForm');
+    Route::post('gaokao/analyze', 'api.Gaokao/analyze');
+    Route::get('gaokao/report/my-latest', 'api.Gaokao/latestReport');
+    Route::get('gaokao/pricing', 'api.Gaokao/pricing');
+})->middleware(['cors', 'auth']);
+
+// ==================== 兼容 /api/v1 前缀（与上方 api 组同权、同中间件）====================
+// 部分 CDN / 网关 / 旧客户端只放行 /api/v1/*，会导致 POST /api/ai/chat 404；此处镜像神仙 AI 相关路由
+Route::group('api/v1', function () {
+    Route::post('ai/chat', 'api.AiChat/chat');
+    Route::get('ai/chat/job', 'api.AiChat/chatJobStatus');
+    Route::get('ai/conversations', 'api.AiChat/conversations');
+    Route::get('ai/conversations/:id/messages', 'api.AiChat/messages');
+    Route::post('ai/transcribe', 'api.AiChat/transcribe');
+    Route::post('ai/report/create', 'api.AiReport/create');
+    Route::get('ai/report/my-latest', 'api.AiReport/myLatest');
+    Route::get('ai/my-report/latest', 'api.AiReport/myLatest');
+    Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
+    Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
+    Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
 })->middleware(['cors', 'auth']);
 
 // ==================== 小程序API路由（匹配前端 /api 路径）====================
@@ -115,6 +173,8 @@ Route::group('api/v1/admin', function () {
     Route::get('test-records/:id', 'admin.AppUser/testRecord');
     Route::get('app-users/:id', 'admin.AppUser/detail');
     Route::get('app-users', 'admin.AppUser/index');
+    Route::get('gaokao-users/:id', 'admin.GaokaoUser/detail');
+    Route::get('gaokao-users', 'admin.GaokaoUser/index');
     // 订单列表（含用户与关联测试数据）
     Route::get('orders', 'admin.Order/index');
     // 用户管理（普通管理员和企业管理员，后台账号）
@@ -156,6 +216,10 @@ Route::group('api/v1/admin', function () {
     // 企业功能开关（企业管理员，受超管 permissionsCeiling 约束）
     Route::get('enterprise/permissions', 'admin.EnterprisePermissions/index');
     Route::put('enterprise/permissions', 'admin.EnterprisePermissions/update');
+    Route::get('enterprise/cooperation-modes', 'admin.EnterpriseCooperation/get');
+    Route::put('enterprise/cooperation-modes', 'admin.EnterpriseCooperation/update');
+    Route::get('enterprise/cooperation-choices/export', 'admin.EnterpriseCooperation/exportChoices');
+    Route::get('enterprise/cooperation-choices', 'admin.EnterpriseCooperation/listChoices');
     
     // 分销管理（企业管理员）
     Route::get('distribution/overview', 'admin.Distribution/overview');
@@ -200,6 +264,10 @@ Route::group('api/v1/superadmin', function () {
     
     // 企业管理（超管专用）
     // 注意：带参数的路由要放在不带参数的路由之前，避免路由匹配冲突
+    Route::get('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/get')->pattern(['id' => '\d+']);
+    Route::put('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/update')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices/export', 'superadmin.EnterpriseCooperation/exportUserChoices')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices', 'superadmin.EnterpriseCooperation/listUserChoices')->pattern(['id' => '\d+']);
     Route::get('enterprises/:id/detail', 'superadmin.Enterprise/detail'); // 详细详情接口
     Route::get('enterprises/:id', 'superadmin.Enterprise/detail');
     Route::get('enterprises', 'superadmin.Enterprise/index');
@@ -254,6 +322,7 @@ Route::group('api/v1/superadmin', function () {
     Route::get('settings/poster', 'superadmin.Settings/getPosterConfig');
     Route::put('settings/poster', 'superadmin.Settings/updatePosterConfig');
     Route::put('settings/review-mode', 'superadmin.Settings/updateReviewMode');
+    Route::post('settings/wechat-audit-sync', 'superadmin.Settings/syncWechatAuditStatus');
     Route::get('settings', 'superadmin.Settings/index');
     Route::put('settings/system', 'superadmin.Settings/updateSystem');
     Route::put('settings/report-requires-payment', 'superadmin.Settings/updateReportRequiresPayment');
@@ -266,6 +335,8 @@ Route::group('api/v1/superadmin', function () {
     Route::get('test-records/:id', 'superadmin.AppUser/testRecord');
     Route::get('app-users/:id', 'superadmin.AppUser/detail');
     Route::get('app-users', 'superadmin.AppUser/index');
+    Route::get('gaokao-users/:id', 'superadmin.GaokaoUser/detail');
+    Route::get('gaokao-users', 'superadmin.GaokaoUser/index');
    
     // 数据概览（超管专用，子路径放前面避免被 overview 吞掉）
     Route::get('overview/recent-dynamics', 'superadmin.Overview/recentDynamics');
@@ -295,6 +366,34 @@ Route::group('api/v1/superadmin', function () {
     // 小程序埋点统计（仅超管）
     Route::get('analytics/summary', 'superadmin.Analytics/summary');
     Route::get('analytics/events', 'superadmin.Analytics/events');
+    Route::get('analytics/user-journey', 'superadmin.Analytics/userJourney');
+    Route::get('analytics/share-stats', 'superadmin.Analytics/shareStats');
+    Route::get('analytics/share-funnel', 'superadmin.Analytics/shareFunnel');
+
+    // Soul 文章采集与推荐（一场 soul 创业实验引流）
+    Route::get('soul-articles/ai-chat-display', 'superadmin.SoulArticle/aiChatDisplayGet');
+    Route::post('soul-articles/ai-chat-display', 'superadmin.SoulArticle/aiChatDisplaySave');
+    Route::post('soul-articles/sync', 'superadmin.SoulArticle/sync');
+    Route::post('soul-articles/:id/recommend', 'superadmin.SoulArticle/recommend');
+    Route::post('soul-articles/:id/order', 'superadmin.SoulArticle/setOrder');
+    Route::post('soul-articles/reorder-normalize', 'superadmin.SoulArticle/normalizeOrder');
+    Route::post('soul-articles/:id/delete', 'superadmin.SoulArticle/remove');
+    Route::get('soul-articles', 'superadmin.SoulArticle/index');
+
+    // 神仙 AI 健康与欠费监控
+    Route::get('ai/health', 'superadmin.SoulArticle/health');
+    Route::post('ai/balance-check', 'superadmin.AiMonitor/balanceCheck');
+
+    // 小程序 TabBar 后台可配
+    Route::get('tabbar', 'superadmin.MpTabBar/index');
+    Route::post('tabbar/save', 'superadmin.MpTabBar/save');
+    Route::post('tabbar/reorder', 'superadmin.MpTabBar/reorder');
+    Route::post('tabbar/:id/delete', 'superadmin.MpTabBar/remove');
+
+    // 分账规则
+    Route::get('profit-rules', 'superadmin.ProfitRule/index');
+    Route::post('profit-rules/save', 'superadmin.ProfitRule/save');
+    Route::post('profit-rules/:id/toggle', 'superadmin.ProfitRule/toggle');
 })->middleware(['cors', 'auth', 'superadmin']);
 
 // ==================== 兼容旧版路由（保留，逐步废弃）====================
@@ -330,6 +429,10 @@ Route::group('api/v1', function () {
     
     // 企业管理（超管，兼容旧版）
     // 注意：带参数的路由要放在不带参数的路由之前，避免路由匹配冲突
+    Route::get('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/get')->pattern(['id' => '\d+']);
+    Route::put('enterprises/:id/cooperation-modes', 'superadmin.EnterpriseCooperation/update')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices/export', 'superadmin.EnterpriseCooperation/exportUserChoices')->pattern(['id' => '\d+']);
+    Route::get('enterprises/:id/cooperation-choices', 'superadmin.EnterpriseCooperation/listUserChoices')->pattern(['id' => '\d+']);
     Route::get('enterprises/:id/detail', 'superadmin.Enterprise/detail'); // 详细详情接口
     Route::get('enterprises/:id', 'superadmin.Enterprise/detail');
     Route::get('enterprises', 'superadmin.Enterprise/index');

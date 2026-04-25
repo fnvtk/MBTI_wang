@@ -3,7 +3,18 @@
   <view wx:if="{{loading}}" class="test-loading">
     <text class="test-loading-text">加载题目…</text>
   </view>
+  <view wx:elif="{{loadError}}" class="test-error-state">
+    <view class="test-error-ic">⚠️</view>
+    <text class="test-error-title">加载失败</text>
+    <text class="test-error-msg">{{loadErrorMsg || '网络异常，请检查后重试'}}</text>
+    <view class="test-error-btn" bindtap="retryLoad">重新加载</view>
+    <text class="test-error-hint">若持续失败，请在微信中关闭小程序后再次打开</text>
+  </view>
   <block wx:elif="{{currentQuestion}}">
+  <view wx:if="{{usingLocalFallback}}" class="fallback-banner">
+    <text class="fallback-banner-ic">📶</text>
+    <text class="fallback-banner-text">当前使用本地题库（网络异常自动切换），结果仍会在本机完成</text>
+  </view>
   <view class="progress-section">
     <view class="progress-info">
       <text class="question-count">问题 {{currentIndex + 1}}/{{total}}</text>

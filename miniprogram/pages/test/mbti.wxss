@@ -20,6 +20,74 @@
   color: #666;
 }
 
+/* 错误态：加载失败 + 重试按钮 */
+.test-error-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80rpx 60rpx;
+  text-align: center;
+}
+.test-error-ic {
+  font-size: 84rpx;
+  line-height: 1;
+  margin-bottom: 20rpx;
+}
+.test-error-title {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 12rpx;
+}
+.test-error-msg {
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 40rpx;
+  max-width: 520rpx;
+}
+.test-error-btn {
+  padding: 20rpx 56rpx;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  border-radius: 48rpx;
+  box-shadow: 0 10rpx 24rpx rgba(99, 102, 241, 0.3);
+  margin-bottom: 28rpx;
+}
+.test-error-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+.test-error-hint {
+  font-size: 22rpx;
+  color: #9ca3af;
+}
+
+/* 本地 fallback 题库提示条 */
+.fallback-banner {
+  margin: 16rpx 24rpx 0;
+  padding: 14rpx 20rpx;
+  background: #fef3c7;
+  border: 1rpx solid #fcd34d;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+.fallback-banner-ic {
+  font-size: 24rpx;
+}
+.fallback-banner-text {
+  font-size: 22rpx;
+  color: #92400e;
+  line-height: 1.4;
+  flex: 1;
+}
+
 .progress-section {
   padding: 32rpx;
   border-bottom: 1rpx solid #e5e5e5;

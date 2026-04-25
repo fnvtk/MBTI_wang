@@ -61,6 +61,10 @@ class Enterprise extends Model
             'sbti' => true,
             'pdp'  => true,
             'disc' => true,
+            /** 高考志愿任务中心 / 分析报告 */
+            'gaokao' => true,
+            /** 详细测试列表中的「AI 性格测试」聚合入口 */
+            'aiHub' => true,
             'distribution' => true,
         ];
     }

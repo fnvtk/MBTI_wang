@@ -29,6 +29,9 @@ class OutboundPushHookService
         'test.result_completed',
     ];
 
+    /** 首次绑手机与「刚完成的测评」合并推送时，测评落库时间距现在最长间隔（秒） */
+    private const TEST_PHONE_MERGE_MAX_AGE_SEC = 604800;
+
     /**
      * 读取指定作用域配置（不合并回落；回落在 getEffectiveConfigForEvent / dispatch 中处理）
      */
@@ -217,8 +220,10 @@ class OutboundPushHookService
                 }
 
                 $tt = (string) ($payload['testType'] ?? '');
+                $mergedBind = trim((string) ($payload['phoneBoundAt'] ?? '')) !== '';
+                $titleLine = $mergedBind ? "📊 测评完成·手机号已授权\n" : "📊 测评完成\n";
                 $lines = [
-                    $head . "📊 测评完成\n",
+                    $head . $titleLine,
                     '类型: ' . ($payload['testTypeLabel'] ?? $payload['testType'] ?? '') . "\n",
                     '用户: ' . ($payload['userName'] ?? '') . "\n",
                     '手机: ' . ($payload['phone'] ?? '') . "\n",
@@ -243,8 +248,32 @@ class OutboundPushHookService
                     $lines[] = '测试结果: ' . self::truncatePlainText((string) ($payload['resultSummary'] ?? ''), 100) . "\n";
                 }
                 $lines[] = '测试时间: ' . $testTime;
+                if ($mergedBind) {
+                    $lines[] = '授权手机时间: ' . trim((string) ($payload['phoneBoundAt'] ?? '')) . "\n";
+                }
+                $body = implode('', $lines);
+                $mgmtSummary = trim((string) ($payload['managementSummary'] ?? ''));
+                if ($mgmtSummary !== '') {
+                    $body .= "\n━━━━━━━━━━\n用户管理:\n" . $mgmtSummary;
+                }
+                $um = $payload['userManagement'] ?? null;
+                if (is_array($um) && !empty($um['openidTail6'])) {
+                    $body .= "\nOpenID尾号(脱敏): " . (string) $um['openidTail6'];
+                }
+                $beh = $payload['recentBehaviors'] ?? [];
+                if (is_array($beh) && count($beh) > 0) {
+                    $body .= "\n━━━━━━━━━━\n最近行为:";
+                    $i = 1;
+                    foreach ($beh as $bl) {
+                        if (!is_string($bl) || $bl === '') {
+                            continue;
+                        }
+                        $body .= "\n  {$i}. {$bl}";
+                        $i++;
+                    }
+                }
 
-                return implode('', $lines);
+                return $body;
             default:
                 return $head . "\n事件: " . $event;
         }
@@ -431,9 +460,31 @@ class OutboundPushHookService
     }
 
     /**
+     * 神仙 AI 异步对话：与订单/测评异步同源，走独立 HTTP 请求执行，避免 PHP-FPM 在响应后提前掐断 register_shutdown_function。
+     *
+     * @return bool 是否已成功把请求写出到 socket（不代表模型已跑完）
+     */
+    public static function triggerAiChatDeferredJob(int $userId, int $conversationId, string $jobId): bool
+    {
+        if ($userId <= 0 || $conversationId <= 0 || $jobId === '' || strlen($jobId) > 64) {
+            return false;
+        }
+        if (!preg_match('/^[a-f0-9]+$/', $jobId)) {
+            return false;
+        }
+
+        return self::triggerAsyncInternalDispatch([
+            'job'            => 'ai.chat_turn',
+            'userId'         => $userId,
+            'conversationId' => $conversationId,
+            'jobId'          => $jobId,
+        ]);
+    }
+
+    /**
      * @param array<string,mixed> $payload
      */
-    private static function triggerAsyncInternalDispatch(array $payload): void
+    private static function triggerAsyncInternalDispatch(array $payload): bool
     {
         $url = self::resolveAsyncDispatchUrl();
         if ($url === '') {
@@ -441,7 +492,7 @@ class OutboundPushHookService
                 'payload' => $payload,
             ]);
 
-            return;
+            return false;
         }
 
         $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
@@ -450,7 +501,7 @@ class OutboundPushHookService
                 'payload' => $payload,
             ]);
 
-            return;
+            return false;
         }
 
         $timestamp = (string) time();
@@ -460,16 +511,31 @@ class OutboundPushHookService
             'X-MBTI-Internal-Signature: ' . self::signAsyncInternalDispatch($body, $timestamp),
         ];
 
-        if (!self::postJsonAsyncNoWait($url, $body, $headers)) {
-            Log::warning('OutboundPushHook async enqueue failed', [
-                'url'     => self::maskUrl($url),
-                'payload' => $payload,
-            ]);
+        $verifyHttp2xx = (($payload['job'] ?? '') === 'ai.chat_turn');
+
+        if (!self::postJsonAsyncNoWait($url, $body, $headers, $verifyHttp2xx)) {
+            // 偶发 TLS 握手/链路抖动：短间隔重试一次再回落 shutdown
+            usleep(150000);
+            if (!self::postJsonAsyncNoWait($url, $body, $headers, $verifyHttp2xx)) {
+                Log::warning('OutboundPushHook async enqueue failed', [
+                    'url'     => self::maskUrl($url),
+                    'payload' => $payload,
+                ]);
+
+                return false;
+            }
         }
+
+        return true;
     }
 
     private static function resolveAsyncDispatchUrl(): string
     {
+        $override = trim((string) (env('MBTI_INTERNAL_DISPATCH_URL') ?: getenv('MBTI_INTERNAL_DISPATCH_URL') ?: ''));
+        if ($override !== '') {
+            return rtrim($override, '/') . self::ASYNC_ROUTE;
+        }
+
         $host = trim((string) Request::server('HTTP_HOST', ''));
         if ($host !== '') {
             $scheme = Request::isSsl() ? 'https' : 'http';
@@ -502,11 +568,13 @@ class OutboundPushHookService
     }
 
     /**
-     * fire-and-forget 异步 POST：只负责把请求投出去，不等待接口处理完成。
+     * fire-and-forget 异步 POST：把请求写出；可选读取 HTTP 首行状态码。
+     * - verifyHttp2xx=false：与旧版一致，仅判断 fwrite（其它 job 可能同步较慢，不宜等响应头）。
+     * - verifyHttp2xx=true：用于 ai.chat_turn（dispatch 须先快速返回 2xx，否则会误判失败且无法触发 AiChat shutdown 兜底）。
      *
      * @param array<int,string> $headers
      */
-    private static function postJsonAsyncNoWait(string $url, string $body, array $headers): bool
+    private static function postJsonAsyncNoWait(string $url, string $body, array $headers, bool $verifyHttp2xx = false): bool
     {
         $parts = parse_url($url);
         if (!is_array($parts) || empty($parts['host'])) {
@@ -521,7 +589,26 @@ class OutboundPushHookService
             $path .= '?' . $parts['query'];
         }
         $transport = $scheme === 'https' ? 'ssl://' : '';
-        $socket = @stream_socket_client($transport . $host . ':' . $port, $errno, $errstr, 1);
+        // HTTPS 自调用：须带 SSL 上下文（SNI/校验策略与 AiCallService 侧 curl 一致），否则部分环境握手直接失败
+        $ctx = null;
+        if ($scheme === 'https') {
+            $ctx = stream_context_create([
+                'ssl' => [
+                    'verify_peer'      => false,
+                    'verify_peer_name' => false,
+                    'peer_name'        => $host,
+                    'SNI_enabled'      => true,
+                ],
+            ]);
+        }
+        $socket = @stream_socket_client(
+            $transport . $host . ':' . $port,
+            $errno,
+            $errstr,
+            3,
+            STREAM_CLIENT_CONNECT,
+            $ctx
+        );
         if (!is_resource($socket)) {
             Log::warning('OutboundPushHook async socket open failed', [
                 'url'   => self::maskUrl($url),
@@ -532,7 +619,7 @@ class OutboundPushHookService
             return false;
         }
 
-        stream_set_timeout($socket, 1);
+        stream_set_timeout($socket, 3);
         $hostHeader = $host;
         if (($scheme === 'http' && $port !== 80) || ($scheme === 'https' && $port !== 443)) {
             $hostHeader .= ':' . $port;
@@ -550,9 +637,44 @@ class OutboundPushHookService
 
         $rawRequest = implode("\r\n", $requestLines) . "\r\n\r\n" . $body;
         $written = @fwrite($socket, $rawRequest);
-        @fclose($socket);
+        if ($written === false) {
+            @fclose($socket);
 
-        return $written !== false;
+            return false;
+        }
+
+        if (!$verifyHttp2xx) {
+            @fclose($socket);
+
+            return true;
+        }
+
+        $statusLine = @fgets($socket);
+        @fclose($socket);
+        if ($statusLine === false || $statusLine === '') {
+            Log::warning('OutboundPushHook async: no HTTP status line', ['url' => self::maskUrl($url)]);
+
+            return false;
+        }
+        if (!preg_match('#HTTP/\d\.\d\s+(\d{3})#', $statusLine, $m)) {
+            Log::warning('OutboundPushHook async: bad status line', [
+                'url'    => self::maskUrl($url),
+                'prefix' => mb_substr($statusLine, 0, 80),
+            ]);
+
+            return false;
+        }
+        $code = (int) $m[1];
+        if ($code < 200 || $code >= 300) {
+            Log::warning('OutboundPushHook async: non-2xx from internal dispatch', [
+                'url'  => self::maskUrl($url),
+                'http' => $code,
+            ]);
+
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -588,6 +710,50 @@ class OutboundPushHookService
         }
 
         return 0;
+    }
+
+    /**
+     * 测评完成 JSON / 飞书文本：附加用户管理字段 + analytics 用户旅程（与 FeishuLeadWebhookService 获客卡片「最近行为」同源）
+     *
+     * @param array<string,mixed>        $payload   引用
+     * @param array<string,mixed>        $testResultRow test_results 一行
+     * @param array<string,mixed>|null $wuArr     wechat_users 行（可含 openid）
+     */
+    private static function mergeTestResultUserJourneyPayload(array &$payload, int $userId, array $testResultRow, ?array $wuArr): void
+    {
+        if ($userId <= 0) {
+            $payload['recentBehaviors'] = [];
+            $payload['userManagement'] = [
+                'wechatUserId'   => 0,
+                'enterpriseId'   => 0,
+                'enterpriseName' => null,
+                'openidTail6'    => null,
+                'testScope'      => (string) ($testResultRow['testScope'] ?? ''),
+            ];
+            $payload['managementSummary'] = '';
+
+            return;
+        }
+        $eidResolved = self::resolveEnterpriseIdForTestResult($testResultRow, $wuArr);
+        $tenant = self::tenantPayload($eidResolved);
+        $openid = '';
+        if ($wuArr !== null && isset($wuArr['openid'])) {
+            $openid = trim((string) $wuArr['openid']);
+        }
+        $tail = '';
+        if ($openid !== '') {
+            $tail = strlen($openid) >= 6 ? substr($openid, -6) : $openid;
+        }
+        $payload['userManagement'] = [
+            'wechatUserId'   => $userId,
+            'enterpriseId'   => $eidResolved,
+            'enterpriseName' => $tenant['enterpriseName'],
+            'openidTail6'    => $tail !== '' ? $tail : null,
+            'testScope'      => (string) ($testResultRow['testScope'] ?? ''),
+        ];
+        $payload['recentBehaviors'] = UserJourneyService::recentBehaviorLines($userId, 12);
+        $trEid = (int) ($testResultRow['enterpriseId'] ?? 0);
+        $payload['managementSummary'] = UserJourneyService::managementSummaryLine($userId, $trEid);
     }
 
     public static function isEventEnabled(string $event, array $cfg): bool
@@ -667,6 +833,21 @@ class OutboundPushHookService
         if ($userId <= 0 || trim($phone) === '') {
             return;
         }
+        $latest = Db::name('test_results')->where('userId', $userId)->order('id', 'desc')->find();
+        if ($latest) {
+            $tid = (int) ($latest['id'] ?? 0);
+            $testTs = isset($latest['createdAt']) ? (int) $latest['createdAt'] : 0;
+            if ($tid > 0 && $testTs > 0 && (time() - $testTs) <= self::TEST_PHONE_MERGE_MAX_AGE_SEC) {
+                $boundAt = date('Y-m-d H:i:s');
+                $pack = self::assembleTestResultCompletedEnvelope($tid, $phone, $boundAt);
+                if ($pack !== null) {
+                    self::dispatch('test.result_completed', $pack['envelope'], $pack['eid']);
+
+                    return;
+                }
+            }
+        }
+
         $wu = Db::name('wechat_users')->where('id', $userId)->field('nickname,enterpriseId')->find();
         $userName = trim((string) ($wu['nickname'] ?? ''));
         if ($userName === '') {
@@ -695,16 +876,31 @@ class OutboundPushHookService
     }
 
     /**
-     * 测评记录落库后推送（问卷 submit / 分析写库）
+     * 飞书获客 webhook 生成与出站机器人一致的测评完成纯文本（不写去重、不发起 HTTP）
      */
-    public static function onTestResultCompleted(int $testResultId): void
+    public static function botPlainTextTestResultCompleted(int $testResultId, ?string $overridePhone = null, ?string $phoneBoundAt = null): ?string
+    {
+        $pack = self::assembleTestResultCompletedEnvelope($testResultId, $overridePhone, $phoneBoundAt);
+        if ($pack === null) {
+            return null;
+        }
+        $env = $pack['envelope'];
+        unset($env['_dedupKey']);
+
+        return self::envelopeToBotPlainText('test.result_completed', $env);
+    }
+
+    /**
+     * @return array{eid:int,envelope:array<string,mixed>}|null
+     */
+    private static function assembleTestResultCompletedEnvelope(int $testResultId, ?string $overridePhone = null, ?string $phoneBoundAt = null): ?array
     {
         if ($testResultId <= 0) {
-            return;
+            return null;
         }
         $row = Db::name('test_results')->where('id', $testResultId)->find();
         if (!$row) {
-            return;
+            return null;
         }
         $userId = (int) ($row['userId'] ?? 0);
         $testType = (string) ($row['testType'] ?? '');
@@ -712,13 +908,16 @@ class OutboundPushHookService
         $completedAt = date('Y-m-d H:i:s', $createdAt);
 
         $wu = $userId > 0
-            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId')->find()
+            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId,openid')->find()
             : null;
         $userName = $wu ? trim((string) ($wu['nickname'] ?? '')) : '';
         if ($userName === '') {
             $userName = '微信用户';
         }
         $phone = $wu ? trim((string) ($wu['phone'] ?? '')) : '';
+        if ($overridePhone !== null && trim($overridePhone) !== '') {
+            $phone = trim($overridePhone);
+        }
 
         $raw = $row['resultData'] ?? null;
         $data = is_string($raw) ? json_decode($raw, true) : $raw;
@@ -753,6 +952,9 @@ class OutboundPushHookService
             'resultSummary'  => $summary,
             'completedAt'    => $completedAt,
         ];
+        if ($phoneBoundAt !== null && trim($phoneBoundAt) !== '') {
+            $payload['phoneBoundAt'] = trim($phoneBoundAt);
+        }
         if (in_array($testType, ['face', 'ai'], true)) {
             $dims = self::buildFaceAiBotDimensions($data);
             if ($dims['mbti'] !== '') {
@@ -765,15 +967,36 @@ class OutboundPushHookService
                 $payload['resultDisc'] = $dims['disc'];
             }
         }
+        self::mergeTestResultUserJourneyPayload($payload, $userId, $row, $wuArr);
 
-        self::dispatch('test.result_completed', [
-            'event'       => 'test.result_completed',
-            'occurredAt'  => self::iso8601Cn(),
-            'environment' => self::appEnv(),
-            'tenant'      => self::tenantPayload($eid),
-            'payload'     => $payload,
-            '_dedupKey' => 'test.result_completed:' . $testResultId,
-        ], $eid);
+        return [
+            'eid'      => $eid,
+            'envelope' => [
+                'event'       => 'test.result_completed',
+                'occurredAt'  => self::iso8601Cn(),
+                'environment' => self::appEnv(),
+                'tenant'      => self::tenantPayload($eid),
+                'payload'     => $payload,
+                '_dedupKey'   => 'test.result_completed:' . $testResultId,
+            ],
+        ];
+    }
+
+    /**
+     * 测评记录落库后推送（问卷 submit / 分析写库）
+     * 无手机号时不推送，待用户授权手机号后与测评合并为一条（见 onPhoneBound）
+     */
+    public static function onTestResultCompleted(int $testResultId): void
+    {
+        $pack = self::assembleTestResultCompletedEnvelope($testResultId, null, null);
+        if ($pack === null) {
+            return;
+        }
+        $phone = trim((string) ($pack['envelope']['payload']['phone'] ?? ''));
+        if ($phone === '') {
+            return;
+        }
+        self::dispatch('test.result_completed', $pack['envelope'], $pack['eid']);
     }
 
     /**
@@ -791,8 +1014,8 @@ class OutboundPushHookService
             ];
         }
 
-        $row = Db::name('test_results')->where('id', $testResultId)->find();
-        if (!$row) {
+        $pack = self::assembleTestResultCompletedEnvelope($testResultId, null, null);
+        if ($pack === null) {
             return [
                 'ok'           => false,
                 'status'       => 'not_found',
@@ -801,74 +1024,7 @@ class OutboundPushHookService
             ];
         }
 
-        $userId = (int) ($row['userId'] ?? 0);
-        $testType = (string) ($row['testType'] ?? '');
-        $createdAt = isset($row['createdAt']) ? (int) $row['createdAt'] : time();
-        $completedAt = date('Y-m-d H:i:s', $createdAt);
-
-        $wu = $userId > 0
-            ? Db::name('wechat_users')->where('id', $userId)->field('nickname,phone,enterpriseId')->find()
-            : null;
-        $userName = $wu ? trim((string) ($wu['nickname'] ?? '')) : '';
-        if ($userName === '') {
-            $userName = '微信用户';
-        }
-        $phone = $wu ? trim((string) ($wu['phone'] ?? '')) : '';
-
-        $raw = $row['resultData'] ?? null;
-        $data = is_string($raw) ? json_decode($raw, true) : $raw;
-        if (!is_array($data)) {
-            $data = [];
-        }
-
-        $summary = self::formatTestResultSummary($testType, $data);
-        $label = self::testTypeLabel($testType);
-
-        $wuArr = null;
-        if ($wu !== null) {
-            if (is_array($wu)) {
-                $wuArr = $wu;
-            } elseif (is_object($wu) && method_exists($wu, 'toArray')) {
-                $wuArr = $wu->toArray();
-            }
-        }
-        $eid = self::resolveEnterpriseIdForTestResult($row, $wuArr);
-
-        $payload = [
-            'display' => [
-                'title' => '用户测评完成（实时推送）',
-                'emoji' => '📊',
-            ],
-            'testResultId'   => $testResultId,
-            'userId'         => $userId,
-            'userName'       => $userName,
-            'phone'          => $phone,
-            'testType'       => $testType,
-            'testTypeLabel'  => $label,
-            'resultSummary'  => $summary,
-            'completedAt'    => $completedAt,
-        ];
-        if (in_array($testType, ['face', 'ai'], true)) {
-            $dims = self::buildFaceAiBotDimensions($data);
-            if ($dims['mbti'] !== '') {
-                $payload['resultMbti'] = $dims['mbti'];
-            }
-            if ($dims['pdp'] !== '') {
-                $payload['resultPdp'] = $dims['pdp'];
-            }
-            if ($dims['disc'] !== '') {
-                $payload['resultDisc'] = $dims['disc'];
-            }
-        }
-
-        return self::dispatchDetailed('test.result_completed', [
-            'event'       => 'test.result_completed',
-            'occurredAt'  => self::iso8601Cn(),
-            'environment' => self::appEnv(),
-            'tenant'      => self::tenantPayload($eid),
-            'payload'     => $payload,
-            '_dedupKey' => 'test.result_completed:' . $testResultId,
-        ], $eid, $force);
+        return self::dispatchDetailed('test.result_completed', $pack['envelope'], $pack['eid'], $force);
     }
 
     /**

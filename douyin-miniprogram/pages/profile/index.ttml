@@ -177,29 +177,23 @@
     </view>
   </view>
 
-  <!-- 推广中心（根据管理端开关显示/隐藏，标题可配置） -->
+  <!-- 推广数据卡：可提现格子拆成两区（上=分销中心 / 下=提现记录） -->
   <view class="section px-section" tt:if="{{hasLogin && promoDistributionEnabled && !reviewMode && permDistribution}}">
-    <view class="promo-card" bindtap="goToPromo">
-      <view class="promo-header">
-        <view class="promo-title-wrap">
-          <text class="promo-icon">📈</text>
-          <text class="promo-title">{{promoCenterTitle}}</text>
-        </view>
-      </view>
+    <view class="promo-card">
       <view class="promo-stats">
-        <view class="promo-stat-item">
+        <view class="promo-stat-item" catchtap="goToPromo">
           <text class="promo-stat-label">邀请好友</text>
           <text class="promo-stat-value">{{promoTotalInvite}}</text>
         </view>
         <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">累计收益</text>
-          <text class="promo-stat-value">¥{{promoTotalEarned}}</text>
+        <view class="promo-stat-item" catchtap="goToPromo">
+          <text class="promo-stat-label">可提现 ›</text>
+          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
         </view>
         <view class="promo-stat-divider"></view>
-        <view class="promo-stat-item">
-          <text class="promo-stat-label">可提现</text>
-          <text class="promo-stat-value promo-highlight">¥{{promoWithdrawable}}</text>
+        <view class="promo-stat-item promo-stat-item--sub" catchtap="goToPromoWithdrawals">
+          <text class="promo-stat-label">累计 ›</text>
+          <text class="promo-stat-value promo-stat-value--sub">¥{{promoTotalEarned}}</text>
         </view>
       </view>
     </view>

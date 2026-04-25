@@ -21,6 +21,13 @@
       </div>
     </div>
 
+    <el-alert type="info" :closable="false" class="alert-notification" style="margin-bottom: 16px">
+      <template #title>神仙 AI 对话说明</template>
+      小程序「神仙 AI」<strong>不设每日对话条数上限</strong>，由本页启用的服务商直接回复。若用户端仍提示「今日对话次数已用完」，请将服务器上的
+      <code>api/app/controller/api/AiChat.php</code> 与 <code>api/app/controller/api/AppConfig.php</code>
+      更新为仓库最新版并重启 PHP。
+    </el-alert>
+
     <!-- 余额告警通知 -->
     <el-alert
       v-if="alerts.length > 0"
@@ -176,7 +183,6 @@
           <div class="card-actions">
             <el-button
               type="primary"
-              color="#a855f7"
               size="small"
               @click="handleSave(provider.id)"
               :loading="saving === provider.id"
@@ -340,7 +346,6 @@
             <!-- 保存展开区的配置 -->
             <el-button
               type="primary"
-              color="#a855f7"
               size="small"
               @click="handleSave(provider.id)"
               :loading="saving === provider.id"

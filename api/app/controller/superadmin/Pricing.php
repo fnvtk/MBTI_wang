@@ -42,10 +42,19 @@ class Pricing extends BaseController
             if (!$config) {
                 return error('定价配置不存在', 404);
             }
+            $cfg = $config->config;
+            if (is_array($cfg)) {
+                if ($type === 'personal') {
+                    $cfg = self::normalizePersonalPricingConfig($cfg);
+                } elseif ($type === 'enterprise') {
+                    $cfg = self::normalizeEnterprisePricingConfig($cfg);
+                }
+            }
+
             return success([
                 'type' => $config->type,
                 'enterpriseId' => $config->enterpriseId,
-                'config' => $config->config
+                'config' => $cfg
             ]);
         } else {
             // 获取所有：个人/深度各一条(全局)，企业=全局默认定价 + 各企业专属列表
@@ -60,6 +69,18 @@ class Pricing extends BaseController
                     }
                 }
             }
+            if (is_array($result['personal'])) {
+                $result['personal'] = self::normalizePersonalPricingConfig($result['personal']);
+            }
+            if (is_array($result['enterprise'])) {
+                $result['enterprise'] = self::normalizeEnterprisePricingConfig($result['enterprise']);
+            }
+            foreach ($result['enterpriseList'] as $i => $entRow) {
+                if (isset($entRow['config']) && is_array($entRow['config'])) {
+                    $result['enterpriseList'][$i]['config'] = self::normalizeEnterprisePricingConfig($entRow['config']);
+                }
+            }
+
             return success($result);
         }
     }
@@ -195,6 +216,45 @@ class Pricing extends BaseController
         }
 
         return success(null, "成功保存 {$successCount} 个配置");
+    }
+
+    /**
+     * 旧库 JSON 可能缺少高考等字段，合并默认值便于管理端展示与保存
+     *
+     * @param array<string,mixed> $cfg
+     * @return array<string,mixed>
+     */
+    private static function normalizePersonalPricingConfig(array $cfg): array
+    {
+        $defaults = [
+            'face' => 0,
+            'mbti' => 0,
+            'disc' => 0,
+            'pdp' => 0,
+            'sbti' => 0,
+            'gaokao' => 0,
+        ];
+
+        return array_merge($defaults, $cfg);
+    }
+
+    /**
+     * @param array<string,mixed> $cfg
+     * @return array<string,mixed>
+     */
+    private static function normalizeEnterprisePricingConfig(array $cfg): array
+    {
+        $defaults = [
+            'face' => 0,
+            'mbti' => 0,
+            'pdp' => 0,
+            'disc' => 0,
+            'sbti' => 0,
+            'gaokao' => 0,
+            'minRecharge' => 0,
+        ];
+
+        return array_merge($defaults, $cfg);
     }
 }
 

@@ -76,7 +76,8 @@ import {
   User,
   ShoppingCart,
   Share,
-  Setting
+  Setting,
+  Connection
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -86,11 +87,12 @@ const authStore = useAuthStore()
 const sidebarOpen = ref(false)
 
 const navItems = [
-  { path: '/admin/dashboard', icon: DataLine, label: '概览' },
+  { path: '/admin/dashboard', icon: DataLine, label: '企业概览' },
   { path: '/admin/users', icon: User, label: '用户运营' },
   { path: '/admin/orders', icon: ShoppingCart, label: '订单运营' },
   { path: '/admin/distribution', icon: Share, label: '分销推广' },
-  { path: '/admin/settings', icon: Setting, label: '系统设置' },
+  { path: '/admin/cooperation-choices', icon: Connection, label: '合作意向' },
+  { path: '/admin/settings', icon: Setting, label: '企业设置' },
 ]
 
 const isActive = (path: string) => {
@@ -102,6 +104,9 @@ const isActive = (path: string) => {
   }
   if (path === '/admin/orders') {
     return route.path === '/admin/orders'
+  }
+  if (path === '/admin/cooperation-choices') {
+    return route.path === '/admin/cooperation-choices'
   }
   return route.path === path
 }
@@ -174,7 +179,7 @@ const handleLogout = async () => {
         width: 34px;
         height: 34px;
         border-radius: 8px;
-        background-color: #7c3aed;
+        background-color: var(--admin-primary, #4F46E5);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -273,8 +278,8 @@ const handleLogout = async () => {
       }
 
       &.active {
-        background-color: #f5f3ff;
-        color: #7c3aed;
+        background-color: var(--admin-primary-soft, #EEF2FF);
+        color: var(--admin-primary, #4F46E5);
         font-weight: 500;
 
         &::before {
@@ -284,11 +289,11 @@ const handleLogout = async () => {
           top: 0;
           bottom: 0;
           width: 3px;
-          background-color: #7c3aed;
+          background-color: var(--admin-primary, #4F46E5);
         }
 
         .nav-icon {
-          color: #7c3aed;
+          color: var(--admin-primary, #4F46E5);
         }
       }
 

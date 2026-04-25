@@ -91,7 +91,12 @@
         </div>
       </div>
 
-      <el-table :data="orders" style="width: 100%" v-loading="loading" class="custom-table">
+      <div v-if="inviterId" class="inviter-banner">
+        <span>筛选：分销商 #{{ inviterId }}<span v-if="inviterName"> · {{ inviterName }}</span></span>
+        <el-button link type="primary" size="small" @click="clearInviterFilter">清除筛选</el-button>
+      </div>
+
+      <el-table :data="orders" style="width: 100%" v-loading="loading" class="custom-table" row-key="id">
         <el-table-column label="订单号" width="180">
           <template #default="{ row }">
             <span class="order-id">{{ row.orderNo }}</span>
@@ -105,13 +110,11 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="产品" min-width="180">
+        <el-table-column label="产品" min-width="160">
           <template #default="{ row }">
             <div class="product-cell">
               <div class="product-main">{{ row.productTitle || productTypeLabel(row.productType) }}</div>
-              <div class="product-sub" v-if="row.productTitle">
-                {{ productTypeLabel(row.productType) }}
-              </div>
+              <div class="product-sub" v-if="row.productTitle">{{ productTypeLabel(row.productType) }}</div>
             </div>
           </template>
         </el-table-column>
@@ -120,44 +123,35 @@
             <span class="amount-cell">{{ formatAmount(row.amount) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="支付方式" width="100" align="center">
+        <el-table-column label="支付方式" width="90" align="center">
           <template #default="{ row }">
-            {{ payMethodLabel(row.payMethod) }}
+            <span class="pay-method">{{ payMethodLabel(row.payMethod) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="状态" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
+            <span :class="['status-badge', 'status-' + (row.status || 'pending')]">{{ statusLabel(row.status) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="关联测试" min-width="200">
+        <el-table-column label="时间" width="170">
           <template #default="{ row }">
-            <div class="test-data-cell">
-              <template v-if="row.testData && row.testData.length">
-                <div
-                  v-for="(t, i) in row.testData"
-                  :key="t.id || i"
-                  class="test-item"
-                >
-                  <span class="test-type">{{ testTypeLabel(t.testType) }}</span>
-                  <span class="test-summary">{{ t.resultSummary || '—' }}</span>
-                </div>
-              </template>
-              <span v-else class="no-test">—</span>
+            <div class="time-cell">
+              <div class="time-row"><em>创建</em>{{ formatDate(row.createdAt) }}</div>
+              <div class="time-row"><em>支付</em>{{ row.payTime ? formatDate(row.payTime) : '—' }}</div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="创建时间" width="160">
+        <el-table-column label="操作" width="90" fixed="right">
           <template #default="{ row }">
-            {{ formatDate(row.createdAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="支付时间" width="160">
-          <template #default="{ row }">
-            {{ row.payTime ? formatDate(row.payTime) : '—' }}
+            <el-button link type="primary" @click="openTimeline(row)">
+              <el-icon><View /></el-icon>
+              <span>详情</span>
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
+
+      <OrderTimelineDrawer v-model="timelineVisible" :order="currentOrder" :commissions="currentCommissions" />
 
       <div class="empty-state" v-if="orders.length === 0 && !loading">
         <span>暂无订单数据</span>
@@ -181,14 +175,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Refresh, ShoppingCart, Box, Money, Search } from '@element-plus/icons-vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Refresh, ShoppingCart, Box, Money, Search, View } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
+import OrderTimelineDrawer from './OrderTimelineDrawer.vue'
 
 const props = withDefaults(
   defineProps<{ embedded?: boolean; ordersApiPath?: string }>(),
   { embedded: false, ordersApiPath: '/admin/orders' }
 )
+
+const route = useRoute()
+const router = useRouter()
 
 const loading = ref(false)
 const searchQuery = ref('')
@@ -200,6 +199,44 @@ const paidCompletedTotal = ref(0)
 const totalRevenueFen = ref(0)
 const currentPage = ref(1)
 const pageSize = 20
+
+const timelineVisible = ref(false)
+const currentOrder = ref<any | null>(null)
+const currentCommissions = ref<any[]>([])
+
+const inviterId = ref<string | number>('')
+const inviterName = ref<string>('')
+
+function readInviterFromRoute() {
+  const q = route?.query || {}
+  const id = Array.isArray(q.inviterId) ? q.inviterId[0] : q.inviterId
+  const name = Array.isArray(q.inviterName) ? q.inviterName[0] : q.inviterName
+  inviterId.value = (id ?? '') as any
+  inviterName.value = (name ?? '') as string
+}
+
+function clearInviterFilter() {
+  inviterId.value = ''
+  inviterName.value = ''
+  const q = { ...route.query }
+  delete (q as any).inviterId
+  delete (q as any).inviterName
+  router.replace({ path: route.path, query: q })
+  currentPage.value = 1
+  loadOrders()
+}
+
+watch(() => route.query, () => {
+  readInviterFromRoute()
+  currentPage.value = 1
+  loadOrders()
+})
+
+function openTimeline(row: any) {
+  currentOrder.value = row
+  currentCommissions.value = Array.isArray(row?.commissions) ? row.commissions : []
+  timelineVisible.value = true
+}
 
 const statusOptions = [
   { label: '全部', value: '' },
@@ -303,15 +340,17 @@ function statusTagType(
 async function loadOrders() {
   loading.value = true
   try {
-    const res: any = await request.get(props.ordersApiPath, {
-      params: {
-        page: currentPage.value,
-        pageSize,
-        keyword: searchQuery.value,
-        status: statusFilter.value,
-        productType: productFilter.value
-      }
-    })
+    const params: Record<string, any> = {
+      page: currentPage.value,
+      pageSize,
+      keyword: searchQuery.value,
+      status: statusFilter.value,
+      productType: productFilter.value
+    }
+    if (inviterId.value) {
+      params.inviterId = inviterId.value
+    }
+    const res: any = await request.get(props.ordersApiPath, { params })
     const list = res.data?.list ?? res?.list ?? []
     orders.value = list
     total.value = res.data?.total ?? res?.total ?? 0
@@ -327,7 +366,10 @@ async function loadOrders() {
   }
 }
 
-onMounted(() => loadOrders())
+onMounted(() => {
+  readInviterFromRoute()
+  loadOrders()
+})
 </script>
 
 <style scoped lang="scss">
@@ -531,8 +573,34 @@ onMounted(() => loadOrders())
 
   .amount-cell {
     font-size: 13px;
-    color: #111827;
-    font-weight: 500;
+    color: #4f46e5;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pay-method {
+    font-size: 12px;
+    color: #475569;
+  }
+
+  .product-sub {
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+
+  .time-cell {
+    font-size: 12px;
+    color: #334155;
+    line-height: 1.5;
+    em {
+      display: inline-block;
+      width: 32px;
+      color: #94a3b8;
+      font-style: normal;
+      margin-right: 4px;
+    }
+    .time-row + .time-row { margin-top: 2px; }
   }
 
   .test-data-cell {
@@ -618,5 +686,18 @@ onMounted(() => loadOrders())
 
 .page-container.is-embedded {
   min-height: auto;
+}
+
+.inviter-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  margin: 0 20px 0;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 13px;
+  border-radius: 8px;
+  margin-top: 12px;
 }
 </style>

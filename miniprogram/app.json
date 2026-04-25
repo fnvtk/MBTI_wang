@@ -5,6 +5,7 @@
     "pages/index/upload",
     "pages/index/result",
     "pages/test-select/index",
+    "pages/ai-test/index",
     "pages/test/mbti",
     "pages/test/sbti",
     "pages/test/disc",
@@ -25,7 +26,15 @@
     "pages/phone-auth/index",
     "pages/promo/index",
     "pages/promo/poster",
-    "pages/promo/withdrawals"
+    "pages/promo/withdrawals",
+    "pages/match-job/index",
+    "pages/gaokao/index",
+    "pages/gaokao/form",
+    "pages/gaokao/report",
+    "pages/ai-chat/index",
+    "pages/ai-chat/report",
+    "pages/ai-chat/history",
+    "pages/webview/index"
   ],
   "tabBar": {
     "custom": true,
@@ -47,6 +56,12 @@
         "selectedIconPath": "images/camera-active.png"
       },
       {
+        "pagePath": "pages/ai-chat/index",
+        "text": "神仙AI",
+        "iconPath": "images/home.png",
+        "selectedIconPath": "images/home-active.png"
+      },
+      {
         "pagePath": "pages/profile/index",
         "text": "我的",
         "iconPath": "images/user.png",
@@ -54,14 +69,23 @@
       }
     ]
   },
+  "networkTimeout": {
+    "request": 120000,
+    "downloadFile": 120000
+  },
   "window": {
-    "backgroundTextStyle": "light",
+    "backgroundTextStyle": "dark",
     "navigationBarBackgroundColor": "#FFFFFF",
     "navigationBarTitleText": "神仙团队性格测试",
     "navigationBarTextStyle": "black",
-    "backgroundColor": "#F5F5F5"
+    "backgroundColor": "#FFFFFF"
   },
   "style": "v2",
   "sitemapLocation": "sitemap.json",
-  "lazyCodeLoading": "requiredComponents"
+  "navigateToMiniProgramAppIdList": [
+    "wxb8bbb2b10dec74aa"
+  ],
+  "usingComponents": {
+    "result-section-nav": "/components/result-section-nav/index"
+  }
 }

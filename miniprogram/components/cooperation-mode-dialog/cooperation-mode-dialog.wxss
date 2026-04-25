@@ -1,0 +1,104 @@
+.cmd-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 12500;
+  background: rgba(15, 23, 42, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48rpx;
+  box-sizing: border-box;
+}
+
+.cmd-panel {
+  width: 100%;
+  max-width: 620rpx;
+  background: #fff;
+  border-radius: 28rpx;
+  padding: 40rpx 36rpx 36rpx;
+  box-shadow: 0 24rpx 80rpx rgba(15, 23, 42, 0.12);
+}
+
+.cmd-title {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 16rpx;
+}
+
+.cmd-desc {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.55;
+  color: #6b7280;
+  margin-bottom: 28rpx;
+}
+
+.cmd-list {
+  display: block;
+}
+
+.cmd-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 20rpx 0;
+  border-bottom: 2rpx solid #f3f4f6;
+}
+
+.cmd-item:last-child {
+  border-bottom: none;
+}
+
+.cmd-item radio {
+  margin-top: 6rpx;
+}
+
+.cmd-item-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.cmd-item-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 8rpx;
+}
+
+.cmd-item-desc {
+  display: block;
+  font-size: 24rpx;
+  line-height: 1.45;
+  color: #6b7280;
+}
+
+.cmd-actions {
+  margin-top: 28rpx;
+}
+
+.cmd-btn {
+  width: 100%;
+  height: 88rpx;
+  line-height: 88rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  border-radius: 16rpx;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.cmd-btn::after {
+  border: none;
+}
+
+.cmd-btn--primary {
+  background: linear-gradient(135deg, #ff6b8a 0%, #ff8e53 100%);
+  color: #fff;
+}

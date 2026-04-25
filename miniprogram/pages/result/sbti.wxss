@@ -1,4 +1,5 @@
-/* pages/result/sbti.wxss */
+/* pages/result/sbti.wxss（dash 样式见 app.wxss） */
+
 .result-page {
   width: 100%;
   min-height: 100vh;
@@ -17,7 +18,7 @@
 
 /* 底部固定「我也要测试」时，为滚动内容预留空间（按钮约 96rpx + 安全区） */
 .content-container--with-fixed-footer {
-  padding-bottom: calc(64rpx + 120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(64rpx + 220rpx + env(safe-area-inset-bottom));
 }
 
 .content-scroll--with-fixed-footer {
@@ -291,6 +292,215 @@
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #f2f7f3;
   box-shadow: 0 -8rpx 24rpx rgba(45, 61, 53, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.profile-gate-cta-card {
+  margin-top: 8rpx;
+}
+
+.sbti-gate-hint {
+  display: block;
+  font-size: 26rpx;
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 20rpx;
+}
+
+.paywall-btn--inline-profile {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  margin-top: 0;
+  z-index: 1;
+}
+
+/* ===== 十五维度卡网格（SBTI） ===== */
+.sbti-dim-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.sbti-dim-card {
+  flex: 1 1 calc(50% - 16rpx);
+  min-width: 260rpx;
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx 22rpx;
+  border: 1rpx solid #e8efe9;
+  box-shadow: 0 4rpx 14rpx rgba(15, 23, 42, 0.04);
+  display: flex;
+  flex-direction: column;
+}
+
+.sbti-dim-card__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.sbti-dim-card__ic {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 14rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.sbti-dim-card.sbti-dim-color-s .sbti-dim-card__ic { background: #ecfdf5; color: #047857; }
+.sbti-dim-card.sbti-dim-color-e .sbti-dim-card__ic { background: #fff1f2; color: #be123c; }
+.sbti-dim-card.sbti-dim-color-a .sbti-dim-card__ic { background: #eff6ff; color: #1d4ed8; }
+.sbti-dim-card.sbti-dim-color-c .sbti-dim-card__ic { background: #faf5ff; color: #7c3aed; }
+.sbti-dim-card.sbti-dim-color-so .sbti-dim-card__ic { background: #fffbeb; color: #b45309; }
+
+.sbti-dim-card__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+
+.sbti-dim-card__name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #111827;
+}
+
+.sbti-dim-card__score {
+  font-size: 22rpx;
+  color: #5a7268;
+}
+
+.sbti-dim-card__track {
+  height: 8rpx;
+  background: #e5efe8;
+  border-radius: 4rpx;
+  overflow: hidden;
+  margin-bottom: 10rpx;
+}
+
+.sbti-dim-card__fill {
+  height: 100%;
+  border-radius: 4rpx;
+  background: linear-gradient(90deg, #14b8a6 0%, #22d3ee 100%);
+  transition: width 0.35s ease;
+}
+
+.sbti-dim-card.sbti-dim-color-e .sbti-dim-card__fill { background: linear-gradient(90deg, #f43f5e 0%, #fb7185 100%); }
+.sbti-dim-card.sbti-dim-color-a .sbti-dim-card__fill { background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%); }
+.sbti-dim-card.sbti-dim-color-c .sbti-dim-card__fill { background: linear-gradient(90deg, #8b5cf6 0%, #a78bfa 100%); }
+.sbti-dim-card.sbti-dim-color-so .sbti-dim-card__fill { background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%); }
+
+/* SBTI 维度分系分组 */
+.sbti-group-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.sbti-group {
+  background: #fff;
+  border: 1rpx solid #e8efe9;
+  border-radius: 20rpx;
+  box-shadow: 0 4rpx 14rpx rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.sbti-group__head {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  padding: 24rpx 28rpx;
+  background: linear-gradient(135deg, #ecfdf5 0%, #ccfbf1 100%);
+}
+
+.sbti-group__title {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 700;
+  color: #0f766e;
+}
+
+.sbti-group__count {
+  font-size: 22rpx;
+  color: #0f766e;
+  background: #ffffff;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+}
+
+.sbti-group__chev {
+  font-size: 36rpx;
+  color: #0f766e;
+  transition: transform 0.2s ease;
+}
+
+.sbti-group__chev--open {
+  transform: rotate(90deg);
+}
+
+.sbti-group__body {
+  padding: 20rpx 20rpx;
+}
+
+.sbti-dim-grid--in-group {
+  margin-bottom: 0;
+}
+
+.description-para {
+  display: block;
+  font-size: 28rpx;
+  color: #334155;
+  line-height: 1.8;
+  margin-bottom: 14rpx;
+}
+
+.description-para:last-child {
+  margin-bottom: 0;
+}
+
+.sbti-dim-card__text {
+  display: block;
+  font-size: 24rpx;
+  color: #475569;
+  line-height: 1.7;
+}
+
+.result-share-footer-row2 {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  width: 100%;
+}
+
+.result-share-footer-row2 .result-share-footer-btn {
+  flex: 1;
+  min-height: 88rpx;
+  line-height: 88rpx;
+}
+
+.result-share-footer-btn--ghost {
+  background: #fff !important;
+  color: #5a7268 !important;
+  border: 2rpx solid #cfe0d6 !important;
+  box-shadow: none !important;
+}
+
+.result-share-footer-btn--share {
+  background: linear-gradient(135deg, #0ea5e9 0%, #5a7268 100%) !important;
 }
 
 /* 与 SBTI 答题页主按钮（pages/test/sbti）主题绿一致 */

@@ -1,5 +1,5 @@
 <!--pages/index/camera.wxml - 拍照页面（与首页等统一使用自定义 tabBar，避免系统 tab 与浮钮叠层） -->
-<view class="camera-page-root">
+<view class="camera-page-root tabbar-pad">
 <!-- 审核模式：展示引导，避免整块 wx:if 隐藏导致白屏、拍摄按钮不存在 -->
 <view class="container review-mode-panel" wx:if="{{reviewMode}}">
   <view class="review-mode-card">

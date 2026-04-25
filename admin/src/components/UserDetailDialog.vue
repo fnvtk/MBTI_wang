@@ -51,6 +51,17 @@
               </div>
             </el-tooltip>
           </div>
+          <div v-if="user.cooperationModeTitle || user.cooperationModeCode" class="ud-coop-box">
+            <div class="ud-coop-box__head"><el-icon><Connection /></el-icon> 合作意向</div>
+            <div class="ud-coop-box__main">{{ user.cooperationModeTitle || user.cooperationModeCode }}</div>
+            <div
+              v-if="user.cooperationModeCode && user.cooperationModeTitle && user.cooperationModeCode !== user.cooperationModeTitle"
+              class="ud-coop-box__code"
+            >
+              {{ user.cooperationModeCode }}
+            </div>
+            <div v-if="user.cooperationChosenAt" class="ud-coop-box__time">选择时间 {{ formatDate(user.cooperationChosenAt) }}</div>
+          </div>
           <div class="ud-dimension-tags" v-if="profileTags.length">
             <div class="ud-dimension-tags__title">维度标签</div>
             <el-tag v-for="t in profileTags" :key="t" size="small" class="ud-dimension-tags__item">{{ t }}</el-tag>
@@ -209,6 +220,77 @@
               </div>
               <div v-else class="ud-empty-hint">暂无人脸分析照片</div>
             </el-tab-pane>
+
+            <el-tab-pane label="简历文件" name="resumes">
+              <div v-if="resumeUploadList.length" class="ud-resume-files">
+                <el-table :data="resumeUploadList" size="small" stripe class="ud-resume-table">
+                  <el-table-column prop="fileName" label="文件名" min-width="160" show-overflow-tooltip />
+                  <el-table-column
+                    v-if="showEnterpriseMatch"
+                    prop="enterpriseName"
+                    label="归属企业"
+                    min-width="120"
+                    show-overflow-tooltip
+                  />
+                  <el-table-column label="默认简历" width="92" align="center">
+                    <template #default="{ row }">
+                      <el-tag v-if="row.isDefault" size="small" type="success">是</el-tag>
+                      <span v-else class="ud-muted">—</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="上传时间" width="124">
+                    <template #default="{ row }">{{ formatDate(row.uploadedAt) }}</template>
+                  </el-table-column>
+                  <el-table-column label="操作" width="88" align="center" fixed="right">
+                    <template #default="{ row }">
+                      <el-button v-if="row.url" link type="primary" size="small" @click="openResumeUrl(row.url)">
+                        打开
+                      </el-button>
+                      <span v-else class="ud-muted">—</span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+              <div v-else class="ud-empty-hint">
+                暂无简历文件。用户在企业版小程序「我的简历」中上传后，将在此列出（OSS 直链，点击打开下载或预览）。
+              </div>
+            </el-tab-pane>
+
+            <el-tab-pane label="用户旅程" name="journey">
+              <div class="ud-journey">
+                <div class="ud-journey__toolbar">
+                  <span class="ud-journey__label">统计范围</span>
+                  <el-select v-model="journeyDays" style="width: 120px" @change="loadJourney">
+                    <el-option :value="7" label="近 7 天" />
+                    <el-option :value="30" label="近 30 天" />
+                    <el-option :value="90" label="近 90 天" />
+                  </el-select>
+                  <el-button size="small" :loading="journeyLoading" @click="loadJourney">刷新</el-button>
+                </div>
+                <el-table
+                  v-loading="journeyLoading"
+                  :data="journeyRows"
+                  stripe
+                  size="small"
+                  max-height="420"
+                  empty-text="暂无行为记录"
+                >
+                  <el-table-column prop="createdAt" label="时间" width="160" />
+                  <el-table-column label="事件" min-width="220">
+                    <template #default="{ row }">
+                      <strong>{{ row.eventNameCn || row.eventName }}</strong>
+                      <div class="ud-journey__subname">{{ row.eventName }}</div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="pagePath" label="页面" min-width="180" show-overflow-tooltip />
+                  <el-table-column label="附加" min-width="220">
+                    <template #default="{ row }">
+                      <span class="ud-journey__props">{{ formatJourneyProps(row.props) }}</span>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </el-tab-pane>
           </el-tabs>
         </main>
       </template>
@@ -249,6 +331,7 @@ import VChart from 'vue-echarts'
 import { discTopTwoLabel, discCompactLabel } from '@/utils/discDisplay'
 import { buildFaceDetailFromParsed } from '@/utils/faceResultDetail'
 import { SBTI_RADAR_DIMENSION_ORDER, buildSbtiRadarValues, formatSbtiSummary } from '@/utils/sbtiDisplay'
+import { request } from '@/utils/request'
 
 use([CanvasRenderer, RadarChart, GridComponent, TooltipComponent, LegendComponent, RadarComponent])
 
@@ -271,12 +354,17 @@ const udTab = ref('analysis')
 const testPage = ref(1)
 const testPageSize = 8
 
+const journeyDays = ref(30)
+const journeyLoading = ref(false)
+const journeyRows = ref<any[]>([])
+
 watch(
   () => props.modelValue,
   v => {
     if (v) {
       udTab.value = 'analysis'
       testPage.value = 1
+      journeyRows.value = []
     }
   }
 )
@@ -285,8 +373,44 @@ watch(
   () => props.user?.id,
   () => {
     testPage.value = 1
+    journeyRows.value = []
   }
 )
+
+watch(udTab, (t) => {
+  if (t === 'journey' && journeyRows.value.length === 0) {
+    void loadJourney()
+  }
+})
+
+async function loadJourney() {
+  const uid = props.user?.id
+  if (!uid) {
+    journeyRows.value = []
+    return
+  }
+  journeyLoading.value = true
+  try {
+    const res: any = await request.get('/superadmin/analytics/user-journey', {
+      params: { userId: uid, days: journeyDays.value }
+    })
+    journeyRows.value = res.data?.list || []
+  } catch {
+    journeyRows.value = []
+  } finally {
+    journeyLoading.value = false
+  }
+}
+
+function formatJourneyProps(p: unknown): string {
+  if (p == null) return '—'
+  try {
+    const s = JSON.stringify(p)
+    return s.length > 160 ? s.slice(0, 160) + '…' : s
+  } catch {
+    return '—'
+  }
+}
 
 const avatarLetter = computed(() => {
   const n = (props.user?.username || props.user?.nickname || '?').trim()
@@ -313,6 +437,17 @@ const matchingEnterprises = computed(() => {
   const m = props.user?.matchingEnterprises
   return Array.isArray(m) ? m : []
 })
+
+const resumeUploadList = computed(() => {
+  const raw = props.user?.resumeUploads
+  return Array.isArray(raw) ? raw : []
+})
+
+function openResumeUrl(url: string) {
+  const u = (url || '').trim()
+  if (!u) return
+  window.open(u, '_blank', 'noopener,noreferrer')
+}
 
 function shortOrDash(s: string | undefined, max = 6) {
   if (!s) return '—'
@@ -764,6 +899,44 @@ function openMail(email: string) {
   margin: 0 4px 4px 0;
 }
 
+.ud-coop-box {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+  border: 1px solid #bbf7d0;
+}
+.ud-coop-box__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #166534;
+  margin-bottom: 6px;
+  .el-icon {
+    font-size: 14px;
+    color: #15803d;
+  }
+}
+.ud-coop-box__main {
+  font-size: 13px;
+  font-weight: 600;
+  color: #14532d;
+  line-height: 1.4;
+}
+.ud-coop-box__code {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #6b7280;
+  font-family: ui-monospace, monospace;
+}
+.ud-coop-box__time {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #64748b;
+}
+
 .ud-main-pane {
   flex: 1;
   min-width: 0;
@@ -1094,6 +1267,46 @@ function openMail(email: string) {
   width: 100px;
   height: 100px;
   border-radius: 8px;
+}
+
+.ud-resume-files {
+  padding: 4px 0;
+}
+.ud-resume-table {
+  width: 100%;
+}
+.ud-muted {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.ud-journey {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ud-journey__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ud-journey__label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.ud-journey__subname {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.ud-journey__props {
+  font-size: 12px;
+  color: #64748b;
+  word-break: break-all;
 }
 
 @media (max-width: 900px) {

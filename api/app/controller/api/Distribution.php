@@ -20,8 +20,8 @@ class Distribution extends BaseController
     const BINDING_DAYS = 30;
     const BINDING_TTL  = 30 * 86400;
 
-    /** 提现金额下限（分），1元 */
-    const MIN_WITHDRAW_FEN = 100;
+    /** 提现金额下限（分），1 分（0.01 元）；具体规则以超管 minWithdrawFen 为准，不低于本值 */
+    const MIN_WITHDRAW_FEN = 1;
     /** 提现金额上限（分），200元 */
     const MAX_WITHDRAW_FEN = 20000;
     /** 待收款过期时间（秒），24小时 */
@@ -42,6 +42,19 @@ class Distribution extends BaseController
         $inviterId   = (int) Request::param('inviterId', 0);
         $enterpriseId = Request::param('eid', null);
         $enterpriseId = $enterpriseId !== null ? (int) $enterpriseId : null;
+
+        $inviteCodeRaw = trim((string) Request::param('inviteCode', ''));
+        if ($inviteCodeRaw !== '') {
+            $parsed = $this->resolveInviterFromInviteCode($inviteCodeRaw, $enterpriseId);
+            if ($parsed === null || (int) ($parsed['inviterId'] ?? 0) <= 0) {
+                return error('邀请码无效或已失效', 400);
+            }
+            $inviterId = (int) $parsed['inviterId'];
+            if (array_key_exists('enterpriseId', $parsed) && $parsed['enterpriseId'] !== null && $parsed['enterpriseId'] > 0) {
+                $enterpriseId = (int) $parsed['enterpriseId'];
+            }
+        }
+
         $scope       = $enterpriseId ? 'enterprise' : 'personal';
 
         // 自绑校验
@@ -139,6 +152,172 @@ class Distribution extends BaseController
         }
 
         return success(['expireAt' => $expireAt], '绑定成功');
+    }
+
+    /**
+     * 高考入口等：与 POST /api/distribution/bind 一致地写入 distribution_bindings（不含邀请码解析）
+     */
+    public static function applyInviteBindingFromGaokao(int $inviteeId, int $inviterId, ?int $enterpriseId): void
+    {
+        if ($inviteeId <= 0 || $inviterId <= 0 || $inviterId === $inviteeId) {
+            return;
+        }
+
+        $scope = $enterpriseId ? 'enterprise' : 'personal';
+
+        if ($scope === 'enterprise') {
+            $inviter = Db::name('wechat_users')
+                ->where('id', $inviterId)
+                ->field('id, enterpriseId')
+                ->find();
+            if (!$inviter || (int) $inviter['enterpriseId'] !== $enterpriseId) {
+                return;
+            }
+        }
+
+        $now = time();
+
+        $reverseExists = Db::name('distribution_bindings')
+            ->where('inviterId', $inviteeId)
+            ->where('inviteeId', $inviterId)
+            ->where('scope', $scope)
+            ->where('status', 'active')
+            ->where('expireAt', '>', $now)
+            ->where(function ($query) use ($enterpriseId) {
+                if ($enterpriseId) {
+                    $query->where('enterpriseId', $enterpriseId);
+                } else {
+                    $query->whereNull('enterpriseId');
+                }
+            })
+            ->find();
+        if ($reverseExists) {
+            return;
+        }
+
+        $expireAt = $now + self::BINDING_TTL;
+
+        $existing = Db::name('distribution_bindings')
+            ->where('inviteeId', $inviteeId)
+            ->where('scope', $scope)
+            ->where(function ($query) use ($enterpriseId) {
+                if ($enterpriseId) {
+                    $query->where('enterpriseId', $enterpriseId);
+                } else {
+                    $query->whereNull('enterpriseId');
+                }
+            })
+            ->find();
+
+        if (!$existing) {
+            Db::name('distribution_bindings')->insert([
+                'inviterId'     => $inviterId,
+                'inviteeId'     => $inviteeId,
+                'scope'         => $scope,
+                'enterpriseId'  => $enterpriseId,
+                'expireAt'      => $expireAt,
+                'status'        => 'active',
+                'prevInviterId' => null,
+                'overriddenAt'  => null,
+                'createdAt'     => $now,
+                'updatedAt'     => $now,
+            ]);
+        } elseif ((int) $existing['inviterId'] === $inviterId) {
+            Db::name('distribution_bindings')
+                ->where('id', $existing['id'])
+                ->update([
+                    'expireAt'  => $expireAt,
+                    'status'    => 'active',
+                    'updatedAt' => $now,
+                ]);
+        } else {
+            $exExpire = (int) ($existing['expireAt'] ?? 0);
+            $exStatus = (string) ($existing['status'] ?? '');
+            if ($exStatus === 'active' && $exExpire > $now) {
+                return;
+            }
+            Db::name('distribution_bindings')
+                ->where('id', $existing['id'])
+                ->update([
+                    'prevInviterId' => (int) $existing['inviterId'],
+                    'inviterId'     => $inviterId,
+                    'expireAt'      => $expireAt,
+                    'status'        => 'active',
+                    'overriddenAt'  => $now,
+                    'updatedAt'     => $now,
+                ]);
+        }
+    }
+
+    /**
+     * GET /api/distribution/my-invite-code
+     * 返回当前用户名下可用邀请码；若无记录则自动生成一条（便于前端直接展示）
+     */
+    public function myInviteCode()
+    {
+        $user = $this->resolveUser();
+        if (!$user) {
+            return error('未登录', 401);
+        }
+
+        $inviterId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
+        if ($inviterId <= 0) {
+            return error('用户异常', 400);
+        }
+
+        try {
+            $rows = Db::name('invite_codes')
+                ->where('inviterId', $inviterId)
+                ->where('status', 'active')
+                ->order('id', 'asc')
+                ->select()
+                ->toArray();
+        } catch (\Throwable $e) {
+            Log::warning('myInviteCode select: ' . $e->getMessage());
+
+            return error('邀请码功能未就绪，请确认已执行数据库迁移', 503);
+        }
+
+        $now = time();
+        foreach ($rows as $r) {
+            $exp = isset($r['expiresAt']) ? (int) $r['expiresAt'] : 0;
+            if ($exp <= 0 || $exp > $now) {
+                $code = trim((string) ($r['code'] ?? ''));
+                if ($code !== '') {
+                    return success([
+                        'code'       => strtoupper($code),
+                        'createdNew' => false,
+                    ]);
+                }
+            }
+        }
+
+        try {
+            $newCode = $this->generateUniqueInviteCode();
+            Db::name('invite_codes')->insert([
+                'code'           => $newCode,
+                'inviterId'      => $inviterId,
+                'enterpriseId'   => null,
+                'status'         => 'active',
+                'expiresAt'      => null,
+                'remark'         => 'auto_my_invite_code',
+                'createdAt'      => $now,
+                'updatedAt'      => $now,
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('myInviteCode insert: ' . $e->getMessage());
+
+            return success([
+                'code'       => null,
+                'createdNew' => false,
+                'hint'       => '暂时无法生成邀请码，请稍后重试或联系管理员',
+            ]);
+        }
+
+        return success([
+            'code'       => $newCode,
+            'createdNew' => true,
+        ]);
     }
 
     /**
@@ -297,7 +476,8 @@ class Distribution extends BaseController
             }
         } catch (\Exception $e) {}
         $cfg = is_array($globalDistConfig) ? $globalDistConfig : [];
-        $minWithdrawFen  = (int)($cfg['minWithdrawFen'] ?? 100);
+        $minWithdrawFen  = (int)($cfg['minWithdrawFen'] ?? 1);
+        $minWithdrawFen  = max(1, min(self::MAX_WITHDRAW_FEN, $minWithdrawFen));
         $maxWithdrawFen  = (int)($cfg['maxWithdrawFen'] ?? 0);
         $withdrawFee     = (float)($cfg['withdrawFee'] ?? 0);
         $requireAudit    = (isset($cfg['requireAudit']) ? $cfg['requireAudit'] : true) !== false;
@@ -495,7 +675,7 @@ class Distribution extends BaseController
         $feeFen    = (int) round($amountFen * $feePct / 100);
         $actualFen = $amountFen - $feeFen;
         if ($actualFen < $minFen) {
-            return error('实际到账金额不得低于最低提现金额 ' . number_format($minFen / 100, 2, '.', '') . ' 元', 400);
+            return error('实际到账金额不得低于最低提现金额 ¥' . number_format($minFen / 100, 2, '.', ''), 400);
         }
 
         $requireAudit = (isset($cfg['requireAudit']) ? $cfg['requireAudit'] : true) !== false;
@@ -1133,7 +1313,8 @@ class Distribution extends BaseController
     private static function getWithdrawLimits(string $scope, ?int $enterpriseId): array
     {
         $cfg    = self::getDistributionConfig($scope, $enterpriseId);
-        $minFen = max(self::MIN_WITHDRAW_FEN, min(self::MAX_WITHDRAW_FEN, (int)($cfg['minWithdrawFen'] ?? self::MIN_WITHDRAW_FEN)));
+        $rawMin = (int)($cfg['minWithdrawFen'] ?? self::MIN_WITHDRAW_FEN);
+        $minFen = max(self::MIN_WITHDRAW_FEN, min(self::MAX_WITHDRAW_FEN, $rawMin));
         $maxFen = (int)($cfg['maxWithdrawFen'] ?? 0);
         if ($maxFen > 0) {
             $maxFen = min(self::MAX_WITHDRAW_FEN, $maxFen);
@@ -1474,5 +1655,67 @@ class Distribution extends BaseController
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * 活动邀请码 → inviterId（需表 invite_codes，见 database/add_invite_codes.sql）
+     *
+     * @param string      $raw
+     * @param int|null    $requestEnterpriseId 请求里已带的 eid，用于与码上企业校验
+     * @return array{inviterId:int, enterpriseId:int|null}|null
+     */
+    /**
+     * 生成不与 invite_codes.code 冲突的随机码（易辨认字符集）
+     */
+    private function generateUniqueInviteCode(): string
+    {
+        $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $max   = strlen($chars) - 1;
+        for ($attempt = 0; $attempt < 24; $attempt++) {
+            $code = '';
+            for ($i = 0; $i < 8; $i++) {
+                $code .= $chars[random_int(0, $max)];
+            }
+            $exists = Db::name('invite_codes')->where('code', $code)->find();
+            if (!$exists) {
+                return $code;
+            }
+        }
+        throw new \RuntimeException('invite code collision');
+    }
+
+    private function resolveInviterFromInviteCode(string $raw, ?int $requestEnterpriseId): ?array
+    {
+        $norm = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $raw));
+        if ($norm === '') {
+            return null;
+        }
+        try {
+            $row = Db::name('invite_codes')
+                ->where('code', $norm)
+                ->where('status', 'active')
+                ->find();
+        } catch (\Throwable $e) {
+            Log::warning('invite_codes lookup failed: ' . $e->getMessage());
+
+            return null;
+        }
+        if (!$row) {
+            return null;
+        }
+        $exp = isset($row['expiresAt']) ? (int) $row['expiresAt'] : 0;
+        if ($exp > 0 && $exp < time()) {
+            return null;
+        }
+        $codeEid = isset($row['enterpriseId']) ? (int) $row['enterpriseId'] : 0;
+        $codeEid = $codeEid > 0 ? $codeEid : null;
+        if ($requestEnterpriseId !== null && $requestEnterpriseId > 0 && $codeEid !== null && $codeEid !== $requestEnterpriseId) {
+            return null;
+        }
+
+        return [
+            'inviterId'    => (int) ($row['inviterId'] ?? 0),
+            'enterpriseId' => $codeEid,
+        ];
     }
 }

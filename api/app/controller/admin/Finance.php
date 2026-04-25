@@ -36,7 +36,7 @@ class Finance extends BaseController
             $baseOrderQuery = Db::name('orders')
                 ->where('enterpriseId', $enterpriseId)
                 ->whereIn('status', ['paid', 'completed'])
-                ->whereIn('productType', ['face', 'mbti', 'sbti', 'disc', 'pdp']);
+                ->whereIn('productType', ['face', 'mbti', 'sbti', 'disc', 'pdp', 'ai_deep_report']);
 
             $totalIncomeFen = (int) ((clone $baseOrderQuery)->sum('amount') ?? 0);
             $todayIncomeFen = (int) ((clone $baseOrderQuery)->where('payTime', '>=', $todayStart)->sum('amount') ?? 0);
@@ -54,16 +54,44 @@ class Finance extends BaseController
                 ->where('status', 'frozen')
                 ->sum('commissionFen') ?? 0);
 
+            // 本月累计扣款（平台扣费 + 佣金扣减）
+            $monthConsumeFen = (int) (Db::name('finance_records')
+                ->where('enterpriseId', $enterpriseId)
+                ->where('type', 'consume')
+                ->where('createdAt', '>=', $monthStart)
+                ->sum('amount') ?? 0);
+
+            // 今日扣款
+            $todayConsumeFen = (int) (Db::name('finance_records')
+                ->where('enterpriseId', $enterpriseId)
+                ->where('type', 'consume')
+                ->where('createdAt', '>=', $todayStart)
+                ->sum('amount') ?? 0);
+
+            // 建议充值：按本月实际天数日均 × 14 天，低于 500 元按 500 元兜底；余额足够则 0
+            $balanceFen = (int) ($enterprise['balance'] ?? 0);
+            $daysElapsed = max(1, (int) date('j'));
+            $avgDaily = $monthConsumeFen > 0 ? intval($monthConsumeFen / $daysElapsed) : 0;
+            $suggestThreshold = $avgDaily * 14;
+            $suggestRechargeFen = 0;
+            if ($avgDaily > 0 && $balanceFen < $suggestThreshold) {
+                $suggestRechargeFen = max($suggestThreshold - $balanceFen, 50000); // ≥ 500 元
+            }
+
             return success([
                 'enterpriseId' => $enterpriseId,
                 'enterpriseName' => $enterprise['name'] ?? '',
-                'balanceFen' => (int) ($enterprise['balance'] ?? 0),
+                'balanceFen' => $balanceFen,
                 'totalIncomeFen' => $totalIncomeFen,
                 'todayIncomeFen' => $todayIncomeFen,
                 'monthIncomeFen' => $monthIncomeFen,
                 'manualRechargeFen' => $manualRechargeFen,
                 'frozenCommissionFen' => $frozenCommissionFen,
                 'paidOrderCount' => $paidOrderCount,
+                'monthConsumeFen' => $monthConsumeFen,
+                'todayConsumeFen' => $todayConsumeFen,
+                'avgDailyConsumeFen' => $avgDaily,
+                'suggestRechargeFen' => $suggestRechargeFen,
             ]);
         } catch (\Throwable $e) {
             return error('获取企业财务概览失败：' . $e->getMessage(), 500);

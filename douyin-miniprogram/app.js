@@ -43,7 +43,9 @@ App({
     aiResult: null,
     maintenanceMode: undefined,
     reviewMode: undefined,
-    enterprisePermissions: null
+    enterprisePermissions: null,
+    deepPricingPersonal: null,
+    deepPricingEnterprise: null
   },
 
   onLaunch(launchOptions) {
@@ -86,7 +88,7 @@ App({
           reviewMode: audit,
           permFace,
           siteTitle: audit ? String(gd.siteTitle || '神仙团队性格测试').replace(/AI/gi, '') : (gd.siteTitle || '神仙团队性格测试'),
-          startButtonText: (audit || (ep && ep.face === false)) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '拍摄'),
+          startButtonText: (audit || (ep && ep.face === false)) ? '开始性格测试' : ((gd.textConfig && gd.textConfig.startButtonText) || '30秒测出你的性格'),
           aiAnalysisText: audit ? '分析' : ((gd.textConfig && gd.textConfig.aiAnalysisText) || '分析')
         })
       } else if (route === 'pages/profile/index' && typeof top.setData === 'function') {
@@ -452,6 +454,16 @@ App({
               this.globalData.enterprisePermissions = data.enterprisePermissions
             } else {
               this.globalData.enterprisePermissions = null
+            }
+            if (data.deepPricingPersonal && Array.isArray(data.deepPricingPersonal.categories)) {
+              this.globalData.deepPricingPersonal = data.deepPricingPersonal.categories
+            } else {
+              this.globalData.deepPricingPersonal = null
+            }
+            if (data.deepPricingEnterprise && Array.isArray(data.deepPricingEnterprise.categories)) {
+              this.globalData.deepPricingEnterprise = data.deepPricingEnterprise.categories
+            } else {
+              this.globalData.deepPricingEnterprise = null
             }
             resolve(data)
           } else {

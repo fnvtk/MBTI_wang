@@ -2,6 +2,7 @@
 namespace app\controller\admin;
 
 use app\BaseController;
+use app\common\service\ResumeUploadsAdminService;
 use app\controller\admin\concern\ExtractsTestResults;
 use think\facade\Db;
 use think\facade\Request;
@@ -31,6 +32,14 @@ class AppUser extends BaseController
         $pageSize = (int) Request::param('pageSize', 20);
         $pageSize = min(max($pageSize, 1), 100);
         $keyword = trim(Request::param('keyword', ''));
+        $coldFaceLevelRaw = Request::param('coldFaceLevel', '');
+        $coldFaceLevels = [];
+        if (is_array($coldFaceLevelRaw)) {
+            $coldFaceLevels = array_values(array_filter(array_map('strval', $coldFaceLevelRaw)));
+        } elseif (is_string($coldFaceLevelRaw) && $coldFaceLevelRaw !== '') {
+            $coldFaceLevels = array_values(array_filter(array_map('trim', explode(',', $coldFaceLevelRaw))));
+        }
+        $coldFaceLevels = array_values(array_intersect($coldFaceLevels, ['cold', 'neutral', 'warm']));
 
         $where = [];
         if ($keyword !== '') {
@@ -72,6 +81,19 @@ class AppUser extends BaseController
                 ->join([$poolSql => 'p'], 'w.id = p.userId')
                 ->join([$dedupSql => 'd'], 'w.id = d.mid');
 
+            if (!empty($coldFaceLevels)) {
+                try {
+                    $cfSql = Db::name('user_profile')
+                        ->whereRaw('enterpriseId = ' . $eid)
+                        ->whereIn('coldFaceLevel', $coldFaceLevels)
+                        ->field('userId')
+                        ->buildSql(true);
+                    $baseQuery->join([$cfSql => 'cf'], 'w.id = cf.userId');
+                } catch (\Throwable $e) {
+                    // coldFace 字段不存在时忽略筛选
+                }
+            }
+
             if ($keyword !== '') {
                 $like = '%' . addcslashes($keyword, '%_\\') . '%';
                 $baseQuery->whereRaw(
@@ -99,12 +121,35 @@ class AppUser extends BaseController
 
         if ($enterpriseId) {
             $total = (int) (clone $baseQuery)->distinct(true)->count('w.id');
-            $list = (clone $baseQuery)
-                ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
+            // 先按「去重后的 w.id」分页，再拉全字段；避免 JOIN 放大行数导致 LIMIT 作用在重复用户上，
+            // 进而出现「一页里混入全库统计感」或本页人数与 pageSize 不一致。
+            $idRows = (clone $baseQuery)
+                ->field('w.id')
+                ->group('w.id')
                 ->order('w.id', 'desc')
                 ->page($page, $pageSize)
                 ->select()
                 ->toArray();
+            $orderedIds = array_values(array_filter(array_map('intval', array_column($idRows, 'id'))));
+            if ($orderedIds === []) {
+                $list = [];
+            } else {
+                $rows = Db::name('wechat_users')->alias('w')
+                    ->whereIn('w.id', $orderedIds)
+                    ->field('w.id,w.nickname,w.openid,w.avatar,w.phone,w.gender,w.country,w.province,w.city,w.status,w.lastLoginAt,w.createdAt')
+                    ->select()
+                    ->toArray();
+                $byId = [];
+                foreach ($rows as $r) {
+                    $byId[(int) ($r['id'] ?? 0)] = $r;
+                }
+                $list = [];
+                foreach ($orderedIds as $oid) {
+                    if (isset($byId[$oid])) {
+                        $list[] = $byId[$oid];
+                    }
+                }
+            }
         } else {
             $total = (int) (clone $baseQuery)->count();
             $list = (clone $baseQuery)
@@ -126,6 +171,9 @@ class AppUser extends BaseController
             $ent = Db::name('enterprises')->where('id', $enterpriseId)->find();
             $enterpriseName = $ent['name'] ?? ('企业' . $enterpriseId);
         }
+        $coopMap = [];
+        $gaokaoMap = [];
+        $gaokaoReportMap = [];
         if (!empty($ids)) {
             // 测试统计严格按 test_results.enterpriseId 归属企业过滤
             $trBase = Db::name('test_results')->where('userId', 'in', $ids);
@@ -215,6 +263,99 @@ class AppUser extends BaseController
             } catch (\Throwable $e) {
                 $payStats = [];
             }
+
+            // 冷脸分字段（容错：迁移未执行时 coldFace* 字段缺失，查询异常则视为全空）
+            $coldFaceMap = [];
+            try {
+                $cfQuery = Db::name('user_profile')->where('userId', 'in', $ids);
+                if ($enterpriseId) {
+                    $cfQuery->where('enterpriseId', $enterpriseId);
+                }
+                $cfRows = $cfQuery
+                    ->field('userId, coldFaceScore, coldFaceLevel, coldFaceUpdatedAt')
+                    ->select()
+                    ->toArray();
+                foreach ($cfRows as $r) {
+                    $uid = (int) ($r['userId'] ?? 0);
+                    if ($uid > 0) {
+                        $coldFaceMap[$uid] = [
+                            'score' => isset($r['coldFaceScore']) && $r['coldFaceScore'] !== null ? (int) $r['coldFaceScore'] : null,
+                            'level' => $r['coldFaceLevel'] ?? null,
+                            'updatedAt' => isset($r['coldFaceUpdatedAt']) ? (int) $r['coldFaceUpdatedAt'] : null,
+                        ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                $coldFaceMap = [];
+            }
+
+            // 本企业下用户合作意向（user_cooperation_choices 唯一 key：userId + enterpriseId）
+            if ($enterpriseId) {
+                try {
+                    $eid = (int) $enterpriseId;
+                    $coopRows = Db::name('user_cooperation_choices')->alias('uc')
+                        ->leftJoin('enterprise_cooperation_modes ecm', 'ecm.enterpriseId = uc.enterpriseId AND ecm.modeCode = uc.modeCode')
+                        ->whereIn('uc.userId', $ids)
+                        ->where('uc.enterpriseId', $eid)
+                        ->field('uc.userId, uc.modeCode, uc.chosenAt, uc.updatedAt, ecm.title as modeTitle')
+                        ->select()
+                        ->toArray();
+                    foreach ($coopRows as $cr) {
+                        $uCo = (int) ($cr['userId'] ?? 0);
+                        if ($uCo > 0) {
+                            $coopMap[$uCo] = [
+                                'modeCode'  => (string) ($cr['modeCode'] ?? ''),
+                                'modeTitle' => (string) ($cr['modeTitle'] ?? ''),
+                                'chosenAt'  => (int) ($cr['chosenAt'] ?? 0),
+                                'updatedAt' => (int) ($cr['updatedAt'] ?? 0),
+                            ];
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $coopMap = [];
+                }
+            }
+
+            // 高考任务状态与最近报告摘要
+            try {
+                $gqRows = Db::name('gaokao_user_profile')
+                    ->whereIn('userId', $ids)
+                    ->where('tenantId', (int) $enterpriseId)
+                    ->field('id,userId,entryStatus,mbtiStatus,pdpStatus,discStatus,formStatus,analyzeStatus,lastAnalyzeAt,latestReportId,tagsJson')
+                    ->select()
+                    ->toArray();
+                $reportIds = [];
+                foreach ($gqRows as $gr) {
+                    $uid = (int) ($gr['userId'] ?? 0);
+                    if ($uid > 0) {
+                        $gaokaoMap[$uid] = $gr;
+                        if (!empty($gr['latestReportId'])) {
+                            $reportIds[] = (int) $gr['latestReportId'];
+                        }
+                    }
+                }
+                $reportIds = array_values(array_unique(array_filter($reportIds)));
+                if ($reportIds) {
+                    $rRows = Db::name('test_results')
+                        ->whereIn('id', $reportIds)
+                        ->where('testType', 'gaokao')
+                        ->field('id,resultData')
+                        ->select()
+                        ->toArray();
+                    foreach ($rRows as $rr) {
+                        $raw = $rr['resultData'] ?? '';
+                        $rd = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+                        $ov = (string) ($rd['overview'] ?? '');
+                        if ($ov === '' && isset($rd['report']['overview'])) {
+                            $ov = (string) $rd['report']['overview'];
+                        }
+                        $gaokaoReportMap[(int) $rr['id']] = $ov;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $gaokaoMap = [];
+                $gaokaoReportMap = [];
+            }
         }
 
         foreach ($list as &$row) {
@@ -236,6 +377,43 @@ class AppUser extends BaseController
             $pay = $payStats[$id] ?? null;
             $row['paidOrders'] = $pay ? (int) ($pay['paidOrders'] ?? 0) : 0;
             $row['totalPaidAmount'] = $pay ? (int) ($pay['totalPaidAmount'] ?? 0) : 0;
+
+            $cf = $coldFaceMap[$id] ?? null;
+            if ((!$cf || $cf['score'] === null) && !empty($testsForUser)) {
+                $calc = $this->calcColdFace($testsForUser);
+                if ($calc) {
+                    $this->writeColdFace((int) $id, $enterpriseId ? (int) $enterpriseId : null, $calc);
+                    $cf = ['score' => $calc['score'], 'level' => $calc['level'], 'updatedAt' => time()];
+                }
+            }
+            $row['coldFaceScore'] = $cf && $cf['score'] !== null ? (int) $cf['score'] : null;
+            $row['coldFaceLevel'] = $cf && !empty($cf['level']) ? (string) $cf['level'] : null;
+            $row['coldFaceUpdatedAt'] = $cf ? ($cf['updatedAt'] ?? null) : null;
+
+            $co = $coopMap[$id] ?? null;
+            if ($co && ($co['modeCode'] !== '' || $co['modeTitle'] !== '' || (int) ($co['chosenAt'] ?? 0) > 0)) {
+                $row['cooperationModeCode']  = $co['modeCode'] !== '' ? $co['modeCode'] : null;
+                $row['cooperationModeTitle'] = $co['modeTitle'] !== '' ? $co['modeTitle'] : null;
+                $chAt                        = (int) ($co['chosenAt'] ?? 0);
+                $row['cooperationChosenAt']  = $chAt > 0 ? $chAt : null;
+            } else {
+                $row['cooperationModeCode']  = null;
+                $row['cooperationModeTitle'] = null;
+                $row['cooperationChosenAt']  = null;
+            }
+
+            $gq = $gaokaoMap[$id] ?? null;
+            $row['gaokaoEntryStatus'] = $gq ? (int) ($gq['entryStatus'] ?? 0) : 0;
+            $row['gaokaoAnalyzeStatus'] = $gq ? (int) ($gq['analyzeStatus'] ?? 0) : 0;
+            $row['gaokaoFormStatus'] = $gq ? (int) ($gq['formStatus'] ?? 0) : 0;
+            $row['gaokaoTaskStatus'] = [
+                'mbti' => $gq ? (int) ($gq['mbtiStatus'] ?? 0) : 0,
+                'pdp' => $gq ? (int) ($gq['pdpStatus'] ?? 0) : 0,
+                'disc' => $gq ? (int) ($gq['discStatus'] ?? 0) : 0,
+            ];
+            $row['gaokaoLastAnalyzeAt'] = $gq ? (int) ($gq['lastAnalyzeAt'] ?? 0) : 0;
+            $rid = $gq ? (int) ($gq['latestReportId'] ?? 0) : 0;
+            $row['gaokaoOverview'] = $rid > 0 ? (string) ($gaokaoReportMap[$rid] ?? '') : '';
         }
 
         return paginate_response($list, $total, $page, $pageSize);
@@ -321,6 +499,85 @@ class AppUser extends BaseController
         $data['faceMbtiType'] = $this->extractFaceSubType($tests, 'mbti');
         $data['faceDiscType'] = $this->extractFaceSubType($tests, 'disc');
         $data['facePdpType'] = $this->extractFaceSubType($tests, 'pdp');
+
+        // 冷脸分字段（详情）
+        $coldFace = null;
+        try {
+            $cfQuery = Db::name('user_profile')->where('userId', $id);
+            if ($enterpriseId) {
+                $cfQuery->where('enterpriseId', $enterpriseId);
+            }
+            $cfRow = $cfQuery->field('coldFaceScore, coldFaceLevel, coldFaceUpdatedAt')->find();
+            if ($cfRow) {
+                $coldFace = [
+                    'score' => $cfRow['coldFaceScore'] !== null ? (int) $cfRow['coldFaceScore'] : null,
+                    'level' => $cfRow['coldFaceLevel'] ?? null,
+                    'updatedAt' => isset($cfRow['coldFaceUpdatedAt']) ? (int) $cfRow['coldFaceUpdatedAt'] : null,
+                ];
+            }
+        } catch (\Throwable $e) {
+            $coldFace = null;
+        }
+        if ((!$coldFace || $coldFace['score'] === null) && !empty($tests)) {
+            $calc = $this->calcColdFace($tests);
+            if ($calc) {
+                $this->writeColdFace((int) $id, $enterpriseId ? (int) $enterpriseId : null, $calc);
+                $coldFace = ['score' => $calc['score'], 'level' => $calc['level'], 'updatedAt' => time()];
+            }
+        }
+        $data['coldFaceScore'] = $coldFace['score'] ?? null;
+        $data['coldFaceLevel'] = $coldFace['level'] ?? null;
+        $data['coldFaceUpdatedAt'] = $coldFace['updatedAt'] ?? null;
+
+        $data['cooperationModeCode'] = null;
+        $data['cooperationModeTitle'] = null;
+        $data['cooperationChosenAt'] = null;
+        if ($enterpriseId) {
+            try {
+                $cr = Db::name('user_cooperation_choices')->alias('uc')
+                    ->leftJoin('enterprise_cooperation_modes ecm', 'ecm.enterpriseId = uc.enterpriseId AND ecm.modeCode = uc.modeCode')
+                    ->where('uc.userId', $id)
+                    ->where('uc.enterpriseId', (int) $enterpriseId)
+                    ->field('uc.modeCode, uc.chosenAt, ecm.title as modeTitle')
+                    ->find();
+                if ($cr) {
+                    $mc  = trim((string) ($cr['modeCode'] ?? ''));
+                    $mt  = trim((string) ($cr['modeTitle'] ?? ''));
+                    $data['cooperationModeCode']  = $mc !== '' ? $mc : null;
+                    $data['cooperationModeTitle'] = $mt !== '' ? $mt : null;
+                    $chAt = (int) ($cr['chosenAt'] ?? 0);
+                    $data['cooperationChosenAt'] = $chAt > 0 ? $chAt : null;
+                }
+            } catch (\Throwable $e) {
+                // 表未迁移时忽略
+            }
+        }
+
+        $data['resumeUploads'] = ($enterpriseId && (int) $enterpriseId > 0)
+            ? ResumeUploadsAdminService::listForWechatUser((int) $id, (int) $enterpriseId)
+            : [];
+
+        // 高考结果信息
+        try {
+            $gq = Db::name('gaokao_user_profile')
+                ->where('userId', (int) $id)
+                ->where('tenantId', (int) $enterpriseId)
+                ->find();
+            if ($gq) {
+                $data['gaokaoProfile'] = $gq;
+                $rid = (int) ($gq['latestReportId'] ?? 0);
+                if ($rid > 0) {
+                    $data['gaokaoLatestReport'] = Db::name('test_results')
+                        ->where('id', $rid)
+                        ->where('testType', 'gaokao')
+                        ->find();
+                }
+            } else {
+                $data['gaokaoProfile'] = null;
+            }
+        } catch (\Throwable $e) {
+            $data['gaokaoProfile'] = null;
+        }
 
         return success($data);
     }

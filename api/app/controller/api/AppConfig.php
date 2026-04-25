@@ -4,8 +4,10 @@ namespace app\controller\api;
 use app\BaseController;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
-use app\model\AiProvider as AiProviderModel;
+use app\common\service\AiCallService;
+use app\common\service\AiChatArticleDisplayService;
 use app\common\service\JwtService;
+use app\common\service\MpTabbarService;
 use think\facade\Db;
 
 /**
@@ -59,6 +61,7 @@ class AppConfig extends BaseController
 
         // 系统配置：审核模式、默认企业（无带参入口时小程序回落）
         $maintenanceMode = false;
+        $miniprogramAuditMode = false;
         $defaultEnterpriseId = null;
         $systemRow = Db::name('system_config')->where('key', 'system')->find();
         if ($systemRow && !empty($systemRow['value'])) {
@@ -66,6 +69,9 @@ class AppConfig extends BaseController
             if (is_array($sysValEarly)) {
                 if (!empty($sysValEarly['maintenanceMode'])) {
                     $maintenanceMode = true;
+                }
+                if (!empty($sysValEarly['miniprogramAuditMode'])) {
+                    $miniprogramAuditMode = true;
                 }
                 if (!empty($sysValEarly['defaultEnterpriseId'])) {
                     $de = (int) $sysValEarly['defaultEnterpriseId'];
@@ -88,12 +94,8 @@ class AppConfig extends BaseController
             $pricing = is_array($rawConfig) ? $rawConfig : (array) $rawConfig;
         }
 
-        // 超管 AI 配置：第一个 enabled=1、visible=1（显示）且 apiKey 非空；隐藏的服务商不参与选用
-        $firstProvider = AiProviderModel::where('enabled', 1)
-            ->whereRaw('(visible IS NULL OR visible = 1)')
-            ->whereRaw('(apiKey IS NOT NULL AND LENGTH(TRIM(apiKey)) > 0)')
-            ->order('id', 'asc')
-            ->find();
+        // 与 /api/ai/chat、/api/analyze 相同的第一优先服务商（sortWeight、余额沉底）
+        $firstProvider = AiCallService::firstOrderedProvider();
 
         $aiProviderId = null;
         $aiProviderName = null;
@@ -108,6 +110,11 @@ class AppConfig extends BaseController
             $key = $k === 'team_analysis' ? 'teamAnalysis' : $k;
             if (isset($pricing[$key]) && (float) $pricing[$key] > 0) {
                 $reportRequiresPayment[$k] = 1;
+            }
+        }
+        if ($miniprogramAuditMode) {
+            foreach (array_keys($reportRequiresPayment) as $k) {
+                $reportRequiresPayment[$k] = 0;
             }
         }
 
@@ -137,7 +144,7 @@ class AppConfig extends BaseController
         // 小程序文案配置（分析中提示、按钮、报告标题等）
         $textConfig = [
             'analyzingTitle' => '正在分析中',
-            'startButtonText' => '开始面相测试',
+            'startButtonText' => '30秒测出你的性格',
             'startButtonEnterprise' => '开始面部测试',
             'reportTitle' => '分析报告',
             'aiAnalysisText' => '智能分析'
@@ -182,21 +189,85 @@ class AppConfig extends BaseController
             }
         }
 
+        // 与已放行的本接口一并下发，避免 Nginx 仅允许 /api/config/runtime 时 /api/mp/tabbar、/api/config/* 子路径 404
+        $tabBar = null;
+        try {
+            $tabBar = MpTabbarService::getPayload();
+        } catch (\Throwable $e) {
+            $tabBar = ['items' => [], 'version' => 0];
+        }
+
+        $aiQuickQuestions = $miniprogramAuditMode
+            ? ['mbtiType' => '', 'nickname' => '', 'questions' => []]
+            : $this->embeddedAiQuickQuestionsForRuntime($user);
+
+        // 神仙 AI：与 AiChat 一致，不设每日条数上限；内嵌推荐抽检参数与 articles/recommended.display 同源
+        $aiDisp = AiChatArticleDisplayService::getSettings();
+        $aiChatRuntime = [
+            'dailyMessageLimit'     => 0,
+            'unlimited'             => true,
+            'inlineRecoMinUserTurns'=> (int) ($aiDisp['inlineRecoMinUserTurns'] ?? 2),
+            'inlineRecoInterval'    => (int) ($aiDisp['inlineRecoInterval'] ?? 3),
+            'inlineRecoRoll'        => (float) ($aiDisp['inlineRecoRoll'] ?? 0.5),
+            'inlineRecoIconCount'   => (int) ($aiDisp['inlineRecoIconCount'] ?? 3),
+            'inlineRecoIcons'       => $aiDisp['inlineRecoIcons'] ?? ['✨', '💬', '📌'],
+        ];
+
         return success([
             'pricingType' => $pricingType,
             'pricing' => $pricing,
             'aiProviderId' => $aiProviderId,
             'aiProviderName' => $aiProviderName,
+            'aiChat' => $aiChatRuntime,
             'reportRequiresPayment' => $reportRequiresPayment,
             'siteName' => $siteName,
             'miniprogramName' => $miniprogramName,
             'siteTitle' => $siteTitle,
             'textConfig' => $textConfig,
             'maintenanceMode' => $maintenanceMode,
+            /** 提审模式：隐藏神仙 AI 对话等（与 maintenanceMode 面相审核可独立开关） */
+            'miniprogramAuditMode' => $miniprogramAuditMode,
             'reviewMode' => $reviewMode,
             'defaultEnterpriseId' => $defaultEnterpriseId,
             'enterprisePermissions' => $enterprisePermissions,
+            'tabBar' => $tabBar,
+            'aiQuickQuestions' => $aiQuickQuestions,
+            // 与 /api/config/deep-pricing 同源；提审模式下不下发类目（避免虚拟商品购买页）
+            'deepPricingPersonal' => ['categories' => $miniprogramAuditMode ? [] : $this->normalizeDeepPricingCategories('personal')],
+            'deepPricingEnterprise' => ['categories' => $miniprogramAuditMode ? [] : $this->normalizeDeepPricingCategories('enterprise')],
         ]);
+    }
+
+    /**
+     * runtime 内嵌快捷问句（与 AiChat::quickQuestions 同源），免再请求易被网关拦截的路径
+     *
+     * @param array<string, mixed>|null $user 与 runtime() 中解析的 JWT 用户一致
+     * @return array{mbtiType: string, nickname: string, questions: string[]}
+     */
+    private function embeddedAiQuickQuestionsForRuntime(?array $user): array
+    {
+        $userId = 0;
+        if ($user && ($user['source'] ?? '') === 'wechat') {
+            $userId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
+        }
+        try {
+            $ctx = AiCallService::fetchUserContextLight($userId);
+            $qs  = AiCallService::filterQuickQuestions(AiCallService::quickQuestions($ctx['mbtiType']));
+
+            return [
+                'mbtiType'  => $ctx['mbtiType'],
+                'nickname'  => $ctx['nickname'],
+                'questions' => $qs,
+            ];
+        } catch (\Throwable $e) {
+            $qs = AiCallService::filterQuickQuestions(AiCallService::quickQuestions(''));
+
+            return [
+                'mbtiType'  => '',
+                'nickname'  => '',
+                'questions' => $qs,
+            ];
+        }
     }
 
     /**
@@ -206,6 +277,23 @@ class AppConfig extends BaseController
     public function deepPricing()
     {
         $scope = (string) ($this->request->param('scope', 'personal') ?? 'personal');
+        if (miniprogram_audit_mode_on()) {
+            return success(['scope' => $scope, 'categories' => []]);
+        }
+        $categories = $this->normalizeDeepPricingCategories($scope);
+
+        return success(['scope' => $scope, 'categories' => $categories]);
+    }
+
+    /**
+     * 读取并规范化 deep_personal / deep_enterprise 类目（与 deepPricing、runtime 内嵌共用）
+     *
+     * @param string $scope personal|enterprise
+     * @return array<int, array<string, mixed>>
+     */
+    private function normalizeDeepPricingCategories(string $scope): array
+    {
+        $scope = $scope === 'enterprise' ? 'enterprise' : 'personal';
         $type = $scope === 'enterprise' ? 'deep_enterprise' : 'deep_personal';
 
         $config = PricingConfigModel::where('type', $type)->whereNull('enterpriseId')->find();
@@ -214,40 +302,61 @@ class AppConfig extends BaseController
             $raw = $config->config;
             $data = is_array($raw) ? $raw : (array) $raw;
             $categories = isset($data['categories']) && is_array($data['categories']) ? $data['categories'] : [];
-
-            // 兼容旧数据：补全可能缺失的字段，确保前端始终能读到完整结构
-            foreach ($categories as &$cat) {
-                // features：旧数据只存 featuresText，动态拆成数组
-                if (!isset($cat['features']) || !is_array($cat['features'])) {
-                    if (!empty($cat['featuresText']) && is_string($cat['featuresText'])) {
-                        $lines = preg_split('/\r?\n/', $cat['featuresText']);
-                        $cat['features'] = array_values(array_filter(array_map('trim', $lines), static function ($s) {
-                            return $s !== '';
-                        }));
-                    } else {
-                        $cat['features'] = [];
-                    }
-                }
-                // serviceWechat（客服微信）：展示给用户的微信号
-                if (!isset($cat['serviceWechat'])) {
-                    $cat['serviceWechat'] = '';
-                }
-                // consultWechat（存客宝KEY）：旧类目可能没有该字段，补空字符串
-                if (!isset($cat['consultWechat'])) {
-                    $cat['consultWechat'] = '';
-                }
-                // promptText：同样补全
-                if (!isset($cat['promptText'])) {
-                    $cat['promptText'] = '';
-                }
-                // successMessage：成功提示词，补全
-                if (!isset($cat['successMessage'])) {
-                    $cat['successMessage'] = '';
-                }
-            }
-            unset($cat);
         }
 
-        return success(['scope' => $scope, 'categories' => $categories]);
+        $categories = array_values(array_filter($categories, static function ($row) {
+            return is_array($row);
+        }));
+
+        foreach ($categories as $idx => &$cat) {
+            // features：旧数据只存 featuresText，动态拆成数组
+            if (!isset($cat['features']) || !is_array($cat['features'])) {
+                if (!empty($cat['featuresText']) && is_string($cat['featuresText'])) {
+                    $lines = preg_split('/\r?\n/', $cat['featuresText']);
+                    $cat['features'] = array_values(array_filter(array_map('trim', $lines), static function ($s) {
+                        return $s !== '';
+                    }));
+                } else {
+                    $cat['features'] = [];
+                }
+            }
+            if (!isset($cat['serviceWechat'])) {
+                $cat['serviceWechat'] = '';
+            }
+            if (!isset($cat['consultWechat'])) {
+                $cat['consultWechat'] = '';
+            }
+            if (!isset($cat['promptText'])) {
+                $cat['promptText'] = '';
+            }
+            if (!isset($cat['successMessage'])) {
+                $cat['successMessage'] = '';
+            }
+
+            $id = trim((string) ($cat['id'] ?? ''));
+            $pk = trim((string) ($cat['productKey'] ?? ''));
+            if ($id === '' && $pk !== '') {
+                $cat['id'] = $pk;
+            } elseif ($id === '') {
+                $cat['id'] = ($scope === 'enterprise' ? 'enterprise_cat_' : 'personal_cat_') . $idx;
+            }
+            if ($pk === '') {
+                $cat['productKey'] = (string) $cat['id'];
+            }
+
+            $action = (string) ($cat['actionType'] ?? '');
+            if ($scope === 'enterprise') {
+                if ($action !== 'buy' && trim((string) ($cat['buttonText'] ?? '')) === '') {
+                    $cat['buttonText'] = '申请咨询并降低30%成本';
+                }
+            } else {
+                if ($action === 'buy' && trim((string) ($cat['purchaseButtonText'] ?? '')) === '') {
+                    $cat['purchaseButtonText'] = '了解自己并付款';
+                }
+            }
+        }
+        unset($cat);
+
+        return $categories;
     }
 }

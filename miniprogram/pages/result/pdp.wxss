@@ -1,4 +1,5 @@
-/* pages/result/pdp.wxss - 按旧版模板重构 */
+/* pages/result/pdp.wxss（dash 样式见 app.wxss） */
+
 .result-page {
   width: 100%;
   min-height: 100vh;
@@ -16,7 +17,7 @@
 }
 
 .content-container--with-fixed-footer {
-  padding-bottom: calc(64rpx + 120rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(64rpx + 220rpx + env(safe-area-inset-bottom));
 }
 
 .content-scroll--with-fixed-footer {
@@ -230,6 +231,44 @@
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #f5f5f5;
   box-shadow: 0 -8rpx 24rpx rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 16rpx;
+}
+
+.disc-dash-track {
+  height: 10rpx;
+  background: #e5e7eb;
+  border-radius: 6rpx;
+  overflow: hidden;
+}
+
+.disc-dash-fill {
+  height: 100%;
+  border-radius: 6rpx;
+}
+
+.paywall-btn--inline-profile {
+  position: relative !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  margin-top: 28rpx;
+  z-index: 1;
+}
+
+.result-share-footer-row2 {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  width: 100%;
+}
+
+.result-share-footer-row2 .result-share-footer-btn {
+  flex: 1;
+  min-height: 88rpx;
+  line-height: 88rpx;
 }
 .result-share-footer-btn {
   width: 100% !important;

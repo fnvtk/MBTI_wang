@@ -1,0 +1,80 @@
+<?php
+namespace app\common\service;
+
+use think\facade\Db;
+
+/**
+ * 小程序底部 TabBar 配置（与 MpConfig::tabbar 同源，供 runtime 一并下发）
+ */
+class MpTabbarService
+{
+    /**
+     * @return array{items: array<int, array<string, mixed>>, version: int}
+     */
+    public static function getPayload(): array
+    {
+        $list = [];
+        try {
+            $items = Db::name('mp_tabbar_items')
+                ->where('visible', 1)
+                ->order('sortOrder', 'asc')
+                ->order('id', 'asc')
+                ->select()
+                ->toArray();
+
+            foreach ($items as $row) {
+                $iconKey = $row['iconKey'] ?? 'home';
+                $iconUrl = $row['iconUrl'] ?? null;
+                $iconUrlActive = null;
+                if ($iconKey === 'ai') {
+                    $u = is_string($iconUrl) ? trim($iconUrl) : '';
+                    if ($u !== '') {
+                        $iconUrl = $u;
+                        $iconUrlActive = isset($row['iconUrlActive']) && $row['iconUrlActive'] !== ''
+                            ? $row['iconUrlActive']
+                            : '/images/tab-ai-active.png';
+                    } else {
+                        $iconUrl = null;
+                        $iconUrlActive = null;
+                    }
+                }
+                $item = [
+                    'id'        => (int) $row['id'],
+                    'pagePath'  => $row['pagePath'],
+                    'text'      => $row['text'],
+                    'iconKey'   => $iconKey,
+                    'iconUrl'   => $iconUrl,
+                    'highlight' => (int) ($row['highlight'] ?? 0) === 1,
+                    'badgeKey'  => $row['badgeKey'] ?? null,
+                ];
+                if ($iconUrlActive !== null) {
+                    $item['iconUrlActive'] = $iconUrlActive;
+                }
+                $list[] = $item;
+            }
+        } catch (\Throwable $e) {
+            $list = [];
+        }
+
+        if (empty($list)) {
+            // 顺序：首页 · 第2项凸起拍摄 · 神仙AI · 我（与小程序 app.json tabBar.list 一致）
+            $list = [
+                ['id' => 0, 'pagePath' => 'pages/index/index',   'text' => '首页',   'iconKey' => 'home',    'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
+                ['id' => 0, 'pagePath' => 'pages/index/camera',  'text' => '拍摄',   'iconKey' => 'camera',  'iconUrl' => null, 'highlight' => true,  'badgeKey' => null],
+                ['id' => 0, 'pagePath' => 'pages/ai-chat/index', 'text' => '神仙AI', 'iconKey' => 'ai', 'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
+                ['id' => 0, 'pagePath' => 'pages/profile/index', 'text' => '我',     'iconKey' => 'profile', 'iconUrl' => null, 'highlight' => false, 'badgeKey' => null],
+            ];
+        }
+
+        $version = 0;
+        try {
+            $version = (int) Db::name('mp_tabbar_items')->max('updatedAt');
+        } catch (\Throwable $e) {
+        }
+
+        return [
+            'items'   => $list,
+            'version' => $version,
+        ];
+    }
+}

@@ -17,38 +17,7 @@
         留空「订阅事件」表示三类事件全部推送。
       </p>
 
-      <div class="form-section test-tools">
-        <h4 class="test-tools-title">测试与调试</h4>
-        <p class="hint test-tools-hint">
-          <strong>发送连接测试</strong>：只验证 URL 是否可达（hook.ping），不写去重表。<strong>手动测试测评完成</strong>：按库表
-          <code>test_results.id</code> 重放真实 <code>test.result_completed</code>（人脸、问卷、简历等均可）。
-        </p>
-        <div class="test-tools-actions">
-          <el-button plain :loading="testLoading" @click="sendTest">发送连接测试</el-button>
-        </div>
-        <div class="manual-test-row">
-          <span class="manual-test-label">记录 ID</span>
-          <el-input
-            v-model.number="replayTestResultId"
-            type="number"
-            :min="1"
-            step="1"
-            placeholder="test_results 主键"
-            class="manual-test-input"
-          />
-          <span class="manual-test-label force-label">强制</span>
-          <el-switch v-model="replayForce" />
-          <el-button
-            type="primary"
-            color="#7c3aed"
-            class="manual-test-btn"
-            :loading="replayLoading"
-            @click="replayTestResult"
-          >
-            手动测试测评完成
-          </el-button>
-        </div>
-      </div>
+      /api/ai/chat
     </div>
     <div class="form-section">
       <div class="form-item row-line">
@@ -82,11 +51,15 @@
             {{ opt.label }}
           </el-checkbox>
         </el-checkbox-group>
-        <p class="hint">与文档一致：<code>lead.order_paid</code>、<code>lead.phone_bound</code>、<code>test.result_completed</code>。全部勾选保存后将以「空列表」存库，表示订阅全部。上方「手动测试测评完成」与真实落库推送使用同一套订阅校验。</p>
+        <p class="hint">
+          与文档一致：<code>lead.order_paid</code>、<code>lead.phone_bound</code>、<code>test.result_completed</code>。全部勾选保存后将以「空列表」存库，表示订阅全部。
+          <template v-if="showTestTools">上方「手动测试测评完成」与真实落库推送使用同一套订阅校验。</template>
+          <template v-else>保存后与真实落库推送使用同一套订阅校验。</template>
+        </p>
       </div>
     </div>
     <div class="save-actions save-actions-row">
-      <el-button type="primary" color="#7c3aed" class="save-btn" :loading="loading" @click="save">
+      <el-button type="primary" class="save-btn" :loading="loading" @click="save">
         保存配置
       </el-button>
     </div>
@@ -104,8 +77,10 @@ const props = withDefaults(
   defineProps<{
     /** 如 /admin 或 /superadmin，对应 request 基路径下的 settings */
     apiPrefix: string
+    /** 是否显示「测试与调试」（默认 false；超管由父组件按环境传入） */
+    showTestTools?: boolean
   }>(),
-  { apiPrefix: '/admin' }
+  { apiPrefix: '/admin', showTestTools: false }
 )
 
 const eventOptions = [

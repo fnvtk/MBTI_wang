@@ -86,27 +86,29 @@
             <VChart v-if="hasProductSeries" class="trend-chart-echarts" :option="productSeriesOption" autoresize />
             <div v-else class="empty-chart">暂无产品数据</div>
           </div>
-          <div class="chart-card">
+          <div class="chart-card top-ranking-card">
             <div class="card-header">
               <el-icon><UserFilled /></el-icon>
-              <span>分销商收益排行</span>
+              <span>分销商 Top 10 排行榜</span>
+              <span class="head-hint">点击「查看订单」定位该分销商带来的订单</span>
             </div>
             <div v-if="overviewTopDistributors.length" class="overview-list">
-              <div v-for="item in overviewTopDistributors" :key="item.id" class="overview-list-item">
+              <div v-for="(item, idx) in overviewTopDistributors" :key="item.id" class="overview-list-item">
                 <div class="overview-main">
+                  <span :class="['rank-badge', idx < 3 ? 'rank-top' : '']">{{ idx + 1 }}</span>
                   <div class="agent-cell">
-                    <el-avatar :size="28" :src="item.avatar" class="agent-avatar">
+                    <el-avatar :size="30" :src="item.avatar" class="agent-avatar">
                       {{ item.agentName ? item.agentName[0] : '?' }}
                     </el-avatar>
                     <div class="overview-meta">
                       <strong>{{ item.agentName || '-' }}</strong>
-                      <span>团队人数：{{ item.teamCount || 0 }}人</span>
+                      <span>团队 {{ item.teamCount || 0 }} 人</span>
                     </div>
                   </div>
                 </div>
                 <div class="overview-side">
                   <strong>{{ formatCurrency(parseFloat(item.totalCommission || 0)) }}</strong>
-                  <span>累计收益</span>
+                  <el-button link type="primary" size="small" @click="gotoInviterOrders(item)">查看订单</el-button>
                 </div>
               </div>
             </div>
@@ -132,7 +134,7 @@
             <el-input v-model="distSearch" placeholder="搜索用户名..." class="search-input">
               <template #prefix><el-icon><Search /></el-icon></template>
             </el-input>
-            <el-button type="primary" color="#7c3aed" @click="loadDistributors">搜索</el-button>
+            <el-button type="primary" @click="loadDistributors">搜索</el-button>
           </div>
           <el-table :data="distributors" style="width: 100%" class="custom-table" v-loading="loading">
             <el-table-column label="分销商" min-width="160">
@@ -167,6 +169,11 @@
             <el-table-column label="加入时间" min-width="160">
               <template #default="{ row }">
                 {{ row.createdAt ? new Date(row.createdAt * 1000).toLocaleString() : '-' }}
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="110" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="gotoInviterOrders(row)">该分销商订单</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -319,7 +326,7 @@
         </div>
         
         <div class="save-actions">
-          <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
+          <el-button type="primary" class="save-btn" @click="saveSettings" :loading="loading">保存配置</el-button>
         </div>
       </div>
     </div>
@@ -389,6 +396,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import {
   Refresh, User, Money, Clock, Connection, Search,
   CaretTop, TrendCharts, PieChart, UserFilled, List
@@ -398,11 +406,13 @@ import { ElMessage } from 'element-plus'
 import { formatCurrency } from '@/utils/format'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart, PieChart as EchartsPieChart } from 'echarts/charts'
+import { LineChart, PieChart as EchartsPieChart, BarChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 
-use([CanvasRenderer, LineChart, EchartsPieChart, GridComponent, TooltipComponent, LegendComponent])
+use([CanvasRenderer, LineChart, BarChart, EchartsPieChart, GridComponent, TooltipComponent, LegendComponent])
+
+const router = useRouter()
 
 const activeTab = ref('overview')
 const distSearch = ref('')
@@ -445,35 +455,59 @@ const hasProductSeries = computed(() =>
   productCommissionSeries.value.some(item => Number(item.value || 0) > 0)
 )
 
+const cumulativeTrend = computed(() => {
+  let acc = 0
+  return commissionTrend.value.map(item => {
+    acc += Number(item.amount || 0)
+    return Number(acc.toFixed(2))
+  })
+})
+
 const commissionTrendOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: 40, right: 20, top: 24, bottom: 30 },
+  tooltip: { trigger: 'axis', axisPointer: { type: 'cross' } },
+  legend: { data: ['每日佣金', '累计佣金'], top: 0, textStyle: { color: '#64748b', fontSize: 11 } },
+  grid: { left: 44, right: 50, top: 30, bottom: 30 },
   xAxis: {
     type: 'category',
-    boundaryGap: false,
     data: commissionTrend.value.map(item => item.date.slice(5)),
-    axisLine: { lineStyle: { color: '#e5e7eb' } },
-    axisLabel: { color: '#6b7280' }
+    axisLine: { lineStyle: { color: '#e2e8f0' } },
+    axisLabel: { color: '#94a3b8', fontSize: 11 }
   },
-  yAxis: {
-    type: 'value',
-    axisLine: { lineStyle: { color: '#e5e7eb' } },
-    splitLine: { lineStyle: { color: '#f3f4f6' } },
-    axisLabel: {
-      color: '#6b7280',
-      formatter: (value: number) => `¥${value}`
+  yAxis: [
+    {
+      type: 'value',
+      name: '每日',
+      nameTextStyle: { color: '#94a3b8', fontSize: 10 },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      splitLine: { lineStyle: { color: '#f1f5f9' } },
+      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: (v: number) => `¥${v}` }
+    },
+    {
+      type: 'value',
+      name: '累计',
+      nameTextStyle: { color: '#94a3b8', fontSize: 10 },
+      axisLine: { lineStyle: { color: '#e2e8f0' } },
+      splitLine: { show: false },
+      axisLabel: { color: '#94a3b8', fontSize: 10, formatter: (v: number) => `¥${v}` }
     }
-  },
+  ],
   series: [
     {
-      name: '佣金',
+      name: '每日佣金',
+      type: 'bar',
+      barMaxWidth: 18,
+      itemStyle: { color: '#4F46E5', borderRadius: [4, 4, 0, 0] },
+      data: commissionTrend.value.map(item => Number(item.amount || 0))
+    },
+    {
+      name: '累计佣金',
       type: 'line',
       smooth: true,
-      showSymbol: true,
-      symbolSize: 6,
-      itemStyle: { color: '#7c3aed' },
-      areaStyle: { color: 'rgba(124, 58, 237, 0.08)' },
-      data: commissionTrend.value.map(item => Number(item.amount || 0))
+      yAxisIndex: 1,
+      showSymbol: false,
+      lineStyle: { color: '#10B981', width: 2 },
+      itemStyle: { color: '#10B981' },
+      data: cumulativeTrend.value
     }
   ]
 }))
@@ -545,6 +579,7 @@ const testTypeItems = [
   { key: 'sbti',   label: 'SBTI 测试' },
   { key: 'disc',   label: 'DISC 测试' },
   { key: 'pdp',    label: 'PDP 测试' },
+  { key: 'gaokao', label: '高考志愿报告' },
 ]
 type TestSetting = { enabled: boolean; commissionType: 'ratio' | 'amount'; commissionRate: number; commissionAmount: number; noPayment: boolean }
 const makeDefaultTs = (): TestSetting => ({ enabled: true, commissionType: 'ratio', commissionRate: 90, commissionAmount: 0, noPayment: false })
@@ -554,6 +589,7 @@ const testSettings = reactive<Record<string, TestSetting>>({
   sbti:   makeDefaultTs(),
   disc:   makeDefaultTs(),
   pdp:   makeDefaultTs(),
+  gaokao: makeDefaultTs(),
 })
 
 // 加载数据概览
@@ -576,7 +612,7 @@ const loadOverview = async () => {
     if (distributorsRes.code === 200 && distributorsRes.data) {
       overviewTopDistributors.value = [...(distributorsRes.data.list || [])]
         .sort((a: any, b: any) => parseFloat(b.totalCommission || 0) - parseFloat(a.totalCommission || 0))
-        .slice(0, 5)
+        .slice(0, 10)
     } else {
       overviewTopDistributors.value = []
     }
@@ -726,6 +762,18 @@ watch(commFilter, () => {
   }
 })
 
+function gotoInviterOrders(row: any) {
+  const id = row?.id ?? row?.userId ?? row?.inviterId
+  if (!id) {
+    ElMessage.warning('分销商 ID 缺失')
+    return
+  }
+  router.push({
+    path: '/admin/orders',
+    query: { inviterId: String(id), inviterName: row?.agentName || '' },
+  })
+}
+
 const refresh = async () => {
   if (activeTab.value === 'overview') {
     await loadOverview()
@@ -781,45 +829,7 @@ onMounted(() => {
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 24px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 0;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css 的 .admin-layout .custom-tabs-container */
 
 .stats-grid {
   display: grid;
@@ -929,41 +939,74 @@ onMounted(() => {
 .overview-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  min-height: 180px;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
 }
 
 .overview-list-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
+  gap: 12px;
+  padding: 10px 14px;
   border-radius: 8px;
   background-color: #f9fafb;
   border: 1px solid #f3f4f6;
+  transition: background 0.15s;
+
+  &:hover { background-color: #eef2ff; }
+}
+
+.rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 700;
+  margin-right: 8px;
+  flex-shrink: 0;
+
+  &.rank-top { background: #fef3c7; color: #b45309; }
+}
+
+.top-ranking-card {
+  grid-column: 1 / -1;
+
+  .card-header { justify-content: space-between; }
+
+  .head-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 400;
+    margin-left: auto;
+  }
 }
 
 .overview-main {
   min-width: 0;
   flex: 1;
+  display: flex;
+  align-items: center;
 }
 
 .overview-side {
-  min-width: 120px;
+  min-width: 150px;
   text-align: right;
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
 
   strong {
     font-size: 14px;
-    color: #111827;
-  }
-
-  span {
-    font-size: 12px;
-    color: #6b7280;
+    color: #4f46e5;
+    font-weight: 700;
   }
 }
 
@@ -1134,7 +1177,10 @@ onMounted(() => {
   .card-desc { font-size: 12px; color: #6b7280; margin: 0 0 20px; }
 
   .ts-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid;
+    /* 一行最多 4 个测试佣金卡片 */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
     .ts-card {
       background: #f9fafb; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
       .ts-head {
@@ -1229,5 +1275,10 @@ onMounted(() => {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .charts-grid { grid-template-columns: 1fr; }
   .settings-card .form-grid.three-cols { grid-template-columns: 1fr; }
+  .settings-card .ts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .settings-card .ts-grid { grid-template-columns: 1fr; }
 }
 </style>

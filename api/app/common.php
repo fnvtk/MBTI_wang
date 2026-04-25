@@ -168,4 +168,18 @@ if (!function_exists('setHeader')) {
     }
 }
 
+/**
+ * 小程序提审模式是否开启（读 system_config.system JSON 的 miniprogramAuditMode）。
+ * 正式环境若未部署 MiniprogramAuditMode.php，视为未开启，避免 Class not found 致命错误。
+ */
+if (!function_exists('miniprogram_audit_mode_on')) {
+    function miniprogram_audit_mode_on(): bool
+    {
+        if (!class_exists(\app\common\service\MiniprogramAuditMode::class, true)) {
+            return false;
+        }
+
+        return \app\common\service\MiniprogramAuditMode::isOn();
+    }
+}
 

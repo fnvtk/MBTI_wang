@@ -46,13 +46,17 @@
                 <label>SBTI测试价格 (元/次)</label>
                 <el-input-number v-model="personal.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number v-model="personal.gaokao" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminPersonalConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
               <span>当前使用超管默认定价，保存后将创建您的个人版专属配置</span>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#7c3aed" class="save-btn" @click="savePersonal" :loading="loading">
+              <el-button type="primary" class="save-btn" @click="savePersonal" :loading="loading">
                 保存个人版价格
               </el-button>
             </div>
@@ -83,13 +87,17 @@
                 <label>SBTI测试价格 (元/次)</label>
                 <el-input-number v-model="enterprise.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number v-model="enterprise.gaokao" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminEnterpriseConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
               <span>当前使用超管默认企业定价，保存后将创建您的企业版专属配置</span>
             </div>
             <div class="save-actions">
-              <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveEnterprise" :loading="loading">
+              <el-button type="primary" class="save-btn" @click="saveEnterprise" :loading="loading">
                 保存企业版价格
               </el-button>
             </div>
@@ -115,8 +123,8 @@ const tabs = [
 ]
 const activeTab = ref('personal')
 
-const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
-const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
+const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0, gaokao: 0 })
+const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0, gaokao: 0 })
 
 const loading = ref(false)
 const isUsingSuperAdminPersonalConfig = ref(false)
@@ -170,7 +178,8 @@ const saveEnterprise = async () => {
         mbti: enterprise.mbti,
         disc: enterprise.disc,
         pdp: enterprise.pdp,
-        sbti: enterprise.sbti
+        sbti: enterprise.sbti,
+        gaokao: enterprise.gaokao
       }
     })
     if (response.code === 200) {
@@ -209,41 +218,7 @@ onMounted(() => {
   }
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
-  padding: 4px;
-  border-radius: 8px;
-  display: flex;
-  margin-bottom: 20px;
-  width: 100%;
-
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
-
-    .tab-item {
-      flex: 1;
-      padding: 6px 16px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
-
-      &:hover { color: #111827; }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
-  }
-}
+/* .custom-tabs-container 视觉已统一在 admin-theme.css */
 
 .pricing-content {
   display: flex;

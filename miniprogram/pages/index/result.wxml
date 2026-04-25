@@ -44,8 +44,85 @@
       <text class="status-text">{{hasError ? '分析出现异常' : '分析完成，以下是您的个性化报告'}}</text>
     </view>
 
+    <view class="invite-fill-entry invite-fill-entry--face" wx:if="{{!hasError && !fromShare && !hideInviteCodeEntry}}" bindtap="openInviteCodeFill">
+      <text class="invite-fill-entry__icon">🔗</text>
+      <view class="invite-fill-entry__main">
+        <text class="invite-fill-entry__title">填写好友邀请码</text>
+        <text class="invite-fill-entry__sub">绑定推广关系 · 可选</text>
+      </view>
+      <text class="invite-fill-entry__arrow">›</text>
+    </view>
+
+    <!-- 错误内容 -->
+    <view class="error-content" wx:if="{{hasError}}">
+      <text class="error-title">错误信息</text>
+      <text class="error-message">{{errorMessage}}</text>
+      <view class="retry-btn" bindtap="retake">
+        <text class="retry-text">重新分析</text>
+      </view>
+    </view>
+
+    <!-- 资料未齐：摘要 + 授权手机 / 完善资料（分享落地 fs=1 不挡） -->
+    <block wx:elif="{{phoneLoginGate}}">
+      <view class="report-gate-wrap">
+        <view class="card personality-card">
+          <text class="card-title">性格类型分析</text>
+          <view class="personality-type">
+            <text class="type-code">{{result.mbti}}</text>
+            <text class="type-name">{{result.title}}</text>
+            <text class="type-desc">{{result.summary}}</text>
+          </view>
+          <view class="type-details type-details--wrap">
+            <view class="type-box pdp-box">
+              <text class="type-emoji" wx:if="{{result.pdpEmoji}}">{{result.pdpEmoji}}</text>
+              <text class="type-label">PDP主性格</text>
+              <text class="type-value">{{result.pdp || '--'}}</text>
+              <text class="type-sub" wx:if="{{result.pdpAux}}">辅助: {{result.pdpAux}}</text>
+            </view>
+            <view class="type-box disc-box">
+              <text class="type-emoji type-emoji--disc">◎</text>
+              <text class="type-label">DISC类型</text>
+              <text class="type-value">{{result.disc || '--'}}型</text>
+              <text class="type-sub" wx:if="{{result.discAux}}">辅助: {{result.discAux}}</text>
+            </view>
+            <view
+              class="type-box sbti-box"
+              wx:if="{{showSbtiFace && (result.sbtiCode || result.sbtiCn)}}"
+            >
+              <text class="type-emoji">✨</text>
+              <text class="type-label">SBTI解读</text>
+              <text class="type-value">{{result.sbtiCode}}（{{result.sbtiCn}}）</text>
+              <text class="type-desc-small">{{result.sbtiMainTypeDesc}}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+      <view class="report-gate-cta-wrap phone-login-gate-cta" id="unlock-gate-anchor">
+        <view class="report-gate-panel">
+          <text class="paywall-fake-title">查看完整报告</text>
+          <text class="paywall-tip">授权手机号并设置头像、昵称后即可查看完整报告（与下方按钮为同一条流程）。</text>
+          <button
+            wx:if="{{!hasPhone}}"
+            class="paywall-btn paywall-btn-inline paywall-btn--compact"
+            open-type="getPhoneNumber"
+            bindgetphonenumber="onPhoneLoginForFaceResult"
+          >
+            <text class="paywall-btn-main">登录</text>
+          </button>
+          <button
+            wx:else
+            class="paywall-btn paywall-btn-inline paywall-btn--compact"
+            bindtap="goToCompleteProfile"
+          >
+            <text class="paywall-btn-main">完善资料 · 查看完整报告</text>
+          </button>
+        </view>
+      </view>
+    </block>
+
+    <block wx:else>
     <!-- 支付成功后：引导手机号 → 完善资料（不挡报告阅读） -->
-    <view class="post-pay-guide" wx:if="{{!hasError && payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
+    <view class="post-pay-guide" id="unlock-gate-anchor" wx:if="{{payInfo.isPaid && (!hasPhone || !isProfileComplete)}}">
       <text class="post-pay-guide-title">再完成两步，报告更好归属到您的账号</text>
       <text class="post-pay-guide-desc">① 授权手机号 ② 完善头像与昵称（「我的」- 个人资料）</text>
       <view class="post-pay-guide-actions">
@@ -59,17 +136,8 @@
       </view>
     </view>
 
-    <!-- 错误内容 -->
-    <view class="error-content" wx:if="{{hasError}}">
-      <text class="error-title">错误信息</text>
-      <text class="error-message">{{errorMessage}}</text>
-      <view class="retry-btn" bindtap="retake">
-        <text class="retry-text">重新分析</text>
-      </view>
-    </view>
-
     <!-- 报告预览区：未解锁时整区加盖高遮罩，避免概述/盖洛普等全文外露 -->
-    <view class="report-gate-wrap" wx:if="{{!hasError}}">
+    <view class="report-gate-wrap">
       <view
         class="card personality-card {{(payInfo.requiresPayment && !payInfo.isPaid) ? 'personality-card--locked' : ''}}"
       >
@@ -115,21 +183,13 @@
           </view>
         </view>
 
-        <view
-          class="result-cta-questionnaire"
-          hover-class="result-cta-questionnaire--pressed"
-          hover-stay-time="120"
-          bindtap="goToQuestionnaireTest"
-        >
-          <text class="result-cta-questionnaire-text">去做详细性格测试</text>
-        </view>
       </view>
 
       <view
         class="card report-gate-teaser {{(payInfo.requiresPayment && !payInfo.isPaid) ? 'report-gate-teaser--locked' : ''}}"
         wx:if="{{result.summary}}"
       >
-        <text class="card-title">性格概述</text>
+        <text class="card-title">📝 性格概述</text>
         <text class="card-text">{{result.summary}}</text>
       </view>
 
@@ -178,7 +238,7 @@
         wx:if="{{payInfo.requiresPayment && !payInfo.isPaid}}"
       >
         <view class="report-gate-gradient"></view>
-        <view class="report-gate-cta-wrap">
+        <view class="report-gate-cta-wrap" id="unlock-gate-anchor">
           <view class="report-gate-panel">
             <text class="paywall-fake-title">完整版深度解析</text>
             <text class="paywall-tip">含面相、骨相、人际与职业 / 家庭 / 合伙三大场景</text>
@@ -192,7 +252,7 @@
     </view>
 
     <!-- ========== 详细分析区（解锁后可见） ========== -->
-    <block wx:if="{{!hasError && (!payInfo.requiresPayment || payInfo.isPaid)}}">
+    <block wx:if="{{!payInfo.requiresPayment || payInfo.isPaid}}">
 
       <!-- 生活场景深度分析（AI 或本地兜底） -->
       <view class="card scene-detail-card" wx:if="{{result.careerDevelopment}}">
@@ -351,5 +411,63 @@
       </view>
 
     </block>
+
+    <!-- 成交链路已迁至底部固定操作栏 -->
+    <view class="face-journey-deprecated" wx:if="{{false}}">
+      <view class="face-journey__title">
+        <text class="face-journey__title-main">继续下一步</text>
+        <text class="face-journey__title-sub">完整面相 + 性格报告只差两步</text>
+      </view>
+
+      <view class="face-journey-step face-journey-step--purple" bindtap="goToQuestionnaireFromFace">
+        <view class="face-journey-step__no">01</view>
+        <view class="face-journey-step__body">
+          <text class="face-journey-step__title">补做四套性格测评</text>
+          <text class="face-journey-step__desc">MBTI · PDP · DISC · SBTI 各测一次，面相 + 问卷组合才解锁完整人格画像。</text>
+        </view>
+        <text class="face-journey-step__arrow">›</text>
+      </view>
+
+      <view class="face-journey-step face-journey-step--indigo" bindtap="goToDeepServiceFromFace">
+        <view class="face-journey-step__no">02</view>
+        <view class="face-journey-step__body">
+          <text class="face-journey-step__title">升级深度解读方案</text>
+          <text class="face-journey-step__desc">个人深读 / 团队适配 / 企业岗位匹配。综合面相、性格与行为风格出具可落地建议。</text>
+        </view>
+        <text class="face-journey-step__arrow">›</text>
+      </view>
+
+    </view>
+    </block>
   </view>
+
+  <!-- 固定底部操作栏：三按钮常驻 -->
+  <view class="result-action-bar" wx:if="{{!isAnalyzing && showResult && !hasError && !phoneLoginGate}}">
+    <view class="result-action-bar__btn result-action-bar__btn--test" bindtap="goToQuestionnaireFromFace">
+      <text class="result-action-bar__ic">🧠</text>
+      <text class="result-action-bar__label">详细性格测试</text>
+    </view>
+    <view class="result-action-bar__btn result-action-bar__btn--deep" bindtap="goToDeepServiceFromFace">
+      <text class="result-action-bar__ic">💎</text>
+      <text class="result-action-bar__label">找专家·深度解读</text>
+    </view>
+    <button class="result-action-bar__btn result-action-bar__btn--share" open-type="share">
+      <text class="result-action-bar__ic">📣</text>
+      <view class="result-action-bar__share-body">
+        <text class="result-action-bar__label">分享赚</text>
+        <text class="result-action-bar__label-hl">90%</text>
+      </view>
+    </button>
+  </view>
+
+  <invite-code-dialog
+    visible="{{showInviteCodeDialog}}"
+    bind:skip="onInviteCodeSkip"
+    bind:success="onInviteCodeSuccess"
+  />
+  <cooperation-mode-dialog
+    visible="{{showCooperationModal}}"
+    modes="{{cooperationModes}}"
+    bind:success="onCooperationSuccess"
+  />
 </view>

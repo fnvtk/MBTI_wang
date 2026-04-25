@@ -2,26 +2,44 @@
   <div class="page-container" v-loading="loading">
     <div class="page-header">
       <div class="header-left">
-        <h2>系统设置</h2>
-        <p class="subtitle">管理员账号与企业余额；小程序文案与海报请在「用户运营」中配置</p>
+        <h2>企业设置</h2>
+        <p class="subtitle">财务管理 · 终端展示（小程序/海报）· 账号与推送 · 功能开关</p>
       </div>
     </div>
 
     <div class="settings-content">
-      <div class="custom-tabs-container">
-        <div class="custom-tabs">
-          <div
-            v-for="tab in tabs"
-            :key="tab.value"
-            :class="['tab-item', { active: activeTab === tab.value }]"
-            @click="selectTab(tab.value)"
-          >
-            {{ tab.label }}
-          </div>
-        </div>
+      <div class="pill-tabs" role="tablist">
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          type="button"
+          class="pill-tab"
+          :class="{ 'is-active': activeTab === tab.value }"
+          @click="selectTab(tab.value)"
+        >
+          {{ tab.label }}
+        </button>
       </div>
 
-      <div class="tab-content-card" :class="{ 'flat-embed': activeTab === 'finance' }">
+      <div
+        class="tab-content-card"
+        :class="{ 'flat-embed': activeTab === 'finance' || activeTab === 'terminal' }"
+      >
+        <div v-if="activeTab === 'terminal'" class="terminal-wrap">
+          <div class="terminal-section">
+            <h3 class="terminal-h3">小程序展示与 TabBar</h3>
+            <p class="terminal-desc">文案、Tab 配置等与小程序端 runtime 同步；保存后建议在真机预览验收。</p>
+            <MiniprogramConfigPanel ref="miniRef" />
+          </div>
+          <div class="terminal-section terminal-section--poster">
+            <h3 class="terminal-h3">分销海报</h3>
+            <p class="terminal-desc">推广海报素材；与分销入口共用企业上下文。</p>
+            <div class="poster-embed">
+              <PosterEditor />
+            </div>
+          </div>
+        </div>
+
         <div v-if="activeTab === 'features'" class="tab-content" v-loading="permLoading">
           <div class="content-header">
             <h3>终端功能开关</h3>
@@ -39,11 +57,76 @@
                 <el-switch v-model="adminPerms[p.key]" />
               </div>
               <div class="save-actions">
-                <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveAdminPermissions" :loading="permSaving">
+                <el-button type="primary" class="save-btn" @click="saveAdminPermissions" :loading="permSaving">
                   保存功能开关
                 </el-button>
               </div>
             </template>
+
+            <div v-if="isEnterpriseAdmin()" class="coop-embed-section" v-loading="coopLoading">
+              <div class="cunkebao-embed-header">
+                <h4 class="cunkebao-embed-title">合作模式</h4>
+                <p class="hint-muted cunkebao-embed-desc">
+                  用户在本企业版完成简历、面相与 MBTI 后，可择一合作意向；与超管侧配置一致，仅影响本企业。代码为小写英文、数字、下划线（1–32 位），已保存的代码不可改。
+                </p>
+              </div>
+              <div class="coop-embed-toolbar">
+                <el-button type="primary" link @click="addCoopRow">+ 新增合作模式</el-button>
+              </div>
+              <el-table
+                v-if="coopModes.length"
+                :data="coopModes"
+                border
+                size="small"
+                class="w-full"
+                style="width: 100%"
+              >
+                <el-table-column label="代码" width="160">
+                  <template #default="{ row }">
+                    <el-input
+                      v-model="row.code"
+                      size="small"
+                      placeholder="如 partner_project"
+                      :disabled="row.codeLocked"
+                      maxlength="32"
+                      @blur="() => normalizeSettingsCoopCode(row)"
+                    />
+                  </template>
+                </el-table-column>
+                <el-table-column label="启用" width="78" align="center">
+                  <template #default="{ row }">
+                    <el-switch v-model="row.enabled" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="排序" width="104" align="center">
+                  <template #default="{ row }">
+                    <el-input-number v-model="row.sortOrder" :min="0" :max="9999" size="small" controls-position="right" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="标题" min-width="120">
+                  <template #default="{ row }">
+                    <el-input v-model="row.title" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="说明" min-width="160">
+                  <template #default="{ row }">
+                    <el-input v-model="row.description" type="textarea" :rows="2" size="small" />
+                  </template>
+                </el-table-column>
+                <el-table-column label="操作" width="72" align="center" fixed="right">
+                  <template #default="{ $index }">
+                    <el-button type="danger" link size="small" @click="removeCoopRow($index)">删除</el-button>
+                  </template>
+                </el-table-column>
+              </el-table>
+              <p v-else class="hint-muted">暂无配置，可点击「新增合作模式」添加。</p>
+              <div class="save-actions">
+                <el-button type="primary" class="save-btn" :loading="coopSaving" @click="saveCooperationModes">
+                  保存合作模式
+                </el-button>
+              </div>
+            </div>
+
             <template v-if="canConfigureCunkebaoKeys()">
               <div class="cunkebao-embed-section" v-loading="cunkebaoLoading">
                 <div class="cunkebao-embed-header">
@@ -70,11 +153,11 @@
                     active-text="测试完即上报"
                     inactive-text="付款后才上报"
                     inline-prompt
-                    style="--el-switch-on-color: #7c3aed; --el-switch-off-color: #909399"
+                    style="--el-switch-on-color: #4f46e5; --el-switch-off-color: #94a3b8"
                   />
                 </div>
                 <div class="save-actions">
-                  <el-button type="primary" color="#7c3aed" class="save-btn" :loading="cunkebaoSaving" @click="saveCunkebaoKeys">
+                  <el-button type="primary" class="save-btn" :loading="cunkebaoSaving" @click="saveCunkebaoKeys">
                     保存存客宝设置
                   </el-button>
                 </div>
@@ -127,7 +210,7 @@
           </div>
 
           <div class="save-actions">
-            <el-button type="primary" color="#7c3aed" class="save-btn" @click="saveAccountSettings" :loading="loading">
+            <el-button type="primary" class="save-btn" @click="saveAccountSettings" :loading="loading">
               <el-icon><DocumentCopy /></el-icon>
               <span>保存凭据</span>
             </el-button>
@@ -135,7 +218,7 @@
         </div>
 
         <div v-if="activeTab === 'pushhook'" class="tab-content">
-          <PushHookConfigPanel api-prefix="/admin" />
+          <PushHookConfigPanel api-prefix="/admin" :show-test-tools="false" />
         </div>
 
         <div v-if="activeTab === 'finance'" class="embed-wrap">
@@ -155,8 +238,10 @@ import { request } from '@/utils/request'
 import { getAdminRole } from '@/utils/authStorage'
 import Finance from './Finance.vue'
 import PushHookConfigPanel from './PushHookConfigPanel.vue'
+import MiniprogramConfigPanel from './MiniprogramConfigPanel.vue'
+import PosterEditor from './PosterEditor.vue'
 
-const TAB_IDS = ['account', 'pushhook', 'features', 'finance'] as const
+const TAB_IDS = ['finance', 'terminal', 'account', 'pushhook', 'features'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -165,8 +250,9 @@ function isTabId(s: string): s is TabId {
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref<TabId>('account')
+const activeTab = ref<TabId>('finance')
 const loading = ref(false)
+const miniRef = ref<InstanceType<typeof MiniprogramConfigPanel> | null>(null)
 
 const isEnterpriseAdmin = () => getAdminRole() === 'enterprise_admin'
 
@@ -178,13 +264,14 @@ const canConfigureCunkebaoKeys = () => {
 
 const tabs = computed(() => {
   const rows: { label: string; value: TabId }[] = [
+    { label: '财务管理', value: 'finance' },
+    { label: '终端展示', value: 'terminal' },
     { label: '账号设置', value: 'account' },
     { label: '出站推送', value: 'pushhook' }
   ]
   if (isEnterpriseAdmin() || canConfigureCunkebaoKeys()) {
     rows.push({ label: '功能开关', value: 'features' })
   }
-  rows.push({ label: '企业余额', value: 'finance' })
   return rows
 })
 
@@ -196,12 +283,12 @@ const applyRouteTab = () => {
   }
   if (typeof t === 'string' && isTabId(t)) {
     if (t === 'features' && !isEnterpriseAdmin() && !canConfigureCunkebaoKeys()) {
-      activeTab.value = 'account'
+      activeTab.value = 'finance'
     } else {
       activeTab.value = t
     }
   } else {
-    activeTab.value = 'account'
+    activeTab.value = 'finance'
   }
 }
 
@@ -213,7 +300,7 @@ const selectTab = (tab: TabId) => {
       q[k] = Array.isArray(v) ? String(v[0]) : String(v)
     }
   })
-  if (tab !== 'account') {
+  if (tab !== 'finance') {
     q.tab = tab
   }
   router.replace({ path: '/admin/settings', query: Object.keys(q).length ? q : {} })
@@ -232,11 +319,12 @@ const permItems = [
   { key: 'sbti', label: 'SBTI' },
   { key: 'pdp', label: 'PDP' },
   { key: 'disc', label: 'DISC' },
+  { key: 'gaokao', label: '高考志愿' },
   { key: 'distribution', label: '分销推广' }
 ] as const
 
 const defaultAdminPermissions = () =>
-  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, distribution: true }) as Record<string, boolean>
+  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, gaokao: true, distribution: true }) as Record<string, boolean>
 
 const permLoading = ref(false)
 const permSaving = ref(false)
@@ -245,13 +333,123 @@ const adminPerms = reactive<Record<string, boolean>>(defaultAdminPermissions())
 
 /** 测评类存客宝：共用一对 Key + 统一上报时机 */
 const cunkebaoUnified = reactive({
-  enterprise: '',
-  personal: '',
+  apiKey: '',
   reportTiming: 'after_paid' as 'after_paid' | 'after_test'
 })
 
 const cunkebaoLoading = ref(false)
 const cunkebaoSaving = ref(false)
+
+/** 企业管理员：合作模式 */
+type CoopModeRow = {
+  code: string
+  title: string
+  description: string
+  sortOrder: number
+  enabled: boolean
+  codeLocked: boolean
+}
+
+const coopModes = ref<CoopModeRow[]>([])
+const coopLoading = ref(false)
+const coopSaving = ref(false)
+
+const COOP_CODE_RE = /^[a-z0-9_]{1,32}$/
+
+const normalizeSettingsCoopCode = (row: CoopModeRow) => {
+  row.code = String(row.code || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+}
+
+const addCoopRow = () => {
+  const maxSort = coopModes.value.reduce((m, r) => Math.max(m, Number(r.sortOrder) || 0), 0)
+  coopModes.value.push({
+    code: '',
+    title: '',
+    description: '',
+    sortOrder: maxSort + 10,
+    enabled: true,
+    codeLocked: false
+  })
+}
+
+const removeCoopRow = (index: number) => {
+  coopModes.value = coopModes.value.filter((_, i) => i !== index)
+}
+
+const loadCooperationModes = async () => {
+  if (!isEnterpriseAdmin()) return
+  coopLoading.value = true
+  try {
+    const res: any = await request.get('/admin/enterprise/cooperation-modes')
+    const list = res?.data?.list ?? []
+    coopModes.value = Array.isArray(list)
+      ? list.map((row: any) => ({
+          code: String(row.code || ''),
+          title: String(row.title || ''),
+          description: String(row.description || ''),
+          sortOrder: Number(row.sortOrder) || 0,
+          enabled: !!row.enabled,
+          codeLocked: true
+        }))
+      : []
+  } catch (e: any) {
+    coopModes.value = []
+    ElMessage.error(e?.message || '加载合作模式失败')
+  } finally {
+    coopLoading.value = false
+  }
+}
+
+const saveCooperationModes = async () => {
+  if (!isEnterpriseAdmin()) return
+  const seen = new Set<string>()
+  const modes: Record<string, unknown>[] = []
+  for (const r of coopModes.value) {
+    const code = String(r.code || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, '')
+    if (!code) {
+      ElMessage.error('每行需填写模式代码，或先删除空行再保存')
+      return
+    }
+    if (!COOP_CODE_RE.test(code)) {
+      ElMessage.error(`模式代码不合法：${code}（仅 1–32 位小写字母、数字、下划线）`)
+      return
+    }
+    if (seen.has(code)) {
+      ElMessage.error(`模式代码重复：${code}`)
+      return
+    }
+    seen.add(code)
+    modes.push({
+      modeCode: code,
+      enabled: r.enabled,
+      sortOrder: r.sortOrder,
+      title: r.title,
+      description: r.description
+    })
+  }
+  if (modes.length === 0) {
+    ElMessage.error('请至少保留一条合作模式')
+    return
+  }
+  coopSaving.value = true
+  try {
+    const res: any = await request.put('/admin/enterprise/cooperation-modes', { modes })
+    if (res.code === 200) {
+      ElMessage.success('合作模式已保存')
+      await loadCooperationModes()
+    }
+  } catch (e: any) {
+    ElMessage.error(e?.message || '保存失败')
+  } finally {
+    coopSaving.value = false
+  }
+}
 
 const loadCunkebaoKeys = async () => {
   if (!canConfigureCunkebaoKeys()) return
@@ -389,10 +587,14 @@ watch(
     if (tab === 'features') {
       if (isEnterpriseAdmin()) {
         loadAdminPermissions()
+        loadCooperationModes()
       }
       if (canConfigureCunkebaoKeys()) {
         loadCunkebaoKeys()
       }
+    }
+    if (tab === 'terminal') {
+      miniRef.value?.loadMiniprogramConfig?.()
     }
   }
 )
@@ -403,10 +605,14 @@ onMounted(() => {
   if (activeTab.value === 'features') {
     if (isEnterpriseAdmin()) {
       loadAdminPermissions()
+      loadCooperationModes()
     }
     if (canConfigureCunkebaoKeys()) {
       loadCunkebaoKeys()
     }
+  }
+  if (activeTab.value === 'terminal') {
+    miniRef.value?.loadMiniprogramConfig?.()
   }
 })
 </script>
@@ -440,6 +646,16 @@ onMounted(() => {
   font-size: 13px;
   color: #6b7280;
   margin: 0;
+}
+
+.coop-embed-section {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.coop-embed-toolbar {
+  margin-bottom: 10px;
 }
 
 .cunkebao-embed-section {
@@ -490,50 +706,46 @@ onMounted(() => {
   color: #374151;
 }
 
-.custom-tabs-container {
-  background-color: #f3f4f6;
+.pill-tabs {
+  display: inline-flex;
+  background: #f1f5f9;
   padding: 4px;
-  border-radius: 8px;
-  display: flex;
+  border-radius: 10px;
+  gap: 2px;
   margin-bottom: 20px;
-  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-  .custom-tabs {
-    display: flex;
-    gap: 4px;
-    width: 100%;
+.pill-tab {
+  border: 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s;
 
-    .tab-item {
-      flex: 1;
-      padding: 6px 20px;
-      font-size: 13px;
-      color: #6b7280;
-      cursor: pointer;
-      border-radius: 6px;
-      transition: all 0.2s;
-      white-space: nowrap;
-      text-align: center;
+  &:hover { color: #0f172a; }
 
-      &:hover {
-        color: #111827;
-      }
-
-      &.active {
-        background-color: #fff;
-        color: #111827;
-        font-weight: 600;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-      }
-    }
+  &.is-active {
+    background: #ffffff;
+    color: #0f172a;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
   }
 }
 
 .tab-content-card {
   background: #fff;
-  border-radius: 10px;
-  border: 1px solid #f3f4f6;
-  padding: 32px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  padding: 28px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
 
   &.flat-embed {
     background: transparent;
@@ -545,6 +757,39 @@ onMounted(() => {
 
 .embed-wrap {
   width: 100%;
+}
+
+.terminal-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.terminal-section {
+  background: #fafafa;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #f3f4f6;
+}
+.terminal-section--poster {
+  padding-bottom: 12px;
+}
+.terminal-h3 {
+  margin: 0 0 6px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #111827;
+}
+.terminal-desc {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.55;
+}
+.poster-embed {
+  background: #fff;
+  border-radius: 10px;
+  padding: 12px;
+  border: 1px solid #eef2f7;
 }
 
 .tab-content {

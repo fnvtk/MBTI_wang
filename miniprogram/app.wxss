@@ -1,5 +1,8 @@
 /* app.wxss - 全局样式 */
 
+@import "./styles/result-page-dashboard.wxss";
+@import "./styles/invite-fill-entry.wxss";
+
 /* 主题颜色 */
 page {
   --primary-color: #FF6B8A;
@@ -173,4 +176,36 @@ page {
 .safe-area-bottom {
   padding-bottom: calc(constant(safe-area-inset-bottom) + 16rpx);
   padding-bottom: calc(env(safe-area-inset-bottom) + 16rpx);
+}
+
+/* ============ 全局 TabBar 底部避让 ============ */
+/* 自定义 TabBar 高度约 140rpx + 底部安全区。
+   在 tab 页外层 view 加 .tabbar-pad 即可避免被遮挡；
+   也可直接写 style="padding-bottom: var(--tabbar-pad)" */
+page {
+  /* 与实际自定义 tab 栏（含文案行 + 中间浮钮视觉）对齐，略放大避免遮挡 */
+  --tabbar-height: 168rpx;
+  --tabbar-pad: calc(var(--tabbar-height) + env(safe-area-inset-bottom) + 36rpx);
+}
+
+.tabbar-pad {
+  padding-bottom: var(--tabbar-pad) !important;
+}
+
+.tabbar-pad-fixed {
+  bottom: var(--tabbar-pad) !important;
+}
+
+/* 解锁前滚动的留资区锚点 */
+.unlock-gate-anchor {
+  height: 2rpx;
+  width: 100%;
+}
+
+.unlock-gate-anchor-btn-wrap {
+  width: 100%;
+}
+
+.unlock-gate-profile-block {
+  width: 100%;
 }

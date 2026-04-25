@@ -1,0 +1,86 @@
+.container {
+  min-height: 100vh;
+  background: #f7f8fc;
+  padding: 24rpx;
+  box-sizing: border-box;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 20rpx;
+}
+
+.item {
+  margin-bottom: 18rpx;
+}
+
+.label {
+  font-size: 26rpx;
+  color: #333;
+  margin-bottom: 8rpx;
+}
+
+.input {
+  height: 74rpx;
+  border: 1rpx solid #e6e8ee;
+  border-radius: 12rpx;
+  padding: 0 20rpx;
+  font-size: 26rpx;
+}
+
+.input-picker {
+  line-height: 72rpx;
+  box-sizing: border-box;
+  color: #1f2937;
+}
+
+/* 避免内联 picker 与下一行表单项左右串版（如市名跑到「科类」旁） */
+.item > picker,
+.item picker,
+.intended-region-pickers picker {
+  display: block;
+  width: 100%;
+}
+
+.input-picker-empty text {
+  color: #9ca3af;
+}
+
+.input-picker .ph {
+  color: #9ca3af;
+}
+
+.textarea {
+  min-height: 140rpx;
+  border: 1rpx solid #e6e8ee;
+  border-radius: 12rpx;
+  padding: 16rpx 20rpx;
+  font-size: 26rpx;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 意向地区：先选粒度，再选省或省+市；第二行与第一行间留白 */
+.intended-mode-picker {
+  display: block;
+  width: 100%;
+}
+
+.item-intended .intended-region-pickers {
+  margin-top: 12rpx;
+}
+
+.input-sub text {
+  font-size: 24rpx;
+  color: #6b7280;
+}
+
+.save-btn {
+  margin-top: 24rpx;
+  background: #7c3aed;
+  color: #fff;
+  border-radius: 999rpx;
+  font-size: 30rpx;
+}
+

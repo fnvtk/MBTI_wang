@@ -2,5 +2,10 @@
   "navigationBarTitleText": "分析报告",
   "navigationBarBackgroundColor": "#FFFFFF",
   "navigationBarTextStyle": "black",
-  "usingComponents": {}
+  "enableShareAppMessage": true,
+  "enableShareTimeline": true,
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog",
+    "cooperation-mode-dialog": "/components/cooperation-mode-dialog/cooperation-mode-dialog"
+  }
 }

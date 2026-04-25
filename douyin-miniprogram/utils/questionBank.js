@@ -59,6 +59,21 @@ function applyDrawCountAfterShuffle(questions) {
   return questions.slice(0, n)
 }
 
+function parseJsonBody(raw) {
+  if (raw == null) return {}
+  if (typeof raw === 'object' && !Array.isArray(raw)) return raw
+  if (typeof raw === 'string') {
+    const s = raw.trim()
+    if (!s) return {}
+    try {
+      return JSON.parse(s)
+    } catch (e) {
+      return { _parseError: true }
+    }
+  }
+  return {}
+}
+
 function fetchQuestionBank(type, enterpriseId) {
   const q = [`type=${encodeURIComponent(type)}`]
   if (enterpriseId != null && Number(enterpriseId) > 0) {
@@ -69,9 +84,14 @@ function fetchQuestionBank(type, enterpriseId) {
     method: 'GET',
     needAuth: true
   }).then((res) => {
-    const body = res.data || {}
+    const body = parseJsonBody(res.data)
+    if (body._parseError) {
+      throw new Error('接口返回非 JSON，请检查 apiBase 与服务器域名')
+    }
     if (body.code !== 200 || body.data == null) {
-      throw new Error(body.message || '拉取题库失败')
+      const msg = body.message || '拉取题库失败'
+      const hint = body.code === 401 || body.code === 403 ? `${msg}（请重新进入小程序）` : msg
+      throw new Error(hint)
     }
     const list = body.data.list
     if (!Array.isArray(list)) {

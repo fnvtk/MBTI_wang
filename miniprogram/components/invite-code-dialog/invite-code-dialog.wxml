@@ -1,0 +1,21 @@
+<view class="icd-mask" wx:if="{{visible}}" catchtouchmove="noop" bindtap="onMaskSkip">
+  <view class="icd-panel" catchtap="noop">
+    <text class="icd-title">填写邀请码</text>
+    <text class="icd-desc">选填。用于参与推广活动或企业活动；可稍后在「推广中心」了解规则。</text>
+    <input
+      class="icd-input"
+      type="text"
+      maxlength="{{maxLen}}"
+      placeholder="字母或数字"
+      placeholder-class="icd-ph"
+      value="{{code}}"
+      bindinput="onInput"
+      confirm-type="done"
+      bindconfirm="onConfirmTap"
+    />
+    <view class="icd-actions">
+      <button class="icd-btn icd-btn--ghost" hover-class="none" bindtap="onSkip">暂不填写</button>
+      <button class="icd-btn icd-btn--primary" hover-class="none" loading="{{submitting}}" bindtap="onConfirmTap">确认</button>
+    </view>
+  </view>
+</view>

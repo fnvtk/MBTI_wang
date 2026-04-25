@@ -1,6 +1,7 @@
 // pages/test/disc.js
 const { loadQuestions } = require('../../utils/questionBank')
 const { discDescriptions } = require('../../utils/descriptions')
+const { afterTestSubmitNavigate } = require('../../utils/phoneAuth')
 const app = getApp()
 
 const DISC_TIME_SEC = 15 * 60
@@ -201,14 +202,11 @@ Page({
     if (app && typeof app.saveTestResult === 'function') {
       app.saveTestResult('disc', resultData).then((extra) => {
         const rid = extra && extra.id
-        if (rid) {
-          wx.redirectTo({ url: `/pages/result/disc?id=${rid}&type=disc` })
-        } else {
-          wx.redirectTo({ url: '/pages/result/disc' })
-        }
+        const target = rid ? `/pages/result/disc?id=${rid}&type=disc` : '/pages/result/disc'
+        afterTestSubmitNavigate(target)
       })
     } else {
-      wx.redirectTo({ url: '/pages/result/disc' })
+      afterTestSubmitNavigate('/pages/result/disc')
     }
   },
 

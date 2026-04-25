@@ -2,6 +2,7 @@
 const { loadQuestions } = require('../../utils/questionBank')
 const { mbtiDescriptions } = require('../../utils/descriptions')
 const payment = require('../../utils/payment')
+const { afterTestSubmitNavigate } = require('../../utils/phoneAuth')
 const app = getApp()
 
 const MBTI_TIME_SEC = 30 * 60 // 30 分钟
@@ -9,6 +10,9 @@ const MBTI_TIME_SEC = 30 * 60 // 30 分钟
 Page({
   data: {
     loading: true,
+    loadError: false,
+    loadErrorMsg: '',
+    usingLocalFallback: false,
     questions: [],
     currentIndex: 0,
     currentQuestion: null,
@@ -30,26 +34,37 @@ Page({
     try {
       require('../../utils/thirdPartyContext.js').ingestThirdPartyOnPageLoad(options || {}, app)
     } catch (e) {}
-    // 分享直达本页时 silentLogin 可能尚未完成，须先 ensureLogin 再拉题，否则 401 → 白屏
-    app.ensureLogin()
-      .then((ok) => {
-        if (!ok) {
-          this.setData({ loading: false })
-          wx.showToast({ title: '登录失败，请重试', icon: 'none' })
-          return Promise.reject(new Error('login'))
-        }
-        return loadQuestions('mbti', {})
-      })
+    this._loadOptions = options || {}
+    this._startLoadQuestions()
+  },
+
+  retryLoad() {
+    this._startLoadQuestions()
+  },
+
+  /**
+   * 登录与拉题解耦：即使登录失败，仍尝试拉题（线上失败会走 401/network 降级本地）
+   */
+  _startLoadQuestions() {
+    this.setData({ loading: true, loadError: false, loadErrorMsg: '', usingLocalFallback: false })
+    // 先尝试登录，但不阻塞题库；拉题失败会降级本地 fallback
+    const ensure = (typeof app.ensureLogin === 'function')
+      ? app.ensureLogin().catch(() => false)
+      : Promise.resolve(false)
+    ensure
+      .then(() => loadQuestions('mbti', { allowLocalFallback: true }))
       .then((questions) => {
-        if (!questions) return
-        const total = questions.length
-        if (!total) {
-          wx.showToast({ title: '暂无题目', icon: 'none' })
-          this.setData({ loading: false })
+        if (!questions || !questions.length) {
+          this.setData({ loading: false, loadError: true, loadErrorMsg: '暂无题目，请稍后再试' })
           return
         }
+        const total = questions.length
+        // 判断是否为本地题（id 以 'L-' 前缀）
+        const isLocal = !!(questions[0] && typeof questions[0].id === 'string' && questions[0].id.indexOf('L-') === 0)
         this.setData({
           loading: false,
+          loadError: false,
+          usingLocalFallback: isLocal,
           questions,
           currentQuestion: questions[0],
           canAccess: true,
@@ -60,7 +75,7 @@ Page({
           formatTime: '30:00'
         })
         try {
-          require('../../utils/analytics').track('test_start', { type: 'mbti', total })
+          require('../../utils/analytics').track('test_start', { type: 'mbti', total, source: isLocal ? 'local' : 'remote' })
         } catch (e) {}
         try {
           wx.showShareMenu({ withShareTicket: true, menus: ['shareAppMessage', 'shareTimeline'] })
@@ -68,9 +83,8 @@ Page({
         this.startTimer()
       })
       .catch((err) => {
-        if (err && err.message === 'login') return
-        this.setData({ loading: false })
-        wx.showToast({ title: (err && err.message) || '加载失败', icon: 'none' })
+        const msg = (err && err.message) || '加载失败，请检查网络后重试'
+        this.setData({ loading: false, loadError: true, loadErrorMsg: msg })
       })
   },
 
@@ -244,11 +258,8 @@ Page({
 
     app.saveTestResult('mbti', resultData).then((extra) => {
       const rid = extra && extra.id
-      if (rid) {
-        wx.redirectTo({ url: `/pages/result/mbti?id=${rid}&type=mbti` })
-      } else {
-        wx.redirectTo({ url: '/pages/result/mbti' })
-      }
+      const target = rid ? `/pages/result/mbti?id=${rid}&type=mbti` : '/pages/result/mbti'
+      afterTestSubmitNavigate(target)
     })
   },
 

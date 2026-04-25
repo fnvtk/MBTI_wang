@@ -4,6 +4,7 @@ namespace app\controller\api;
 use app\BaseController;
 use app\common\PdpDiscResultText;
 use app\common\service\EnterpriseBillingService;
+use app\common\service\GaokaoService;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\Question as QuestionModel;
@@ -107,6 +108,9 @@ class Test extends BaseController
             $orderId = isset($row['orderId']) ? (int) $row['orderId'] : null;
             $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
             $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+            if (miniprogram_audit_mode_on()) {
+                $needPayUnlock = false;
+            }
 
             $raw = $row['resultDataLite'] ?? ($row['resultData'] ?? null);
             $data = null;
@@ -125,7 +129,7 @@ class Test extends BaseController
             }
 
             $paymentFields = [
-                'requiresPayment' => $requiresPayment,
+                'requiresPayment' => miniprogram_audit_mode_on() ? 0 : $requiresPayment,
                 'isPaid'          => $isPaid,
                 'orderId'         => $orderId,
                 'enterpriseName'  => $enterpriseName,
@@ -247,6 +251,28 @@ class Test extends BaseController
                         'data'      => null,
                     ], $paymentFields);
                     break;
+                case 'gaokao':
+                    $gOverview = '';
+                    if (is_array($data)) {
+                        $gOverview = (string) ($data['overview'] ?? '');
+                        if ($gOverview === '' && isset($data['report']['overview'])) {
+                            $gOverview = (string) $data['report']['overview'];
+                        }
+                    }
+                    $hasAnalysis = $gOverview !== ''
+                        || (is_array($data) && isset($data['report']) && is_array($data['report']) && ($data['report'] ?? []) !== []);
+                    $list[] = array_merge([
+                        'id'         => $id,
+                        'testType'   => 'gaokao',
+                        'type'       => 'gaokao',
+                        'key'        => 'gaokao_' . $id,
+                        'emoji'      => '🎓',
+                        'typeName'   => '高考志愿',
+                        'resultText' => $hasAnalysis ? '已生成' : '志愿报告',
+                        'testTime'   => $timeLabel,
+                        'data'       => null,
+                    ], $paymentFields);
+                    break;
                 default:
                     break;
             }
@@ -282,7 +308,7 @@ class Test extends BaseController
 
         $allowedAll = $this->wechatAllowedTestTypes($userId);
         // 「我的」卡片不含简历，但 totalCount 与列表需与 history 权限一致
-        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'sbti', 'pdp', 'disc', 'face', 'ai']));
+        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'sbti', 'pdp', 'disc', 'face', 'ai', 'gaokao']));
         if ($allowedForRecent === []) {
             return success([
                 'records'    => new \stdClass(),
@@ -312,13 +338,13 @@ class Test extends BaseController
             // face 和 ai 视为同一种类型
             $effectiveType = in_array($type, ['face', 'ai']) ? 'ai' : $type;
             
-            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'sbti', 'disc', 'pdp', 'ai'])) {
+            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'sbti', 'disc', 'pdp', 'ai', 'gaokao'])) {
                 $records[$effectiveType] = $this->_formatRecentRow($row);
                 $foundTypes[$effectiveType] = true;
             }
             
-            // 如果四个类型都找到了，且不需要总数（或者已经有了），可以提前结束
-            if (count($foundTypes) >= 4) {
+            // 如果主要类型都找到了，且不需要总数（或者已经有了），可以提前结束
+            if (count($foundTypes) >= 5) {
                 // 如果不需要精确的总数统计，这里可以 break
                 // 但为了保持接口兼容性，我们继续循环或者已经拿到了 count
             }
@@ -373,6 +399,9 @@ class Test extends BaseController
         if ($boundEnterpriseId > 0) {
             $allowed[] = 'resume';
         }
+        if (!in_array('gaokao', $allowed, true)) {
+            $allowed[] = 'gaokao';
+        }
 
         return array_values(array_unique($allowed));
     }
@@ -423,6 +452,9 @@ class Test extends BaseController
         $isPaid = (int) ($row['isPaid'] ?? 0);
         $paidAmountRow = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $needPayUnlock = $requiresPayment && !$isPaid && $paidAmountRow > 0;
+        if (miniprogram_audit_mode_on()) {
+            $needPayUnlock = false;
+        }
         if ($data !== []) {
             if (in_array($testType, ['face', 'ai'], true)) {
                 if ($needPayUnlock || $profileIncomplete) {
@@ -483,6 +515,17 @@ class Test extends BaseController
                 $emoji      = '👁️';
                 $typeName   = '面相分析';
                 break;
+            case 'gaokao':
+                $ov = (string) ($data['overview'] ?? '');
+                if ($ov === '' && isset($data['report']['overview'])) {
+                    $ov = (string) $data['report']['overview'];
+                }
+                $hasReport = $ov !== ''
+                    || (isset($data['report']) && is_array($data['report']) && ($data['report'] ?? []) !== []);
+                $resultText = $hasReport ? '已生成' : '志愿报告';
+                $emoji    = '🎓';
+                $typeName = '高考志愿';
+                break;
         }
 
         if (in_array($testType, ['face', 'ai'], true)) {
@@ -531,7 +574,7 @@ class Test extends BaseController
             'resultText'      => $resultText,
             'testTime'        => $createdAt ? date('Y-m-d', (int) $createdAt) : '',
             'isPaid'          => (int) ($row['isPaid'] ?? 0),
-            'requiresPayment' => (int) ($row['requiresPayment'] ?? 0),
+            'requiresPayment' => miniprogram_audit_mode_on() ? 0 : (int) ($row['requiresPayment'] ?? 0),
         ];
         if ($gallupPreview !== '') {
             $out['gallupPreview'] = $gallupPreview;
@@ -573,6 +616,24 @@ class Test extends BaseController
             return error('记录不存在', 404);
         }
 
+        if (($row['testType'] ?? '') === 'gaokao' && (int) ($row['isPaid'] ?? 0) === 0) {
+            $ps = trim((string) Request::param('pricingScope', 'personal'));
+            $eid = (int) Request::param('enterpriseId', 0);
+            GaokaoService::refreshGaokaoTestResultForPayment(
+                $userId,
+                $id,
+                $ps === 'enterprise' ? 'enterprise' : 'personal',
+                $eid > 0 ? $eid : null
+            );
+            $row = Db::name('test_results')
+                ->where('id', $id)
+                ->where('userId', $userId)
+                ->find();
+            if (!$row) {
+                return error('记录不存在', 404);
+            }
+        }
+
         $out = $this->buildTestDetailPayload($row);
 
         return success(array_merge($out, [
@@ -603,6 +664,9 @@ class Test extends BaseController
         $rowTestType = (string) ($row['testType'] ?? '');
         if ($rowTestType === 'resume') {
             return error('该类型不支持分享查看', 403);
+        }
+        if ($rowTestType === 'gaokao' && $st === '') {
+            return error('该类型不支持公开分享', 403);
         }
 
         if ($st !== '') {
@@ -662,6 +726,9 @@ class Test extends BaseController
         $paidAmount = isset($row['paidAmount']) ? (int) $row['paidAmount'] : 0;
         $testType = $row['testType'] ?? '';
         $needPaymentToUnlock = $requiresPayment && !$isPaid && $paidAmount > 0;
+        if (miniprogram_audit_mode_on()) {
+            $needPaymentToUnlock = false;
+        }
         $subjectUserId = (int) ($row['userId'] ?? 0);
         $profileIncomplete = $subjectUserId > 0 ? !self::isWechatProfileComplete($subjectUserId) : false;
         $applyProfileGate = $profileIncomplete && !$forShareViewer;
@@ -678,16 +745,20 @@ class Test extends BaseController
             }
         }
 
+        $auditMp = miniprogram_audit_mode_on();
+        $respRequires = $auditMp ? 0 : $requiresPayment;
+        $respPaidAmount = $auditMp ? 0 : $paidAmount;
+
         return [
             'id'                   => $row['id'],
             'testType'             => $testType,
             'createdAt'            => $row['createdAt'],
             'data'                 => $data,
-            'requiresPayment'      => $requiresPayment,
+            'requiresPayment'      => $respRequires,
             'isPaid'               => $isPaid,
-            'paidAmount'           => $paidAmount,
-            'amountYuan'           => $paidAmount > 0 ? round($paidAmount / 100, 2) : 0,
-            'needPaymentToUnlock'  => $needPaymentToUnlock,
+            'paidAmount'           => $respPaidAmount,
+            'amountYuan'           => $respPaidAmount > 0 ? round($respPaidAmount / 100, 2) : 0,
+            'needPaymentToUnlock'  => $auditMp ? false : $needPaymentToUnlock,
             'profileIncomplete'    => $forShareViewer ? false : $profileIncomplete,
             'orderId'              => isset($row['orderId']) ? (int) $row['orderId'] : null,
             'paidAt'               => isset($row['paidAt']) ? (int) $row['paidAt'] : null,
@@ -780,6 +851,10 @@ class Test extends BaseController
             }
             $requiresPayment = $this->getRequiresPaymentByTestType($testType, $enterpriseId, $pricingEnterpriseId);
             $standardAmountFen = $requiresPayment ? $this->getStandardAmountFenByTestType($testType, $enterpriseId, $pricingEnterpriseId) : 0;
+            if (miniprogram_audit_mode_on()) {
+                $requiresPayment = 0;
+                $standardAmountFen = 0;
+            }
             $id = Db::name('test_results')->insertGetId([
                 'userId'          => $userId,
                 'enterpriseId'    => $writeEnterpriseId,
@@ -965,6 +1040,19 @@ class Test extends BaseController
                 '_structured' => false,
             ];
         }
+        if ($testType === 'gaokao') {
+            $ov = (string) ($data['overview'] ?? '');
+            if ($ov === '' && isset($data['report']['overview'])) {
+                $ov = (string) $data['report']['overview'];
+            }
+            $inputSnap = is_array($data['inputSnapshot'] ?? null) ? $data['inputSnapshot'] : [];
+
+            return [
+                'overview'       => $ov,
+                'inputSnapshot'  => $inputSnap,
+                'locked'         => true,
+            ];
+        }
 
         return $data;
     }
@@ -1088,29 +1176,41 @@ class Test extends BaseController
     }
 
     /**
-     * 获取当前用户最近的 MBTI / DISC / PDP 测试记录（暂不使用人脸/AI 结果），供简历综合分析使用
+     * 获取当前用户最近的 MBTI / DISC / PDP / 面相(face|ai) 测试记录，供简历综合分析使用
      * @param int $userId 微信用户 ID
      * @param int|null $enterpriseId 当前企业ID（仅返回该企业下的记录；为空则不按企业过滤）
-     * @return array ['face' => row|null, 'mbti' => row|null, 'disc' => row|null, 'pdp' => row|null]，row 含 id, testType, resultData, createdAt
+     * @return array ['face' => row|null, 'mbti' => row|null, 'sbti' => row|null, 'disc' => row|null, 'pdp' => row|null]，row 含 id, testType, resultData, createdAt
      */
     public static function getLatestResultsForResume(int $userId, ?int $enterpriseId = null): array
     {
         if ($userId <= 0) {
-            return ['face' => null, 'mbti' => null, 'disc' => null, 'pdp' => null];
+            return ['face' => null, 'mbti' => null, 'sbti' => null, 'disc' => null, 'pdp' => null];
         }
 
-        $out = ['face' => null, 'mbti' => null, 'disc' => null, 'pdp' => null];
+        $out = ['face' => null, 'mbti' => null, 'sbti' => null, 'disc' => null, 'pdp' => null];
 
         $base = Db::name('test_results')->where('userId', $userId);
         if ($enterpriseId !== null && $enterpriseId > 0) {
             $base = $base->where('enterpriseId', (int) $enterpriseId);
         }
 
-        // face/ai 暂不参与简历分析，保持为 null，避免写入上下文
+        // 面相 / 神仙 AI 拍照分析：取 face 或 ai 最新一条，供 buildResumeContext 拼接
+        $out['face'] = (clone $base)
+            ->whereIn('testType', ['face', 'ai'])
+            ->field('id, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->find();
 
         // mbti
         $out['mbti'] = (clone $base)
             ->where('testType', 'mbti')
+            ->field('id, testType, resultData, createdAt')
+            ->order('createdAt', 'desc')
+            ->find();
+
+        // sbti
+        $out['sbti'] = (clone $base)
+            ->where('testType', 'sbti')
             ->field('id, testType, resultData, createdAt')
             ->order('createdAt', 'desc')
             ->find();

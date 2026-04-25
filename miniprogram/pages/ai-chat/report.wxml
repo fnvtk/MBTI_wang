@@ -1,0 +1,58 @@
+<view class="report-page">
+  <view class="hero">
+    <view class="hero-badge">✨ 神仙 AI 深度画像</view>
+    <view class="hero-title">{{report.title || '为你专属定制的深度报告'}}</view>
+    <view class="hero-mbti" wx:if="{{report.mbtiType}}">MBTI：<text class="hero-mbti-badge">{{report.mbtiType}}</text></view>
+  </view>
+
+  <!-- 未付费：预览 + 解锁 -->
+  <view class="section" wx:if="{{report.status !== 'done'}}">
+    <view class="preview-card">
+      <view class="preview-title">报告预览</view>
+      <view class="preview-text">{{report.summary || '精准剖析你的性格内核、潜在优势与成长路径，帮你看清自己更深一步。'}}</view>
+      <view class="preview-mask">
+        <view class="mask-tip">付费解锁完整 1200+ 字深度报告</view>
+        <view class="unlock-row">
+          <view class="price">¥{{report.priceYuan || '9.9'}}</view>
+          <button class="unlock-btn" bindtap="onTapPay" disabled="{{paying}}">
+            {{paying ? '处理中…' : '深度详细分析报告'}}
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <view class="trust">
+      <view class="trust-item"><text class="trust-icon">🔮</text>基于你最近的对话 & MBTI</view>
+      <view class="trust-item"><text class="trust-icon">💎</text>永久保存 & 可分享好友</view>
+      <view class="trust-item"><text class="trust-icon">🎁</text>邀请好友购买，你也能赚佣金</view>
+    </view>
+  </view>
+
+  <!-- 已付费但生成中 -->
+  <view class="section" wx:elif="{{report.status === 'generating' || report.status === 'paid'}}">
+    <view class="loading-card">
+      <view class="loading-dot"></view>
+      <view class="loading-text">小神仙正在为你撰写报告，约 10~30 秒…</view>
+      <button class="retry-btn" bindtap="reload">刷新查看</button>
+    </view>
+  </view>
+
+  <!-- 已完成 -->
+  <view class="section" wx:elif="{{report.status === 'done'}}">
+    <view class="report-body">
+      <text user-select="true">{{report.content}}</text>
+    </view>
+    <view class="done-actions">
+      <button class="share-btn" open-type="share">📤 分享给好友</button>
+      <button class="copy-btn" bindtap="onCopy">📋 复制全文</button>
+    </view>
+  </view>
+
+  <!-- 失败 -->
+  <view class="section" wx:elif="{{report.status === 'failed'}}">
+    <view class="error-card">
+      <view>小神仙暂时走神了～</view>
+      <button class="retry-btn" bindtap="onRetry">再试一次</button>
+    </view>
+  </view>
+</view>

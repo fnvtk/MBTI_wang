@@ -1,0 +1,20 @@
+<view class="cmd-mask" wx:if="{{visible}}" catchtouchmove="noop" catchtap="onMask">
+  <view class="cmd-panel" catchtap="noop">
+    <text class="cmd-title">请选择合作模式</text>
+    <text class="cmd-desc">三项测评已完成，请选择与您更契合的合作方式（提交后可在企业侧活动中使用）。</text>
+
+    <radio-group class="cmd-list" bindchange="onRadioChange">
+      <label class="cmd-item" wx:for="{{modes}}" wx:key="code">
+        <radio value="{{item.code}}" checked="{{selected === item.code}}" color="#ff6b8a" />
+        <view class="cmd-item-main">
+          <text class="cmd-item-title">{{item.title}}</text>
+          <text class="cmd-item-desc">{{item.description}}</text>
+        </view>
+      </label>
+    </radio-group>
+
+    <view class="cmd-actions">
+      <button class="cmd-btn cmd-btn--primary" hover-class="none" loading="{{submitting}}" bindtap="onConfirm">确认提交</button>
+    </view>
+  </view>
+</view>
