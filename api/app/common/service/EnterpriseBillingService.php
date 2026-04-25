@@ -112,12 +112,13 @@ class EnterpriseBillingService
     private static function getTestTypeLabel(string $testType): string
     {
         $map = [
-            'face'   => '人脸',
-            'mbti'   => 'MBTI',
-            'sbti'   => 'SBTI',
-            'disc'   => 'DISC',
-            'pdp'    => 'PDP',
-            'resume' => '简历',
+            'face'    => '人脸',
+            'mbti'    => 'MBTI',
+            'sbti'    => 'SBTI',
+            'disc'    => 'DISC',
+            'pdp'     => 'PDP',
+            'resume'  => '简历',
+            'gaokao'  => '高考志愿',
         ];
 
         return $map[$testType] ?? strtoupper($testType);

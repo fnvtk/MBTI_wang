@@ -155,6 +155,101 @@ class Distribution extends BaseController
     }
 
     /**
+     * 高考入口等：与 POST /api/distribution/bind 一致地写入 distribution_bindings（不含邀请码解析）
+     */
+    public static function applyInviteBindingFromGaokao(int $inviteeId, int $inviterId, ?int $enterpriseId): void
+    {
+        if ($inviteeId <= 0 || $inviterId <= 0 || $inviterId === $inviteeId) {
+            return;
+        }
+
+        $scope = $enterpriseId ? 'enterprise' : 'personal';
+
+        if ($scope === 'enterprise') {
+            $inviter = Db::name('wechat_users')
+                ->where('id', $inviterId)
+                ->field('id, enterpriseId')
+                ->find();
+            if (!$inviter || (int) $inviter['enterpriseId'] !== $enterpriseId) {
+                return;
+            }
+        }
+
+        $now = time();
+
+        $reverseExists = Db::name('distribution_bindings')
+            ->where('inviterId', $inviteeId)
+            ->where('inviteeId', $inviterId)
+            ->where('scope', $scope)
+            ->where('status', 'active')
+            ->where('expireAt', '>', $now)
+            ->where(function ($query) use ($enterpriseId) {
+                if ($enterpriseId) {
+                    $query->where('enterpriseId', $enterpriseId);
+                } else {
+                    $query->whereNull('enterpriseId');
+                }
+            })
+            ->find();
+        if ($reverseExists) {
+            return;
+        }
+
+        $expireAt = $now + self::BINDING_TTL;
+
+        $existing = Db::name('distribution_bindings')
+            ->where('inviteeId', $inviteeId)
+            ->where('scope', $scope)
+            ->where(function ($query) use ($enterpriseId) {
+                if ($enterpriseId) {
+                    $query->where('enterpriseId', $enterpriseId);
+                } else {
+                    $query->whereNull('enterpriseId');
+                }
+            })
+            ->find();
+
+        if (!$existing) {
+            Db::name('distribution_bindings')->insert([
+                'inviterId'     => $inviterId,
+                'inviteeId'     => $inviteeId,
+                'scope'         => $scope,
+                'enterpriseId'  => $enterpriseId,
+                'expireAt'      => $expireAt,
+                'status'        => 'active',
+                'prevInviterId' => null,
+                'overriddenAt'  => null,
+                'createdAt'     => $now,
+                'updatedAt'     => $now,
+            ]);
+        } elseif ((int) $existing['inviterId'] === $inviterId) {
+            Db::name('distribution_bindings')
+                ->where('id', $existing['id'])
+                ->update([
+                    'expireAt'  => $expireAt,
+                    'status'    => 'active',
+                    'updatedAt' => $now,
+                ]);
+        } else {
+            $exExpire = (int) ($existing['expireAt'] ?? 0);
+            $exStatus = (string) ($existing['status'] ?? '');
+            if ($exStatus === 'active' && $exExpire > $now) {
+                return;
+            }
+            Db::name('distribution_bindings')
+                ->where('id', $existing['id'])
+                ->update([
+                    'prevInviterId' => (int) $existing['inviterId'],
+                    'inviterId'     => $inviterId,
+                    'expireAt'      => $expireAt,
+                    'status'        => 'active',
+                    'overriddenAt'  => $now,
+                    'updatedAt'     => $now,
+                ]);
+        }
+    }
+
+    /**
      * GET /api/distribution/my-invite-code
      * 返回当前用户名下可用邀请码；若无记录则自动生成一条（便于前端直接展示）
      */

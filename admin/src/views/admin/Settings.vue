@@ -319,11 +319,12 @@ const permItems = [
   { key: 'sbti', label: 'SBTI' },
   { key: 'pdp', label: 'PDP' },
   { key: 'disc', label: 'DISC' },
+  { key: 'gaokao', label: '高考志愿' },
   { key: 'distribution', label: '分销推广' }
 ] as const
 
 const defaultAdminPermissions = () =>
-  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, distribution: true }) as Record<string, boolean>
+  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, gaokao: true, distribution: true }) as Record<string, boolean>
 
 const permLoading = ref(false)
 const permSaving = ref(false)

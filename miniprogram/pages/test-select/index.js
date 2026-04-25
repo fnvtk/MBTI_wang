@@ -9,6 +9,8 @@ Page({
     permSbti: true,
     permPdp: true,
     permDisc: true,
+    /** 高考志愿任务中心；企业关闭 gaokao 时隐藏 */
+    permGaokao: true,
     /** AI 对话（神仙 AI）；企业关闭 aiHub 时隐藏 */
     permAiHub: true,
     /** 四类问卷入口均被企业权限关闭时提示 */
@@ -43,6 +45,7 @@ Page({
     const permSbti = !p || p.sbti !== false
     const permPdp = !p || p.pdp !== false
     const permDisc = !p || p.disc !== false
+    const permGaokao = !p || p.gaokao !== false
     const permAiHub = (!p || p.aiHub !== false) && !hideAi
     this.setData({
       permFace,
@@ -50,8 +53,9 @@ Page({
       permSbti,
       permPdp,
       permDisc,
+      permGaokao,
       permAiHub,
-      allTestsDisabled: p && !permMbti && !permSbti && !permPdp && !permDisc
+      allTestsDisabled: p && !permMbti && !permSbti && !permPdp && !permDisc && !permGaokao
     })
   },
 
@@ -77,6 +81,17 @@ Page({
   goDISC() {
     this._trackSelect('disc')
     wx.navigateTo({ url: '/pages/test/disc' })
+  },
+
+  goGaokaoHub() {
+    if (!this.data.permGaokao) {
+      wx.showToast({ title: '当前企业未开放高考志愿功能', icon: 'none' })
+      return
+    }
+    try {
+      require('../../utils/analytics').track('tap_test_select_gaokao', {})
+    } catch (e) {}
+    wx.navigateTo({ url: '/pages/gaokao/index' })
   },
 
   goAIChatInterpretation() {

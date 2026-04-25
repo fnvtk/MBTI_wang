@@ -1,0 +1,3 @@
+-- 可选：将旧版 mbti_gaokao_report 迁入 mbti_test_results（testType=gaokao）
+-- 执行前请备份数据库；按实际 MySQL 版本与 JSON 函数编写 INSERT…SELECT。
+-- 迁移完成后：用新 test_results.id 回写 mbti_gaokao_user_profile.latestReportId，再择机 DROP 旧高考业务表。

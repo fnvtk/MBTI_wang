@@ -1,8 +1,8 @@
-<!--pages/test-select/index.wxml - 详细性格测试入口（MBTI / SBTI / PDP / DISC / AI）-->
+<!--pages/test-select/index.wxml - 详细性格测试 + 高考志愿等入口-->
 <view class="container">
   <view class="card intro-card">
     <text class="intro-title">选择一项详细性格测试</text>
-    <text class="intro-desc">问卷测评与 AI 对话 / 拍照面相分项进入，完成后可获得对应报告</text>
+    <text class="intro-desc">问卷测评、高考志愿规划与 AI 对话 / 拍照面相分项进入，完成后可获得对应报告</text>
   </view>
 
   <view class="card entry-card" bindtap="goMBTI" wx:if="{{permMbti}}">
@@ -45,6 +45,17 @@
     <view class="entry-content">
       <text class="entry-name">DISC 性格测试</text>
       <text class="entry-brief">D/I/S/C 四维 · 沟通与行为倾向</text>
+    </view>
+    <text class="entry-arrow">→</text>
+  </view>
+
+  <view class="card entry-card" bindtap="goGaokaoHub" wx:if="{{permGaokao}}">
+    <view class="entry-icon-wrap gaokao">
+      <text class="entry-emoji">🎓</text>
+    </view>
+    <view class="entry-content">
+      <text class="entry-name">高考志愿任务中心</text>
+      <text class="entry-brief">完成 MBTI / PDP / DISC / 拍照面相与信息表单 · 购买报告后生成志愿分析</text>
     </view>
     <text class="entry-arrow">→</text>
   </view>

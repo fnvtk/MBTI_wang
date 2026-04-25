@@ -2,6 +2,8 @@
 namespace app\controller\api;
 
 use app\BaseController;
+use app\common\service\GaokaoService;
+use app\common\service\TestProductPricing;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\UserProfile as UserProfileModel;
 use app\common\service\JwtService;
@@ -77,6 +79,7 @@ class Payment extends BaseController
                     'disc'   => 'disc',
                     'pdp'    => 'pdp',
                     'resume' => 'resume',
+                    'gaokao' => 'gaokao',
                 ];
                 if (isset($testTypeMap[$productType])) {
                     $latestTest = Db::name('test_results')
@@ -88,6 +91,17 @@ class Payment extends BaseController
                         $testResultId = (int) $latestTest['id'];
                     }
                 }
+            }
+
+            // 高考：按当前请求 Tab 刷新未付记录的 paidAmount/enterpriseId，再读库定价（与小程序切换一致）
+            if ($productType === 'gaokao' && $testResultId > 0) {
+                $ps = trim((string) Request::param('pricingScope', 'personal'));
+                GaokaoService::refreshGaokaoTestResultForPayment(
+                    $userId,
+                    $testResultId,
+                    $ps === 'enterprise' ? 'enterprise' : 'personal',
+                    $enterpriseIdParam > 0 ? $enterpriseIdParam : null
+                );
             }
 
             if ($testResultId > 0) {
@@ -138,7 +152,7 @@ class Payment extends BaseController
                 );
             }
 
-            if ($amountFenCalculated <= 0) {
+            if ($amountFenCalculated < 0 || ($amountFenCalculated === 0 && $productType !== 'gaokao')) {
                 return error('订单金额无效，请检查定价配置或请求参数', 400);
             }
 
@@ -201,6 +215,7 @@ class Payment extends BaseController
                     'disc'   => 'disc',
                     'pdp'    => 'pdp',
                     'resume' => 'resume',
+                    'gaokao' => 'gaokao',
                 ];
                 if (isset($testTypeMap[$productType])) {
                     $testType = $testTypeMap[$productType];
@@ -219,6 +234,35 @@ class Payment extends BaseController
                             ]);
                     }
                 }
+            }
+
+            if ($productType === 'gaokao') {
+                $this->ensureGaokaoTestResultForOrder($userId, $orderIdDb, $enterpriseId, $now);
+            }
+
+            // 高考志愿 0 元：不调微信统一下单，直接标记已付（避免「金额无效」又卡在任务中心）
+            if ($productType === 'gaokao' && $amountFenCalculated === 0) {
+                $orderRow = Db::name('orders')->where('id', $orderIdDb)->find();
+                if ($orderRow) {
+                    $this->completeGaokaoZeroAmountOrder((int) $orderIdDb, $orderRow, $now);
+                }
+
+                return success([
+                    'skipWxPay'    => true,
+                    'orderId'      => $orderId,
+                    'orderDbId'    => $orderIdDb,
+                    'amount'       => 0,
+                    'productType'  => $productType,
+                    'pricingType'  => $pricingType,
+                    'description'  => $description,
+                    'enterpriseId' => $enterpriseId,
+                    'timeStamp'    => (string) time(),
+                    'nonceStr'     => '',
+                    'package'      => '',
+                    'signType'     => 'MD5',
+                    'paySign'      => '',
+                    'prepayId'     => '',
+                ], '订单已自动完成（0元）');
             }
 
             // 真实对接微信统一下单，生成 prepay_id 等参数
@@ -618,6 +662,102 @@ class Payment extends BaseController
     }
 
     /**
+     * 高考 0 元单：标记订单与关联 test_results 已付（不调微信）
+     *
+     * @param array<string,mixed> $orderRow
+     */
+    protected function completeGaokaoZeroAmountOrder(int $orderIdDb, array $orderRow, int $now): void
+    {
+        Db::name('orders')
+            ->where('id', $orderIdDb)
+            ->update([
+                'status'    => 'paid',
+                'payTime'   => $now,
+                'updatedAt' => $now,
+            ]);
+
+        Db::name('test_results')
+            ->where('orderId', $orderIdDb)
+            ->update([
+                'isPaid'            => 1,
+                'paidAmount'        => 0,
+                'paidAt'            => $now,
+                'updatedAt'         => $now,
+                'requiresPayment'   => 0,
+            ]);
+
+        $order = array_merge($orderRow, ['status' => 'paid', 'payTime' => $now]);
+        try {
+            FeishuLeadWebhookService::onOrderPaid($orderIdDb, (int) ($order['userId'] ?? 0));
+        } catch (\Throwable $e) {
+        }
+        try {
+            $this->creditEnterpriseBalanceForOrder($order, 0, $now);
+        } catch (\Throwable $e) {
+        }
+        try {
+            \app\controller\api\Distribution::settleCommission($orderIdDb);
+        } catch (\Exception $e) {
+        }
+    }
+
+    /**
+     * 高考订单：保证存在 testType=gaokao 且 orderId 已绑定的占位行，供支付回调与分销按 orderId 解析 testType
+     */
+    protected function ensureGaokaoTestResultForOrder(int $userId, int $orderIdDb, ?int $enterpriseId, int $now): void
+    {
+        if ($userId <= 0 || $orderIdDb <= 0) {
+            return;
+        }
+        $exists = Db::name('test_results')
+            ->where('orderId', $orderIdDb)
+            ->where('testType', 'gaokao')
+            ->find();
+        if ($exists) {
+            return;
+        }
+        $bind = Db::name('test_results')
+            ->where('userId', $userId)
+            ->where('testType', 'gaokao')
+            ->where('isPaid', 0)
+            ->whereRaw('(orderId IS NULL OR orderId = 0)')
+            ->order('id', 'desc')
+            ->find();
+        if ($bind) {
+            Db::name('test_results')
+                ->where('id', (int) $bind['id'])
+                ->where('userId', $userId)
+                ->update([
+                    'orderId' => $orderIdDb,
+                    'updatedAt' => $now,
+                ]);
+
+            return;
+        }
+        $scope = $enterpriseId ? 'enterprise' : 'personal';
+        $placeholder = [
+            'kind' => 'gaokao',
+            'state' => 'awaiting_report',
+            'version' => 'v1',
+        ];
+        Db::name('test_results')->insert([
+            'userId' => $userId,
+            'testType' => 'gaokao',
+            'resultData' => json_encode($placeholder, JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE),
+            'score' => null,
+            'orderId' => $orderIdDb,
+            'requiresPayment' => 1,
+            'isPaid' => 0,
+            'paidAmount' => null,
+            'paidAt' => null,
+            'createdAt' => $now,
+            'updatedAt' => $now,
+            'enterpriseId' => $enterpriseId,
+            'testScope' => $scope,
+        ]);
+    }
+
+    /**
      * 企业四项测试支付成功后，将订单金额计入企业余额。
      * 使用 finance_records + orderId 做幂等，避免 notify/query 重复入账。
      */
@@ -725,20 +865,30 @@ class Payment extends BaseController
         $quantity = $quantity > 0 ? $quantity : 1;
 
         // 1）测试类产品：定价配置中为元，转为分（企业用户按企业ID取价）
-        $testProductTypes = ['face', 'mbti', 'sbti', 'disc', 'pdp', 'resume', 'report', 'team_analysis'];
-        if (in_array($productType, $testProductTypes, true)) {
-            $pricingConfig = PricingConfigModel::getByTypeAndEnterprise($pricingType, $pricingEnterpriseId ?? $enterpriseId);
-            $config = [];
-            if ($pricingConfig && !empty($pricingConfig->config)) {
-                $raw = $pricingConfig->config;
-                $config = is_array($raw) ? $raw : (array) $raw;
+        if (in_array($productType, TestProductPricing::TEST_PRODUCT_TYPES, true)) {
+            $userId = 0;
+            if ($user && ($user['source'] ?? '') === 'wechat') {
+                $userId = (int) ($user['user_id'] ?? $user['userId'] ?? 0);
+            }
+            // 高考：与 GaokaoService 一致，按子测评是否带 enterpriseId 区分个人档/企业档售价，避免仅因订单带 eid 误用企业版价
+            if ($productType === 'gaokao' && $userId > 0) {
+                $ps = trim((string) Request::param('pricingScope', 'personal'));
+                $pe = (int) Request::param('enterpriseId', 0);
+
+                return GaokaoService::gaokaoSaleAmountForPaymentRecalc(
+                    $userId,
+                    $ps === 'enterprise' ? 'enterprise' : 'personal',
+                    $pe > 0 ? $pe : null
+                );
             }
 
-            $keyMap = ['team_analysis' => 'teamAnalysis'];
-            $key = $keyMap[$productType] ?? $productType;
-            $unitPriceYuan = isset($config[$key]) ? (float) $config[$key] : 0.0;
-            $amountFen = (int) round($unitPriceYuan * 100 * $quantity);
-            return [$amountFen, $pricingType];
+            return TestProductPricing::amountFenForTestProduct(
+                $productType,
+                $userId,
+                $pricingEnterpriseId ?? $enterpriseId,
+                $quantity,
+                $pricingType
+            );
         }
 
         // 2）深度服务：定价配置为元，转为分

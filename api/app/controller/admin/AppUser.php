@@ -172,6 +172,8 @@ class AppUser extends BaseController
             $enterpriseName = $ent['name'] ?? ('企业' . $enterpriseId);
         }
         $coopMap = [];
+        $gaokaoMap = [];
+        $gaokaoReportMap = [];
         if (!empty($ids)) {
             // 测试统计严格按 test_results.enterpriseId 归属企业过滤
             $trBase = Db::name('test_results')->where('userId', 'in', $ids);
@@ -313,6 +315,47 @@ class AppUser extends BaseController
                     $coopMap = [];
                 }
             }
+
+            // 高考任务状态与最近报告摘要
+            try {
+                $gqRows = Db::name('gaokao_user_profile')
+                    ->whereIn('userId', $ids)
+                    ->where('tenantId', (int) $enterpriseId)
+                    ->field('id,userId,entryStatus,mbtiStatus,pdpStatus,discStatus,formStatus,analyzeStatus,lastAnalyzeAt,latestReportId,tagsJson')
+                    ->select()
+                    ->toArray();
+                $reportIds = [];
+                foreach ($gqRows as $gr) {
+                    $uid = (int) ($gr['userId'] ?? 0);
+                    if ($uid > 0) {
+                        $gaokaoMap[$uid] = $gr;
+                        if (!empty($gr['latestReportId'])) {
+                            $reportIds[] = (int) $gr['latestReportId'];
+                        }
+                    }
+                }
+                $reportIds = array_values(array_unique(array_filter($reportIds)));
+                if ($reportIds) {
+                    $rRows = Db::name('test_results')
+                        ->whereIn('id', $reportIds)
+                        ->where('testType', 'gaokao')
+                        ->field('id,resultData')
+                        ->select()
+                        ->toArray();
+                    foreach ($rRows as $rr) {
+                        $raw = $rr['resultData'] ?? '';
+                        $rd = is_string($raw) ? (json_decode($raw, true) ?: []) : (is_array($raw) ? $raw : []);
+                        $ov = (string) ($rd['overview'] ?? '');
+                        if ($ov === '' && isset($rd['report']['overview'])) {
+                            $ov = (string) $rd['report']['overview'];
+                        }
+                        $gaokaoReportMap[(int) $rr['id']] = $ov;
+                    }
+                }
+            } catch (\Throwable $e) {
+                $gaokaoMap = [];
+                $gaokaoReportMap = [];
+            }
         }
 
         foreach ($list as &$row) {
@@ -358,6 +401,19 @@ class AppUser extends BaseController
                 $row['cooperationModeTitle'] = null;
                 $row['cooperationChosenAt']  = null;
             }
+
+            $gq = $gaokaoMap[$id] ?? null;
+            $row['gaokaoEntryStatus'] = $gq ? (int) ($gq['entryStatus'] ?? 0) : 0;
+            $row['gaokaoAnalyzeStatus'] = $gq ? (int) ($gq['analyzeStatus'] ?? 0) : 0;
+            $row['gaokaoFormStatus'] = $gq ? (int) ($gq['formStatus'] ?? 0) : 0;
+            $row['gaokaoTaskStatus'] = [
+                'mbti' => $gq ? (int) ($gq['mbtiStatus'] ?? 0) : 0,
+                'pdp' => $gq ? (int) ($gq['pdpStatus'] ?? 0) : 0,
+                'disc' => $gq ? (int) ($gq['discStatus'] ?? 0) : 0,
+            ];
+            $row['gaokaoLastAnalyzeAt'] = $gq ? (int) ($gq['lastAnalyzeAt'] ?? 0) : 0;
+            $rid = $gq ? (int) ($gq['latestReportId'] ?? 0) : 0;
+            $row['gaokaoOverview'] = $rid > 0 ? (string) ($gaokaoReportMap[$rid] ?? '') : '';
         }
 
         return paginate_response($list, $total, $page, $pageSize);
@@ -500,6 +556,28 @@ class AppUser extends BaseController
         $data['resumeUploads'] = ($enterpriseId && (int) $enterpriseId > 0)
             ? ResumeUploadsAdminService::listForWechatUser((int) $id, (int) $enterpriseId)
             : [];
+
+        // 高考结果信息
+        try {
+            $gq = Db::name('gaokao_user_profile')
+                ->where('userId', (int) $id)
+                ->where('tenantId', (int) $enterpriseId)
+                ->find();
+            if ($gq) {
+                $data['gaokaoProfile'] = $gq;
+                $rid = (int) ($gq['latestReportId'] ?? 0);
+                if ($rid > 0) {
+                    $data['gaokaoLatestReport'] = Db::name('test_results')
+                        ->where('id', $rid)
+                        ->where('testType', 'gaokao')
+                        ->find();
+                }
+            } else {
+                $data['gaokaoProfile'] = null;
+            }
+        } catch (\Throwable $e) {
+            $data['gaokaoProfile'] = null;
+        }
 
         return success($data);
     }

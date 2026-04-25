@@ -36,7 +36,8 @@ function generateOrderId(productType) {
     single_test: 'TSGL',
     recharge: 'RCG',
     deep_personal: 'DPER',
-    deep_team: 'DTEAM'
+    deep_team: 'DTEAM',
+    gaokao: 'GAOKAO'
   }
 
   const prefix = prefixMap[productType] || (productType || 'ORD').toUpperCase().slice(0, 6)
@@ -69,7 +70,18 @@ function generateOrderId(productType) {
  * @param {Function} options.fail - 失败回调
  */
 function wxPay(options) {
-  const { orderId, amount = 0, description, productType, testResultId, deepProductId, enterpriseId, success, fail } = options
+  const {
+    orderId,
+    amount = 0,
+    description,
+    productType,
+    testResultId,
+    deepProductId,
+    enterpriseId,
+    pricingScope,
+    success,
+    fail
+  } = options
 
   if (app.globalData && app.globalData.miniprogramAuditMode) {
     const msg = '版本审核期间不可发起支付'
@@ -116,14 +128,34 @@ function wxPay(options) {
       // 创建订单时将本次测试记录ID传给后端，避免每次都只更新“最新一条”
       testResultId: testResultId || 0,
       // 深度服务使用的具体套餐ID/产品Key（用于从 categories 中选择价格）
-      deepProductId: deepProductId || ''
+      deepProductId: deepProductId || '',
+      // 高考：与 Tab appScope 一致，后端按个人/企业档刷新 paidAmount
+      pricingScope:
+        productType === 'gaokao'
+          ? pricingScope ||
+            ((app.globalData && app.globalData.appScope) || 'personal')
+          : pricingScope || ''
     },
     success: (res) => {
       wx.hideLoading()
       
       if (res.statusCode === 200 && res.data.code === 200) {
         const paymentData = res.data.data
-        
+
+        // 后端 0 元单（如高考志愿定价为 0）：不调 wx.requestPayment，直接视为成功
+        if (paymentData && paymentData.skipWxPay) {
+          wx.hideLoading()
+          try {
+            triggerOrderPaid(orderId)
+          } catch (e) {}
+          try {
+            require('./analytics').reportPayResult(true, { productType: productType || '', orderId, amount: 0, note: 'zero_skip_wx' })
+          } catch (e) {}
+          wx.showToast({ title: '已解锁', icon: 'success', duration: 2000 })
+          success && success({ skipWxPay: true, order: paymentData })
+          return
+        }
+
         // 2. 调起微信支付
         wx.requestPayment({
           timeStamp: paymentData.timeStamp,
@@ -421,7 +453,7 @@ function purchaseByPricing(productType, description, extra, maybeFail) {
     opts = extra || {}
   }
 
-  const { testResultId, success, fail } = opts
+  const { testResultId, success, fail, pricingScope } = opts
   const orderId = generateOrderId(productType)
 
   wxPay({
@@ -431,6 +463,7 @@ function purchaseByPricing(productType, description, extra, maybeFail) {
     productType,
     testResultId,
     enterpriseId: enterpriseIdForOrder(),
+    pricingScope,
     success,
     fail
   })
@@ -497,6 +530,26 @@ function purchaseFullReport(success, fail) {
 // 团队分析服务
 function purchaseTeamAnalysis(success, fail) {
   purchaseByPricing('team_analysis', '团队性格组合与冲突分析服务', success, fail)
+}
+
+/** 高考志愿分析报告（统一定价键 gaokao，走 orders + test_results） */
+function purchaseGaokaoReport(extra, maybeFail) {
+  let opts = {}
+  if (typeof extra === 'function' || extra === undefined) {
+    opts.success = extra
+    opts.fail = maybeFail
+  } else {
+    opts = extra || {}
+  }
+  const { success, fail, testResultId } = opts
+  const pricingScope =
+    (app.globalData && app.globalData.appScope) === 'enterprise' ? 'enterprise' : 'personal'
+  purchaseByPricing('gaokao', '高考志愿分析报告', {
+    success,
+    fail,
+    testResultId,
+    pricingScope
+  })
 }
 
 /**
@@ -692,6 +745,7 @@ module.exports = {
   purchaseResumeAnalysis,
   purchaseFullReport,
   purchaseTeamAnalysis,
+  purchaseGaokaoReport,
   recharge,
   purchasePersonalDeepService,
   purchaseTeamDeepService,

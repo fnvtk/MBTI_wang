@@ -4,6 +4,7 @@ namespace app\controller\api;
 use app\BaseController;
 use app\common\PdpDiscResultText;
 use app\common\service\EnterpriseBillingService;
+use app\common\service\GaokaoService;
 use app\model\Enterprise as EnterpriseModel;
 use app\model\PricingConfig as PricingConfigModel;
 use app\model\Question as QuestionModel;
@@ -250,6 +251,28 @@ class Test extends BaseController
                         'data'      => null,
                     ], $paymentFields);
                     break;
+                case 'gaokao':
+                    $gOverview = '';
+                    if (is_array($data)) {
+                        $gOverview = (string) ($data['overview'] ?? '');
+                        if ($gOverview === '' && isset($data['report']['overview'])) {
+                            $gOverview = (string) $data['report']['overview'];
+                        }
+                    }
+                    $hasAnalysis = $gOverview !== ''
+                        || (is_array($data) && isset($data['report']) && is_array($data['report']) && ($data['report'] ?? []) !== []);
+                    $list[] = array_merge([
+                        'id'         => $id,
+                        'testType'   => 'gaokao',
+                        'type'       => 'gaokao',
+                        'key'        => 'gaokao_' . $id,
+                        'emoji'      => '🎓',
+                        'typeName'   => '高考志愿',
+                        'resultText' => $hasAnalysis ? '已生成' : '志愿报告',
+                        'testTime'   => $timeLabel,
+                        'data'       => null,
+                    ], $paymentFields);
+                    break;
                 default:
                     break;
             }
@@ -285,7 +308,7 @@ class Test extends BaseController
 
         $allowedAll = $this->wechatAllowedTestTypes($userId);
         // 「我的」卡片不含简历，但 totalCount 与列表需与 history 权限一致
-        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'sbti', 'pdp', 'disc', 'face', 'ai']));
+        $allowedForRecent = array_values(array_intersect($allowedAll, ['mbti', 'sbti', 'pdp', 'disc', 'face', 'ai', 'gaokao']));
         if ($allowedForRecent === []) {
             return success([
                 'records'    => new \stdClass(),
@@ -315,13 +338,13 @@ class Test extends BaseController
             // face 和 ai 视为同一种类型
             $effectiveType = in_array($type, ['face', 'ai']) ? 'ai' : $type;
             
-            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'sbti', 'disc', 'pdp', 'ai'])) {
+            if (!isset($foundTypes[$effectiveType]) && in_array($effectiveType, ['mbti', 'sbti', 'disc', 'pdp', 'ai', 'gaokao'])) {
                 $records[$effectiveType] = $this->_formatRecentRow($row);
                 $foundTypes[$effectiveType] = true;
             }
             
-            // 如果四个类型都找到了，且不需要总数（或者已经有了），可以提前结束
-            if (count($foundTypes) >= 4) {
+            // 如果主要类型都找到了，且不需要总数（或者已经有了），可以提前结束
+            if (count($foundTypes) >= 5) {
                 // 如果不需要精确的总数统计，这里可以 break
                 // 但为了保持接口兼容性，我们继续循环或者已经拿到了 count
             }
@@ -375,6 +398,9 @@ class Test extends BaseController
         }
         if ($boundEnterpriseId > 0) {
             $allowed[] = 'resume';
+        }
+        if (!in_array('gaokao', $allowed, true)) {
+            $allowed[] = 'gaokao';
         }
 
         return array_values(array_unique($allowed));
@@ -489,6 +515,17 @@ class Test extends BaseController
                 $emoji      = '👁️';
                 $typeName   = '面相分析';
                 break;
+            case 'gaokao':
+                $ov = (string) ($data['overview'] ?? '');
+                if ($ov === '' && isset($data['report']['overview'])) {
+                    $ov = (string) $data['report']['overview'];
+                }
+                $hasReport = $ov !== ''
+                    || (isset($data['report']) && is_array($data['report']) && ($data['report'] ?? []) !== []);
+                $resultText = $hasReport ? '已生成' : '志愿报告';
+                $emoji    = '🎓';
+                $typeName = '高考志愿';
+                break;
         }
 
         if (in_array($testType, ['face', 'ai'], true)) {
@@ -579,6 +616,24 @@ class Test extends BaseController
             return error('记录不存在', 404);
         }
 
+        if (($row['testType'] ?? '') === 'gaokao' && (int) ($row['isPaid'] ?? 0) === 0) {
+            $ps = trim((string) Request::param('pricingScope', 'personal'));
+            $eid = (int) Request::param('enterpriseId', 0);
+            GaokaoService::refreshGaokaoTestResultForPayment(
+                $userId,
+                $id,
+                $ps === 'enterprise' ? 'enterprise' : 'personal',
+                $eid > 0 ? $eid : null
+            );
+            $row = Db::name('test_results')
+                ->where('id', $id)
+                ->where('userId', $userId)
+                ->find();
+            if (!$row) {
+                return error('记录不存在', 404);
+            }
+        }
+
         $out = $this->buildTestDetailPayload($row);
 
         return success(array_merge($out, [
@@ -609,6 +664,9 @@ class Test extends BaseController
         $rowTestType = (string) ($row['testType'] ?? '');
         if ($rowTestType === 'resume') {
             return error('该类型不支持分享查看', 403);
+        }
+        if ($rowTestType === 'gaokao' && $st === '') {
+            return error('该类型不支持公开分享', 403);
         }
 
         if ($st !== '') {
@@ -980,6 +1038,19 @@ class Test extends BaseController
                 'locked'      => true,
                 'content'     => $preview,
                 '_structured' => false,
+            ];
+        }
+        if ($testType === 'gaokao') {
+            $ov = (string) ($data['overview'] ?? '');
+            if ($ov === '' && isset($data['report']['overview'])) {
+                $ov = (string) $data['report']['overview'];
+            }
+            $inputSnap = is_array($data['inputSnapshot'] ?? null) ? $data['inputSnapshot'] : [];
+
+            return [
+                'overview'       => $ov,
+                'inputSnapshot'  => $inputSnap,
+                'locked'         => true,
             ];
         }
 

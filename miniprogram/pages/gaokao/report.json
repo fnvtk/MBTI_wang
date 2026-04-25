@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "高考分析报告",
+  "usingComponents": {
+    "invite-code-dialog": "/components/invite-code-dialog/invite-code-dialog"
+  }
+}

@@ -579,6 +579,7 @@ const testTypeItems = [
   { key: 'sbti',   label: 'SBTI 测试' },
   { key: 'disc',   label: 'DISC 测试' },
   { key: 'pdp',    label: 'PDP 测试' },
+  { key: 'gaokao', label: '高考志愿报告' },
 ]
 type TestSetting = { enabled: boolean; commissionType: 'ratio' | 'amount'; commissionRate: number; commissionAmount: number; noPayment: boolean }
 const makeDefaultTs = (): TestSetting => ({ enabled: true, commissionType: 'ratio', commissionRate: 90, commissionAmount: 0, noPayment: false })
@@ -588,6 +589,7 @@ const testSettings = reactive<Record<string, TestSetting>>({
   sbti:   makeDefaultTs(),
   disc:   makeDefaultTs(),
   pdp:   makeDefaultTs(),
+  gaokao: makeDefaultTs(),
 })
 
 // 加载数据概览
@@ -1175,7 +1177,10 @@ onMounted(() => {
   .card-desc { font-size: 12px; color: #6b7280; margin: 0 0 20px; }
 
   .ts-grid {
-    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+    display: grid;
+    /* 一行最多 4 个测试佣金卡片 */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
     .ts-card {
       background: #f9fafb; border-radius: 8px; padding: 16px; display: flex; flex-direction: column; gap: 12px;
       .ts-head {
@@ -1270,5 +1275,10 @@ onMounted(() => {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .charts-grid { grid-template-columns: 1fr; }
   .settings-card .form-grid.three-cols { grid-template-columns: 1fr; }
+  .settings-card .ts-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .settings-card .ts-grid { grid-template-columns: 1fr; }
 }
 </style>

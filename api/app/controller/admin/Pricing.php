@@ -104,7 +104,7 @@ class Pricing extends BaseController
                 if (!is_array($personalConfig)) {
                     return error('个人版定价格式错误', 400);
                 }
-                foreach (['face', 'mbti', 'disc', 'pdp', 'sbti'] as $field) {
+                foreach (['face', 'mbti', 'disc', 'pdp', 'sbti', 'gaokao'] as $field) {
                     if (!array_key_exists($field, $personalConfig)) {
                         return error("个人版定价缺少字段：{$field}", 400);
                     }
@@ -131,7 +131,7 @@ class Pricing extends BaseController
                 if (!is_array($enterpriseConfig)) {
                     return error('企业版定价格式错误', 400);
                 }
-                foreach (['face', 'mbti', 'disc', 'pdp', 'sbti'] as $field) {
+                foreach (['face', 'mbti', 'disc', 'pdp', 'sbti', 'gaokao'] as $field) {
                     if (!array_key_exists($field, $enterpriseConfig)) {
                         return error("企业版定价缺少字段：{$field}", 400);
                     }

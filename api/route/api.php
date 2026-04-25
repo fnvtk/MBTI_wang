@@ -116,6 +116,13 @@ Route::group('api', function () {
     Route::get('ai/report/:id', 'api.AiReport/show')->pattern(['id' => '\d+']);
     Route::post('ai/report/:id/mark-paid-dev', 'api.AiReport/markPaidDev');
     Route::post('ai/report/:id/regenerate', 'api.AiReport/regenerate');
+    // 高考志愿（小程序登录后）
+    Route::get('gaokao/task-status', 'api.Gaokao/taskStatus');
+    Route::get('gaokao/form', 'api.Gaokao/myForm');
+    Route::post('gaokao/form', 'api.Gaokao/saveForm');
+    Route::post('gaokao/analyze', 'api.Gaokao/analyze');
+    Route::get('gaokao/report/my-latest', 'api.Gaokao/latestReport');
+    Route::get('gaokao/pricing', 'api.Gaokao/pricing');
 })->middleware(['cors', 'auth']);
 
 // ==================== 兼容 /api/v1 前缀（与上方 api 组同权、同中间件）====================
@@ -166,6 +173,8 @@ Route::group('api/v1/admin', function () {
     Route::get('test-records/:id', 'admin.AppUser/testRecord');
     Route::get('app-users/:id', 'admin.AppUser/detail');
     Route::get('app-users', 'admin.AppUser/index');
+    Route::get('gaokao-users/:id', 'admin.GaokaoUser/detail');
+    Route::get('gaokao-users', 'admin.GaokaoUser/index');
     // 订单列表（含用户与关联测试数据）
     Route::get('orders', 'admin.Order/index');
     // 用户管理（普通管理员和企业管理员，后台账号）
@@ -326,6 +335,8 @@ Route::group('api/v1/superadmin', function () {
     Route::get('test-records/:id', 'superadmin.AppUser/testRecord');
     Route::get('app-users/:id', 'superadmin.AppUser/detail');
     Route::get('app-users', 'superadmin.AppUser/index');
+    Route::get('gaokao-users/:id', 'superadmin.GaokaoUser/detail');
+    Route::get('gaokao-users', 'superadmin.GaokaoUser/index');
    
     // 数据概览（超管专用，子路径放前面避免被 overview 吞掉）
     Route::get('overview/recent-dynamics', 'superadmin.Overview/recentDynamics');

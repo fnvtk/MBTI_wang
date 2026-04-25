@@ -1,0 +1,90 @@
+<view class="page">
+  <view class="container">
+    <view class="header">
+      <view class="title">高考志愿任务中心</view>
+      <view class="desc">完成 MBTI、PDP、DISC、拍照面相与高考信息表单后，即可生成综合分析；若定价非 0，请在报告页解锁全文（与问卷类测评一致）。</view>
+    </view>
+
+    <view class="task-list">
+      <view class="task-card" data-code="mbti" data-status="{{tasks.mbti.status}}" data-result-id="{{tasks.mbti.testResultId}}" bindtap="goTask">
+      <view class="left">
+        <view class="task-title-row">
+          <text class="task-emoji">{{tasks.mbti.emoji}}</text>
+          <text class="name">{{tasks.mbti.typeName}}</text>
+        </view>
+        <view class="result result--value" wx:if="{{tasks.mbti.status==='done'}}">{{tasks.mbti.resultText || '已完成'}}</view>
+        <view class="result todo" wx:else>未完成，请去测试</view>
+        <view class="task-time" wx:if="{{tasks.mbti.status==='done' && tasks.mbti.testTime}}">{{tasks.mbti.testTime}}</view>
+      </view>
+      <view class="status {{tasks.mbti.status==='done'?'done':''}}">{{tasks.mbti.status==='done'?'查看结果':'去完成'}}</view>
+    </view>
+
+    <view class="task-card" data-code="pdp" data-status="{{tasks.pdp.status}}" data-result-id="{{tasks.pdp.testResultId}}" bindtap="goTask">
+      <view class="left">
+        <view class="task-title-row">
+          <text class="task-emoji">{{tasks.pdp.emoji}}</text>
+          <text class="name">{{tasks.pdp.typeName}}</text>
+        </view>
+        <view class="result result--value" wx:if="{{tasks.pdp.status==='done'}}">{{tasks.pdp.resultText || '已完成'}}</view>
+        <view class="result todo" wx:else>未完成，请去测试</view>
+        <view class="task-time" wx:if="{{tasks.pdp.status==='done' && tasks.pdp.testTime}}">{{tasks.pdp.testTime}}</view>
+      </view>
+      <view class="status {{tasks.pdp.status==='done'?'done':''}}">{{tasks.pdp.status==='done'?'查看结果':'去完成'}}</view>
+    </view>
+
+    <view class="task-card" data-code="disc" data-status="{{tasks.disc.status}}" data-result-id="{{tasks.disc.testResultId}}" bindtap="goTask">
+      <view class="left">
+        <view class="task-title-row">
+          <text class="task-emoji">{{tasks.disc.emoji}}</text>
+          <text class="name">{{tasks.disc.typeName}}</text>
+        </view>
+        <view class="result result--value" wx:if="{{tasks.disc.status==='done'}}">{{tasks.disc.resultText || '已完成'}}</view>
+        <view class="result todo" wx:else>未完成，请去测试</view>
+        <view class="task-time" wx:if="{{tasks.disc.status==='done' && tasks.disc.testTime}}">{{tasks.disc.testTime}}</view>
+      </view>
+      <view class="status {{tasks.disc.status==='done'?'done':''}}">{{tasks.disc.status==='done'?'查看结果':'去完成'}}</view>
+    </view>
+
+    <view class="task-card" data-code="face" data-status="{{tasks.face.status}}" data-result-id="{{tasks.face.testResultId}}" data-record-type="{{tasks.face.recordTestType}}" bindtap="goTask">
+      <view class="left">
+        <view class="task-title-row">
+          <text class="task-emoji">{{tasks.face.emoji}}</text>
+          <text class="name">{{tasks.face.typeName}}</text>
+        </view>
+        <view class="result result--value" wx:if="{{tasks.face.status==='done'}}">{{tasks.face.resultText || '已完成'}}</view>
+        <view class="result todo" wx:else>未完成，请去拍摄</view>
+        <view class="task-time" wx:if="{{tasks.face.status==='done' && tasks.face.testTime}}">{{tasks.face.testTime}}</view>
+      </view>
+      <view class="status {{tasks.face.status==='done'?'done':''}}">{{tasks.face.status==='done'?'查看结果':'去完成'}}</view>
+    </view>
+
+    <view class="task-card" data-code="form" data-status="{{tasks.form.status}}" data-result-id="{{tasks.form.testResultId}}" bindtap="goTask">
+      <view class="left">
+        <view class="task-title-row">
+          <text class="task-emoji">{{tasks.form.emoji}}</text>
+          <text class="name">{{tasks.form.typeName}}</text>
+        </view>
+        <view class="result result--value" wx:if="{{tasks.form.status==='done'}}">
+          <block wx:if="{{tasks.form.resultText}}">已填写：{{tasks.form.resultText}}</block>
+          <block wx:else>已完成</block>
+        </view>
+        <view class="result todo" wx:else>未完成，请先填写</view>
+        <view class="task-time" wx:if="{{tasks.form.status==='done' && tasks.form.testTime}}">{{tasks.form.testTime}}</view>
+      </view>
+      <view class="status {{tasks.form.status==='done'?'done':''}}">{{tasks.form.status==='done'?'查看结果':'去完成'}}</view>
+    </view>
+  </view>
+  </view>
+
+  <view class="bottom-actions">
+    <button
+      class="action-btn {{canAnalyze ? 'action-btn--primary' : 'action-btn--disabled'}}"
+      loading="{{analyzing}}"
+      bindtap="onAnalyzeTap"
+      disabled="{{analyzing}}"
+    >
+      {{canAnalyze ? '开始综合分析' : '综合分析（未完成）'}}
+    </button>
+  </view>
+</view>
+

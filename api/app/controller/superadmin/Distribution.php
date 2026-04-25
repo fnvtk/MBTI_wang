@@ -399,7 +399,7 @@ class Distribution extends BaseController
     private static function defaultTestSettings(): array
     {
         $item = ['enabled' => true, 'commissionType' => 'ratio', 'commissionRate' => 90, 'commissionAmountFen' => 0, 'noPayment' => false];
-        return ['face' => $item, 'mbti' => $item, 'sbti' => $item, 'disc' => $item, 'pdp' => $item];
+        return ['face' => $item, 'mbti' => $item, 'sbti' => $item, 'disc' => $item, 'pdp' => $item, 'gaokao' => $item];
     }
 
     private static function sanitizeTestSettings($raw): array

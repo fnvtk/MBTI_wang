@@ -46,6 +46,10 @@
                 <label>SBTI测试价格 (元/次)</label>
                 <el-input-number v-model="personal.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number v-model="personal.gaokao" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminPersonalConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
@@ -83,6 +87,10 @@
                 <label>SBTI测试价格 (元/次)</label>
                 <el-input-number v-model="enterprise.sbti" :min="0" :precision="2" :controls="false" class="w-full" />
               </div>
+              <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number v-model="enterprise.gaokao" :min="0" :precision="2" :controls="false" class="w-full" />
+              </div>
             </div>
             <div v-if="isUsingSuperAdminEnterpriseConfig" class="notice-box">
               <el-icon class="notice-icon"><InfoFilled /></el-icon>
@@ -115,8 +123,8 @@ const tabs = [
 ]
 const activeTab = ref('personal')
 
-const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
-const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0 })
+const personal = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0, gaokao: 0 })
+const enterprise = reactive({ face: 0, mbti: 0, disc: 0, pdp: 0, sbti: 0, gaokao: 0 })
 
 const loading = ref(false)
 const isUsingSuperAdminPersonalConfig = ref(false)
@@ -170,7 +178,8 @@ const saveEnterprise = async () => {
         mbti: enterprise.mbti,
         disc: enterprise.disc,
         pdp: enterprise.pdp,
-        sbti: enterprise.sbti
+        sbti: enterprise.sbti,
+        gaokao: enterprise.gaokao
       }
     })
     if (response.code === 200) {

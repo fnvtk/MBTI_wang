@@ -141,15 +141,40 @@ Page({
   },
 
   formatList(rawList) {
-    const typeNames = { mbti: 'MBTI性格测试', sbti: 'SBTI性格测试', disc: 'DISC性格测试', pdp: 'PDP行为偏好测试', ai: '面相分析', resume: '简历综合分析' }
-    const emojis    = { mbti: '🧠', sbti: '🎭', disc: '📊', pdp: '🦁', ai: '👁️', resume: '📋' }
+    const typeNames = {
+      mbti: 'MBTI性格测试',
+      sbti: 'SBTI性格测试',
+      disc: 'DISC性格测试',
+      pdp: 'PDP行为偏好测试',
+      ai: '面相分析',
+      resume: '简历综合分析',
+      gaokao: '高考志愿'
+    }
+    const emojis = { mbti: '🧠', sbti: '🎭', disc: '📊', pdp: '🦁', ai: '👁️', resume: '📋', gaokao: '🎓' }
 
     return rawList.map((item, idx) => {
+      const testType = String(item.testType || item.type || 'mbti').toLowerCase()
+      if (testType === 'gaokao') {
+        const rawBadge = String(item.resultText || '').trim()
+        const shortBadge =
+          rawBadge === '已生成' || rawBadge === '志愿报告' || rawBadge === '查看报告'
+            ? rawBadge
+            : '已生成'
+        return {
+          ...item,
+          type: 'gaokao',
+          testType: 'gaokao',
+          key: item.key || 'gaokao_' + (item.id || idx),
+          emoji: item.emoji || '🎓',
+          typeName: '高考志愿',
+          resultText: shortBadge,
+          enterpriseName: item.enterpriseName || ''
+        }
+      }
       if (item.typeName) {
         const t = String(item.testType || item.type || 'mbti').toLowerCase()
         return { ...item, type: t, enterpriseName: item.enterpriseName || '' }
       }
-      const testType = (item.testType || item.type || 'mbti').toLowerCase()
       const ts = item.createdAt || item.testTime || item.timestamp
       return {
         ...item,
@@ -219,11 +244,12 @@ Page({
       disc:   '/pages/result/disc',
       pdp:    '/pages/result/pdp',
       ai:     '/pages/index/result',
-      resume: '/pages/result/resume'
+      resume: '/pages/result/resume',
+      gaokao: '/pages/gaokao/report'
     }
     const base = routes[type]
     if (!base) return
-    if ((type === 'ai' || type === 'resume') && !id) return
+    if ((type === 'ai' || type === 'resume' || type === 'gaokao') && !id) return
     const query = id ? `?id=${id}&type=${type}` : ''
     wx.navigateTo({ url: query ? base + query : base })
   },

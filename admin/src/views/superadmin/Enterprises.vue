@@ -1088,10 +1088,12 @@ const permItems = [
   { key: 'sbti', label: 'SBTI' },
   { key: 'pdp', label: 'PDP' },
   { key: 'disc', label: 'DISC' },
+  { key: 'gaokao', label: '高考志愿' },
   { key: 'distribution', label: '分销' },
 ]
 
-const defaultPermissions = () => ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, distribution: true })
+const defaultPermissions = () =>
+  ({ face: true, mbti: true, sbti: true, pdp: true, disc: true, gaokao: true, distribution: true })
 
 /** 列表/展示：超管授权上限（兼容未返回 permissionsCeiling 的旧接口） */
 const permCeilingVal = (row: Record<string, any>, key: string) => {

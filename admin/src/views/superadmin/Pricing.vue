@@ -85,6 +85,16 @@
                   class="w-full"
                 />
               </div>
+              <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number
+                  v-model="personal.gaokao"
+                  :min="0"
+                  :precision="2"
+                  :controls="false"
+                  class="w-full"
+                />
+              </div>
             </div>
             <div class="save-actions">
               <el-button type="primary" class="save-btn" @click="savePersonal">
@@ -149,6 +159,16 @@
                 />
               </div>
               <div class="form-item">
+                <label>高考志愿报告 (元/次)</label>
+                <el-input-number
+                  v-model="enterprise.gaokao"
+                  :min="0"
+                  :precision="2"
+                  :controls="false"
+                  class="w-full"
+                />
+              </div>
+              <div class="form-item form-item--span-full">
                 <label>最低充值金额 (元)</label>
                 <el-input-number 
                   v-model="enterprise.minRecharge" 
@@ -468,7 +488,8 @@ const personal = reactive({
   mbti: 9.9,
   disc: 9.9,
   pdp: 9.9,
-  sbti: 9.9
+  sbti: 9.9,
+  gaokao: 0
 })
 
 const enterprise = reactive({
@@ -477,6 +498,7 @@ const enterprise = reactive({
   pdp: 8.0,
   disc: 8.0,
   sbti: 8.0,
+  gaokao: 0,
   minRecharge: 1000.0
 })
 
@@ -569,12 +591,12 @@ const loadPricing = async () => {
     if (response.code === 200 && response.data) {
       // 更新个人版配置
       if (response.data.personal) {
-        Object.assign(personal, response.data.personal)
+        Object.assign(personal, { gaokao: 0 }, response.data.personal)
       }
-      
+
       // 更新企业版配置
       if (response.data.enterprise) {
-        Object.assign(enterprise, response.data.enterprise)
+        Object.assign(enterprise, { gaokao: 0, minRecharge: enterprise.minRecharge }, response.data.enterprise)
       }
       
       // 更新深度服务配置（个人/企业类目）
@@ -624,7 +646,14 @@ const savePersonal = async () => {
   try {
     const response: any = await request.put('/superadmin/pricing', {
       type: 'personal',
-      config: personal
+      config: {
+        face: personal.face,
+        mbti: personal.mbti,
+        disc: personal.disc,
+        pdp: personal.pdp,
+        sbti: personal.sbti,
+        gaokao: personal.gaokao
+      }
     })
     
     if (response.code === 200) {
@@ -648,6 +677,7 @@ const saveEnterprise = async () => {
         pdp: enterprise.pdp,
         disc: enterprise.disc,
         sbti: enterprise.sbti,
+        gaokao: enterprise.gaokao,
         minRecharge: enterprise.minRecharge
       }
     })
@@ -864,6 +894,10 @@ onMounted(() => {
 
       @media (max-width: 768px) {
         grid-template-columns: 1fr;
+      }
+
+      .form-item--span-full {
+        grid-column: 1 / -1;
       }
     }
 

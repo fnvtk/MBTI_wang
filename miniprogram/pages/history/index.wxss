@@ -116,6 +116,8 @@
 .icon-pdp { background-color: #dbeafe; }
 .icon-disc { background-color: #dcfce7; }
 .icon-ai { background-color: #fce7f3; }
+.icon-resume { background-color: #f1f5f9; }
+.icon-gaokao { background: linear-gradient(135deg, #eef2ff, #e0e7ff); }
 
 .icon-emoji {
   font-size: 32rpx;
@@ -148,6 +150,9 @@
   padding: 4rpx 16rpx;
   border-radius: 20rpx;
   flex-shrink: 0;
+  max-width: 46%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .badge-mbti { background-color: #f3e8ff; }
@@ -165,10 +170,17 @@
 .badge-ai { background-color: #fce7f3; }
 .badge-ai .badge-text { color: #db2777; }
 
+.badge-gaokao { background-color: #eef2ff; }
+.badge-gaokao .badge-text { color: #4f46e5; }
+
 .badge-text {
   font-size: 22rpx;
   font-weight: 500;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
 }
 
 .test-time-row {
