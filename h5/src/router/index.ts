@@ -27,23 +27,18 @@ const router = createRouter({
 
     // 个人中心
     { path: '/profile', name: 'Profile', component: () => import('@/pages/profile/index.vue') },
-    { path: '/profile/edit', name: 'ProfileEdit', component: () => import('@/pages/profile/edit.vue') },
-
     // 购买 & AI 对话 & 分销
     { path: '/purchase', name: 'Purchase', component: () => import('@/pages/purchase/index.vue') },
     { path: '/ai-chat', name: 'AiChat', component: () => import('@/pages/ai-chat/index.vue') },
-    { path: '/distribution', name: 'Distribution', component: () => import('@/pages/distribution/index.vue') },
+    { path: '/promo', name: 'Promo', component: () => import('@/pages/promo/index.vue') },
 
     // 登录
     { path: '/login', name: 'Login', component: () => import('@/pages/login/index.vue') },
-
-    // 企业版
-    { path: '/enterprise', name: 'Enterprise', component: () => import('@/pages/enterprise/index.vue') },
   ]
 })
 
 // 需要登录的页面
-const authRequired = ['/profile', '/ai-chat', '/purchase', '/distribution', '/result', '/test']
+const authRequired = ['/profile', '/ai-chat', '/purchase', '/promo', '/result', '/test']
 
 router.beforeEach((to, _from, next) => {
   const token = localStorage.getItem('token')

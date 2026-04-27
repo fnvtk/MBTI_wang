@@ -12,8 +12,8 @@
       </div>
     </header>
 
-    <!-- KPI 统计卡 -->
-    <div class="dash-kpis">
+    <!-- KPI 统计卡（6个，自适应3列→6列） -->
+    <div class="dash-kpis dash-kpis--6">
       <div v-for="(card, i) in kpiCards" :key="card.key" class="stat-card" :style="{ animationDelay: `${i * 45}ms` }">
         <div class="stat-info">
           <div class="stat-label">{{ card.label }}</div>
@@ -208,13 +208,18 @@ import VChart from 'vue-echarts'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
-const stats = reactive({ totalUsers: 0, testsCompleted: 0, activeToday: 0 })
+const stats = reactive({
+  totalUsers: 0, testsCompleted: 0, activeToday: 0,
+  gaokaoUsers: 0, gaokaoCompleted: 0, newUsersWeek: 0
+})
 
-const testTrends = ref<Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; total: number }>>([])
+const testTrends = ref<Array<{ date: string; face: number; mbti: number; pdp: number; disc: number; sbti: number; gaokao: number; total: number }>>([])
 const testCatalog = ref<Array<{ key: string; label: string; records: number; uniqueUsers: number }>>([])
 const distributionMbti = ref<Array<{ label: string; count: number }>>([])
 const distributionDisc = ref<Array<{ label: string; count: number }>>([])
 const distributionPdp = ref<Array<{ label: string; count: number }>>([])
+const distributionSbti = ref<Array<{ label: string; count: number }>>([])
+const distributionGaokao = ref<Array<{ label: string; count: number }>>([])
 const faceSubtypeHints = ref<{ mbti: Array<{ label: string; count: number }>; disc: Array<{ label: string; count: number }>; pdp: Array<{ label: string; count: number }> }>({ mbti: [], disc: [], pdp: [] })
 
 const loading = ref(false)
@@ -247,14 +252,21 @@ const trendTotalsText = computed(() => {
 })
 
 const kpiCards = computed(() => [
-  { key: 'u', label: '总用户数', value: stats.totalUsers, icon: User, tone: 'blue' },
-  { key: 't', label: '已完成测试', value: stats.testsCompleted, icon: Document, tone: 'green' },
-  { key: 'a', label: '今日活跃', value: stats.activeToday, icon: TrendCharts, tone: 'purple' }
+  { key: 'u',  label: '总用户数',   value: stats.totalUsers,      icon: User,        tone: 'blue'   },
+  { key: 't',  label: '已完成测评', value: stats.testsCompleted,  icon: Document,    tone: 'green'  },
+  { key: 'a',  label: '今日活跃',   value: stats.activeToday,     icon: TrendCharts, tone: 'purple' },
+  { key: 'w',  label: '本周新增',   value: stats.newUsersWeek,    icon: Medal,       tone: 'amber'  },
+  { key: 'gk', label: '高考版用户', value: stats.gaokaoUsers,     icon: Reading,     tone: 'teal'   },
+  { key: 'gc', label: '高考版完成', value: stats.gaokaoCompleted, icon: Camera,      tone: 'indigo' },
 ])
 
 const catalogIconMap: Record<string, { icon: typeof Camera; tone: string }> = {
-  face: { icon: Camera, tone: 'teal' }, mbti: { icon: Reading, tone: 'blue' },
-  disc: { icon: Histogram, tone: 'indigo' }, pdp: { icon: Medal, tone: 'amber' }
+  face:   { icon: Camera,    tone: 'teal'   },
+  mbti:   { icon: Reading,   tone: 'blue'   },
+  disc:   { icon: Histogram, tone: 'indigo' },
+  pdp:    { icon: Medal,     tone: 'amber'  },
+  sbti:   { icon: TrendCharts, tone: 'purple' },
+  gaokao: { icon: Document,  tone: 'rose'   },
 }
 
 const catalogRows = computed(() =>
@@ -279,11 +291,15 @@ const distributionBlocks = computed(() => {
     for (const it of arr || []) { if (k >= max) break; faceMerged.push({ label: `${prefix}${it.label}`, count: it.count }); k++ }
   }
   pushPref('面·MBTI ', fh.mbti, 3); pushPref('面·DISC ', fh.disc, 3); pushPref('面·PDP ', fh.pdp, 3)
+  const sbti = sliceItems(distributionSbti.value, 8)
+  const gaokao = sliceItems(distributionGaokao.value, 8)
   const blocks = [
-    { key: 'mbti', title: 'MBTI（答题）', items: mbti, icon: Reading },
-    { key: 'disc', title: 'DISC（答题）', items: disc, icon: Histogram },
-    { key: 'pdp', title: 'PDP（答题）', items: pdp, icon: Medal },
-    { key: 'face', title: '面相推测', items: faceMerged, icon: Camera }
+    { key: 'mbti',   title: 'MBTI（答题）', items: mbti,   icon: Reading     },
+    { key: 'disc',   title: 'DISC（答题）', items: disc,   icon: Histogram   },
+    { key: 'pdp',    title: 'PDP（答题）',  items: pdp,    icon: Medal       },
+    { key: 'sbti',   title: 'SBTI（商业）', items: sbti,   icon: TrendCharts },
+    { key: 'face',   title: '面相推测',     items: faceMerged, icon: Camera  },
+    { key: 'gaokao', title: '高考志愿',     items: gaokao, icon: Document    },
   ]
   return blocks.map(b => ({ ...b, max: Math.max(1, ...b.items.map(i => i.count)) }))
 })
@@ -308,7 +324,7 @@ const mbtiMatchDb: Record<string, { name: string; bestMatch: string[]; strengths
   ESTJ: { name: '总经理', bestMatch: ['ISFP', 'ISTP'], strengths: ['管理能力', '规则执行', '高效决策'], teamRole: '执行管理者', tone: 'amber' },
   ESFJ: { name: '执政官', bestMatch: ['ISFP', 'ISTP'], strengths: ['协调能力', '关怀他人', '团队凝聚'], teamRole: '团队协调者', tone: 'cyan' },
   ISTP: { name: '鉴赏家', bestMatch: ['ESTJ', 'ESFJ'], strengths: ['实践能力', '冷静分析', '技术专注'], teamRole: '技术执行者', tone: 'gray' },
-  ISFP: { name: '探险家', bestMatch: ['ESTJ', 'ESFJ'], strengths: ['灵活适应', '美感设计', '实际行动'], teamRole: '创意实践者', tone: 'violet' },
+  ISFP: { name: '探险家', bestMatch: ['ESTJ', 'ESFJ'], strengths: ['灵活适应', '美感设计', '实际行���'], teamRole: '创意实践者', tone: 'violet' },
   ESTP: { name: '企业家', bestMatch: ['ISFJ', 'ISTJ'], strengths: ['行动力', '危机处理', '谈判能力'], teamRole: '危机应对者', tone: 'rose' },
   ESFP: { name: '表演者', bestMatch: ['ISFJ', 'ISTJ'], strengths: ['感染力', '协作精神', '现场发挥'], teamRole: '氛围激活者', tone: 'yellow' },
 }
@@ -384,14 +400,19 @@ const loadData = async () => {
   try {
     const response: any = await request.get('/admin/dashboard')
     if (response.code === 200 && response.data) {
-      stats.totalUsers = response.data.totalUsers || 0
-      stats.testsCompleted = response.data.testsCompleted || 0
-      stats.activeToday = response.data.activeToday || 0
+      stats.totalUsers      = response.data.totalUsers      || 0
+      stats.testsCompleted  = response.data.testsCompleted  || 0
+      stats.activeToday     = response.data.activeToday     || 0
+      stats.newUsersWeek    = response.data.newUsersWeek    || 0
+      stats.gaokaoUsers     = response.data.gaokaoUsers     || 0
+      stats.gaokaoCompleted = response.data.gaokaoCompleted || 0
       testTrends.value = response.data.testTrends || []
       testCatalog.value = Array.isArray(response.data.testCatalog) ? response.data.testCatalog : []
-      distributionMbti.value = Array.isArray(response.data.distributionMbti) ? response.data.distributionMbti : []
-      distributionDisc.value = Array.isArray(response.data.distributionDisc) ? response.data.distributionDisc : []
-      distributionPdp.value = Array.isArray(response.data.distributionPdp) ? response.data.distributionPdp : []
+      distributionMbti.value   = Array.isArray(response.data.distributionMbti)   ? response.data.distributionMbti   : []
+      distributionDisc.value   = Array.isArray(response.data.distributionDisc)   ? response.data.distributionDisc   : []
+      distributionPdp.value    = Array.isArray(response.data.distributionPdp)    ? response.data.distributionPdp    : []
+      distributionSbti.value   = Array.isArray(response.data.distributionSbti)   ? response.data.distributionSbti   : []
+      distributionGaokao.value = Array.isArray(response.data.distributionGaokao) ? response.data.distributionGaokao : []
       const fh = response.data.faceSubtypeHints
       faceSubtypeHints.value = fh && typeof fh === 'object'
         ? { mbti: Array.isArray(fh.mbti) ? fh.mbti : [], disc: Array.isArray(fh.disc) ? fh.disc : [], pdp: Array.isArray(fh.pdp) ? fh.pdp : [] }
@@ -469,6 +490,7 @@ const loadInviteQrcode = async () => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
+  &.dash-kpis--6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
 .stat-card {
   background: #fff;
@@ -488,9 +510,13 @@ const loadInviteQrcode = async () => {
   .stat-icon {
     width: 44px; height: 44px; border-radius: 12px;
     display: flex; align-items: center; justify-content: center; font-size: 22px;
-    &.blue { background: #EEF2FF; color: #4F46E5; }
-    &.green { background: #ECFDF5; color: #10B981; }
+    &.blue   { background: #EEF2FF; color: #4F46E5; }
+    &.green  { background: #ECFDF5; color: #10B981; }
     &.purple { background: #F5F3FF; color: #7C3AED; }
+    &.amber  { background: #FFFBEB; color: #D97706; }
+    &.teal   { background: #F0FDFA; color: #0D9488; }
+    &.indigo { background: #EEF2FF; color: #4338CA; }
+    &.rose   { background: #FFF1F2; color: #E11D48; }
   }
 }
 
@@ -515,10 +541,12 @@ const loadInviteQrcode = async () => {
 .catalog-icon {
   width: 38px; height: 38px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
-  &.teal { background: #ECFDF5; color: #10B981; }
-  &.blue { background: #EEF2FF; color: #4F46E5; }
+  &.teal   { background: #ECFDF5; color: #10B981; }
+  &.blue   { background: #EEF2FF; color: #4F46E5; }
   &.indigo { background: #E0F2FE; color: #0EA5E9; }
-  &.amber { background: #FFFBEB; color: #F59E0B; }
+  &.amber  { background: #FFFBEB; color: #F59E0B; }
+  &.purple { background: #F5F3FF; color: #7C3AED; }
+  &.rose   { background: #FFF1F2; color: #E11D48; }
 }
 .catalog-label { font-size: 12.5px; font-weight: 600; color: #111827; margin-bottom: 3px; }
 .catalog-metrics { font-size: 11px; color: #6B7280; em { font-style: normal; font-weight: 700; color: #374151; } .sep { margin: 0 4px; color: #D1D5DB; } }
@@ -571,10 +599,12 @@ const loadInviteQrcode = async () => {
 }
 .distr-head-dot {
   width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0;
-  &.dot-mbti { background: #4F46E5; }
-  &.dot-disc { background: #0EA5E9; }
-  &.dot-pdp { background: #F59E0B; }
-  &.dot-face { background: #10B981; }
+  &.dot-mbti   { background: #4F46E5; }
+  &.dot-disc   { background: #0EA5E9; }
+  &.dot-pdp    { background: #F59E0B; }
+  &.dot-sbti   { background: #7C3AED; }
+  &.dot-face   { background: #10B981; }
+  &.dot-gaokao { background: #E11D48; }
 }
 .distr-col-title { font-size: 11.5px; font-weight: 700; color: #374151; }
 .distr-list { display: flex; flex-direction: column; gap: 6px; }
@@ -588,10 +618,12 @@ const loadInviteQrcode = async () => {
 .distr-bar-track { height: 6px; background: #E5E7EB; border-radius: 3px; overflow: hidden; }
 .distr-bar-fill {
   height: 100%; border-radius: 3px; transition: width 0.4s ease;
-  &.bar-mbti { background: linear-gradient(90deg, #4F46E5, #818CF8); }
-  &.bar-disc { background: linear-gradient(90deg, #0EA5E9, #38BDF8); }
-  &.bar-pdp { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
-  &.bar-face { background: linear-gradient(90deg, #10B981, #34D399); }
+  &.bar-mbti   { background: linear-gradient(90deg, #4F46E5, #818CF8); }
+  &.bar-disc   { background: linear-gradient(90deg, #0EA5E9, #38BDF8); }
+  &.bar-pdp    { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
+  &.bar-sbti   { background: linear-gradient(90deg, #7C3AED, #A78BFA); }
+  &.bar-face   { background: linear-gradient(90deg, #10B981, #34D399); }
+  &.bar-gaokao { background: linear-gradient(90deg, #E11D48, #FB7185); }
 }
 .distr-pct { font-size: 10px; color: #9CA3AF; text-align: right; font-variant-numeric: tabular-nums; }
 .distr-num { font-size: 11px; font-weight: 700; color: #374151; text-align: right; font-variant-numeric: tabular-nums; }
@@ -699,9 +731,13 @@ const loadInviteQrcode = async () => {
   .distr-band { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .team-match-cards { grid-template-columns: 1fr; }
 }
+@media (max-width: 1400px) {
+  .dash-kpis--6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 640px) {
   .dashboard-viewport { padding: 14px 14px 20px; }
   .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+  .dash-kpis--6 { grid-template-columns: repeat(2, 1fr); }
   .dash-catalog { grid-template-columns: repeat(2, 1fr); }
   .distr-band { grid-template-columns: 1fr; }
   .stat-card .stat-value { font-size: 22px; }

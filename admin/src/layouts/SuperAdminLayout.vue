@@ -86,6 +86,11 @@
                   <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
                   <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
                 </svg>
+                <!-- 高考版管理 -->
+                <svg v-else-if="item.key === 'gaokao'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M6 12v5c3 3 9 3 12 0v-5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
                 <!-- 智能算力 -->
                 <svg v-else-if="item.key === 'ai'" width="16" height="16" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2a4 4 0 014 4v1h1a3 3 0 013 3v2a3 3 0 01-3 3h-1v1a4 4 0 01-4 4 4 4 0 01-4-4v-1H7a3 3 0 01-3-3v-2a3 3 0 013-3h1V6a4 4 0 014-4z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
@@ -182,6 +187,7 @@ const navMainItems: NavItem[] = [
   { path: '/superadmin/enterprises',   key: 'enterprises',   label: '企业管理' },
   { path: '/superadmin/commerce',      key: 'commerce',      label: '订单和财务' },
   { path: '/superadmin/distribution',  key: 'distribution',  label: '分销管理' },
+  { path: '/superadmin/gaokao',        key: 'gaokao',        label: '高考版管理' },
   { path: '/superadmin/ai-config',     key: 'ai',            label: '智能算力' }
 ]
 

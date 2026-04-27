@@ -171,6 +171,12 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'gaokao',
+        name: 'SuperAdminGaokao',
+        component: () => import('@/views/superadmin/GaokaoHub.vue'),
+        meta: { title: '高考版管理' }
+      },
+      {
         path: 'settings',
         name: 'SuperAdminSettings',
         component: () => import('@/views/superadmin/Settings.vue'),
