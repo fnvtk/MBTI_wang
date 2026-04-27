@@ -199,6 +199,14 @@ const routes: RouteRecordRaw[] = [
     ]
   },
 
+  // 小程序界面预览（无需鉴权）
+  {
+    path: '/miniprogram-preview',
+    name: 'MiniProgramPreview',
+    component: () => import('@/views/MiniProgramPreview.vue'),
+    meta: { title: '小程序界面预览' }
+  },
+
   // 默认重定向
   {
     path: '/',
@@ -221,6 +229,12 @@ router.beforeEach((to, _from, next) => {
   const adminRole = getAdminRole()
   const saToken = getSuperadminToken()
   const saRole = getSuperadminRole()
+
+  // 小程序预览页无需鉴权
+  if (to.path === '/miniprogram-preview') {
+    next()
+    return
+  }
 
   if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
     if (!adminToken || !adminRole || !['admin', 'enterprise_admin'].includes(adminRole)) {
