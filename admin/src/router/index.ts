@@ -33,13 +33,13 @@ const routes: RouteRecordRaw[] = [
         path: 'users',
         name: 'AdminUsers',
         component: () => import('@/views/admin/UsersHub.vue'),
-        meta: { title: '用户运营' }
+        meta: { title: '用户管理' }
       },
       {
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('@/views/admin/OrdersHub.vue'),
-        meta: { title: '订单运营' }
+        meta: { title: '订单管理' }
       },
       {
         path: 'distribution',
@@ -48,10 +48,10 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '分销推广' }
       },
       {
+        // 合作意向已合并到用户运营 Tab，旧路径自动重定向
         path: 'cooperation-choices',
         name: 'AdminCooperationChoices',
-        component: () => import('@/views/admin/CooperationChoices.vue'),
-        meta: { title: '合作意向' }
+        redirect: { path: '/admin/users', query: { tab: 'cooperation' } }
       },
       {
         path: 'questions',
@@ -171,6 +171,12 @@ const routes: RouteRecordRaw[] = [
         }
       },
       {
+        path: 'gaokao',
+        name: 'SuperAdminGaokao',
+        component: () => import('@/views/superadmin/GaokaoHub.vue'),
+        meta: { title: '高考版管理' }
+      },
+      {
         path: 'settings',
         name: 'SuperAdminSettings',
         component: () => import('@/views/superadmin/Settings.vue'),
@@ -199,10 +205,18 @@ const routes: RouteRecordRaw[] = [
     ]
   },
 
-  // 默认重定向
+  // 小程序界面预览（无需鉴权）
+  {
+    path: '/miniprogram-preview',
+    name: 'MiniProgramPreview',
+    component: () => import('@/views/MiniProgramPreview.vue'),
+    meta: { title: '小程序界面预览' }
+  },
+
+  // 默认重定向到小程序预览（v0 预览窗口入口）
   {
     path: '/',
-    redirect: '/admin/login'
+    redirect: '/miniprogram-preview'
   }
 ]
 
@@ -221,6 +235,12 @@ router.beforeEach((to, _from, next) => {
   const adminRole = getAdminRole()
   const saToken = getSuperadminToken()
   const saRole = getSuperadminRole()
+
+  // 小程序预览页无需鉴权
+  if (to.path === '/miniprogram-preview') {
+    next()
+    return
+  }
 
   if (to.path.startsWith('/admin') && to.path !== '/admin/login') {
     if (!adminToken || !adminRole || !['admin', 'enterprise_admin'].includes(adminRole)) {

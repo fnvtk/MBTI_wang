@@ -2,8 +2,8 @@
   <div class="page-container">
     <div class="page-header">
       <div class="header-left">
-        <h2>用户测试画像</h2>
-        <p class="subtitle">以用户为核心 · 面容分析、MBTI / SBTI / DISC / PDP 分类展示，点标签进对应测评记录</p>
+        <h2>用户档案管理</h2>
+        <p class="subtitle">以用户为核心 · 联系方式、简历档案、侧脸分析、合作意向一览，点击用户查看完整旅程</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" size="small" @click="exportData">
@@ -14,60 +14,72 @@
 
     <div class="profile-summary profile-summary--six">
       <div class="summary-card">
-        <div class="summary-ic ic-blue">👥</div>
+        <div class="summary-ic ic-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">用户数量</div>
-          <div class="summary-value">{{ pageUserCount }}</div>
-          <div class="summary-foot">符合条件的用户共 <strong>{{ total }}</strong> 人</div>
+          <div class="summary-label">全部用户</div>
+          <div class="summary-value">{{ total.toLocaleString() }}</div>
+          <div class="summary-foot">本页显示 <strong>{{ pageUserCount }}</strong> 人</div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-teal">🪞</div>
+        <div class="summary-ic ic-teal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="5" stroke="currentColor" stroke-width="1.75"/><path d="M3 21s1-4 9-4 9 4 9 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">已面容 / 面相</div>
+          <div class="summary-label">有侧脸档案</div>
           <div class="summary-value">
             {{ profileStats.faceCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-indigo">🧠</div>
+        <div class="summary-ic ic-indigo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.75"/><path d="M8 12h8M8 8h8M8 16h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">已完成 MBTI</div>
+          <div class="summary-label">有简历</div>
           <div class="summary-value">
-            {{ profileStats.mbtiCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            {{ profileStats.resumeCount }}
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-violet">🃏</div>
-        <div class="summary-body">
-          <div class="summary-label">已完成 SBTI</div>
-          <div class="summary-value">
-            {{ profileStats.sbtiCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
-          </div>
+        <div class="summary-ic ic-violet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
         </div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-ic ic-amber">📊</div>
         <div class="summary-body">
-          <div class="summary-label">至少一项测试</div>
+          <div class="summary-label">完成测评</div>
           <div class="summary-value">
             {{ profileStats.anyTestCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-coop">🤝</div>
+        <div class="summary-ic ic-amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.13 1.18 2 2 0 012.11 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="summary-body">
+          <div class="summary-label">有联系方式</div>
+          <div class="summary-value">
+            {{ profileStats.phoneCount }}
+            <span class="summary-sub">/ {{ total }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-coop">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M12 7a4 4 0 110-8M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
           <div class="summary-label">已选合作意向</div>
           <div class="summary-value">
             {{ profileStats.cooperationCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
@@ -77,7 +89,7 @@
     <div class="search-section admin-filter-bar">
         <el-input
           v-model="searchTerm"
-        placeholder="搜索昵称、手机号、地区、MBTI..."
+          placeholder="搜索昵称、手机号、地区、MBTI..."
           clearable
           class="search-input"
           @clear="loadUsers"
@@ -92,108 +104,169 @@
           multiple
           collapse-tags
           collapse-tags-tooltip
-          placeholder="冷脸分析"
+          placeholder="侧脸筛选"
           class="coldface-select"
-          @change="() => { currentPage = 1; loadUsers() }"
+          @change="() => { currentPage.value = 1; loadUsers() }"
         >
           <el-option label="暖" value="warm" />
           <el-option label="中" value="neutral" />
           <el-option label="冷" value="cold" />
+        </el-select>
+        <!-- 列显示选择 -->
+        <el-select
+          v-model="visibleCols"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="显示列"
+          class="col-select"
+          style="width: 130px"
+        >
+          <el-option
+            v-for="opt in colOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
         <el-button type="primary" @click="loadUsers">搜索</el-button>
       </div>
 
     <!-- 用户列表表格 -->
     <div class="table-card">
-      <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table">
-        <el-table-column label="用户" min-width="220">
+      <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table" row-key="id" @row-click="(row: any) => handleView(row)">
+        <!-- 用户基本信息 -->
+        <el-table-column label="用户" min-width="180">
           <template #default="{ row }">
             <div class="user-cell">
-              <div class="user-avatar">
-                <img
-                  v-if="displayAvatarUrl(row.avatar)"
-                  :src="displayAvatarUrl(row.avatar)"
-                  referrerpolicy="no-referrer"
-                  alt=""
-                />
-                <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
-                  {{ avatarLetter(row) }}
-                </span>
+              <div class="user-avatar-wrap">
+                <div class="user-avatar">
+                  <img v-if="displayAvatarUrl(row.avatar)" :src="displayAvatarUrl(row.avatar)" referrerpolicy="no-referrer" alt="" />
+                  <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
+                    {{ avatarLetter(row) }}
+                  </span>
+                </div>
+                <!-- 分销商标识 -->
+                <span v-if="row.isDistributor" class="distributor-dot" title="分销商"></span>
               </div>
               <div class="user-meta">
-                <div class="user-name">{{ row.username || '未设置昵称' }}</div>
-                <div class="user-sub">
-                  <span
-                    v-if="row.coldFaceLevel"
-                    :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]"
-                    :title="coldFaceTooltip(row)"
-                  >{{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template></span>
-                  <span v-else class="empty-hint">未测面相</span>
+                <div class="user-name-row">
+                  <span class="user-name">{{ row.username || '未设置昵称' }}</span>
+                  <span v-if="row.isDistributor" class="dist-badge">分销</span>
                 </div>
+                <div class="user-id">ID {{ row.id }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="联系方式" min-width="160">
+        <!-- 联系方式（可选列） -->
+        <el-table-column v-if="hasCol('contact')" label="联系方式" min-width="130">
           <template #default="{ row }">
             <div class="contact-cell">
               <div class="phone">{{ row.phone || '—' }}</div>
-              <div class="openid-line" :title="row.openid || ''">{{ row.openid ? (String(row.openid).length > 16 ? String(row.openid).slice(0,16) + '…' : row.openid) : '—' }}</div>
+              <div v-if="row.openid" class="openid-line" :title="row.openid">
+                {{ String(row.openid).length > 16 ? String(row.openid).slice(0, 16) + '…' : row.openid }}
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="测评标签" min-width="220">
+        <!-- 简历（可选列） -->
+        <el-table-column v-if="hasCol('resume')" label="简历" width="60" align="center">
           <template #default="{ row }">
-            <div class="test-results">
-              <el-tag v-if="row.mbtiType" size="small" class="result-tag tag-mbti" @click.stop="handleClickTestTag(row, 'mbti')">MBTI · {{ row.mbtiType }}</el-tag>
-              <el-tag v-if="row.sbtiType" size="small" class="result-tag tag-sbti" @click.stop="handleClickTestTag(row, 'sbti')">SBTI · {{ row.sbtiType }}</el-tag>
-              <el-tag v-if="row.discType" size="small" class="result-tag tag-disc" type="info" @click.stop="handleClickTestTag(row, 'disc')">DISC · {{ row.discType }}</el-tag>
-              <el-tag v-if="row.pdpType" size="small" class="result-tag tag-pdp" type="warning" @click.stop="handleClickTestTag(row, 'pdp')">PDP · {{ row.pdpType }}</el-tag>
-              <el-tag v-if="row.faceMbtiType" size="small" class="result-tag tag-face" type="success" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceMbtiType }}</el-tag>
-              <el-tag v-if="row.faceDiscType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceDiscType }}</el-tag>
-              <el-tag v-if="row.facePdpType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.facePdpType }}</el-tag>
-              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
-            </div>
+            <span v-if="row.hasResume || (row.phone && row.testCount > 0)" class="col-dot col-dot--yes" title="有简历">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="合作意向" min-width="150" show-overflow-tooltip>
+        <!-- 侧脸（可选列） -->
+        <el-table-column v-if="hasCol('face')" label="侧脸" width="90" align="center">
           <template #default="{ row }">
-            <div v-if="row.cooperationModeTitle || row.cooperationModeCode" class="coop-cell">
-              <span class="coop-title">{{ row.cooperationModeTitle || row.cooperationModeCode || '—' }}</span>
-              <span
-                v-if="row.cooperationModeCode && row.cooperationModeTitle && row.cooperationModeCode !== row.cooperationModeTitle"
-                class="coop-code"
-              >{{ row.cooperationModeCode }}</span>
-              <div v-if="row.cooperationChosenAt" class="coop-time">{{ formatDate(row.cooperationChosenAt) }}</div>
-            </div>
-            <span v-else class="coop-empty">—</span>
+            <span v-if="row.coldFaceLevel" :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]" :title="coldFaceTooltip(row)">
+              {{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template>
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="测评次数 · 最近活跃" width="180">
+        <!-- 测评汇总（可选列） -->
+        <el-table-column v-if="hasCol('test')" label="测评" min-width="160">
           <template #default="{ row }">
-            <div class="activity-cell">
-              <div class="activity-row">测评 <strong>{{ row.testCount || 0 }}</strong> 次</div>
-              <div class="activity-row sub">{{ row.lastTestAt ? formatDate(row.lastTestAt) : '—' }}</div>
+            <div class="test-chips">
+              <span v-if="row.mbtiType"   class="chip chip--mbti">{{ row.mbtiType }}</span>
+              <span v-if="row.sbtiType"   class="chip chip--sbti">{{ row.sbtiType }}</span>
+              <span v-if="row.discType"   class="chip chip--disc">{{ row.discType }}</span>
+              <span v-if="row.pdpType"    class="chip chip--pdp">{{ row.pdpType }}</span>
+              <span v-if="row.gaokaoType" class="chip chip--gaokao">{{ row.gaokaoType }}</span>
+              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.gaokaoType" class="col-dot col-dot--no">—</span>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="注册时间" width="130">
+        <!-- MBTI 独立列（可选） -->
+        <el-table-column v-if="hasCol('mbti') && !hasCol('test')" label="MBTI" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.mbtiType" class="chip chip--mbti">{{ row.mbtiType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- DISC 独立列（可选） -->
+        <el-table-column v-if="hasCol('disc') && !hasCol('test')" label="DISC" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.discType" class="chip chip--disc">{{ row.discType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- PDP 独立列（可选） -->
+        <el-table-column v-if="hasCol('pdp') && !hasCol('test')" label="PDP" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.pdpType" class="chip chip--pdp">{{ row.pdpType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- SBTI 独立列（可选） -->
+        <el-table-column v-if="hasCol('sbti') && !hasCol('test')" label="SBTI" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.sbtiType" class="chip chip--sbti">{{ row.sbtiType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 高考志愿独立列（可选） -->
+        <el-table-column v-if="hasCol('gaokao')" label="高考志愿" width="120" align="center">
+          <template #default="{ row }">
+            <span v-if="row.gaokaoType || row.gaokaoMajor" class="chip chip--gaokao">
+              {{ row.gaokaoType || row.gaokaoMajor }}
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 分销商标注（可选列） -->
+        <el-table-column v-if="hasCol('distributor')" label="分销" width="65" align="center">
+          <template #default="{ row }">
+            <span v-if="row.isDistributor" class="dist-badge">分销</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 注册时间（可选列） -->
+        <el-table-column v-if="hasCol('regtime')" label="注册时间" width="110">
           <template #default="{ row }">
             <span class="time-cell">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="90" fixed="right">
+        <!-- 操作 -->
+        <el-table-column label="操作" width="70" fixed="right">
           <template #default="{ row }">
-            <el-button link @click="handleView(row)">
-              <el-icon><View /></el-icon>
-              <span>查看</span>
-            </el-button>
+            <el-button link type="primary" @click.stop="handleView(row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -218,6 +291,7 @@
       :user="detailUser"
       :loading="detailLoading"
       :show-enterprise-match="false"
+      :is-super-admin="authStore.superAdminLoggedIn"
       @view-test="handleViewTest"
     />
 
@@ -733,6 +807,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Download, Search, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
@@ -741,6 +816,10 @@ import { parseTestResultPayload } from '@/utils/testResultParse'
 import { discTopTwoLabel, discStyleSubtitle, discStyleName } from '@/utils/discDisplay'
 import { formatSbtiSummary, getSbtiCode, getSbtiCn, sbtiTypeImageUrl } from '@/utils/sbtiDisplay'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const route = useRoute()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -750,6 +829,24 @@ const currentPage = ref(1)
 const pageSize = 10
 const searchTerm = ref('')
 const coldFaceFilter = ref<string[]>([])
+
+// 可选显示列
+type ColKey = 'contact' | 'resume' | 'face' | 'test' | 'mbti' | 'disc' | 'pdp' | 'sbti' | 'gaokao' | 'distributor' | 'regtime'
+const visibleCols = ref<ColKey[]>(['contact', 'resume', 'face', 'test', 'regtime'])
+const colOptions: { label: string; value: ColKey }[] = [
+  { label: '联系方式', value: 'contact' },
+  { label: '简历', value: 'resume' },
+  { label: '侧脸', value: 'face' },
+  { label: '测评汇总', value: 'test' },
+  { label: 'MBTI', value: 'mbti' },
+  { label: 'DISC', value: 'disc' },
+  { label: 'PDP', value: 'pdp' },
+  { label: 'SBTI', value: 'sbti' },
+  { label: '高考志愿', value: 'gaokao' },
+  { label: '分销商', value: 'distributor' },
+  { label: '注册时间', value: 'regtime' },
+]
+function hasCol(key: ColKey) { return visibleCols.value.includes(key) }
 const showDetailDialog = ref(false)
 const detailUser = ref<Record<string, any> | null>(null)
 
@@ -768,43 +865,54 @@ const users = ref<any[]>([])
 
 const pageUserCount = computed(() => (users.value || []).length)
 
-/** 页内画像汇总（严格只遍历当前表格 users，与分页接口返回的本页 list 一致） */
-const profileStats = computed(() => {
-  const list = users.value || []
-  let faceCount = 0
-  let mbtiCount = 0
-  let sbtiCount = 0
-  let anyTestCount = 0
-  let cooperationCount = 0
-  for (const u of list) {
-    const hasFace = !!(
-      u.faceMbtiType ||
-      u.faceDiscType ||
-      u.facePdpType ||
-      u.faceType ||
-      u.coldFaceLevel
-    )
-    const hasMbti = !!u.mbtiType
-    const hasSbti = !!u.sbtiType
-    const hasDisc = !!u.discType
-    const hasPdp = !!u.pdpType
-    if (hasFace) faceCount++
-    if (hasMbti) mbtiCount++
-    if (hasSbti) sbtiCount++
-    if (hasFace || hasMbti || hasSbti || hasDisc || hasPdp) anyTestCount++
-    if (u.cooperationModeCode || u.cooperationModeTitle || u.cooperationChosenAt) cooperationCount++
-  }
-  return { faceCount, mbtiCount, sbtiCount, anyTestCount, cooperationCount }
+// 用户画像真实统计（从接口获取全量数据）
+const profileStatsReal = ref({
+  faceCount: 0,
+  resumeCount: 0,
+  phoneCount: 0,
+  anyTestCount: 0,
+  cooperationCount: 0,
 })
+
+async function loadProfileStats() {
+  try {
+    const res: any = await request.get('/admin/app-users/stats')
+    const d = res?.data ?? res ?? {}
+    profileStatsReal.value = {
+      faceCount:        d.faceCount        ?? d.withFace        ?? 0,
+      resumeCount:      d.resumeCount      ?? d.withResume      ?? 0,
+      phoneCount:       d.phoneCount       ?? d.withPhone       ?? 0,
+      anyTestCount:     d.anyTestCount     ?? d.withTest        ?? d.testsCompleted ?? 0,
+      cooperationCount: d.cooperationCount ?? d.withCooperation ?? 0,
+    }
+  } catch {
+    // 接口不可用时静默降级，保留 0
+  }
+}
+
+const profileStats = computed(() => profileStatsReal.value)
+
+// 分销商 userId 集合（用于标注）
+const distributorIds = ref<Set<number | string>>(new Set())
+
+async function loadDistributorIds() {
+  try {
+    const res: any = await request.get('/admin/distribution/distributors', { params: { pageSize: 1000 } })
+    const list: any[] = res.data?.list ?? res?.list ?? []
+    distributorIds.value = new Set(list.map((d: any) => d.userId ?? d.id))
+  } catch {
+    // 接口失败时忽略，不影响用户列表加载
+  }
+}
 
 async function loadUsers() {
   loading.value = true
   try {
     const params: Record<string, any> = {
-        page: currentPage.value,
-        pageSize,
-        keyword: searchTerm.value
-      }
+      page: currentPage.value,
+      pageSize,
+      keyword: searchTerm.value
+    }
     if (coldFaceFilter.value.length > 0) {
       params.coldFaceLevel = coldFaceFilter.value.join(',')
     }
@@ -813,7 +921,8 @@ async function loadUsers() {
     const list = Array.isArray(payload?.list) ? payload.list : Array.isArray(payload) ? payload : []
     users.value = list.map((row: any) => ({
       ...row,
-      username: row.username ?? row.nickname ?? ('用户' + row.id)
+      username: row.username ?? row.nickname ?? ('用户' + row.id),
+      isDistributor: row.isDistributor ?? distributorIds.value.has(row.id) ?? false
     }))
     total.value = Number(payload?.total ?? 0) || 0
   } catch {
@@ -1139,28 +1248,31 @@ function normalizeDetailUser(payload: any) {
   return data
 }
 
-async function loadDetailUser(userId: number) {
+async function loadDetailUser(userId: number): Promise<boolean> {
   try {
     detailLoading.value = true
     const res: any = await request.get(`/admin/app-users/${userId}`)
-    const raw = res.data ?? res
-    const normalized = normalizeDetailUser(raw)
-    detailUser.value = normalized
-  } catch {
-    ElMessage.error('获取用户详情失败')
-    throw new Error('load detail failed')
+    const raw = res?.data ?? res
+    if (!raw || typeof raw !== 'object') {
+      ElMessage.warning('用户数据为空，请刷新后重试')
+      return false
+    }
+    detailUser.value = normalizeDetailUser(raw)
+    return true
+  } catch (e: any) {
+    ElMessage.warning(e?.message || '获取用户详情失败，请稍后重试')
+    return false
   } finally {
     detailLoading.value = false
   }
 }
 
 async function handleView(row: any) {
+  if (!row?.id) return
   detailUser.value = null
   showDetailDialog.value = true
-
-  try {
-    await loadDetailUser(row.id)
-  } catch {
+  const ok = await loadDetailUser(row.id)
+  if (!ok) {
     showDetailDialog.value = false
   }
 }
@@ -1217,8 +1329,20 @@ async function handleClickTestTag(row: any, testType: string) {
   }
 }
 
-onMounted(() => {
-  loadUsers()
+onMounted(async () => {
+  // 并行加载：分销商 ID 集合 + 用户列表 + 全量画像统计
+  void loadDistributorIds()
+  void loadProfileStats()
+  await loadUsers()
+
+  // 分销商跳转联动：若 URL 带 openUserId 则自动弹出用户详情
+  const openUserId = route.query.openUserId
+  if (openUserId) {
+    const uid = Number(openUserId)
+    if (!isNaN(uid) && uid > 0) {
+      void handleView({ id: uid })
+    }
+  }
 })
 </script>
 
@@ -1309,12 +1433,14 @@ onMounted(() => {
     font-size: 20px;
     flex-shrink: 0;
 
-    &.ic-blue { background: #eff6ff; }
-    &.ic-teal { background: #f0fdfa; }
-    &.ic-indigo { background: #eef2ff; }
-    &.ic-violet { background: #f5f3ff; }
-    &.ic-amber { background: #fffbeb; }
-    &.ic-coop { background: #f0fdf4; }
+    &.ic-blue   { background: #eff6ff; color: #2563eb; }
+    &.ic-teal   { background: #f0fdfa; color: #0d9488; }
+    &.ic-indigo { background: #eef2ff; color: #4f46e5; }
+    &.ic-violet { background: #f5f3ff; color: #7c3aed; }
+    &.ic-amber  { background: #fffbeb; color: #d97706; }
+    &.ic-coop   { background: #f0fdf4; color: #16a34a; }
+
+    svg { flex-shrink: 0; }
   }
 
   .summary-body {
@@ -1401,15 +1527,14 @@ onMounted(() => {
 }
 
 .user-table {
-  :deep(.el-table__header) {
-    th {
-      background-color: #f9fafb;
-      color: #6b7280;
-      font-weight: 500;
-      font-size: 13px;
-      padding: 12px 16px;
-    }
+  width: 100%;
+
+  :deep(.el-table__row) {
+    cursor: pointer;
+    transition: background 0.15s;
+    &:hover td { background: #f5f7ff !important; }
   }
+}
 
   :deep(.el-table__body) {
     td {
@@ -1552,16 +1677,15 @@ onMounted(() => {
     color: #111827;
   }
     
-    .el-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-      color: #6b7280;
-      
-      &:hover {
-      color: #a855f7;
-    }
+.el-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #6b7280;
+
+  &:hover {
+    color: #a855f7;
   }
 }
 
@@ -1625,6 +1749,124 @@ onMounted(() => {
 
 .mr-1 {
   margin-right: 4px;
+}
+
+/* ── 用户列新增字段 ── */
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.user-id {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.dist-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  flex-shrink: 0;
+}
+
+.distributor-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #fff;
+}
+
+.col-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &--yes {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #16a34a;
+  }
+
+  &--no {
+    color: #d1d5db;
+    font-size: 14px;
+  }
+}
+
+.test-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--mbti   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  &--sbti   { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  &--disc   { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+  &--pdp    { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  &--gaokao { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
+}
+
+/* ── 用户信息列胶囊标签（旧，保留兼容） ── */
+.user-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.upill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+
+  &--phone {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+  }
+  &--resume {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+  }
+  &--face {
+    background: #fdf4ff;
+    color: #7e22ce;
+    border: 1px solid #e9d5ff;
+  }
+  &--empty {
+    background: #f9fafb;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
+  }
 }
 
 .test-detail-header {

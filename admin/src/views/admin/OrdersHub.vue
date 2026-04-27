@@ -1,8 +1,10 @@
 <template>
   <div class="orders-hub">
     <div class="hub-header">
-      <h2>订单运营</h2>
-      <p class="hub-subtitle">订单成交、测试定价与题库在同一入口完成</p>
+      <div>
+        <h2>订单管理</h2>
+        <p class="hub-subtitle">支付订单、成交状态与关联数据</p>
+      </div>
     </div>
 
     <div class="custom-tabs-container tabs-scroll">
@@ -19,11 +21,7 @@
     </div>
 
     <div class="hub-body flat">
-      <Orders
-        v-if="activeTab === 'orders'"
-        embedded
-        orders-api-path="/admin/orders"
-      />
+      <Orders v-if="activeTab === 'orders'" embedded orders-api-path="/admin/orders" />
       <Pricing v-if="activeTab === 'pricing'" embedded />
       <Questions v-if="activeTab === 'questions'" embedded />
     </div>
@@ -71,9 +69,7 @@ const selectTab = (tab: TabId) => {
       q[k] = Array.isArray(v) ? String(v[0]) : String(v)
     }
   })
-  if (tab !== 'orders') {
-    q.tab = tab
-  }
+  if (tab !== 'stats') q.tab = tab
   router.replace({ path: '/admin/orders', query: Object.keys(q).length ? q : {} })
 }
 
@@ -86,31 +82,38 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .orders-hub {
-  padding: 24px;
-  min-height: 100vh;
-  background: #f9fafb;
+  min-height: calc(100vh - 56px);
+  background: #F4F6FB;
+  display: flex;
+  flex-direction: column;
 }
 
 .hub-header {
-  margin-bottom: 20px;
+  padding: 20px 24px 0;
+  margin-bottom: 0;
 
   h2 {
-    margin: 0 0 6px;
+    margin: 0 0 4px;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 800;
     color: #111827;
+    letter-spacing: -0.02em;
   }
 
   .hub-subtitle {
     margin: 0;
-    font-size: 14px;
-    color: #6b7280;
+    font-size: 12.5px;
+    color: #6B7280;
   }
 }
 
-/* .custom-tabs-container 视觉已统一在 admin-theme.css */
+.custom-tabs-container {
+  padding: 16px 24px 0;
+}
 
 .hub-body.flat {
+  flex: 1;
   width: 100%;
+  background: #F4F6FB;
 }
 </style>
