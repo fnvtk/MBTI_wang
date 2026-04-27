@@ -1,8 +1,10 @@
 <template>
   <div class="orders-hub">
     <div class="hub-header">
-      <h2>订单运营</h2>
-      <p class="hub-subtitle">订单成交、测试定价与题库在同一入口完成</p>
+      <div>
+        <h2>订单管理</h2>
+        <p class="hub-subtitle">订单成交、数据统计、定价与题库管理</p>
+      </div>
     </div>
 
     <div class="custom-tabs-container tabs-scroll">
@@ -19,11 +21,8 @@
     </div>
 
     <div class="hub-body flat">
-      <Orders
-        v-if="activeTab === 'orders'"
-        embedded
-        orders-api-path="/admin/orders"
-      />
+      <OrderStats v-if="activeTab === 'stats'" />
+      <Orders v-if="activeTab === 'orders'" embedded orders-api-path="/admin/orders" />
       <Pricing v-if="activeTab === 'pricing'" embedded />
       <Questions v-if="activeTab === 'questions'" embedded />
     </div>
@@ -36,8 +35,9 @@ import { useRoute, useRouter } from 'vue-router'
 import Orders from './Orders.vue'
 import Pricing from './Pricing.vue'
 import Questions from './Questions.vue'
+import OrderStats from '@/components/OrderStats.vue'
 
-const TAB_IDS = ['orders', 'pricing', 'questions'] as const
+const TAB_IDS = ['stats', 'orders', 'pricing', 'questions'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -46,9 +46,10 @@ function isTabId(s: string): s is TabId {
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref<TabId>('orders')
+const activeTab = ref<TabId>('stats')
 
 const innerTabs: { label: string; value: TabId }[] = [
+  { label: '数据统计', value: 'stats' },
   { label: '订单列表', value: 'orders' },
   { label: '价格设置', value: 'pricing' },
   { label: '题库管理', value: 'questions' }
@@ -59,7 +60,7 @@ const applyRouteTab = () => {
   if (typeof t === 'string' && isTabId(t)) {
     activeTab.value = t
   } else {
-    activeTab.value = 'orders'
+    activeTab.value = 'stats'
   }
 }
 
@@ -71,9 +72,7 @@ const selectTab = (tab: TabId) => {
       q[k] = Array.isArray(v) ? String(v[0]) : String(v)
     }
   })
-  if (tab !== 'orders') {
-    q.tab = tab
-  }
+  if (tab !== 'stats') q.tab = tab
   router.replace({ path: '/admin/orders', query: Object.keys(q).length ? q : {} })
 }
 

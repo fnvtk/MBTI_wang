@@ -139,7 +139,7 @@ const adminRoleLabel = computed(() => {
 const navItems = [
   { path: '/admin/dashboard', key: 'dashboard', label: '企业概览' },
   { path: '/admin/users',     key: 'users',     label: '用户管理' },
-  { path: '/admin/orders',    key: 'orders',    label: '订单运营' },
+  { path: '/admin/orders',    key: 'orders',    label: '订单管理' },
   { path: '/admin/distribution', key: 'distribution', label: '分销推广' },
   { path: '/admin/settings',  key: 'settings',  label: '企业设置' },
 ]

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div class="header-left">
         <h2>分销推广</h2>
-        <p class="subtitle">分销商、佣金结算、提现审核与推广设置</p>
+        <p class="subtitle">以分销商为核心 · 实时收益、团队绑定、佣金结算与推广设置</p>
       </div>
       <div class="header-actions">
         <el-button @click="refresh" class="refresh-btn">
@@ -27,153 +27,140 @@
     </div>
 
     <div class="tab-content">
-      <div v-if="activeTab === 'overview'" class="overview-section">
-        <!-- 核心指标 -->
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">分销商总数</div>
-              <div class="stat-value">{{ overview.totalAgents }}</div>
-              <div class="trend-tag up">
-                <el-icon><CaretTop /></el-icon>今日+{{ overview.todayAgents }}
-              </div>
+      <!-- 分销商 Tab（含数据概览） -->
+      <div v-if="activeTab === 'distributors'" class="distributors-section">
+        <!-- 顶部 KPI 卡片 -->
+        <div class="dist-kpi-grid">
+          <div class="dist-kpi-card">
+            <div class="dist-kpi-body">
+              <div class="dist-kpi-label">分销商总数</div>
+              <div class="dist-kpi-value">{{ overview.totalAgents }}</div>
+              <div class="dist-kpi-foot up"><el-icon><CaretTop /></el-icon>今日 +{{ overview.todayAgents }}</div>
             </div>
-            <div class="stat-icon purple"><el-icon><User /></el-icon></div>
+            <div class="dist-kpi-icon ic-purple"><el-icon><User /></el-icon></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">累计佣金</div>
-              <div class="stat-value">{{ formatCurrency(parseFloat(overview.totalCommission)) }}</div>
-              <div class="trend-tag up">
-                <el-icon><CaretTop /></el-icon>今日+{{ formatCurrency(parseFloat(overview.todayCommission)) }}
-              </div>
+          <div class="dist-kpi-card">
+            <div class="dist-kpi-body">
+              <div class="dist-kpi-label">累计佣金</div>
+              <div class="dist-kpi-value">{{ formatCurrency(parseFloat(overview.totalCommission)) }}</div>
+              <div class="dist-kpi-foot up"><el-icon><CaretTop /></el-icon>今日 +{{ formatCurrency(parseFloat(overview.todayCommission)) }}</div>
             </div>
-            <div class="stat-icon green"><el-icon><Money /></el-icon></div>
+            <div class="dist-kpi-icon ic-green"><el-icon><Money /></el-icon></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">待结算佣金</div>
-              <div class="stat-value">{{ formatCurrency(parseFloat(overview.pendingCommission)) }}</div>
-              <div class="trend-tag warning">{{ overview.pendingCount }}笔</div>
+          <div class="dist-kpi-card">
+            <div class="dist-kpi-body">
+              <div class="dist-kpi-label">待结算佣金</div>
+              <div class="dist-kpi-value">{{ formatCurrency(parseFloat(overview.pendingCommission)) }}</div>
+              <div class="dist-kpi-foot warning">{{ overview.pendingCount }} 笔待结算</div>
             </div>
-            <div class="stat-icon orange"><el-icon><Clock /></el-icon></div>
+            <div class="dist-kpi-icon ic-orange"><el-icon><Clock /></el-icon></div>
           </div>
-          <div class="stat-card">
-            <div class="stat-info">
-              <div class="stat-label">绑定关系</div>
-              <div class="stat-value">{{ overview.bindingCount }}</div>
-              <div class="trend-tag neutral">有效绑定</div>
+          <div class="dist-kpi-card">
+            <div class="dist-kpi-body">
+              <div class="dist-kpi-label">有效绑定</div>
+              <div class="dist-kpi-value">{{ overview.bindingCount }}</div>
+              <div class="dist-kpi-foot neutral">绑定中用户</div>
             </div>
-            <div class="stat-icon blue"><el-icon><Connection /></el-icon></div>
+            <div class="dist-kpi-icon ic-blue"><el-icon><Connection /></el-icon></div>
           </div>
         </div>
 
-        <!-- 图表区域 -->
-        <div class="charts-grid">
-          <div class="chart-card">
-            <div class="card-header">
-              <el-icon><TrendCharts /></el-icon>
-              <span>近7天佣金趋势</span>
+        <!-- 图表 + Top 10 排行 -->
+        <div class="dist-charts-row">
+          <div class="dist-chart-card dist-chart-card--trend">
+            <div class="dist-chart-header">
+              <span>近 7 天佣金趋势</span>
             </div>
-            <VChart v-if="hasCommissionTrend" class="trend-chart-echarts" :option="commissionTrendOption" autoresize />
-            <div v-else class="empty-chart">暂无趋势数据</div>
+            <VChart v-if="hasCommissionTrend" class="dist-chart-canvas" :option="commissionTrendOption" autoresize />
+            <div v-else class="dist-empty-chart">暂无趋势数据</div>
           </div>
-          <div class="chart-card">
-            <div class="card-header">
-              <el-icon><PieChart /></el-icon>
-              <span>产品佣金分布</span>
-            </div>
-            <VChart v-if="hasProductSeries" class="trend-chart-echarts" :option="productSeriesOption" autoresize />
-            <div v-else class="empty-chart">暂无产品数据</div>
+          <div class="dist-chart-card dist-chart-card--product">
+            <div class="dist-chart-header"><span>产品佣金分布</span></div>
+            <VChart v-if="hasProductSeries" class="dist-chart-canvas" :option="productSeriesOption" autoresize />
+            <div v-else class="dist-empty-chart">暂无产品数据</div>
           </div>
-          <div class="chart-card top-ranking-card">
-            <div class="card-header">
-              <el-icon><UserFilled /></el-icon>
-              <span>分销商 Top 10 排行榜</span>
-              <span class="head-hint">点击「查看订单」定位该分销商带来的订单</span>
+          <div class="dist-chart-card dist-chart-card--top10">
+            <div class="dist-chart-header">
+              <span>Top 10 分销商</span>
+              <span class="dist-chart-hint">按累计佣金排序</span>
             </div>
-            <div v-if="overviewTopDistributors.length" class="overview-list">
-              <div v-for="(item, idx) in overviewTopDistributors" :key="item.id" class="overview-list-item">
-                <div class="overview-main">
-                  <span :class="['rank-badge', idx < 3 ? 'rank-top' : '']">{{ idx + 1 }}</span>
-                  <div class="agent-cell">
-                    <el-avatar :size="30" :src="item.avatar" class="agent-avatar">
-                      {{ item.agentName ? item.agentName[0] : '?' }}
-                    </el-avatar>
-                    <div class="overview-meta">
-                      <strong>{{ item.agentName || '-' }}</strong>
-                      <span>团队 {{ item.teamCount || 0 }} 人</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="overview-side">
-                  <strong>{{ formatCurrency(parseFloat(item.totalCommission || 0)) }}</strong>
-                  <el-button link type="primary" size="small" @click="gotoInviterOrders(item)">查看订单</el-button>
-                </div>
+            <div v-if="overviewTopDistributors.length" class="top10-list">
+              <div v-for="(item, idx) in overviewTopDistributors" :key="item.id" class="top10-item">
+                <span :class="['top10-rank', idx < 3 ? 'top10-rank--gold' : '']">{{ idx + 1 }}</span>
+                <el-avatar :size="28" :src="item.avatar" class="top10-avatar">{{ item.agentName ? item.agentName[0] : '?' }}</el-avatar>
+                <span class="top10-name">{{ item.agentName || '-' }}</span>
+                <span class="top10-team">{{ item.teamCount || 0 }}人</span>
+                <span class="top10-comm">{{ formatCurrency(parseFloat(item.totalCommission || 0)) }}</span>
+                <el-button link type="primary" size="small" @click="gotoInviterOrders(item)">订单</el-button>
               </div>
             </div>
-            <div v-else class="empty-chart">暂无分销商数据</div>
-          </div>
-          <div class="chart-card">
-            <div class="card-header">
-              <el-icon><List /></el-icon>
-              <span>佣金统计</span>
-            </div>
-            <div class="withdraw-stats">
-              <div class="stat-item green"><span>累计佣金</span><strong>{{ formatCurrency(parseFloat(overview.totalCommission)) }}</strong></div>
-              <div class="stat-item orange"><span>今日新增</span><strong>{{ formatCurrency(parseFloat(overview.todayCommission)) }}</strong></div>
-              <div class="stat-item blue"><span>待结算佣金</span><strong>{{ formatCurrency(parseFloat(overview.pendingCommission)) }}</strong></div>
-            </div>
+            <div v-else class="dist-empty-chart">暂无排行数据</div>
           </div>
         </div>
-      </div>
 
-      <div v-else-if="activeTab === 'distributors'" class="table-section">
+        <!-- 分销商列表 -->
         <div class="content-card">
           <div class="toolbar">
-            <el-input v-model="distSearch" placeholder="搜索用户名..." class="search-input">
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
-            <el-button type="primary" @click="loadDistributors">搜索</el-button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <el-input v-model="distSearch" placeholder="搜索用户名 / 手机号..." class="search-input" @keyup.enter="loadDistributors">
+                <template #prefix><el-icon><Search /></el-icon></template>
+              </el-input>
+              <el-button type="primary" @click="loadDistributors">搜索</el-button>
+            </div>
+            <span class="toolbar-count">共 {{ overview.totalAgents }} 位分销商</span>
           </div>
-          <el-table :data="distributors" style="width: 100%" class="custom-table" v-loading="loading">
-            <el-table-column label="分销商" min-width="160">
+          <el-table :data="distributors" style="width: 100%" class="custom-table dist-table" v-loading="loading" row-key="id">
+            <el-table-column label="分销商" min-width="180">
               <template #default="{ row }">
                 <div class="agent-cell">
-                  <el-avatar :size="36" :src="row.avatar" class="agent-avatar">
-                    {{ row.agentName ? row.agentName[0] : '?' }}
-                  </el-avatar>
-                  <span class="agent-name">{{ row.agentName || '-' }}</span>
+                  <div class="agent-avatar-wrap">
+                    <el-avatar :size="36" :src="row.avatar" class="agent-avatar">{{ row.agentName ? row.agentName[0] : '?' }}</el-avatar>
+                  </div>
+                  <div class="agent-info">
+                    <span class="agent-name">{{ row.agentName || '-' }}</span>
+                    <span v-if="row.phone" class="agent-phone">{{ row.phone }}</span>
+                  </div>
                 </div>
               </template>
             </el-table-column>
-            <el-table-column label="累计收益" align="right">
+            <el-table-column label="累计收益" align="right" min-width="110">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openCommDetail(row)">
-                  {{ formatCurrency(parseFloat(row.totalCommission || 0)) }}
-                </el-button>
+                <div class="comm-cell">
+                  <el-button link type="primary" @click="openCommDetail(row)" class="comm-value">
+                    {{ formatCurrency(parseFloat(row.totalCommission || 0)) }}
+                  </el-button>
+                  <span class="comm-sub">点击查看明细</span>
+                </div>
               </template>
             </el-table-column>
-            <el-table-column label="可提现" align="right">
+            <el-table-column label="可提现" align="right" width="110">
               <template #default="{ row }">
-                {{ formatCurrency(parseFloat(row.availableCommission || 0)) }}
+                <span :class="['avail-value', parseFloat(row.availableCommission || 0) > 0 ? 'avail-value--pos' : '']">
+                  {{ formatCurrency(parseFloat(row.availableCommission || 0)) }}
+                </span>
               </template>
             </el-table-column>
-            <el-table-column label="团队人数" align="center">
+            <el-table-column label="团队人数" align="center" width="100">
               <template #default="{ row }">
-                <el-button link type="primary" @click="openTeamDetail(row)">
-                  {{ row.teamCount }}人
-                </el-button>
+                <el-button link type="primary" @click="openTeamDetail(row)">{{ row.teamCount || 0 }} 人</el-button>
               </template>
             </el-table-column>
-            <el-table-column label="加入时间" min-width="160">
+            <el-table-column label="状态" align="center" width="90">
               <template #default="{ row }">
-                {{ row.createdAt ? new Date(row.createdAt * 1000).toLocaleString() : '-' }}
+                <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small" effect="light">
+                  {{ row.status === 'active' ? '活跃' : '停用' }}
+                </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="110" align="center" fixed="right">
+            <el-table-column label="加入时间" width="130">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="gotoInviterOrders(row)">该分销商订单</el-button>
+                <span class="time-cell">{{ row.createdAt ? new Date(row.createdAt * 1000).toLocaleDateString() : '-' }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="130" align="center" fixed="right">
+              <template #default="{ row }">
+                <el-button link type="primary" size="small" @click="gotoInviterOrders(row)">查看订单</el-button>
+                <el-button link size="small" @click="openCommDetail(row)">佣金</el-button>
               </template>
             </el-table-column>
           </el-table>
@@ -414,13 +401,12 @@ use([CanvasRenderer, LineChart, BarChart, EchartsPieChart, GridComponent, Toolti
 
 const router = useRouter()
 
-const activeTab = ref('overview')
+const activeTab = ref('distributors')
 const distSearch = ref('')
 const commFilter = ref('')
 const loading = ref(false)
 
 const tabs = [
-  { label: '数据概览', value: 'overview' },
   { label: '分销商', value: 'distributors' },
   { label: '佣金记录', value: 'commissions' },
   { label: '分销设置', value: 'settings' }
@@ -743,11 +729,10 @@ const saveSettings = async () => {
   }
 }
 
-// 监听tab切换
+// 监听 tab 切换
 watch(activeTab, (newTab) => {
-  if (newTab === 'overview') {
+  if (newTab === 'distributors') {
     loadOverview()
-  } else if (newTab === 'distributors') {
     loadDistributors()
   } else if (newTab === 'commissions') {
     loadCommissions()
@@ -786,7 +771,9 @@ const refresh = async () => {
 }
 
 onMounted(() => {
+  // 默认加载分销商面板（含数据概览）
   loadOverview()
+  loadDistributors()
 })
 </script>
 
@@ -1294,5 +1281,198 @@ onMounted(() => {
 
 @media (max-width: 640px) {
   .settings-card .ts-grid { grid-template-columns: 1fr; }
+}
+
+/* ── 新分销商面板 ── */
+.distributors-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* KPI 卡片 */
+.dist-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+
+  @media (max-width: 900px) { grid-template-columns: repeat(2, 1fr); }
+}
+
+.dist-kpi-card {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 18px 18px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  box-shadow: 0 1px 4px rgba(16,24,40,0.04);
+  transition: transform 0.18s, box-shadow 0.18s;
+  &:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(79,70,229,0.08); }
+
+  .dist-kpi-label { font-size: 12.5px; color: #6B7280; margin-bottom: 6px; }
+  .dist-kpi-value { font-size: 22px; font-weight: 800; color: #111827; line-height: 1; letter-spacing: -0.02em; }
+  .dist-kpi-foot {
+    font-size: 11.5px;
+    margin-top: 7px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    &.up { color: #22c55e; }
+    &.warning { color: #f59e0b; }
+    &.neutral { color: #3b82f6; }
+  }
+
+  .dist-kpi-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+}
+
+.ic-purple { background: #faf5ff; color: #8b5cf6; }
+.ic-green  { background: #ecfdf5; color: #10b981; }
+.ic-orange { background: #fffbeb; color: #f59e0b; }
+.ic-blue   { background: #eff6ff; color: #3b82f6; }
+
+/* 图表行 */
+.dist-charts-row {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr 1.4fr;
+  gap: 14px;
+
+  @media (max-width: 1100px) { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 700px)  { grid-template-columns: 1fr; }
+}
+
+.dist-chart-card {
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 14px;
+  padding: 18px 18px 14px;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04);
+}
+
+.dist-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+
+  span:first-child {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #111827;
+  }
+
+  .dist-chart-hint {
+    font-size: 11px;
+    color: #94a3b8;
+    font-weight: 400;
+  }
+}
+
+.dist-chart-canvas {
+  height: 180px;
+  width: 100%;
+}
+
+.dist-empty-chart {
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #CBD5E1;
+  font-size: 13px;
+}
+
+/* Top 10 排行 */
+.top10-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.top10-item {
+  display: grid;
+  grid-template-columns: 22px 28px 1fr 40px 70px 42px;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  transition: background 0.12s;
+  &:hover { background: #f5f3ff; }
+}
+
+.top10-rank {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  &--gold { background: #fef3c7; color: #b45309; }
+}
+
+.top10-avatar { flex-shrink: 0; background: #ede9fe; color: #7c3aed; }
+.top10-name { font-size: 12.5px; font-weight: 600; color: #111827; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.top10-team { font-size: 11px; color: #9ca3af; text-align: center; }
+.top10-comm { font-size: 12.5px; font-weight: 700; color: #4f46e5; text-align: right; }
+
+/* 分销商列表补充样式 */
+.dist-table :deep(.el-table__row) {
+  cursor: pointer;
+  &:hover td { background: #f5f3ff !important; }
+}
+
+.agent-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .agent-name { font-size: 13px; font-weight: 600; color: #111827; }
+  .agent-phone { font-size: 11.5px; color: #9ca3af; }
+}
+
+.agent-avatar-wrap { flex-shrink: 0; }
+
+.comm-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+
+  .comm-value { font-weight: 700; }
+  .comm-sub { font-size: 10.5px; color: #d1d5db; }
+}
+
+.avail-value {
+  font-size: 13px;
+  color: #9ca3af;
+  &--pos { color: #10b981; font-weight: 700; }
+}
+
+.toolbar-count {
+  font-size: 12.5px;
+  color: #9ca3af;
+}
+
+.time-cell {
+  font-size: 12px;
+  color: #6b7280;
 }
 </style>

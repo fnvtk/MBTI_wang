@@ -39,7 +39,7 @@ const routes: RouteRecordRaw[] = [
         path: 'orders',
         name: 'AdminOrders',
         component: () => import('@/views/admin/OrdersHub.vue'),
-        meta: { title: '订单运营' }
+        meta: { title: '订单管理' }
       },
       {
         path: 'distribution',

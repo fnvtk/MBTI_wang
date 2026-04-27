@@ -117,73 +117,88 @@
 
     <!-- 用户列表表格 -->
     <div class="table-card">
-      <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table">
-        <el-table-column label="用户" min-width="200">
+      <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table" row-key="id" @row-click="(row: any) => handleView(row)">
+        <!-- 用户基本信息 -->
+        <el-table-column label="用户" min-width="180">
           <template #default="{ row }">
-            <div class="user-cell" style="cursor:pointer" @click="handleView(row)">
+            <div class="user-cell">
               <div class="user-avatar-wrap">
                 <div class="user-avatar">
-                  <img
-                    v-if="displayAvatarUrl(row.avatar)"
-                    :src="displayAvatarUrl(row.avatar)"
-                    referrerpolicy="no-referrer"
-                    alt=""
-                  />
+                  <img v-if="displayAvatarUrl(row.avatar)" :src="displayAvatarUrl(row.avatar)" referrerpolicy="no-referrer" alt="" />
                   <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
                     {{ avatarLetter(row) }}
                   </span>
                 </div>
+                <!-- 分销商标识 -->
+                <span v-if="row.isDistributor" class="distributor-dot" title="分销商"></span>
               </div>
               <div class="user-meta">
-                <div class="user-name">{{ row.username || '未设置昵称' }}</div>
-                <div class="user-pills">
-                  <span v-if="row.phone" class="upill upill--phone">联系方式</span>
-                  <span v-if="row.phone && (row.testCount > 0)" class="upill upill--resume">简历</span>
-                  <span v-if="row.coldFaceLevel" class="upill upill--face" :title="coldFaceTooltip(row)">
-                    侧脸 · {{ coldFaceLabel(row.coldFaceLevel) }}
-                  </span>
-                  <span v-if="!row.phone && !row.coldFaceLevel" class="upill upill--empty">待完善</span>
+                <div class="user-name-row">
+                  <span class="user-name">{{ row.username || '未设置昵称' }}</span>
+                  <span v-if="row.isDistributor" class="dist-badge">分销</span>
                 </div>
+                <div class="user-id">ID {{ row.id }}</div>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="联系方式" min-width="148">
+        <!-- 联系方式 -->
+        <el-table-column label="联系方式" min-width="140">
           <template #default="{ row }">
             <div class="contact-cell">
               <div class="phone">{{ row.phone || '—' }}</div>
-              <div v-if="row.openid" class="openid-line" :title="row.openid">{{ String(row.openid).length > 16 ? String(row.openid).slice(0,16) + '…' : row.openid }}</div>
+              <div v-if="row.openid" class="openid-line" :title="row.openid">
+                {{ String(row.openid).length > 16 ? String(row.openid).slice(0, 16) + '…' : row.openid }}
+              </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="合作意向" min-width="140" show-overflow-tooltip>
+        <!-- 简历 -->
+        <el-table-column label="简历" width="80" align="center">
           <template #default="{ row }">
-            <div v-if="row.cooperationModeTitle || row.cooperationModeCode" class="coop-cell">
-              <span class="coop-title">{{ row.cooperationModeTitle || row.cooperationModeCode || '—' }}</span>
-              <span
-                v-if="row.cooperationModeCode && row.cooperationModeTitle && row.cooperationModeCode !== row.cooperationModeTitle"
-                class="coop-code"
-              >{{ row.cooperationModeCode }}</span>
-              <div v-if="row.cooperationChosenAt" class="coop-time">{{ formatDate(row.cooperationChosenAt) }}</div>
-            </div>
-            <span v-else class="coop-empty">—</span>
+            <span v-if="row.hasResume || (row.phone && row.testCount > 0)" class="col-dot col-dot--yes" title="有简历">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
           </template>
         </el-table-column>
 
+        <!-- 侧脸 -->
+        <el-table-column label="侧脸" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.coldFaceLevel" :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]" :title="coldFaceTooltip(row)">
+              {{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template>
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 测评结果 -->
+        <el-table-column label="测评" min-width="180">
+          <template #default="{ row }">
+            <div class="test-chips">
+              <span v-if="row.mbtiType" class="chip chip--mbti">MBTI · {{ row.mbtiType }}</span>
+              <span v-if="row.sbtiType" class="chip chip--sbti">SBTI · {{ row.sbtiType }}</span>
+              <span v-if="row.discType" class="chip chip--disc">DISC · {{ row.discType }}</span>
+              <span v-if="row.pdpType"  class="chip chip--pdp">PDP · {{ row.pdpType }}</span>
+              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType" class="col-dot col-dot--no">—</span>
+            </div>
+          </template>
+        </el-table-column>
+
+        <!-- 注册时间 -->
         <el-table-column label="注册时间" width="130">
           <template #default="{ row }">
             <span class="time-cell">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
-        <el-table-column label="操作" width="90" fixed="right">
+        <!-- 操作 -->
+        <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button link @click="handleView(row)">
-              <el-icon><View /></el-icon>
-              <span>查看</span>
-            </el-button>
+            <el-button link type="primary" @click.stop="handleView(row)">查看</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -791,14 +806,27 @@ const profileStats = computed(() => {
   }
 })
 
+// 分销商 userId 集合（用于标注）
+const distributorIds = ref<Set<number | string>>(new Set())
+
+async function loadDistributorIds() {
+  try {
+    const res: any = await request.get('/admin/distribution/distributors', { params: { pageSize: 1000 } })
+    const list: any[] = res.data?.list ?? res?.list ?? []
+    distributorIds.value = new Set(list.map((d: any) => d.userId ?? d.id))
+  } catch {
+    // 接口失败时忽略，不影响用户列表加载
+  }
+}
+
 async function loadUsers() {
   loading.value = true
   try {
     const params: Record<string, any> = {
-        page: currentPage.value,
-        pageSize,
-        keyword: searchTerm.value
-      }
+      page: currentPage.value,
+      pageSize,
+      keyword: searchTerm.value
+    }
     if (coldFaceFilter.value.length > 0) {
       params.coldFaceLevel = coldFaceFilter.value.join(',')
     }
@@ -807,7 +835,8 @@ async function loadUsers() {
     const list = Array.isArray(payload?.list) ? payload.list : Array.isArray(payload) ? payload : []
     users.value = list.map((row: any) => ({
       ...row,
-      username: row.username ?? row.nickname ?? ('用户' + row.id)
+      username: row.username ?? row.nickname ?? ('用户' + row.id),
+      isDistributor: row.isDistributor ?? distributorIds.value.has(row.id) ?? false
     }))
     total.value = Number(payload?.total ?? 0) || 0
   } catch {
@@ -1212,7 +1241,9 @@ async function handleClickTestTag(row: any, testType: string) {
 }
 
 onMounted(() => {
-  loadUsers()
+  // 并行加载：分销商 ID 集合 + 用户列表
+  void loadDistributorIds()
+  void loadUsers()
 })
 </script>
 
@@ -1397,14 +1428,14 @@ onMounted(() => {
 }
 
 .user-table {
-  :deep(.el-table__header) {
-    th {
-      background-color: #f9fafb;
-      color: #6b7280;
-      font-weight: 500;
-      font-size: 13px;
-      padding: 12px 16px;
-    }
+  width: 100%;
+
+  :deep(.el-table__row) {
+    cursor: pointer;
+    transition: background 0.15s;
+    &:hover td { background: #f5f7ff !important; }
+  }
+}
   }
 
   :deep(.el-table__body) {
@@ -1623,7 +1654,84 @@ onMounted(() => {
   margin-right: 4px;
 }
 
-/* ── 用户信息列胶囊标签 ── */
+/* ── 用户列新增字段 ── */
+.user-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.user-id {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+
+.dist-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+  flex-shrink: 0;
+}
+
+.distributor-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #f59e0b;
+  border: 2px solid #fff;
+}
+
+.col-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &--yes {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #ecfdf5;
+    color: #16a34a;
+  }
+
+  &--no {
+    color: #d1d5db;
+    font-size: 14px;
+  }
+}
+
+.test-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &--mbti { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  &--sbti { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  &--disc { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+  &--pdp  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+}
+
+/* ── 用户信息列胶囊标签（旧，保留兼容） ── */
 .user-pills {
   display: flex;
   flex-wrap: wrap;
