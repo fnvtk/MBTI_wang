@@ -3,7 +3,7 @@
     <div class="hub-header">
       <div>
         <h2>订单管理</h2>
-        <p class="hub-subtitle">订单成交、数据统计、定价与题库管理</p>
+        <p class="hub-subtitle">支付订单、成交状态与关联数据</p>
       </div>
     </div>
 
@@ -21,7 +21,6 @@
     </div>
 
     <div class="hub-body flat">
-      <OrderStats v-if="activeTab === 'stats'" />
       <Orders v-if="activeTab === 'orders'" embedded orders-api-path="/admin/orders" />
       <Pricing v-if="activeTab === 'pricing'" embedded />
       <Questions v-if="activeTab === 'questions'" embedded />
@@ -35,9 +34,8 @@ import { useRoute, useRouter } from 'vue-router'
 import Orders from './Orders.vue'
 import Pricing from './Pricing.vue'
 import Questions from './Questions.vue'
-import OrderStats from '@/components/OrderStats.vue'
 
-const TAB_IDS = ['stats', 'orders', 'pricing', 'questions'] as const
+const TAB_IDS = ['orders', 'pricing', 'questions'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -46,10 +44,9 @@ function isTabId(s: string): s is TabId {
 
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref<TabId>('stats')
+const activeTab = ref<TabId>('orders')
 
 const innerTabs: { label: string; value: TabId }[] = [
-  { label: '数据统计', value: 'stats' },
   { label: '订单列表', value: 'orders' },
   { label: '价格设置', value: 'pricing' },
   { label: '题库管理', value: 'questions' }
@@ -60,7 +57,7 @@ const applyRouteTab = () => {
   if (typeof t === 'string' && isTabId(t)) {
     activeTab.value = t
   } else {
-    activeTab.value = 'stats'
+    activeTab.value = 'orders'
   }
 }
 

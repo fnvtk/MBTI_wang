@@ -269,7 +269,7 @@
               </div>
             </el-tab-pane>
 
-            <el-tab-pane label="用户旅程" name="journey">
+            <el-tab-pane v-if="isSuperAdmin" label="用户旅程" name="journey">
               <div class="ud-journey">
                 <div class="ud-journey__toolbar">
                   <span class="ud-journey__label">统计范围</span>
@@ -354,8 +354,9 @@ const props = withDefaults(
     user: Record<string, any> | null
     loading?: boolean
     showEnterpriseMatch?: boolean
+    isSuperAdmin?: boolean
   }>(),
-  { loading: false, showEnterpriseMatch: false }
+  { loading: false, showEnterpriseMatch: false, isSuperAdmin: false }
 )
 
 defineEmits<{
@@ -363,7 +364,7 @@ defineEmits<{
   'view-test': [row: any]
 }>()
 
-const udTab = ref('journey')
+const udTab = ref('analysis')
 const testPage = ref(1)
 const testPageSize = 8
 
@@ -375,7 +376,8 @@ watch(
   () => props.modelValue,
   v => {
     if (v) {
-      udTab.value = 'journey'
+      // 普通管理员默认落在「分析结果」，超管可访问「用户旅程」
+      udTab.value = 'analysis'
       testPage.value = 1
       journeyRows.value = []
     }
@@ -387,15 +389,15 @@ watch(
   (newId) => {
     testPage.value = 1
     journeyRows.value = []
-    // user 数据填充后自动加载旅程（默认 Tab = journey）
-    if (newId && props.modelValue) {
+    // 仅超管且 tab 已切到旅程时才自动加载
+    if (newId && props.modelValue && udTab.value === 'journey' && props.isSuperAdmin) {
       void loadJourney()
     }
   }
 )
 
 watch(udTab, (t) => {
-  if (t === 'journey' && journeyRows.value.length === 0) {
+  if (t === 'journey' && journeyRows.value.length === 0 && props.isSuperAdmin) {
     void loadJourney()
   }
 })

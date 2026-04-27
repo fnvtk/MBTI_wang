@@ -291,6 +291,7 @@
       :user="detailUser"
       :loading="detailLoading"
       :show-enterprise-match="false"
+      :is-super-admin="authStore.superAdminLoggedIn"
       @view-test="handleViewTest"
     />
 
@@ -806,6 +807,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { Download, Search, View } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { request } from '@/utils/request'
@@ -814,6 +816,10 @@ import { parseTestResultPayload } from '@/utils/testResultParse'
 import { discTopTwoLabel, discStyleSubtitle, discStyleName } from '@/utils/discDisplay'
 import { formatSbtiSummary, getSbtiCode, getSbtiCn, sbtiTypeImageUrl } from '@/utils/sbtiDisplay'
 import UserDetailDialog from '@/components/UserDetailDialog.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const route = useRoute()
 
 const loading = ref(false)
 const detailLoading = ref(false)
@@ -859,38 +865,32 @@ const users = ref<any[]>([])
 
 const pageUserCount = computed(() => (users.value || []).length)
 
-/**
- * 画像汇总：遍历当前页用户，分母用全量 total，分子按当前页估算。
- * 后端如提供全量统计接口，可将此 computed 替换为接口数据。
- */
-const profileStats = computed(() => {
-  const list = users.value || []
-  let faceCount = 0
-  let resumeCount = 0
-  let phoneCount = 0
-  let anyTestCount = 0
-  let cooperationCount = 0
-  for (const u of list) {
-    const hasFace = !!(u.faceMbtiType || u.faceDiscType || u.facePdpType || u.faceType || u.coldFaceLevel)
-    const hasTest = !!(u.mbtiType || u.sbtiType || u.discType || u.pdpType || hasFace)
-    const hasPhone = !!u.phone
-    const hasResume = hasPhone && (u.testCount > 0)
-    if (hasFace)     faceCount++
-    if (hasResume)   resumeCount++
-    if (hasPhone)    phoneCount++
-    if (hasTest)     anyTestCount++
-    if (u.cooperationModeCode || u.cooperationModeTitle || u.cooperationChosenAt) cooperationCount++
-  }
-  // 按当前页比例外推到全量（如后端提供接口可替换）
-  const ratio = list.length > 0 ? (total.value / list.length) : 1
-  return {
-    faceCount:        Math.round(faceCount    * ratio),
-    resumeCount:      Math.round(resumeCount  * ratio),
-    phoneCount:       Math.round(phoneCount   * ratio),
-    anyTestCount:     Math.round(anyTestCount * ratio),
-    cooperationCount: Math.round(cooperationCount * ratio),
-  }
+// 用户画像真实统计（从接口获取全量数据）
+const profileStatsReal = ref({
+  faceCount: 0,
+  resumeCount: 0,
+  phoneCount: 0,
+  anyTestCount: 0,
+  cooperationCount: 0,
 })
+
+async function loadProfileStats() {
+  try {
+    const res: any = await request.get('/admin/app-users/stats')
+    const d = res?.data ?? res ?? {}
+    profileStatsReal.value = {
+      faceCount:        d.faceCount        ?? d.withFace        ?? 0,
+      resumeCount:      d.resumeCount      ?? d.withResume      ?? 0,
+      phoneCount:       d.phoneCount       ?? d.withPhone       ?? 0,
+      anyTestCount:     d.anyTestCount     ?? d.withTest        ?? d.testsCompleted ?? 0,
+      cooperationCount: d.cooperationCount ?? d.withCooperation ?? 0,
+    }
+  } catch {
+    // 接口不可用时静默降级，保留 0
+  }
+}
+
+const profileStats = computed(() => profileStatsReal.value)
 
 // 分销商 userId 集合（用于标注）
 const distributorIds = ref<Set<number | string>>(new Set())
@@ -1329,10 +1329,20 @@ async function handleClickTestTag(row: any, testType: string) {
   }
 }
 
-onMounted(() => {
-  // 并行加载：分销商 ID 集合 + 用户列表
+onMounted(async () => {
+  // 并行加载：分销商 ID 集合 + 用户列表 + 全量画像统计
   void loadDistributorIds()
-  void loadUsers()
+  void loadProfileStats()
+  await loadUsers()
+
+  // 分销商跳转联动：若 URL 带 openUserId 则自动弹出用户详情
+  const openUserId = route.query.openUserId
+  if (openUserId) {
+    const uid = Number(openUserId)
+    if (!isNaN(uid) && uid > 0) {
+      void handleView({ id: uid })
+    }
+  }
 })
 </script>
 

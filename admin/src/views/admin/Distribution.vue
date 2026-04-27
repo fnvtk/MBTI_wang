@@ -91,6 +91,7 @@
                 <span class="top10-name">{{ item.agentName || '-' }}</span>
                 <span class="top10-team">{{ item.teamCount || 0 }}人</span>
                 <span class="top10-comm">{{ formatCurrency(parseFloat(item.totalCommission || 0)) }}</span>
+                <el-button link type="primary" size="small" @click="gotoUserDetail(item)">档案</el-button>
                 <el-button link type="primary" size="small" @click="gotoInviterOrders(item)">订单</el-button>
               </div>
             </div>
@@ -157,9 +158,10 @@
                 <span class="time-cell">{{ row.createdAt ? new Date(row.createdAt * 1000).toLocaleDateString() : '-' }}</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="130" align="center" fixed="right">
+            <el-table-column label="操作" width="180" align="center" fixed="right">
               <template #default="{ row }">
-                <el-button link type="primary" size="small" @click="gotoInviterOrders(row)">查看订单</el-button>
+                <el-button link type="primary" size="small" @click="gotoUserDetail(row)">用户档案</el-button>
+                <el-button link type="primary" size="small" @click="gotoInviterOrders(row)">订单</el-button>
                 <el-button link size="small" @click="openCommDetail(row)">佣金</el-button>
               </template>
             </el-table-column>
@@ -759,6 +761,19 @@ function gotoInviterOrders(row: any) {
   })
 }
 
+function gotoUserDetail(row: any) {
+  // 优先使用 userId，其次 id（分销商自身用户 ID）
+  const userId = row?.userId ?? row?.id
+  if (!userId) {
+    ElMessage.warning('无法获取用户 ID')
+    return
+  }
+  router.push({
+    path: '/admin/users',
+    query: { openUserId: String(userId) },
+  })
+}
+
 const refresh = async () => {
   if (activeTab.value === 'overview') {
     await loadOverview()
@@ -771,7 +786,7 @@ const refresh = async () => {
 }
 
 onMounted(() => {
-  // 默认加载分销商面板（含数据概览）
+  // 默认加载分销商面板（含数���概览）
   loadOverview()
   loadDistributors()
 })
