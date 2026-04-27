@@ -17,7 +17,12 @@
             </div>
           </div>
           <div class="stat-icon purple">
-            <el-icon><Document /></el-icon>
+            <!-- 楼宇图标 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M3 21V7l9-4 9 4v14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 21V15h6v6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 9h.01M12 9h.01M15 9h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
           </div>
         </div>
 
@@ -29,8 +34,13 @@
               <span class="trend-text">+{{ stats.newUsers }} 本月新增 · 注册 {{ stats.totalRegisteredUsers?.toLocaleString() ?? 0 }}</span>
             </div>
           </div>
-          <div class="stat-icon purple">
-            <el-icon><User /></el-icon>
+          <div class="stat-icon blue">
+            <!-- 人群图标 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
         </div>
 
@@ -47,7 +57,12 @@
             </div>
           </div>
           <div class="stat-icon green">
-            <el-icon><Document /></el-icon>
+            <!-- 钱包图标 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M2 10h20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              <circle cx="16.5" cy="15" r="1.5" fill="currentColor"/>
+            </svg>
           </div>
         </div>
 
@@ -59,8 +74,13 @@
               <span class="trend-text">累计已支付笔数</span>
             </div>
           </div>
-          <div class="stat-icon green">
-            <el-icon><Document /></el-icon>
+          <div class="stat-icon teal">
+            <!-- 购物袋图标 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="3" y1="6" x2="21" y2="6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              <path d="M16 10a4 4 0 01-8 0" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
         </div>
 
@@ -73,7 +93,10 @@
             </div>
           </div>
           <div class="stat-icon orange">
-            <el-icon><TrendCharts /></el-icon>
+            <!-- 折线趋势图标 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
         </div>
       </div>
@@ -83,7 +106,11 @@
     <div class="quick-actions-section">
       <div class="section-header">
         <h2 class="section-title">
-          <el-icon class="title-icon"><Lightning /></el-icon>
+          <span class="title-svg-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
           快捷操作
         </h2>
       </div>
@@ -91,42 +118,68 @@
       <div class="actions-grid">
         <div class="action-card blue" @click="handleAction('create-enterprise')">
           <div class="action-icon">
-            <el-icon><Plus /></el-icon>
+            <!-- 新建企业：加号+楼宇 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
           </div>
           <div class="action-label">新建企业</div>
         </div>
 
         <div class="action-card blue" @click="handleAction('enterprise-management')">
           <div class="action-icon">
-            <el-icon><Document /></el-icon>
+            <!-- 企业管理：楼宇 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M3 21V7l9-4 9 4v14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 21V15h6v6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M9 9h.01M12 9h.01M15 9h.01M9 12h.01M12 12h.01M15 12h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
           </div>
           <div class="action-label">企业管理</div>
         </div>
 
         <div class="action-card green" @click="handleAction('finance')">
           <div class="action-icon">
-            <el-icon><Document /></el-icon>
+            <!-- 财务管理：钱包+趋势 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M2 10h20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+              <circle cx="16" cy="15" r="1.5" fill="currentColor"/>
+            </svg>
           </div>
           <div class="action-label">财务管理</div>
         </div>
 
         <div class="action-card orange" @click="handleAction('pricing')">
           <div class="action-icon">
-            <el-icon><PriceTag /></el-icon>
+            <!-- 价格管理：标签 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="7" y1="7" x2="7.01" y2="7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
           </div>
           <div class="action-label">价格管理</div>
         </div>
 
         <div class="action-card purple" @click="handleAction('users')">
           <div class="action-icon">
-            <el-icon><User /></el-icon>
+            <!-- 用户数据：人群 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
           </div>
           <div class="action-label">用户数据</div>
         </div>
 
         <div class="action-card gray" @click="handleAction('settings')">
           <div class="action-icon">
-            <el-icon><Setting /></el-icon>
+            <!-- 系统设置：齿轮 -->
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.75"/>
+            </svg>
           </div>
           <div class="action-label">系统设置</div>
         </div>
@@ -181,7 +234,11 @@
     <div class="trend-section">
       <div class="section-header">
         <h2 class="section-title">
-          <el-icon class="title-icon"><TrendCharts /></el-icon>
+          <span class="title-svg-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
           测试趋势
         </h2>
         <p class="section-subtitle">最近 14 天人脸分析、MBTI、PDP、DISC 等关键测试的完成情况</p>
@@ -192,7 +249,9 @@
       </div>
 
       <div class="empty-placeholder" v-else>
-        <el-icon class="empty-icon"><TrendCharts /></el-icon>
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" style="color:#CBD5E1">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
         <p class="empty-text">暂无测试趋势数据</p>
       </div>
     </div>
@@ -203,13 +262,18 @@
       <div class="recent-dynamics-section">
         <div class="section-header">
           <h2 class="section-title">
-            <el-icon class="title-icon"><TrendCharts /></el-icon>
+            <span class="title-svg-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
             最近动态
           </h2>
         </div>
 
         <div class="dynamics-list" v-if="recentDynamics.length > 0">
-            <div
+          <div
             v-for="(item, index) in recentDynamics"
             :key="index"
             class="dynamics-item"
@@ -225,7 +289,10 @@
         </div>
         <!-- 空数据占位图 -->
         <div v-else class="empty-placeholder">
-          <el-icon class="empty-icon"><Document /></el-icon>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" style="color:#CBD5E1">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
           <p class="empty-text">暂无最近动态</p>
         </div>
       </div>
@@ -234,7 +301,11 @@
       <div class="ranking-section">
         <div class="section-header">
           <h2 class="section-title">
-            <el-icon class="title-icon"><TrendCharts /></el-icon>
+            <span class="title-svg-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
             企业活跃排行
           </h2>
           <el-button link class="view-all-btn" @click="handleViewAll">查看全部</el-button>
@@ -246,7 +317,7 @@
             :key="index"
             class="ranking-item"
           >
-            <div class="ranking-number" :class="{ 'top-one': index === 0 }">
+            <div class="ranking-number" :class="{ 'top-one': index === 0, 'top-two': index === 1, 'top-three': index === 2 }">
               {{ index + 1 }}
             </div>
             <div class="ranking-content">
@@ -260,7 +331,9 @@
         </div>
         <!-- 空数据占位图 -->
         <div v-else class="empty-placeholder">
-          <el-icon class="empty-icon"><TrendCharts /></el-icon>
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" style="color:#CBD5E1">
+            <path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
           <p class="empty-text">暂无企业排行数据</p>
         </div>
       </div>
@@ -275,11 +348,7 @@ import {
   User,
   Document,
   TrendCharts,
-  ArrowUp,
-  Lightning,
-  Plus,
-  PriceTag,
-  Setting
+  ArrowUp
 } from '@element-plus/icons-vue'
 import { request } from '@/utils/request'
 import { ElMessage } from 'element-plus'
@@ -671,75 +740,88 @@ onMounted(async () => {
         background-color: #FEF3C7;
         color: #D97706;
       }
+
+      &.blue {
+        background-color: #DBEAFE;
+        color: #1D4ED8;
+      }
+
+      &.teal {
+        background-color: #CCFBF1;
+        color: #0D9488;
+      }
     }
   }
 }
 
+/* 标题内联 SVG 图标 */
+.title-svg-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: #EEF2FF;
+  color: #4338CA;
+  flex-shrink: 0;
+}
+
 .quick-actions-section {
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 
   .actions-grid {
     display: grid;
     grid-template-columns: repeat(6, 1fr);
-    gap: 16px;
+    gap: 12px;
+
+    @media (max-width: 1100px) { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 600px)  { grid-template-columns: repeat(2, 1fr); }
   }
 
   .action-card {
     background: #fff;
-    border-radius: 10px;
-    padding: 24px;
+    border-radius: 14px;
+    padding: 20px 16px;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 12px;
+    gap: 10px;
     cursor: pointer;
     transition: all 0.2s;
-    border: 1px solid #f3f4f6;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
 
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px -2px rgba(0, 0, 0, 0.1);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(30,64,175,0.12);
+      border-color: #BFDBFE;
     }
 
     .action-icon {
       width: 48px;
       height: 48px;
-      border-radius: 10px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 24px;
       color: #fff;
     }
 
     .action-label {
-      font-size: 13px;
-      font-weight: 500;
-      color: #111827;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #374151;
       text-align: center;
+      line-height: 1.3;
     }
 
-    &.blue .action-icon {
-      background-image: linear-gradient(135deg, #1E40AF 0%, #3730A3 100%);
-    }
-
-    &.green .action-icon {
-      background-image: linear-gradient(135deg, #059669 0%, #047857 100%);
-    }
-
-    &.orange .action-icon {
-      background-image: linear-gradient(135deg, #D97706 0%, #B45309 100%);
-    }
-
-    &.purple .action-icon {
-      background-image: linear-gradient(135deg, #4338CA 0%, #312E81 100%);
-    }
-
-    &.gray .action-icon {
-      background-color: #475569;
-    }
+    &.blue .action-icon   { background: linear-gradient(135deg, #1E40AF 0%, #1D4ED8 100%); }
+    &.green .action-icon  { background: linear-gradient(135deg, #059669 0%, #0D9488 100%); }
+    &.orange .action-icon { background: linear-gradient(135deg, #D97706 0%, #DC2626 100%); }
+    &.purple .action-icon { background: linear-gradient(135deg, #4338CA 0%, #7C3AED 100%); }
+    &.gray .action-icon   { background: linear-gradient(135deg, #475569 0%, #334155 100%); }
   }
 }
 
@@ -947,8 +1029,21 @@ onMounted(async () => {
       flex-shrink: 0;
 
       &.top-one {
-        background-color: #fef3c7;
-        color: #f59e0b;
+        background-color: #FEF3C7;
+        color: #D97706;
+        font-weight: 800;
+      }
+
+      &.top-two {
+        background-color: #F1F5F9;
+        color: #475569;
+        font-weight: 700;
+      }
+
+      &.top-three {
+        background-color: #FFF7ED;
+        color: #C2410C;
+        font-weight: 700;
       }
     }
 

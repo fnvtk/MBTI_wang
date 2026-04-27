@@ -14,8 +14,10 @@
           </button>
           <div class="logo">
             <div class="logo-icon">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill="white"/>
+              <!-- 超管 logo：盾牌+星标 -->
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L3 6v6c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V6L12 2z" fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M9 12l2 2 4-4" stroke="rgba(255,255,255,0.95)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
             <div class="logo-text-block">
@@ -27,15 +29,17 @@
 
         <div class="header-right">
           <button class="admin-entry-btn" @click="goAdminConsole">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/>
+              <path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
             </svg>
             <span>管理后台</span>
           </button>
           <button class="logout-btn" @click="handleLogout">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="16 17 21 12 16 7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
             </svg>
             <span>退出</span>
           </button>
@@ -55,7 +59,44 @@
               @click="onNavClick(item)"
             >
               <span class="nav-icon-wrap">
-                <component :is="item.icon" class="nav-icon" />
+                <!-- 总览 -->
+                <svg v-if="item.key === 'ops'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+                  <rect x="14" y="3" width="7" height="4" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+                  <rect x="14" y="11" width="7" height="10" rx="1.5" stroke="currentColor" stroke-width="1.75"/>
+                </svg>
+                <!-- 企业管理 -->
+                <svg v-else-if="item.key === 'enterprises'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 21V7l9-4 9 4v14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 21V15h6v6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M9 9h.01M12 9h.01M15 9h.01M9 12h.01M12 12h.01M15 12h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <!-- 订单和财务 -->
+                <svg v-else-if="item.key === 'commerce'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" stroke="currentColor" stroke-width="1.75"/>
+                  <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M14.5 16.5c-.83.5-1.62.5-2.5.5-2.76 0-5-2.24-5-5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                </svg>
+                <!-- 分销管理 -->
+                <svg v-else-if="item.key === 'distribution'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="18" cy="5" r="3" stroke="currentColor" stroke-width="1.75"/>
+                  <circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
+                  <circle cx="18" cy="19" r="3" stroke="currentColor" stroke-width="1.75"/>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+                </svg>
+                <!-- 智能算力 -->
+                <svg v-else-if="item.key === 'ai'" width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M12 2a4 4 0 014 4v1h1a3 3 0 013 3v2a3 3 0 01-3 3h-1v1a4 4 0 01-4 4 4 4 0 01-4-4v-1H7a3 3 0 01-3-3v-2a3 3 0 013-3h1V6a4 4 0 014-4z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="9" cy="10" r="1" fill="currentColor"/>
+                  <circle cx="15" cy="10" r="1" fill="currentColor"/>
+                  <path d="M9.5 15c.83.5 1.66.75 2.5.75s1.67-.25 2.5-.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <!-- 默认 -->
+                <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/>
+                </svg>
               </span>
               <span class="nav-label">{{ item.label }}</span>
               <svg
@@ -95,7 +136,10 @@
             @click="navigateTo(item.path)"
           >
             <span class="nav-icon-wrap">
-              <component :is="item.icon" class="nav-icon" />
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.75"/>
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" stroke="currentColor" stroke-width="1.75"/>
+              </svg>
             </span>
             <span class="nav-label">{{ item.label }}</span>
           </button>
@@ -119,14 +163,6 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import {
-  TrendCharts,
-  ShoppingCart,
-  Cpu,
-  Setting,
-  OfficeBuilding,
-  Share
-} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -136,21 +172,21 @@ const sidebarOpen = ref(false)
 
 interface NavItem {
   path: string
-  icon: any
+  key: string
   label: string
   children?: NavItem[]
 }
 
 const navMainItems: NavItem[] = [
-  { path: '/superadmin/ops', icon: TrendCharts, label: '总览' },
-  { path: '/superadmin/enterprises', icon: OfficeBuilding, label: '企业管理' },
-  { path: '/superadmin/commerce', icon: ShoppingCart, label: '订单和财务' },
-  { path: '/superadmin/distribution', icon: Share, label: '分销管理' },
-  { path: '/superadmin/ai-config', icon: Cpu, label: '智能算力' }
+  { path: '/superadmin/ops',           key: 'ops',           label: '总览' },
+  { path: '/superadmin/enterprises',   key: 'enterprises',   label: '企业管理' },
+  { path: '/superadmin/commerce',      key: 'commerce',      label: '订单和财务' },
+  { path: '/superadmin/distribution',  key: 'distribution',  label: '分销管理' },
+  { path: '/superadmin/ai-config',     key: 'ai',            label: '智能算力' }
 ]
 
 const navFooterItems: NavItem[] = [
-  { path: '/superadmin/settings', icon: Setting, label: '系统设置' }
+  { path: '/superadmin/settings', key: 'settings', label: '系统设置' }
 ]
 
 const expandedPaths = ref<Set<string>>(new Set())
@@ -217,9 +253,9 @@ $header-h: 60px;
   position: fixed;
   top: 0; left: 0; right: 0;
   height: $header-h;
-  background: linear-gradient(135deg, #1E3A8A 0%, #1E40AF 100%);
+  background: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%);
   z-index: 1000;
-  box-shadow: 0 2px 12px rgba(30,64,175,0.3);
+  box-shadow: 0 2px 16px rgba(30,58,138,0.35);
 
   .header-content {
     display: flex;
@@ -267,12 +303,13 @@ $header-h: 60px;
   .logo-icon {
     width: 36px; height: 36px;
     border-radius: 10px;
-    background: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
     border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   }
 
   .logo-text-block {
@@ -291,13 +328,14 @@ $header-h: 60px;
   }
 
   .logo-badge {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     color: #93C5FD;
     background: rgba(147,197,253,0.15);
     border: 1px solid rgba(147,197,253,0.3);
     border-radius: 5px;
     padding: 2px 7px;
+    letter-spacing: 0.04em;
   }
 }
 
@@ -317,6 +355,7 @@ $header-h: 60px;
 
   &:hover {
     background: rgba(255,255,255,0.22);
+    border-color: rgba(255,255,255,0.4);
   }
 
   span { @media (max-width: 640px) { display: none; } }
@@ -339,6 +378,7 @@ $header-h: 60px;
   &:hover {
     background: rgba(255,255,255,0.1);
     color: #fff;
+    border-color: rgba(255,255,255,0.3);
   }
 
   span { @media (max-width: 640px) { display: none; } }
@@ -416,7 +456,7 @@ $header-h: 60px;
   &:hover {
     background: #F8FAFC;
     color: #1E293B;
-    .nav-icon-wrap { background: #F1F5F9; }
+    .nav-icon-wrap { background: #F1F5F9; color: #334155; }
   }
 
   &.active {
@@ -453,8 +493,6 @@ $header-h: 60px;
   flex-shrink: 0;
   color: #6B7280;
   transition: all 0.15s;
-
-  .nav-icon { font-size: 16px; }
 }
 
 .nav-label { flex: 1; }
