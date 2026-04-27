@@ -150,7 +150,8 @@ async function sendMessage() {
       method: 'POST',
       data: { message: text, history: messages.value.slice(-6).map(m => ({ role: m.role, content: m.content })) }
     })
-    const reply = res.data?.reply || res.data?.content || res.message || '抱歉，我暂时无法回答这个问题。'
+    // request() 已经返回 res.data，所以直接访问字段
+    const reply = res?.reply || res?.content || res?.data?.reply || res?.message || '抱歉，我暂时无法回答这个问题。'
     messages.value.push({ id: (Date.now() + 1).toString(), role: 'assistant', content: reply })
   } catch {
     messages.value.push({ id: (Date.now() + 1).toString(), role: 'assistant', content: '网络异常，请稍后重试。' })

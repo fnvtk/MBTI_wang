@@ -29,12 +29,11 @@
     <!-- 内容区 -->
     <div
       class="hub-body"
-      :class="{ 'no-padding': activeTab === 'users' || activeTab === 'journey' || activeTab === 'rfm' || activeTab === 'cooperation' }"
+      :class="{ 'no-padding': true }"
     >
       <Users v-if="activeTab === 'users'" embedded />
       <UserJourneyPanel v-else-if="activeTab === 'journey'" />
       <UserRfmPanel v-else-if="activeTab === 'rfm'" />
-      <TopTestUsersPanel v-else-if="activeTab === 'top20'" />
       <CooperationChoicesPanel v-else-if="activeTab === 'cooperation'" />
     </div>
   </div>
@@ -44,7 +43,6 @@
 import { ref, watch, onMounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Users from './Users.vue'
-import TopTestUsersPanel from '@/components/TopTestUsersPanel.vue'
 import UserJourneyPanel from '@/components/UserJourneyPanel.vue'
 import UserRfmPanel from '@/components/UserRfmPanel.vue'
 import CooperationChoices from './CooperationChoices.vue'
@@ -52,14 +50,12 @@ import {
   User,
   TrendCharts,
   DataAnalysis,
-  Medal,
   Connection
 } from '@element-plus/icons-vue'
 
-// 包装 CooperationChoices 为内嵌面板（去掉独立页面的外边距）
 const CooperationChoicesPanel = CooperationChoices
 
-const TAB_IDS = ['users', 'journey', 'rfm', 'top20', 'cooperation'] as const
+const TAB_IDS = ['users', 'journey', 'rfm', 'cooperation'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -71,11 +67,10 @@ const router = useRouter()
 const activeTab = ref<TabId>('users')
 
 const innerTabs: { label: string; value: TabId; icon: any }[] = [
-  { label: '用户列表', value: 'users', icon: User },
-  { label: '旅程漏斗', value: 'journey', icon: TrendCharts },
-  { label: 'RFM 价值分层', value: 'rfm', icon: DataAnalysis },
-  { label: '测评 Top 20', value: 'top20', icon: Medal },
-  { label: '合作意向', value: 'cooperation', icon: Connection },
+  { label: '用户列表',   value: 'users',       icon: User        },
+  { label: '旅程漏斗',   value: 'journey',     icon: TrendCharts },
+  { label: 'RFM 价值分层', value: 'rfm',       icon: DataAnalysis },
+  { label: '合作意向',   value: 'cooperation', icon: Connection  },
 ]
 
 const applyRouteTab = () => {

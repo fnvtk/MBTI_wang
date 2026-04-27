@@ -47,4 +47,15 @@ http.interceptors.response.use(
   }
 )
 
+// 兼容命名导出（部分页面使用 import { request } 方式）
+export async function request(config: { url: string; method?: string; data?: any; params?: any }) {
+  const res = await http({
+    url: config.url,
+    method: (config.method || 'GET') as any,
+    data: config.data,
+    params: config.params
+  })
+  return res.data
+}
+
 export default http
