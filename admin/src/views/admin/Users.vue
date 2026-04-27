@@ -1162,28 +1162,31 @@ function normalizeDetailUser(payload: any) {
   return data
 }
 
-async function loadDetailUser(userId: number) {
+async function loadDetailUser(userId: number): Promise<boolean> {
   try {
     detailLoading.value = true
     const res: any = await request.get(`/admin/app-users/${userId}`)
-    const raw = res.data ?? res
-    const normalized = normalizeDetailUser(raw)
-    detailUser.value = normalized
-  } catch {
-    ElMessage.error('获取用户详情失败')
-    throw new Error('load detail failed')
+    const raw = res?.data ?? res
+    if (!raw || typeof raw !== 'object') {
+      ElMessage.warning('用户数据为空，请刷新后重试')
+      return false
+    }
+    detailUser.value = normalizeDetailUser(raw)
+    return true
+  } catch (e: any) {
+    ElMessage.warning(e?.message || '获取用户详情失败，请稍后重试')
+    return false
   } finally {
     detailLoading.value = false
   }
 }
 
 async function handleView(row: any) {
+  if (!row?.id) return
   detailUser.value = null
   showDetailDialog.value = true
-
-  try {
-    await loadDetailUser(row.id)
-  } catch {
+  const ok = await loadDetailUser(row.id)
+  if (!ok) {
     showDetailDialog.value = false
   }
 }

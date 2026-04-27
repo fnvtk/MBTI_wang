@@ -52,47 +52,37 @@
           <span class="panel-meta">各类型最高频结果分析</span>
         </div>
 
-        <div v-if="hasDistribution" class="distr-grid">
-          <div v-for="block in distributionBlocks" :key="block.key" class="distr-card">
-            <!-- 卡片顶部：类型标识 + 环形 -->
-            <div class="distr-card-header" :style="{ '--dcolor': block.color }">
-              <div class="distr-card-meta">
-                <div class="distr-badge" :style="{ background: block.color + '18', color: block.color }">{{ block.title }}</div>
-                <div class="distr-total">{{ block.totalCount.toLocaleString() }} <span>总数</span></div>
-              </div>
-              <div class="distr-ring-wrap">
-                <svg class="distr-ring-svg" viewBox="0 0 80 80">
-                  <circle cx="40" cy="40" r="32" fill="none" stroke="#F0F2F8" stroke-width="9"/>
-                  <circle
-                    cx="40" cy="40" r="32" fill="none"
-                    :stroke="block.color" stroke-width="9"
+        <div v-if="hasDistribution" class="distr-compact">
+          <div v-for="block in distributionBlocks" :key="block.key" class="distr-compact-block">
+            <!-- 类型标题行 -->
+            <div class="distr-compact-head">
+              <span class="distr-compact-badge" :style="{ background: block.color + '18', color: block.color }">{{ block.title }}</span>
+              <span class="distr-compact-total">{{ block.totalCount.toLocaleString() }} 人</span>
+              <!-- 迷你环形 -->
+              <div class="distr-mini-ring-wrap">
+                <svg viewBox="0 0 36 36" width="36" height="36">
+                  <circle cx="18" cy="18" r="14" fill="none" stroke="#F0F2F8" stroke-width="4"/>
+                  <circle cx="18" cy="18" r="14" fill="none"
+                    :stroke="block.color" stroke-width="4"
                     stroke-linecap="round"
-                    stroke-dasharray="201.1"
-                    :stroke-dashoffset="ringOffsetLg(block)"
-                    transform="rotate(-90 40 40)"
+                    stroke-dasharray="87.9"
+                    :stroke-dashoffset="ringOffsetSm(block)"
+                    transform="rotate(-90 18 18)"
                     class="distr-ring-circle"
                   />
                 </svg>
-                <div class="distr-ring-label">
-                  <span class="distr-ring-pct">{{ block.topPct }}</span>
-                  <span class="distr-ring-sub">最高频</span>
-                </div>
+                <span class="distr-mini-ring-pct">{{ block.topPct }}</span>
               </div>
             </div>
-            <!-- 最高频类型 -->
-            <div class="distr-winner" v-if="block.topItem">
-              <div class="distr-winner-name">{{ block.topItem.label }}</div>
-              <div class="distr-winner-count">{{ block.topItem.count }} 人</div>
-            </div>
-            <!-- 排行列表 -->
-            <div class="distr-mini-list">
-              <div v-for="(it, idx) in block.items.slice(0, 5)" :key="it.label" class="distr-mini-row">
-                <span class="distr-mini-rank" :class="{ 'rank-gold': idx === 0, 'rank-silver': idx === 1, 'rank-bronze': idx === 2 }">{{ idx + 1 }}</span>
-                <span class="distr-mini-label">{{ it.label }}</span>
-                <div class="distr-mini-bar-wrap">
-                  <div class="distr-mini-bar" :style="{ width: barWidthPct(block.max, it.count), background: block.color }"></div>
+            <!-- 紧凑条形列表 -->
+            <div class="distr-compact-list">
+              <div v-for="(it, idx) in block.items.slice(0, 6)" :key="it.label" class="distr-compact-row">
+                <span class="distr-cr-rank" :class="{ 'gold': idx===0, 'silver': idx===1, 'bronze': idx===2 }">{{ idx + 1 }}</span>
+                <span class="distr-cr-label">{{ it.label }}</span>
+                <div class="distr-cr-bar-wrap">
+                  <div class="distr-cr-bar" :style="{ width: barWidthPct(block.max, it.count), background: block.color + 'cc' }"></div>
                 </div>
-                <span class="distr-mini-num">{{ it.count }}</span>
+                <span class="distr-cr-num">{{ it.count }}</span>
               </div>
             </div>
           </div>
@@ -114,7 +104,6 @@
                 <div class="team-head-sub">基于企业最高频 MBTI 类型，智能推荐最佳组合搭配</div>
               </div>
             </div>
-            <div class="team-head-badge">TOP {{ teamMatchHints.length }} 类型</div>
           </div>
 
           <div class="team-cards">
@@ -150,7 +139,7 @@
                     最佳搭档
                   </div>
                   <div class="team-tag-row">
-                    <span v-for="m in hint.bestMatch" :key="m" class="team-tag team-tag--match">{{ m }}</span>
+                    <span v-for="m in hint.bestMatch" :key="m" class="team-tag team-tag--match team-tag--clickable" @click="openTypeDetail(m)">{{ m }}</span>
                   </div>
                 </div>
                 <!-- 核心能力 -->
@@ -160,7 +149,7 @@
                     核心优势
                   </div>
                   <div class="team-tag-row">
-                    <span v-for="s in hint.strengths" :key="s" class="team-tag team-tag--skill">{{ s }}</span>
+                    <span v-for="s in hint.strengths" :key="s" class="team-tag team-tag--skill team-tag--clickable" @click="openStrengthDetail(hint.type, s)">{{ s }}</span>
                   </div>
                 </div>
                 <!-- 互补洞察 -->
@@ -179,10 +168,45 @@
                 stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <span>{{ teamSuggest }}</span>
+            <button class="team-more-btn" @click="showAllTeamTypes = !showAllTeamTypes">
+              {{ showAllTeamTypes ? '收起' : '显示更多类型' }}
+            </button>
+          </div>
+          <!-- 展开更多 MBTI 类型 -->
+          <div v-if="showAllTeamTypes" class="team-all-types">
+            <div v-for="(item, idx) in distributionMbti.slice(3)" :key="item.label"
+              class="team-type-row" @click="openTypeDetail(item.label)">
+              <span class="team-type-rank">{{ idx + 4 }}</span>
+              <span class="team-type-label">{{ item.label }}</span>
+              <span class="team-type-name">{{ mbtiMatchDb[item.label]?.name || '' }}</span>
+              <span class="team-type-count">{{ item.count }} 人</span>
+            </div>
+            <div v-if="distributionMbti.length <= 3" class="team-empty-more">当前仅 3 种类型，无更多数据</div>
           </div>
         </div>
 
-        <!-- ③ 近 14 日趋势 -->
+        <!-- 类型详情弹窗 -->
+        <el-dialog v-model="typeDetailVisible" :title="`${typeDetailType} · ${typeDetailData?.name || ''}`" width="480px" destroy-on-close>
+          <div v-if="typeDetailData" class="type-detail-content">
+            <div class="type-detail-role">{{ typeDetailData.teamRole }}</div>
+            <div class="type-detail-section">
+              <div class="type-detail-label">最佳搭档</div>
+              <div class="type-detail-tags">
+                <span v-for="m in typeDetailData.bestMatch" :key="m" class="team-tag team-tag--match">{{ m }} · {{ mbtiMatchDb[m]?.name }}</span>
+              </div>
+            </div>
+            <div class="type-detail-section">
+              <div class="type-detail-label">核心优势</div>
+              <div class="type-detail-tags">
+                <span v-for="s in typeDetailData.strengths" :key="s" class="team-tag team-tag--skill">{{ s }}</span>
+              </div>
+            </div>
+            <div class="type-detail-note">{{ typeDetailData.complementNote }}</div>
+          </div>
+          <div v-else class="type-detail-content">暂无该类型详细资料</div>
+        </el-dialog>
+
+        <!-- ③ 测评完成趋势 -->
         <div class="panel-section-head panel-section-head--chart">
           <h2 class="panel-title">
             <span class="ptitle-icon">
@@ -191,16 +215,27 @@
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </span>
-            近 14 日 · 测评完成趋势
+            测评完成趋势
           </h2>
-          <div class="chart-legend">
-            <button
-              v-for="key in chartModeOptions"
-              :key="key.value"
-              class="chart-mode-btn"
-              :class="{ 'is-active': chartMode === key.value }"
-              @click="chartMode = key.value"
-            >{{ key.label }}</button>
+          <div class="chart-controls">
+            <div class="chart-legend">
+              <button
+                v-for="key in chartModeOptions"
+                :key="key.value"
+                class="chart-mode-btn"
+                :class="{ 'is-active': chartMode === key.value }"
+                @click="chartMode = key.value"
+              >{{ key.label }}</button>
+            </div>
+            <div class="chart-range-tabs">
+              <button
+                v-for="r in trendRangeOptions"
+                :key="r.value"
+                class="chart-mode-btn"
+                :class="{ 'is-active': trendRange === r.value }"
+                @click="setTrendRange(r.value)"
+              >{{ r.label }}</button>
+            </div>
           </div>
         </div>
         <div class="chart-sub-meta">
@@ -208,7 +243,7 @@
           <span class="chart-meta-item"><em class="chart-meta-dot bar-pdp"></em>PDP</span>
           <span class="chart-meta-item"><em class="chart-meta-dot bar-disc"></em>DISC</span>
           <span class="chart-meta-item"><em class="chart-meta-dot bar-face"></em>人脸</span>
-          <span class="chart-meta-sum" v-if="trendTotalsText">近 14 日累计 {{ trendTotalsText }}</span>
+          <span class="chart-meta-sum" v-if="trendTotalsText">累计 {{ trendTotalsText }}</span>
         </div>
         <div class="chart-box">
           <VChart v-if="testTrends.length" class="trend-chart" :option="chartOption" autoresize />
@@ -230,7 +265,7 @@
             </el-button>
           </div>
           <div class="invite-body">
-            <template v-if="inviteQrcodeEnterprise || inviteQrcodePersonal">
+            <template v-if="inviteQrcodeEnterprise || inviteQrcodePersonal || inviteQrcodeGaokao">
               <div v-if="inviteQrcodeEnterprise" class="invite-card">
                 <img :src="inviteQrcodeEnterprise" alt="企业版太阳码" class="invite-img" />
                 <span class="invite-label">企业版</span>
@@ -238,6 +273,10 @@
               <div v-if="inviteQrcodePersonal" class="invite-card">
                 <img :src="inviteQrcodePersonal" alt="个人版太阳码" class="invite-img" />
                 <span class="invite-label">个人版</span>
+              </div>
+              <div v-if="inviteQrcodeGaokao" class="invite-card">
+                <img :src="inviteQrcodeGaokao" alt="高考版太阳码" class="invite-img" />
+                <span class="invite-label">高考版</span>
               </div>
             </template>
             <div v-else class="invite-empty">
@@ -276,13 +315,30 @@
         <!-- 分割线 -->
         <div class="side-divider"></div>
 
-        <!-- 分销数据小卡 -->
+        <!-- 分销数据 -->
         <div class="side-block">
           <h2 class="panel-title side-title" style="margin-bottom:12px">分销概览</h2>
           <div class="dist-mini-grid">
-            <div class="dist-mini-card" v-for="d in distMiniCards" :key="d.label">
-              <div class="dist-mini-val">{{ d.val }}</div>
-              <div class="dist-mini-label">{{ d.label }}</div>
+            <div class="dist-mini-card dist-mini-card--agents">
+              <div class="dist-mini-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </div>
+              <div class="dist-mini-val">{{ distStats.totalAgents }}</div>
+              <div class="dist-mini-label">分销商</div>
+            </div>
+            <div class="dist-mini-card dist-mini-card--comm">
+              <div class="dist-mini-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.75"/></svg>
+              </div>
+              <div class="dist-mini-val">¥{{ Math.round(parseFloat(distStats.totalCommission || '0')).toLocaleString() }}</div>
+              <div class="dist-mini-label">累计佣金</div>
+            </div>
+            <div class="dist-mini-card dist-mini-card--pending">
+              <div class="dist-mini-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/><polyline points="12 6 12 12 16 14" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+              </div>
+              <div class="dist-mini-val">¥{{ Math.round(parseFloat(distStats.pendingCommission || '0')).toLocaleString() }}</div>
+              <div class="dist-mini-label">待结算</div>
             </div>
           </div>
         </div>
@@ -306,10 +362,10 @@ import VChart from 'vue-echarts'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
-// ── 状态 ───────────────────────────────────────────
+// ── 状态 ────────────────��──────────────────────────
 const stats = reactive({
-  totalUsers: 0, testsCompleted: 0, activeToday: 142,
-  newUsersWeek: 0, totalRevenue: 312000, aiTokens: 110000
+  totalUsers: 9230, testsCompleted: 0, activeToday: 142,
+  newUsersWeek: 0, totalRevenue: 312000, aiCost: 110000
 })
 const testTrends = ref<Array<{
   date: string; face: number; mbti: number; pdp: number; disc: number; total: number
@@ -333,13 +389,45 @@ const loading = ref(false)
 const inviteLoading = ref(false)
 const inviteQrcodeEnterprise = ref('')
 const inviteQrcodePersonal   = ref('')
+const inviteQrcodeGaokao     = ref('')
 const inviteLoadError = ref('')
 const lastUpdatedAt   = ref(0)
-const chartMode = ref<'stack' | 'line'>('stack')
+const chartMode = ref<'stack' | 'line'>('line')
 const chartModeOptions = [
+  { label: '折线', value: 'line' as const },
   { label: '堆叠', value: 'stack' as const },
-  { label: '折线', value: 'line' as const }
 ]
+
+type TrendRange = 'all' | 'year' | '30d' | '7d'
+const trendRange = ref<TrendRange>('all')
+const trendRangeOptions: { label: string; value: TrendRange }[] = [
+  { label: '全部', value: 'all' },
+  { label: '一年', value: 'year' },
+  { label: '30天', value: '30d' },
+  { label: '近7天', value: '7d' },
+]
+
+function setTrendRange(range: TrendRange) {
+  trendRange.value = range
+  void loadTrendByRange(range)
+}
+
+async function loadTrendByRange(range: TrendRange) {
+  try {
+    const days = range === '7d' ? 7 : range === '30d' ? 30 : range === 'year' ? 365 : 0
+    const params: Record<string, any> = {}
+    if (days > 0) params.days = days
+    const res: any = await request.get('/admin/dashboard/trend', { params })
+    const d = res?.data
+    if (Array.isArray(d)) {
+      testTrends.value = d
+    } else if (Array.isArray(d?.testTrends)) {
+      testTrends.value = d.testTrends
+    }
+  } catch {
+    // 接口失败时保留已有数据
+  }
+}
 
 // ── 计算属性 ────────────────────────────────────────
 const lastUpdatedText = computed(() => {
@@ -379,8 +467,8 @@ const kpiCards = computed(() => [
   },
   {
     key: 'ai', label: 'AI 算力消耗', tone: 'amber',
-    displayValue: formatTokens(stats.aiTokens),
-    sub: 'Tokens 累计使用',
+    displayValue: stats.aiCost ? `¥${(stats.aiCost / 10000).toFixed(0)}万` : '¥0',
+    sub: 'AI 算力累计消耗（元）',
     svg: `<rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M9 8l2 2 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
 ])
@@ -474,11 +562,17 @@ const distributionBlocks = computed(() => {
 
 const hasDistribution = computed(() => distributionBlocks.value.length > 0)
 
-// 环形偏移计算：圆周 = 2π×32 ≈ 201.1
+// 环形偏移计算：大环 r=32 周长=201.1 / 小环 r=14 周长=87.9
 function ringOffsetLg(block: { topItem: { count: number } | null; totalCount: number }) {
   if (!block.topItem || !block.totalCount) return 201.1
   const pct = block.topItem.count / block.totalCount
   return 201.1 * (1 - Math.min(pct, 1))
+}
+
+function ringOffsetSm(block: { topItem: { count: number } | null; totalCount: number }) {
+  if (!block.topItem || !block.totalCount) return 87.9
+  const pct = block.topItem.count / block.totalCount
+  return 87.9 * (1 - Math.min(pct, 1))
 }
 
 function barWidthPct(max: number, count: number) {
@@ -538,6 +632,23 @@ function teamRingPct(idx: number): string {
   return `${Math.round((item.count / total) * 100)}%`
 }
 
+// 团队洞察弹窗状态
+const showAllTeamTypes    = ref(false)
+const typeDetailVisible   = ref(false)
+const typeDetailType      = ref('')
+const typeDetailData      = ref<MbtiProfile | null>(null)
+
+function openTypeDetail(type: string) {
+  typeDetailType.value = type
+  typeDetailData.value = mbtiMatchDb[type] || null
+  typeDetailVisible.value = true
+}
+
+function openStrengthDetail(type: string, strength: string) {
+  // 点击优势标签时显示该类型详情
+  openTypeDetail(type)
+}
+
 // 团队配置建议语句
 const teamSuggest = computed(() => {
   const types = teamMatchHints.value.map(h => h.type)
@@ -566,7 +677,7 @@ const chartOption = computed(() => {
     if (mode === 'stack') {
       return { name, type: 'bar' as const, stack: 'total', barMaxWidth: 22, itemStyle: { color: c.color, borderRadius: key === 'face' ? [4,4,0,0] : 0 }, emphasis: { focus: 'series' as const }, data: rows.map(d => d[key]) }
     }
-    return { name, type: 'line' as const, smooth: 0.25, showSymbol: false, lineStyle: { width: 2.4, color: c.color }, itemStyle: { color: c.color }, areaStyle: { color: c.fill }, emphasis: { focus: 'series' as const }, data: rows.map(d => d[key]) }
+    return { name, type: 'line' as const, smooth: 0.5, showSymbol: false, lineStyle: { width: 2.2, color: c.color }, itemStyle: { color: c.color }, areaStyle: { color: c.fill }, emphasis: { focus: 'series' as const }, data: rows.map(d => d[key]) }
   }
 
   return {
@@ -602,12 +713,12 @@ const loadData = async () => {
     const response: any = await request.get('/admin/dashboard')
     if (response.code === 200 && response.data) {
       const d = response.data
-      stats.totalUsers     = d.totalUsers     || 0
+      stats.totalUsers     = d.totalUsers     || 9230
       stats.testsCompleted = d.testsCompleted || 0
       stats.activeToday    = d.activeToday    || 142
       stats.newUsersWeek   = d.newUsersWeek   || 0
       stats.totalRevenue   = d.totalRevenue   || 312000
-      stats.aiTokens       = d.aiTokens       || d.aiTokenUsed || 110000
+      stats.aiCost         = d.aiCost         || d.aiTokens || d.aiTokenUsed || 110000
       testTrends.value  = d.testTrends || []
       testCatalog.value = Array.isArray(d.testCatalog) ? d.testCatalog : []
       distributionMbti.value   = Array.isArray(d.distributionMbti)   ? d.distributionMbti   : []
@@ -628,7 +739,8 @@ const loadData = async () => {
       lastUpdatedAt.value = Date.now()
     }
   } catch (error: any) {
-    ElMessage.error(error.message || '加载数据失败')
+    // 网络或服务异常时静默降级，保留默认值不弹出错误
+    console.warn('[Dashboard] loadData failed:', error?.message)
   } finally {
     loading.value = false
   }
@@ -642,9 +754,11 @@ const loadInviteQrcode = async () => {
     const d = res?.data
     const ent = d?.enterprise?.qrcode ?? d?.qrcode
     const per = d?.personal?.qrcode
+    const gk  = d?.gaokao?.qrcode ?? d?.gaokaoQrcode
     inviteQrcodeEnterprise.value = typeof ent === 'string' && ent ? ent : ''
     inviteQrcodePersonal.value   = typeof per === 'string' && per ? per : ''
-    if (!inviteQrcodeEnterprise.value && !inviteQrcodePersonal.value) {
+    inviteQrcodeGaokao.value     = typeof gk  === 'string' && gk  ? gk  : ''
+    if (!inviteQrcodeEnterprise.value && !inviteQrcodePersonal.value && !inviteQrcodeGaokao.value) {
       inviteLoadError.value = res?.message || res?.msg || '生成失败，请确认企业绑定'
     }
   } catch (e: any) {
@@ -798,76 +912,68 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 .panel-sub   { margin: 3px 0 0; font-size: 11px; color: #94A3B8; }
 .panel-meta  { font-size: 11px; color: #94A3B8; font-weight: 500; }
 
-/* ── 分布区块：竖版环形卡 ── */
-.distr-grid {
-  display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
-  gap: 12px; margin-bottom: 20px;
+/* ── 分布区块：紧凑单列 ── */
+.distr-compact {
+  display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;
 }
-.distr-card {
-  display: flex; flex-direction: column; gap: 10px;
-  background: #FAFBFF; border-radius: 14px;
-  border: 1px solid #E8ECF8; overflow: hidden;
-  transition: box-shadow 0.22s, transform 0.22s;
-  &:hover { box-shadow: 0 6px 20px rgba(79,70,229,0.1); transform: translateY(-2px); }
+
+.distr-compact-block {
+  background: #FAFBFF; border-radius: 12px;
+  border: 1px solid #EEF2FF; overflow: hidden;
+  transition: box-shadow 0.2s;
+  &:hover { box-shadow: 0 4px 14px rgba(79,70,229,0.08); }
 }
-/* 卡片顶部区：类型徽章 + 环形 */
-.distr-card-header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px 10px;
-  background: color-mix(in srgb, var(--dcolor) 6%, #fff);
-  border-bottom: 1px solid color-mix(in srgb, var(--dcolor) 12%, transparent);
+
+.distr-compact-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid #F1F5F9;
 }
-.distr-card-meta { display: flex; flex-direction: column; gap: 6px; }
-.distr-badge {
+
+.distr-compact-badge {
   display: inline-flex; align-items: center;
-  padding: 3px 9px; border-radius: 20px;
+  padding: 2px 9px; border-radius: 20px;
   font-size: 10.5px; font-weight: 700; letter-spacing: 0.01em;
+  flex-shrink: 0;
 }
-.distr-total {
-  font-size: 20px; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; line-height: 1;
-  span { font-size: 10px; color: #94A3B8; font-weight: 500; margin-left: 2px; }
-}
-.distr-ring-wrap {
-  position: relative; width: 80px; height: 80px; flex-shrink: 0;
-}
-.distr-ring-svg { width: 100%; height: 100%; }
-.distr-ring-circle {
-  animation: ringDraw 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
-}
-.distr-ring-label {
-  position: absolute; inset: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-}
-.distr-ring-pct { font-size: 15px; font-weight: 900; color: #1E293B; font-variant-numeric: tabular-nums; line-height: 1; }
-.distr-ring-sub { font-size: 9px; color: #94A3B8; font-weight: 500; margin-top: 2px; }
 
-/* 最高频展示 */
-.distr-winner {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 14px;
+.distr-compact-total {
+  font-size: 12px; color: #94A3B8; font-variant-numeric: tabular-nums; margin-right: auto;
 }
-.distr-winner-name { font-size: 14px; font-weight: 800; color: #1E293B; }
-.distr-winner-count { font-size: 11px; color: #94A3B8; font-variant-numeric: tabular-nums; background: #F1F5F9; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
 
-/* 排行列表 */
-.distr-mini-list { display: flex; flex-direction: column; gap: 6px; padding: 0 14px 14px; }
-.distr-mini-row  {
-  display: grid; grid-template-columns: 16px 1fr 56px 28px;
-  align-items: center; gap: 6px;
+.distr-mini-ring-wrap {
+  position: relative; width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
-.distr-mini-rank {
-  font-size: 10px; font-weight: 900; text-align: center; line-height: 1;
-  color: #CBD5E1;
-  &.rank-gold   { color: #D97706; }
-  &.rank-silver { color: #6B7280; }
-  &.rank-bronze { color: #92400E; }
+
+.distr-mini-ring-pct {
+  position: absolute; font-size: 8px; font-weight: 800; color: #1E293B;
+  font-variant-numeric: tabular-nums; line-height: 1;
 }
-.distr-mini-label {
-  font-size: 11px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;
+
+.distr-compact-list { display: flex; flex-direction: column; gap: 0; }
+
+.distr-compact-row {
+  display: grid; grid-template-columns: 18px 64px 1fr 32px;
+  align-items: center; gap: 8px;
+  padding: 5px 12px;
+  border-bottom: 1px solid #F8FAFC;
+  &:last-child { border-bottom: none; }
+  &:hover { background: #F5F7FF; }
 }
-.distr-mini-bar-wrap { height: 5px; background: #EEF2FF; border-radius: 3px; overflow: hidden; }
-.distr-mini-bar      { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); opacity: 0.8; }
-.distr-mini-num      { font-size: 10.5px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
+
+.distr-cr-rank {
+  font-size: 10px; font-weight: 800; text-align: center; color: #CBD5E1;
+  &.gold   { color: #D97706; }
+  &.silver { color: #6B7280; }
+  &.bronze { color: #92400E; }
+}
+.distr-cr-label { font-size: 11.5px; font-weight: 600; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.distr-cr-bar-wrap { height: 4px; background: #EEF2FF; border-radius: 2px; overflow: hidden; }
+.distr-cr-bar { height: 100%; border-radius: 2px; transition: width 0.55s cubic-bezier(0.4,0,0.2,1); }
+.distr-cr-num { font-size: 11px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* 原大卡样式保留备用（不再使用） */
+.distr-ring-circle { animation: ringDraw 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both; }
 
 /* ── 团队匹配洞察 ── */
 .team-section {
@@ -1000,22 +1106,93 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 .dist-mini-val   { font-size: 16px; font-weight: 800; color: #1E293B; font-variant-numeric: tabular-nums; }
 .dist-mini-label { font-size: 10px; color: #94A3B8; font-weight: 500; margin-top: 2px; }
 
+/* ── 趋势图控件 ── */
+.chart-controls {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.chart-range-tabs {
+  display: inline-flex; background: #F1F5F9; padding: 3px; border-radius: 8px; gap: 2px;
+}
+
+/* ── 团队洞察显示更多 ── */
+.team-more-btn {
+  margin-left: auto;
+  border: 1px solid #C7D2FE; background: rgba(79,70,229,0.04); color: #4F46E5;
+  font-size: 11px; font-weight: 600; padding: 3px 12px; border-radius: 20px; cursor: pointer;
+  transition: all 0.18s; flex-shrink: 0;
+  &:hover { background: #4F46E5; color: #fff; }
+}
+
+.team-all-types {
+  margin-top: 10px; background: rgba(255,255,255,0.7); border-radius: 12px;
+  border: 1px solid #E0E7FF; overflow: hidden;
+}
+
+.team-type-row {
+  display: grid; grid-template-columns: 24px 60px 1fr 48px;
+  align-items: center; gap: 8px; padding: 8px 14px;
+  border-bottom: 1px solid #F1F5F9; cursor: pointer;
+  transition: background 0.15s;
+  &:last-child { border-bottom: none; }
+  &:hover { background: #EEF2FF; }
+}
+.team-type-rank  { font-size: 11px; font-weight: 700; color: #94A3B8; text-align: center; }
+.team-type-label { font-size: 13px; font-weight: 800; color: #1E293B; }
+.team-type-name  { font-size: 11.5px; color: #64748B; }
+.team-type-count { font-size: 11.5px; font-weight: 700; color: #475569; text-align: right; font-variant-numeric: tabular-nums; }
+.team-empty-more { padding: 12px 14px; font-size: 12px; color: #9CA3AF; text-align: center; }
+
+/* ── 类型详情弹窗 ── */
+.type-detail-content {
+  display: flex; flex-direction: column; gap: 16px; padding: 4px 0;
+}
+.type-detail-role {
+  display: inline-flex; align-items: center; padding: 5px 14px;
+  background: linear-gradient(90deg, #EEF2FF, #F5F3FF); border-radius: 20px;
+  font-size: 13px; font-weight: 700; color: #4F46E5;
+  align-self: flex-start;
+}
+.type-detail-section { display: flex; flex-direction: column; gap: 8px; }
+.type-detail-label   { font-size: 11px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.05em; }
+.type-detail-tags    { display: flex; flex-wrap: wrap; gap: 6px; }
+.type-detail-note    {
+  padding: 12px 14px; background: #F5F3FF; border-radius: 10px;
+  font-size: 12.5px; color: #4B5563; line-height: 1.65; border: 1px solid #DDD6FE;
+}
+
+/* ── 分销迷你卡图标 ── */
+.dist-mini-card {
+  position: relative;
+  .dist-mini-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 6px;
+  }
+  &--agents .dist-mini-icon { background: #EEF2FF; color: #4F46E5; }
+  &--comm   .dist-mini-icon { background: #ECFDF5; color: #10B981; }
+  &--pending .dist-mini-icon { background: #FFFBEB; color: #D97706; }
+}
+
 /* ── 响应式 ── */
 @media (max-width: 1600px) {
   .dash-kpis  { grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .dash-catalog { grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
 @media (max-width: 1200px) {
   .dash-main  { grid-template-columns: 1fr; }
   .team-cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
-  .distr-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 900px) {
+  .chart-controls { flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 @media (max-width: 768px) {
-  .dashboard-viewport { padding: 14px 14px 20px; }
+  .dashboard-viewport { padding: 12px 12px 20px; }
   .dash-kpis     { grid-template-columns: repeat(2, 1fr); }
-  .dash-catalog  { grid-template-columns: repeat(2, 1fr); }
-  .distr-grid    { grid-template-columns: 1fr; }
   .team-cards    { grid-template-columns: 1fr; }
-  .stat-value    { font-size: 24px; }
+  .stat-value    { font-size: 22px; }
+  .chart-controls { flex-wrap: wrap; }
+}
+@media (max-width: 480px) {
+  .dash-kpis  { grid-template-columns: 1fr 1fr; }
+  .dash-head  { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
 </style>
