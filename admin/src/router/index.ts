@@ -207,10 +207,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '小程序界面预览' }
   },
 
-  // 默认重定向
+  // 默认重定向到小程序预览（v0 预览窗口入口）
   {
     path: '/',
-    redirect: '/admin/login'
+    redirect: '/miniprogram-preview'
   }
 ]
 
