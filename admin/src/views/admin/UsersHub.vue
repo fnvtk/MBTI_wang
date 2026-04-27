@@ -3,8 +3,8 @@
     <!-- 页面头部 -->
     <div class="hub-header">
       <div class="hub-header-left">
-        <h1 class="hub-title">用户运营</h1>
-        <p class="hub-desc">用户画像、旅程分析、价值分层与合作意向管理</p>
+        <h1 class="hub-title">用户管理</h1>
+        <p class="hub-desc">用户信息、联系方式、简历与侧脸档案、合作意向全览</p>
       </div>
     </div>
 
@@ -32,30 +32,21 @@
       :class="{ 'no-padding': true }"
     >
       <Users v-if="activeTab === 'users'" embedded />
-      <UserJourneyPanel v-else-if="activeTab === 'journey'" />
-      <UserRfmPanel v-else-if="activeTab === 'rfm'" />
       <CooperationChoicesPanel v-else-if="activeTab === 'cooperation'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, defineAsyncComponent } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Users from './Users.vue'
-import UserJourneyPanel from '@/components/UserJourneyPanel.vue'
-import UserRfmPanel from '@/components/UserRfmPanel.vue'
 import CooperationChoices from './CooperationChoices.vue'
-import {
-  User,
-  TrendCharts,
-  DataAnalysis,
-  Connection
-} from '@element-plus/icons-vue'
+import { User, Connection } from '@element-plus/icons-vue'
 
 const CooperationChoicesPanel = CooperationChoices
 
-const TAB_IDS = ['users', 'journey', 'rfm', 'cooperation'] as const
+const TAB_IDS = ['users', 'cooperation'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -67,10 +58,8 @@ const router = useRouter()
 const activeTab = ref<TabId>('users')
 
 const innerTabs: { label: string; value: TabId; icon: any }[] = [
-  { label: '用户列表',   value: 'users',       icon: User        },
-  { label: '旅程漏斗',   value: 'journey',     icon: TrendCharts },
-  { label: 'RFM 价值分层', value: 'rfm',       icon: DataAnalysis },
-  { label: '合作意向',   value: 'cooperation', icon: Connection  },
+  { label: '用户列表', value: 'users',       icon: User       },
+  { label: '合作意向', value: 'cooperation', icon: Connection },
 ]
 
 const applyRouteTab = () => {

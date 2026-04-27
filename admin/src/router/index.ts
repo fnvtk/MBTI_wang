@@ -33,7 +33,7 @@ const routes: RouteRecordRaw[] = [
         path: 'users',
         name: 'AdminUsers',
         component: () => import('@/views/admin/UsersHub.vue'),
-        meta: { title: '用户运营' }
+        meta: { title: '用户管理' }
       },
       {
         path: 'orders',

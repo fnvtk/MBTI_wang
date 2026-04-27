@@ -62,6 +62,19 @@
             </div>
             <div v-if="user.cooperationChosenAt" class="ud-coop-box__time">选择时间 {{ formatDate(user.cooperationChosenAt) }}</div>
           </div>
+          <!-- RFM 价值分层 —— 融合到用户侧边栏，带说明 tooltip -->
+          <div v-if="user.rfmLevel" class="ud-rfm-box">
+            <div class="ud-rfm-box__head">
+              RFM 价值
+              <el-tooltip placement="top" content="RFM = R（最近付费距今天数）· F（累计付费次数）· M（累计金额），综合评分按 S/A/B/C/D 五档分层">
+                <span class="ud-rfm-help">?</span>
+              </el-tooltip>
+            </div>
+            <div class="ud-rfm-box__level" :class="`ud-rfm-level-${(user.rfmLevel || '').toLowerCase()}`">
+              {{ user.rfmLevel }}
+            </div>
+            <div v-if="user.rfmScore != null" class="ud-rfm-box__score">综合分 {{ user.rfmScore }}</div>
+          </div>
           <div class="ud-dimension-tags" v-if="profileTags.length">
             <div class="ud-dimension-tags__title">维度标签</div>
             <el-tag v-for="t in profileTags" :key="t" size="small" class="ud-dimension-tags__item">{{ t }}</el-tag>
@@ -350,7 +363,7 @@ defineEmits<{
   'view-test': [row: any]
 }>()
 
-const udTab = ref('analysis')
+const udTab = ref('journey')
 const testPage = ref(1)
 const testPageSize = 8
 
@@ -362,7 +375,7 @@ watch(
   () => props.modelValue,
   v => {
     if (v) {
-      udTab.value = 'analysis'
+      udTab.value = 'journey'
       testPage.value = 1
       journeyRows.value = []
     }
@@ -371,9 +384,13 @@ watch(
 
 watch(
   () => props.user?.id,
-  () => {
+  (newId) => {
     testPage.value = 1
     journeyRows.value = []
+    // user 数据填充后自动加载旅程（默认 Tab = journey）
+    if (newId && props.modelValue) {
+      void loadJourney()
+    }
   }
 )
 
@@ -1200,6 +1217,61 @@ function openMail(email: string) {
   .el-icon {
     color: #9ca3af;
   }
+}
+
+/* ── RFM 价值分层 ── */
+.ud-rfm-box {
+  background: #fafafa;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-top: 8px;
+}
+
+.ud-rfm-box__head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+
+.ud-rfm-help {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  color: #6b7280;
+  font-size: 9px;
+  font-weight: 700;
+  cursor: help;
+  line-height: 1;
+}
+
+.ud-rfm-box__level {
+  font-size: 28px;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.ud-rfm-level-s { color: #dc2626; }
+.ud-rfm-level-a { color: #f59e0b; }
+.ud-rfm-level-b { color: #3b82f6; }
+.ud-rfm-level-c { color: #10b981; }
+.ud-rfm-level-d { color: #9ca3af; }
+
+.ud-rfm-box__score {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 3px;
 }
 
 .ud-enterprise-match__phone {

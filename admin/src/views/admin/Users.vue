@@ -2,8 +2,8 @@
   <div class="page-container">
     <div class="page-header">
       <div class="header-left">
-        <h2>用户测试画像</h2>
-        <p class="subtitle">以用户为核心 · 面容分析、MBTI / SBTI / DISC / PDP 分类展示，点标签进对应测评记录</p>
+        <h2>用户档案管理</h2>
+        <p class="subtitle">以用户为核心 · 联系方式、简历档案、侧脸分析、合作意向一览，点击用户查看完整旅程</p>
       </div>
       <div class="header-actions">
         <el-button variant="outline" size="small" @click="exportData">
@@ -14,60 +14,72 @@
 
     <div class="profile-summary profile-summary--six">
       <div class="summary-card">
-        <div class="summary-ic ic-blue">👥</div>
+        <div class="summary-ic ic-blue">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.75"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">用户数量</div>
-          <div class="summary-value">{{ pageUserCount }}</div>
-          <div class="summary-foot">符合条件的用户共 <strong>{{ total }}</strong> 人</div>
+          <div class="summary-label">全部用户</div>
+          <div class="summary-value">{{ total.toLocaleString() }}</div>
+          <div class="summary-foot">本页显示 <strong>{{ pageUserCount }}</strong> 人</div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-teal">🪞</div>
+        <div class="summary-ic ic-teal">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="5" stroke="currentColor" stroke-width="1.75"/><path d="M3 21s1-4 9-4 9 4 9 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">已面容 / 面相</div>
+          <div class="summary-label">有侧脸档案</div>
           <div class="summary-value">
             {{ profileStats.faceCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-indigo">🧠</div>
+        <div class="summary-ic ic-indigo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" stroke-width="1.75"/><path d="M8 12h8M8 8h8M8 16h5" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
-          <div class="summary-label">已完成 MBTI</div>
+          <div class="summary-label">有简历</div>
           <div class="summary-value">
-            {{ profileStats.mbtiCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            {{ profileStats.resumeCount }}
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-violet">🃏</div>
-        <div class="summary-body">
-          <div class="summary-label">已完成 SBTI</div>
-          <div class="summary-value">
-            {{ profileStats.sbtiCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
-          </div>
+        <div class="summary-ic ic-violet">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
         </div>
-      </div>
-      <div class="summary-card">
-        <div class="summary-ic ic-amber">📊</div>
         <div class="summary-body">
-          <div class="summary-label">至少一项测试</div>
+          <div class="summary-label">完成测评</div>
           <div class="summary-value">
             {{ profileStats.anyTestCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-ic ic-coop">🤝</div>
+        <div class="summary-ic ic-amber">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8 19.79 19.79 0 01.13 1.18 2 2 0 012.11 0h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z" stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="summary-body">
+          <div class="summary-label">有联系方式</div>
+          <div class="summary-value">
+            {{ profileStats.phoneCount }}
+            <span class="summary-sub">/ {{ total }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-ic ic-coop">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M12 7a4 4 0 110-8M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/></svg>
+        </div>
         <div class="summary-body">
           <div class="summary-label">已选合作意向</div>
           <div class="summary-value">
             {{ profileStats.cooperationCount }}
-            <span class="summary-sub">/ {{ pageUserCount }}</span>
+            <span class="summary-sub">/ {{ total }}</span>
           </div>
         </div>
       </div>
@@ -106,9 +118,9 @@
     <!-- 用户列表表格 -->
     <div class="table-card">
       <el-table :data="users" style="width: 100%" v-loading="loading" class="user-table">
-        <el-table-column label="用户" min-width="220">
+        <el-table-column label="用户" min-width="200">
           <template #default="{ row }">
-            <div class="user-cell">
+            <div class="user-cell" style="cursor:pointer" @click="handleView(row)">
               <div class="user-avatar-wrap">
                 <div class="user-avatar">
                   <img
@@ -121,60 +133,32 @@
                     {{ avatarLetter(row) }}
                   </span>
                 </div>
-                <!-- 有简历徽章：手机号已绑定 + 至少1项测评 -->
-                <span
-                  v-if="row.phone && row.testCount > 0"
-                  class="resume-badge"
-                  title="有简历（已绑手机号 + 完成测评）"
-                >
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
-                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </span>
               </div>
               <div class="user-meta">
-                <div class="user-name-row">
-                  <span class="user-name">{{ row.username || '未设置昵称' }}</span>
-                  <span v-if="row.phone && row.testCount > 0" class="has-resume-label">有简历</span>
-                </div>
-                <div class="user-sub">
-                  <span
-                    v-if="row.coldFaceLevel"
-                    :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]"
-                    :title="coldFaceTooltip(row)"
-                  >{{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template></span>
-                  <span v-else class="empty-hint">未测面相</span>
+                <div class="user-name">{{ row.username || '未设置昵称' }}</div>
+                <div class="user-pills">
+                  <span v-if="row.phone" class="upill upill--phone">联系方式</span>
+                  <span v-if="row.phone && (row.testCount > 0)" class="upill upill--resume">简历</span>
+                  <span v-if="row.coldFaceLevel" class="upill upill--face" :title="coldFaceTooltip(row)">
+                    侧脸 · {{ coldFaceLabel(row.coldFaceLevel) }}
+                  </span>
+                  <span v-if="!row.phone && !row.coldFaceLevel" class="upill upill--empty">待完善</span>
                 </div>
               </div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="联系方式" min-width="160">
+        <el-table-column label="联系方式" min-width="148">
           <template #default="{ row }">
             <div class="contact-cell">
               <div class="phone">{{ row.phone || '—' }}</div>
-              <div class="openid-line" :title="row.openid || ''">{{ row.openid ? (String(row.openid).length > 16 ? String(row.openid).slice(0,16) + '…' : row.openid) : '—' }}</div>
+              <div v-if="row.openid" class="openid-line" :title="row.openid">{{ String(row.openid).length > 16 ? String(row.openid).slice(0,16) + '…' : row.openid }}</div>
             </div>
           </template>
         </el-table-column>
 
-        <el-table-column label="测评标签" min-width="220">
-          <template #default="{ row }">
-            <div class="test-results">
-              <el-tag v-if="row.mbtiType" size="small" class="result-tag tag-mbti" @click.stop="handleClickTestTag(row, 'mbti')">MBTI · {{ row.mbtiType }}</el-tag>
-              <el-tag v-if="row.sbtiType" size="small" class="result-tag tag-sbti" @click.stop="handleClickTestTag(row, 'sbti')">SBTI · {{ row.sbtiType }}</el-tag>
-              <el-tag v-if="row.discType" size="small" class="result-tag tag-disc" type="info" @click.stop="handleClickTestTag(row, 'disc')">DISC · {{ row.discType }}</el-tag>
-              <el-tag v-if="row.pdpType" size="small" class="result-tag tag-pdp" type="warning" @click.stop="handleClickTestTag(row, 'pdp')">PDP · {{ row.pdpType }}</el-tag>
-              <el-tag v-if="row.faceMbtiType" size="small" class="result-tag tag-face" type="success" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceMbtiType }}</el-tag>
-              <el-tag v-if="row.faceDiscType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.faceDiscType }}</el-tag>
-              <el-tag v-if="row.facePdpType" size="small" class="result-tag tag-face" type="success" effect="plain" @click.stop="handleClickTestTag(row, 'face')">面·{{ row.facePdpType }}</el-tag>
-              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.faceMbtiType && !row.faceDiscType && !row.facePdpType" class="no-test">暂无测评</span>
-            </div>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="合作意向" min-width="150" show-overflow-tooltip>
+        <el-table-column label="合作意向" min-width="140" show-overflow-tooltip>
           <template #default="{ row }">
             <div v-if="row.cooperationModeTitle || row.cooperationModeCode" class="coop-cell">
               <span class="coop-title">{{ row.cooperationModeTitle || row.cooperationModeCode || '—' }}</span>
@@ -185,15 +169,6 @@
               <div v-if="row.cooperationChosenAt" class="coop-time">{{ formatDate(row.cooperationChosenAt) }}</div>
             </div>
             <span v-else class="coop-empty">—</span>
-          </template>
-        </el-table-column>
-
-        <el-table-column label="测评次数 · 最近活跃" width="180">
-          <template #default="{ row }">
-            <div class="activity-cell">
-              <div class="activity-row">测评 <strong>{{ row.testCount || 0 }}</strong> 次</div>
-              <div class="activity-row sub">{{ row.lastTestAt ? formatDate(row.lastTestAt) : '—' }}</div>
-            </div>
           </template>
         </el-table-column>
 
@@ -783,33 +758,37 @@ const users = ref<any[]>([])
 
 const pageUserCount = computed(() => (users.value || []).length)
 
-/** 页内画像汇总（严格只遍历当前表格 users，与分页接口返回的本页 list 一致） */
+/**
+ * 画像汇总：遍历当前页用户，分母用全量 total，分子按当前页估算。
+ * 后端如提供全量统计接口，可将此 computed 替换为接口数据。
+ */
 const profileStats = computed(() => {
   const list = users.value || []
   let faceCount = 0
-  let mbtiCount = 0
-  let sbtiCount = 0
+  let resumeCount = 0
+  let phoneCount = 0
   let anyTestCount = 0
   let cooperationCount = 0
   for (const u of list) {
-    const hasFace = !!(
-      u.faceMbtiType ||
-      u.faceDiscType ||
-      u.facePdpType ||
-      u.faceType ||
-      u.coldFaceLevel
-    )
-    const hasMbti = !!u.mbtiType
-    const hasSbti = !!u.sbtiType
-    const hasDisc = !!u.discType
-    const hasPdp = !!u.pdpType
-    if (hasFace) faceCount++
-    if (hasMbti) mbtiCount++
-    if (hasSbti) sbtiCount++
-    if (hasFace || hasMbti || hasSbti || hasDisc || hasPdp) anyTestCount++
+    const hasFace = !!(u.faceMbtiType || u.faceDiscType || u.facePdpType || u.faceType || u.coldFaceLevel)
+    const hasTest = !!(u.mbtiType || u.sbtiType || u.discType || u.pdpType || hasFace)
+    const hasPhone = !!u.phone
+    const hasResume = hasPhone && (u.testCount > 0)
+    if (hasFace)     faceCount++
+    if (hasResume)   resumeCount++
+    if (hasPhone)    phoneCount++
+    if (hasTest)     anyTestCount++
     if (u.cooperationModeCode || u.cooperationModeTitle || u.cooperationChosenAt) cooperationCount++
   }
-  return { faceCount, mbtiCount, sbtiCount, anyTestCount, cooperationCount }
+  // 按当前页比例外推到全量（如后端提供接口可替换）
+  const ratio = list.length > 0 ? (total.value / list.length) : 1
+  return {
+    faceCount:        Math.round(faceCount    * ratio),
+    resumeCount:      Math.round(resumeCount  * ratio),
+    phoneCount:       Math.round(phoneCount   * ratio),
+    anyTestCount:     Math.round(anyTestCount * ratio),
+    cooperationCount: Math.round(cooperationCount * ratio),
+  }
 })
 
 async function loadUsers() {
@@ -1324,12 +1303,14 @@ onMounted(() => {
     font-size: 20px;
     flex-shrink: 0;
 
-    &.ic-blue { background: #eff6ff; }
-    &.ic-teal { background: #f0fdfa; }
-    &.ic-indigo { background: #eef2ff; }
-    &.ic-violet { background: #f5f3ff; }
-    &.ic-amber { background: #fffbeb; }
-    &.ic-coop { background: #f0fdf4; }
+    &.ic-blue   { background: #eff6ff; color: #2563eb; }
+    &.ic-teal   { background: #f0fdfa; color: #0d9488; }
+    &.ic-indigo { background: #eef2ff; color: #4f46e5; }
+    &.ic-violet { background: #f5f3ff; color: #7c3aed; }
+    &.ic-amber  { background: #fffbeb; color: #d97706; }
+    &.ic-coop   { background: #f0fdf4; color: #16a34a; }
+
+    svg { flex-shrink: 0; }
   }
 
   .summary-body {
@@ -1640,6 +1621,46 @@ onMounted(() => {
 
 .mr-1 {
   margin-right: 4px;
+}
+
+/* ── 用户信息列胶囊标签 ── */
+.user-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.upill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.6;
+  white-space: nowrap;
+
+  &--phone {
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+  }
+  &--resume {
+    background: #f0fdf4;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+  }
+  &--face {
+    background: #fdf4ff;
+    color: #7e22ce;
+    border: 1px solid #e9d5ff;
+  }
+  &--empty {
+    background: #f9fafb;
+    color: #9ca3af;
+    border: 1px solid #e5e7eb;
+  }
 }
 
 .test-detail-header {
