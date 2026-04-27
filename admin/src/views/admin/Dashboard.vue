@@ -76,47 +76,45 @@
 
         <div v-if="hasDistribution" class="distr-grid">
           <div v-for="block in distributionBlocks" :key="block.key" class="distr-card">
-            <!-- 环形进度 -->
-            <div class="distr-ring-wrap">
-              <svg class="distr-ring-svg" viewBox="0 0 80 80">
-                <circle cx="40" cy="40" r="34" fill="none" stroke="#F0F2F8" stroke-width="8"/>
-                <circle
-                  cx="40" cy="40" r="34" fill="none"
-                  :stroke="block.color" stroke-width="8"
-                  stroke-linecap="round"
-                  stroke-dasharray="213.6"
-                  :stroke-dashoffset="ringOffset(block)"
-                  transform="rotate(-90 40 40)"
-                  class="distr-ring-circle"
-                />
-              </svg>
-              <div class="distr-ring-label">
-                <span class="distr-ring-pct">{{ block.topPct }}</span>
-                <span class="distr-ring-sub">最高频</span>
+            <!-- 卡片顶部：类型标识 + 环形 -->
+            <div class="distr-card-header" :style="{ '--dcolor': block.color }">
+              <div class="distr-card-meta">
+                <div class="distr-badge" :style="{ background: block.color + '18', color: block.color }">{{ block.title }}</div>
+                <div class="distr-total">{{ block.totalCount.toLocaleString() }} <span>总数</span></div>
+              </div>
+              <div class="distr-ring-wrap">
+                <svg class="distr-ring-svg" viewBox="0 0 80 80">
+                  <circle cx="40" cy="40" r="32" fill="none" stroke="#F0F2F8" stroke-width="9"/>
+                  <circle
+                    cx="40" cy="40" r="32" fill="none"
+                    :stroke="block.color" stroke-width="9"
+                    stroke-linecap="round"
+                    stroke-dasharray="201.1"
+                    :stroke-dashoffset="ringOffsetLg(block)"
+                    transform="rotate(-90 40 40)"
+                    class="distr-ring-circle"
+                  />
+                </svg>
+                <div class="distr-ring-label">
+                  <span class="distr-ring-pct">{{ block.topPct }}</span>
+                  <span class="distr-ring-sub">最高频</span>
+                </div>
               </div>
             </div>
-            <!-- 卡片信息 -->
-            <div class="distr-card-info">
-              <div class="distr-card-head">
-                <span class="distr-dot" :style="{ background: block.color }"></span>
-                <span class="distr-card-title">{{ block.title }}</span>
-              </div>
-              <div class="distr-top-type" v-if="block.topItem">
-                <span class="distr-type-name">{{ block.topItem.label }}</span>
-                <span class="distr-type-count">{{ block.topItem.count }} 人</span>
-              </div>
-              <!-- 迷你排行 -->
-              <div class="distr-mini-list">
-                <div v-for="(it, idx) in block.items.slice(0, 4)" :key="it.label" class="distr-mini-row">
-                  <span class="distr-mini-rank" :class="{ 'rank-top': idx === 0 }">{{ idx + 1 }}</span>
-                  <span class="distr-mini-label">{{ it.label }}</span>
-                  <div class="distr-mini-bar-wrap">
-                    <div class="distr-mini-bar"
-                      :style="{ width: barWidthPct(block.max, it.count), background: block.color }">
-                    </div>
-                  </div>
-                  <span class="distr-mini-num">{{ it.count }}</span>
+            <!-- 最高频类型 -->
+            <div class="distr-winner" v-if="block.topItem">
+              <div class="distr-winner-name">{{ block.topItem.label }}</div>
+              <div class="distr-winner-count">{{ block.topItem.count }} 人</div>
+            </div>
+            <!-- 排行列表 -->
+            <div class="distr-mini-list">
+              <div v-for="(it, idx) in block.items.slice(0, 5)" :key="it.label" class="distr-mini-row">
+                <span class="distr-mini-rank" :class="{ 'rank-gold': idx === 0, 'rank-silver': idx === 1, 'rank-bronze': idx === 2 }">{{ idx + 1 }}</span>
+                <span class="distr-mini-label">{{ it.label }}</span>
+                <div class="distr-mini-bar-wrap">
+                  <div class="distr-mini-bar" :style="{ width: barWidthPct(block.max, it.count), background: block.color }"></div>
                 </div>
+                <span class="distr-mini-num">{{ it.count }}</span>
               </div>
             </div>
           </div>
@@ -143,54 +141,53 @@
 
           <div class="team-cards">
             <div v-for="(hint, idx) in teamMatchHints" :key="hint.type" class="team-card">
-              <!-- 卡片头 -->
+              <!-- 渐变头部 -->
               <div class="team-card-top" :style="{ background: hint.gradient }">
-                <div class="team-card-rank">#{{ idx + 1 }}</div>
-                <div class="team-card-type-block">
+                <div class="team-card-top-left">
+                  <div class="team-card-rank">#{{ idx + 1 }} 最高频</div>
                   <div class="team-card-type">{{ hint.type }}</div>
                   <div class="team-card-name">{{ hint.name }}</div>
                 </div>
-                <div class="team-card-role-pill">{{ hint.teamRole }}</div>
+                <div class="team-card-top-right">
+                  <div class="team-card-role-pill">{{ hint.teamRole }}</div>
+                  <!-- 占比圆环 mini -->
+                  <div class="team-mini-ring">
+                    <svg viewBox="0 0 44 44" width="44" height="44">
+                      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="5"/>
+                      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="5"
+                        stroke-linecap="round" stroke-dasharray="113.1"
+                        :stroke-dashoffset="teamRingOffset(idx)"
+                        transform="rotate(-90 22 22)" style="transition:stroke-dashoffset 0.6s ease"/>
+                    </svg>
+                    <div class="team-mini-ring-pct">{{ teamRingPct(idx) }}</div>
+                  </div>
+                </div>
               </div>
               <!-- 卡片体 -->
               <div class="team-card-body">
                 <!-- 最佳搭档 -->
-                <div class="team-card-row">
-                  <div class="team-row-icon team-row-icon--match">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"
-                        stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-                    </svg>
+                <div class="team-info-section">
+                  <div class="team-info-label">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    最佳搭档
                   </div>
-                  <div class="team-row-content">
-                    <div class="team-row-label">最佳搭档</div>
-                    <div class="team-row-tags">
-                      <span v-for="m in hint.bestMatch" :key="m" class="team-tag team-tag--match">{{ m }}</span>
-                    </div>
+                  <div class="team-tag-row">
+                    <span v-for="m in hint.bestMatch" :key="m" class="team-tag team-tag--match">{{ m }}</span>
                   </div>
                 </div>
                 <!-- 核心能力 -->
-                <div class="team-card-row">
-                  <div class="team-row-icon team-row-icon--skill">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                        stroke="currentColor" stroke-width="1.75" stroke-linejoin="round"/>
-                    </svg>
+                <div class="team-info-section">
+                  <div class="team-info-label">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+                    核心优势
                   </div>
-                  <div class="team-row-content">
-                    <div class="team-row-label">核心能力</div>
-                    <div class="team-row-tags">
-                      <span v-for="s in hint.strengths" :key="s" class="team-tag team-tag--skill">{{ s }}</span>
-                    </div>
+                  <div class="team-tag-row">
+                    <span v-for="s in hint.strengths" :key="s" class="team-tag team-tag--skill">{{ s }}</span>
                   </div>
                 </div>
-                <!-- 互补提示 -->
+                <!-- 互补洞察 -->
                 <div class="team-complement">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.75"/>
-                    <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-                  </svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   <span>{{ hint.complementNote }}</span>
                 </div>
               </div>
@@ -291,9 +288,7 @@
               <div class="qs-dot" :style="{ background: row.color }"></div>
               <div class="qs-label">{{ row.label }}</div>
               <div class="qs-bar-wrap">
-                <div class="qs-bar" :style="{ width: row.pct, background: row.color + '33' }">
-                  <div class="qs-bar-fill" :style="{ width: row.pct, background: row.color }"></div>
-                </div>
+                <div class="qs-bar-fill" :style="{ width: row.pct, background: row.color }"></div>
               </div>
               <div class="qs-val">{{ row.val }}</div>
             </div>
@@ -385,34 +380,34 @@ const trendTotalsText = computed(() => {
 const kpiCards = computed(() => [
   {
     key: 'u', label: '总用户数', tone: 'blue',
-    displayValue: stats.totalUsers.toLocaleString(), sub: `本周新增 +${stats.newUsersWeek}`,
+    displayValue: stats.totalUsers.toLocaleString(), sub: '注册用户总量',
     svg: `<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   {
     key: 't', label: '已完成测评', tone: 'indigo',
-    displayValue: stats.testsCompleted.toLocaleString(), sub: '',
+    displayValue: stats.testsCompleted.toLocaleString(), sub: '测评人次累计',
     svg: `<path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   {
     key: 'a', label: '今日活跃', tone: 'purple',
-    displayValue: stats.activeToday.toLocaleString(), sub: '',
+    displayValue: stats.activeToday.toLocaleString(), sub: '24h 活跃用户',
     svg: `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   {
     key: 'w', label: '本周新增', tone: 'teal',
-    displayValue: `+${stats.newUsersWeek}`, sub: '相较上周',
+    displayValue: stats.newUsersWeek ? `+${stats.newUsersWeek}` : '0', sub: '近 7 日新注册',
     svg: `<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   {
-    key: 'rev', label: '企业收益', tone: 'green',
-    displayValue: `¥${(stats.totalRevenue / 100).toFixed(0)}`,
-    sub: '累计订单收入（元）',
+    key: 'rev', label: '累计收益', tone: 'green',
+    displayValue: stats.totalRevenue ? `¥${(stats.totalRevenue / 100).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}` : '¥0',
+    sub: '订单实收（元）',
     svg: `<rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/><path d="M2 10h20" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><circle cx="16.5" cy="15" r="1.5" fill="currentColor"/>`
   },
   {
     key: 'ai', label: 'AI 算力消耗', tone: 'amber',
     displayValue: formatTokens(stats.aiTokens),
-    sub: 'Tokens 累计消耗',
+    sub: 'Tokens 累计使用',
     svg: `<rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="1.75"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/><path d="M9 8l2 2 4-4" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
 ])
@@ -506,11 +501,11 @@ const distributionBlocks = computed(() => {
 
 const hasDistribution = computed(() => distributionBlocks.value.length > 0)
 
-// 环形偏移计算：圆周 = 2π×34 ≈ 213.6
-function ringOffset(block: { topItem: { count: number } | null; totalCount: number }) {
-  if (!block.topItem || !block.totalCount) return 213.6
+// 环形偏移计算：圆周 = 2π×32 ≈ 201.1
+function ringOffsetLg(block: { topItem: { count: number } | null; totalCount: number }) {
+  if (!block.topItem || !block.totalCount) return 201.1
   const pct = block.topItem.count / block.totalCount
-  return 213.6 * (1 - Math.min(pct, 1))
+  return 201.1 * (1 - Math.min(pct, 1))
 }
 
 function barWidthPct(max: number, count: number) {
@@ -555,6 +550,20 @@ const teamMatchHints = computed(() => {
     return { type, ...db }
   })
 })
+
+// 团队洞察占比环形 (r=18, 周长=113.1)
+function teamRingOffset(idx: number): number {
+  const total = distributionMbti.value.reduce((s, i) => s + i.count, 0) || 1
+  const item  = distributionMbti.value[idx]
+  if (!item) return 113.1
+  return 113.1 * (1 - Math.min(item.count / total, 1))
+}
+function teamRingPct(idx: number): string {
+  const total = distributionMbti.value.reduce((s, i) => s + i.count, 0) || 1
+  const item  = distributionMbti.value[idx]
+  if (!item) return '0%'
+  return `${Math.round((item.count / total) * 100)}%`
+}
 
 // 团队配置建议语句
 const teamSuggest = computed(() => {
@@ -686,7 +695,7 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes ringDraw {
-  from { stroke-dashoffset: 213.6; }
+  from { stroke-dashoffset: 201.1; }
 }
 
 .dashboard-viewport {
@@ -754,7 +763,7 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
   &.tone-amber  { background: #FFFBEB; color: #D97706; }
 }
 .stat-label { font-size: 11.5px; font-weight: 600; color: #64748B; flex: 1; }
-.stat-value { font-size: 28px; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; margin-bottom: 4px; }
+.stat-value { font-size: 26px; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; letter-spacing: -0.03em; line-height: 1; margin-bottom: 5px; }
 .stat-sub { font-size: 11px; color: #94A3B8; font-weight: 500; }
 
 /* ── 目录数据条 ── */
@@ -816,114 +825,151 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 .panel-sub   { margin: 3px 0 0; font-size: 11px; color: #94A3B8; }
 .panel-meta  { font-size: 11px; color: #94A3B8; font-weight: 500; }
 
-/* ── 分布区块：环形卡 ── */
+/* ── 分布区块：竖版环形卡 ── */
 .distr-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0,1fr));
   gap: 12px; margin-bottom: 20px;
 }
 .distr-card {
-  display: flex; gap: 12px; align-items: flex-start;
-  padding: 14px; background: #FAFBFF;
-  border-radius: 12px; border: 1px solid #E8ECF8;
-  transition: box-shadow 0.2s, transform 0.2s;
-  &:hover { box-shadow: 0 4px 16px rgba(79,70,229,0.1); transform: translateY(-1px); }
+  display: flex; flex-direction: column; gap: 10px;
+  background: #FAFBFF; border-radius: 14px;
+  border: 1px solid #E8ECF8; overflow: hidden;
+  transition: box-shadow 0.22s, transform 0.22s;
+  &:hover { box-shadow: 0 6px 20px rgba(79,70,229,0.1); transform: translateY(-2px); }
+}
+/* 卡片顶部区：类型徽章 + 环形 */
+.distr-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px 10px;
+  background: color-mix(in srgb, var(--dcolor) 6%, #fff);
+  border-bottom: 1px solid color-mix(in srgb, var(--dcolor) 12%, transparent);
+}
+.distr-card-meta { display: flex; flex-direction: column; gap: 6px; }
+.distr-badge {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.01em;
+}
+.distr-total {
+  font-size: 20px; font-weight: 800; color: #0F172A; font-variant-numeric: tabular-nums; line-height: 1;
+  span { font-size: 10px; color: #94A3B8; font-weight: 500; margin-left: 2px; }
 }
 .distr-ring-wrap {
-  position: relative; width: 72px; height: 72px; flex-shrink: 0;
+  position: relative; width: 80px; height: 80px; flex-shrink: 0;
 }
 .distr-ring-svg { width: 100%; height: 100%; }
-.distr-ring-circle { animation: ringDraw 0.7s ease-out 0.2s both; }
+.distr-ring-circle {
+  animation: ringDraw 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both;
+}
 .distr-ring-label {
   position: absolute; inset: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
-.distr-ring-pct  { font-size: 14px; font-weight: 800; color: #1E293B; font-variant-numeric: tabular-nums; line-height: 1; }
-.distr-ring-sub  { font-size: 9px; color: #94A3B8; font-weight: 500; line-height: 1.2; }
+.distr-ring-pct { font-size: 15px; font-weight: 900; color: #1E293B; font-variant-numeric: tabular-nums; line-height: 1; }
+.distr-ring-sub { font-size: 9px; color: #94A3B8; font-weight: 500; margin-top: 2px; }
 
-.distr-card-info { flex: 1; min-width: 0; }
-.distr-card-head { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
-.distr-dot       { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
-.distr-card-title { font-size: 11.5px; font-weight: 700; color: #374151; }
-.distr-top-type  { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.distr-type-name { font-size: 13px; font-weight: 800; color: #1E293B; }
-.distr-type-count { font-size: 11px; color: #94A3B8; font-variant-numeric: tabular-nums; }
+/* 最高频展示 */
+.distr-winner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 14px;
+}
+.distr-winner-name { font-size: 14px; font-weight: 800; color: #1E293B; }
+.distr-winner-count { font-size: 11px; color: #94A3B8; font-variant-numeric: tabular-nums; background: #F1F5F9; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
 
-.distr-mini-list { display: flex; flex-direction: column; gap: 5px; }
+/* 排行列表 */
+.distr-mini-list { display: flex; flex-direction: column; gap: 6px; padding: 0 14px 14px; }
 .distr-mini-row  {
-  display: grid; grid-template-columns: 14px 1fr 60px 26px;
-  align-items: center; gap: 5px;
+  display: grid; grid-template-columns: 16px 1fr 56px 28px;
+  align-items: center; gap: 6px;
 }
 .distr-mini-rank {
-  font-size: 10px; font-weight: 800; color: #94A3B8; text-align: center;
-  &.rank-top { color: #D97706; }
+  font-size: 10px; font-weight: 900; text-align: center; line-height: 1;
+  color: #CBD5E1;
+  &.rank-gold   { color: #D97706; }
+  &.rank-silver { color: #6B7280; }
+  &.rank-bronze { color: #92400E; }
 }
 .distr-mini-label {
-  font-size: 10.5px; color: #4B5563; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;
+  font-size: 11px; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600;
 }
 .distr-mini-bar-wrap { height: 5px; background: #EEF2FF; border-radius: 3px; overflow: hidden; }
-.distr-mini-bar      { height: 100%; border-radius: 3px; transition: width 0.5s ease; opacity: 0.75; }
-.distr-mini-num      { font-size: 10px; font-weight: 700; color: #374151; text-align: right; font-variant-numeric: tabular-nums; }
+.distr-mini-bar      { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); opacity: 0.8; }
+.distr-mini-num      { font-size: 10.5px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* ── 团队匹配洞察：升级版 ── */
+/* ── 团队匹配洞察 ── */
 .team-section {
-  background: linear-gradient(135deg, #F8F9FF 0%, #EEF2FF 100%);
+  background: linear-gradient(150deg, #F5F3FF 0%, #EEF2FF 60%, #F0FDFA 100%);
   border: 1px solid #C7D2FE;
-  border-radius: 16px; padding: 18px 20px; margin-bottom: 20px;
+  border-radius: 18px; padding: 20px 22px; margin-bottom: 22px;
 }
 .team-section-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 12px;
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; gap: 12px;
 }
 .team-head-left { display: flex; align-items: center; gap: 12px; }
 .team-head-icon {
-  width: 36px; height: 36px; border-radius: 10px;
+  width: 40px; height: 40px; border-radius: 12px;
   background: linear-gradient(135deg, #4F46E5, #7C3AED);
   display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(79,70,229,0.3);
 }
-.team-head-title { font-size: 14px; font-weight: 800; color: #1E293B; margin-bottom: 2px; }
-.team-head-sub   { font-size: 11px; color: #64748B; }
+.team-head-title { font-size: 15px; font-weight: 800; color: #1E293B; margin-bottom: 3px; }
+.team-head-sub   { font-size: 11.5px; color: #64748B; }
 .team-head-badge {
   font-size: 11px; font-weight: 700; color: #4F46E5;
-  background: #EEF2FF; border: 1px solid #C7D2FE;
-  padding: 4px 12px; border-radius: 20px; flex-shrink: 0;
+  background: rgba(79,70,229,0.08); border: 1px solid #C7D2FE;
+  padding: 5px 14px; border-radius: 20px; flex-shrink: 0; letter-spacing: 0.01em;
 }
 
-.team-cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
-.team-card { background: #fff; border-radius: 14px; border: 1px solid #E0E7FF; overflow: hidden; box-shadow: 0 2px 8px rgba(79,70,229,0.07); transition: transform 0.2s, box-shadow 0.2s; &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.14); } }
-
+.team-cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-bottom: 14px; }
+.team-card {
+  background: #fff; border-radius: 16px; border: 1px solid #E0E7FF;
+  overflow: hidden; box-shadow: 0 2px 10px rgba(79,70,229,0.07);
+  transition: transform 0.22s, box-shadow 0.22s;
+  &:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(79,70,229,0.16); }
+}
 .team-card-top {
-  padding: 14px 14px 12px; color: #fff;
-  display: flex; align-items: flex-start; gap: 10px;
+  padding: 16px 16px 14px; color: #fff;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
 }
-.team-card-rank  { font-size: 11px; font-weight: 800; opacity: 0.75; margin-top: 1px; }
-.team-card-type-block { flex: 1; min-width: 0; }
-.team-card-type  { font-size: 20px; font-weight: 900; letter-spacing: -0.02em; line-height: 1; }
-.team-card-name  { font-size: 11px; font-weight: 600; opacity: 0.85; margin-top: 2px; }
+.team-card-top-left { display: flex; flex-direction: column; gap: 2px; }
+.team-card-rank  { font-size: 10px; font-weight: 700; opacity: 0.7; letter-spacing: 0.05em; margin-bottom: 4px; }
+.team-card-type  { font-size: 24px; font-weight: 900; letter-spacing: -0.025em; line-height: 1; }
+.team-card-name  { font-size: 12px; font-weight: 600; opacity: 0.88; margin-top: 3px; }
+.team-card-top-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
 .team-card-role-pill {
-  font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.22);
-  padding: 3px 9px; border-radius: 20px; white-space: nowrap; align-self: flex-start; flex-shrink: 0;
+  font-size: 10px; font-weight: 700; background: rgba(255,255,255,0.2);
+  padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+.team-mini-ring {
+  position: relative; width: 44px; height: 44px; flex-shrink: 0;
+}
+.team-mini-ring-pct {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: rgba(255,255,255,0.95);
+  font-variant-numeric: tabular-nums;
 }
 
-.team-card-body  { padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
-.team-card-row   { display: flex; align-items: flex-start; gap: 8px; }
-.team-row-icon   {
-  width: 22px; height: 22px; border-radius: 6px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center; margin-top: 1px;
-  &--match { background: #ECFDF5; color: #10B981; }
-  &--skill  { background: #FFFBEB; color: #D97706; }
+.team-card-body  { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.team-info-section { display: flex; flex-direction: column; gap: 6px; }
+.team-info-label {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 700; color: #94A3B8;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  svg { opacity: 0.6; }
 }
-.team-row-content { flex: 1; min-width: 0; }
-.team-row-label   { font-size: 9.5px; font-weight: 700; color: #94A3B8; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
-.team-row-tags    { display: flex; flex-wrap: wrap; gap: 4px; }
+.team-tag-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .team-tag {
-  font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 5px;
+  font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 6px;
   &--match { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
-  &--skill  { background: #FFFBEB; color: #B45309; border: 1px solid #FDE68A; }
+  &--skill  { background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; }
 }
 .team-complement {
-  display: flex; align-items: flex-start; gap: 6px;
-  padding: 7px 10px; background: #F8FAFF; border-radius: 8px; border: 1px solid #E0E7FF;
-  font-size: 10.5px; color: #4B5563; line-height: 1.5;
-  svg { flex-shrink: 0; color: #818CF8; margin-top: 1px; }
+  display: flex; align-items: flex-start; gap: 7px; margin-top: 2px;
+  padding: 8px 11px; background: linear-gradient(90deg, #F5F3FF, #EEF2FF);
+  border-radius: 9px; border: 1px solid #DDD6FE;
+  font-size: 11px; color: #4B5563; line-height: 1.55; font-weight: 500;
+  svg { flex-shrink: 0; color: #7C3AED; margin-top: 1px; }
 }
 
 .team-suggest-bar {
@@ -964,14 +1010,13 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 .invite-placeholder { font-size: 12px; color: #9CA3AF; text-align: center; }
 
 /* 快速数据 */
-.quick-stats { display: flex; flex-direction: column; gap: 9px; }
-.qs-row { display: grid; grid-template-columns: 10px 1fr 70px 36px; align-items: center; gap: 8px; }
+.quick-stats { display: flex; flex-direction: column; gap: 10px; }
+.qs-row { display: grid; grid-template-columns: 10px 1fr 64px 38px; align-items: center; gap: 8px; }
 .qs-dot  { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.qs-label { font-size: 11.5px; color: #374151; font-weight: 500; }
+.qs-label { font-size: 11.5px; color: #374151; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qs-bar-wrap { height: 6px; background: #F1F5F9; border-radius: 3px; overflow: hidden; }
-.qs-bar { height: 100%; border-radius: 3px; position: relative; }
-.qs-bar-fill { position: absolute; inset: 0; border-radius: 3px; opacity: 1; transition: width 0.5s ease; }
-.qs-val  { font-size: 11px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
+.qs-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.qs-val  { font-size: 11.5px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
 
 /* 分销小卡 */
 .dist-mini-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
