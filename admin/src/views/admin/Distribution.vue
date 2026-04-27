@@ -574,7 +574,7 @@ const distEnabled = ref(true)
 const promoCenterTitle = ref('推广中心')
 
 const testTypeItems = [
-  { key: 'face',   label: '人脸分析' },
+  { key: 'face',   label: '���脸分析' },
   { key: 'mbti',   label: 'MBTI 测试' },
   { key: 'sbti',   label: 'SBTI 测试' },
   { key: 'disc',   label: 'DISC 测试' },
@@ -791,40 +791,52 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.page-container {
+  min-height: calc(100vh - 56px);
+  background: #F4F6FB;
+  padding: 20px 24px 24px;
+  box-sizing: border-box;
+}
+
 .page-header {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
 
   .header-left {
     h2 {
       font-size: 22px;
-      font-weight: 700;
+      font-weight: 800;
       color: #111827;
       margin: 0 0 4px 0;
+      letter-spacing: -0.02em;
     }
     .subtitle {
-      font-size: 13px;
-      color: #6b7280;
+      font-size: 12.5px;
+      color: #6B7280;
       margin: 0;
     }
   }
 
   .refresh-btn {
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 8px 12px;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 7px 14px;
     font-size: 13px;
     color: #374151;
-    height: 34px;
+    background: #fff;
+    height: auto;
     display: flex;
     align-items: center;
     gap: 6px;
+    cursor: pointer;
     
     &:hover {
-      background-color: #f9fafb;
-      border-color: #d1d5db;
+      background-color: #F9FAFB;
+      border-color: #D1D5DB;
     }
   }
 }
@@ -840,13 +852,15 @@ onMounted(() => {
 
 .stat-card {
   background: #fff;
-  border-radius: 10px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 18px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid #f3f4f6;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
+  transition: transform 0.18s, box-shadow 0.18s;
+  &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.1); }
 
   .stat-info {
     .stat-label {

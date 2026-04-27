@@ -558,9 +558,10 @@ onMounted(async () => {
 
 <style scoped lang="scss">
 .dashboard-container {
-  padding: 24px;
-  background-color: #f9fafb;
-  min-height: 100vh;
+  padding: 20px 24px 28px;
+  background-color: #F1F5F9;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .section-header {
@@ -599,13 +600,15 @@ onMounted(async () => {
 
   .stat-card {
     background: #fff;
-    border-radius: 10px;
-    padding: 20px;
+    border-radius: 14px;
+    padding: 18px 20px;
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    border: 1px solid #f3f4f6;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
+    transition: transform 0.18s, box-shadow 0.18s;
+    &:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(30,64,175,0.1); }
 
     .stat-info {
       flex: 1;
@@ -741,12 +744,12 @@ onMounted(async () => {
 }
 
 .invite-section {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   background: #fff;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
+  border: 1px solid #E2E8F0;
 
   .invite-header {
     display: flex;
@@ -803,12 +806,12 @@ onMounted(async () => {
 }
 
 .trend-section {
-  margin-bottom: 28px;
+  margin-bottom: 20px;
   background: #fff;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid #f3f4f6;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
+  border: 1px solid #E2E8F0;
 
   .trend-chart-wrapper {
     margin-top: 8px;
@@ -829,10 +832,10 @@ onMounted(async () => {
 .recent-dynamics-section,
 .ranking-section {
   background: #fff;
-  border-radius: 10px;
+  border-radius: 16px;
   padding: 20px;
-  border: 1px solid #f3f4f6;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 1px 3px rgba(16,24,40,0.04), 0 4px 12px rgba(16,24,40,0.03);
 
   .section-header {
     display: flex;

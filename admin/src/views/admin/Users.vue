@@ -109,19 +109,34 @@
         <el-table-column label="用户" min-width="220">
           <template #default="{ row }">
             <div class="user-cell">
-              <div class="user-avatar">
-                <img
-                  v-if="displayAvatarUrl(row.avatar)"
-                  :src="displayAvatarUrl(row.avatar)"
-                  referrerpolicy="no-referrer"
-                  alt=""
-                />
-                <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
-                  {{ avatarLetter(row) }}
+              <div class="user-avatar-wrap">
+                <div class="user-avatar">
+                  <img
+                    v-if="displayAvatarUrl(row.avatar)"
+                    :src="displayAvatarUrl(row.avatar)"
+                    referrerpolicy="no-referrer"
+                    alt=""
+                  />
+                  <span v-else :style="{ backgroundColor: avatarBgColor(row), width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }">
+                    {{ avatarLetter(row) }}
+                  </span>
+                </div>
+                <!-- 有简历徽章：手机号已绑定 + 至少1项测评 -->
+                <span
+                  v-if="row.phone && row.testCount > 0"
+                  class="resume-badge"
+                  title="有简历（已绑手机号 + 完成测评）"
+                >
+                  <svg width="8" height="8" viewBox="0 0 24 24" fill="white">
+                    <path d="M20 6L9 17l-5-5" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                  </svg>
                 </span>
               </div>
               <div class="user-meta">
-                <div class="user-name">{{ row.username || '未设置昵称' }}</div>
+                <div class="user-name-row">
+                  <span class="user-name">{{ row.username || '未设置昵称' }}</span>
+                  <span v-if="row.phone && row.testCount > 0" class="has-resume-label">有简历</span>
+                </div>
                 <div class="user-sub">
                   <span
                     v-if="row.coldFaceLevel"

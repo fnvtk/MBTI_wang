@@ -86,31 +86,38 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .orders-hub {
-  padding: 24px;
-  min-height: 100vh;
-  background: #f9fafb;
+  min-height: calc(100vh - 56px);
+  background: #F4F6FB;
+  display: flex;
+  flex-direction: column;
 }
 
 .hub-header {
-  margin-bottom: 20px;
+  padding: 20px 24px 0;
+  margin-bottom: 0;
 
   h2 {
-    margin: 0 0 6px;
+    margin: 0 0 4px;
     font-size: 22px;
-    font-weight: 700;
+    font-weight: 800;
     color: #111827;
+    letter-spacing: -0.02em;
   }
 
   .hub-subtitle {
     margin: 0;
-    font-size: 14px;
-    color: #6b7280;
+    font-size: 12.5px;
+    color: #6B7280;
   }
 }
 
-/* .custom-tabs-container 视觉已统一在 admin-theme.css */
+.custom-tabs-container {
+  padding: 16px 24px 0;
+}
 
 .hub-body.flat {
+  flex: 1;
   width: 100%;
+  background: #F4F6FB;
 }
 </style>

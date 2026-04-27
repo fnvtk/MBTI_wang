@@ -48,10 +48,10 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '分销推广' }
       },
       {
+        // 合作意向已合并到用户运营 Tab，旧路径自动重定向
         path: 'cooperation-choices',
         name: 'AdminCooperationChoices',
-        component: () => import('@/views/admin/CooperationChoices.vue'),
-        meta: { title: '合作意向' }
+        redirect: { path: '/admin/users', query: { tab: 'cooperation' } }
       },
       {
         path: 'questions',
