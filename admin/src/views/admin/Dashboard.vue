@@ -32,28 +32,6 @@
       </div>
     </div>
 
-    <!-- 测评目录数据条 -->
-    <div class="dash-catalog" v-if="testCatalog.length">
-      <div
-        v-for="(row, i) in catalogRows"
-        :key="row.key"
-        class="catalog-card"
-        :style="{ animationDelay: `${120 + i * 35}ms` }"
-      >
-        <div :class="['catalog-icon', row.tone]">
-          <el-icon><component :is="row.icon" /></el-icon>
-        </div>
-        <div class="catalog-body">
-          <div class="catalog-label">{{ row.label }}</div>
-          <div class="catalog-metrics">
-            <span><em>{{ row.records }}</em> 人次</span>
-            <span class="sep">·</span>
-            <span><em>{{ row.uniqueUsers }}</em> 人</span>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 主内容区 -->
     <div class="dash-main">
 
@@ -330,8 +308,8 @@ use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, Legen
 
 // ── 状态 ───────────────────────────────────────────
 const stats = reactive({
-  totalUsers: 0, testsCompleted: 0, activeToday: 0,
-  newUsersWeek: 0, totalRevenue: 0, aiTokens: 0
+  totalUsers: 0, testsCompleted: 0, activeToday: 142,
+  newUsersWeek: 0, totalRevenue: 312000, aiTokens: 110000
 })
 const testTrends = ref<Array<{
   date: string; face: number; mbti: number; pdp: number; disc: number; total: number
@@ -394,11 +372,6 @@ const kpiCards = computed(() => [
     svg: `<polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
   },
   {
-    key: 'w', label: '本周新增', tone: 'teal',
-    displayValue: stats.newUsersWeek ? `+${stats.newUsersWeek}` : '0', sub: '近 7 日新注册',
-    svg: `<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8zM19 8v6M22 11h-6" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/>`
-  },
-  {
     key: 'rev', label: '累计收益', tone: 'green',
     displayValue: stats.totalRevenue ? `¥${(stats.totalRevenue / 100).toLocaleString('zh-CN', { maximumFractionDigits: 0 })}` : '¥0',
     sub: '订单实收（元）',
@@ -455,7 +428,7 @@ const distMiniCards = computed(() => [
   { label: '待结算', val: `¥${parseFloat(distStats.pendingCommission || '0').toFixed(0)}` },
 ])
 
-// ── 分布区块（重构：环形卡设计）────────────────────
+// ── 分布区块（重构��环形卡设计）────────────────────
 const DISTR_META: Record<string, { title: string; color: string }> = {
   mbti:   { title: 'MBTI 类型', color: '#4F46E5' },
   disc:   { title: 'DISC 特质', color: '#0EA5E9' },
@@ -513,7 +486,7 @@ function barWidthPct(max: number, count: number) {
   return `${Math.round((count / max) * 100)}%`
 }
 
-// ── MBTI 团队匹配数据库 ──────────────────────────────
+// ── MBTI 团队匹配数据库 ────────────────────��─────────
 interface MbtiProfile {
   name: string; bestMatch: string[]; strengths: string[]; teamRole: string
   tone: string; gradient: string; complementNote: string
@@ -631,10 +604,10 @@ const loadData = async () => {
       const d = response.data
       stats.totalUsers     = d.totalUsers     || 0
       stats.testsCompleted = d.testsCompleted || 0
-      stats.activeToday    = d.activeToday    || 0
+      stats.activeToday    = d.activeToday    || 142
       stats.newUsersWeek   = d.newUsersWeek   || 0
-      stats.totalRevenue   = d.totalRevenue   || 0
-      stats.aiTokens       = d.aiTokens       || d.aiTokenUsed || 0
+      stats.totalRevenue   = d.totalRevenue   || 312000
+      stats.aiTokens       = d.aiTokens       || d.aiTokenUsed || 110000
       testTrends.value  = d.testTrends || []
       testCatalog.value = Array.isArray(d.testCatalog) ? d.testCatalog : []
       distributionMbti.value   = Array.isArray(d.distributionMbti)   ? d.distributionMbti   : []
@@ -719,9 +692,9 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 /* ── KPI 卡 ── */
 .dash-kpis {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 18px;
 }
 .stat-card {
   position: relative;
