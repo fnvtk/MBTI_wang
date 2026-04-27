@@ -1439,7 +1439,6 @@ onMounted(() => {
     &:hover td { background: #f5f7ff !important; }
   }
 }
-  }
 
   :deep(.el-table__body) {
     td {
@@ -1582,16 +1581,15 @@ onMounted(() => {
     color: #111827;
   }
     
-    .el-button {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 13px;
-      color: #6b7280;
-      
-      &:hover {
-      color: #a855f7;
-    }
+.el-button {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #6b7280;
+
+  &:hover {
+    color: #a855f7;
   }
 }
 

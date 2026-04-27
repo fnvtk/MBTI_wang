@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# /// script
+# requires-python = ">=3.9"
+# dependencies = ["pymysql"]
+# ///
 """
 将管理后台企业概览的核心默认指标写入 MySQL 数据库。
 
