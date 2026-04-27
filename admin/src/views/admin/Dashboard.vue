@@ -52,37 +52,22 @@
           <span class="panel-meta">各类型最高频结果分析</span>
         </div>
 
-        <div v-if="hasDistribution" class="distr-compact">
-          <div v-for="block in distributionBlocks" :key="block.key" class="distr-compact-block">
-            <!-- 类型标题行 -->
-            <div class="distr-compact-head">
-              <span class="distr-compact-badge" :style="{ background: block.color + '18', color: block.color }">{{ block.title }}</span>
-              <span class="distr-compact-total">{{ block.totalCount.toLocaleString() }} 人</span>
-              <!-- 迷你环形 -->
-              <div class="distr-mini-ring-wrap">
-                <svg viewBox="0 0 36 36" width="36" height="36">
-                  <circle cx="18" cy="18" r="14" fill="none" stroke="#F0F2F8" stroke-width="4"/>
-                  <circle cx="18" cy="18" r="14" fill="none"
-                    :stroke="block.color" stroke-width="4"
-                    stroke-linecap="round"
-                    stroke-dasharray="87.9"
-                    :stroke-dashoffset="ringOffsetSm(block)"
-                    transform="rotate(-90 18 18)"
-                    class="distr-ring-circle"
-                  />
-                </svg>
-                <span class="distr-mini-ring-pct">{{ block.topPct }}</span>
-              </div>
+        <div v-if="hasDistribution" class="distr-row">
+          <div v-for="block in distributionBlocks" :key="block.key" class="distr-col">
+            <!-- 标题行 -->
+            <div class="distr-col-head">
+              <span class="distr-col-badge" :style="{ background: block.color + '1a', color: block.color }">{{ block.title }}</span>
+              <span class="distr-col-total">{{ block.totalCount }} 人</span>
             </div>
-            <!-- 紧凑条形列表 -->
-            <div class="distr-compact-list">
-              <div v-for="(it, idx) in block.items.slice(0, 6)" :key="it.label" class="distr-compact-row">
-                <span class="distr-cr-rank" :class="{ 'gold': idx===0, 'silver': idx===1, 'bronze': idx===2 }">{{ idx + 1 }}</span>
-                <span class="distr-cr-label">{{ it.label }}</span>
-                <div class="distr-cr-bar-wrap">
-                  <div class="distr-cr-bar" :style="{ width: barWidthPct(block.max, it.count), background: block.color + 'cc' }"></div>
+            <!-- 条形排行（限5条，节省高度） -->
+            <div class="distr-col-list">
+              <div v-for="(it, idx) in block.items.slice(0, 5)" :key="it.label" class="distr-col-row">
+                <span class="distr-col-rank" :class="{ gold: idx===0, silver: idx===1, bronze: idx===2 }">{{ idx + 1 }}</span>
+                <span class="distr-col-label" :title="it.label">{{ it.label }}</span>
+                <div class="distr-col-bar-wrap">
+                  <div class="distr-col-bar" :style="{ width: barWidthPct(block.max, it.count), background: block.color }"></div>
                 </div>
-                <span class="distr-cr-num">{{ it.count }}</span>
+                <span class="distr-col-num">{{ it.count }}</span>
               </div>
             </div>
           </div>
@@ -516,14 +501,51 @@ const distMiniCards = computed(() => [
   { label: '待结算', val: `¥${parseFloat(distStats.pendingCommission || '0').toFixed(0)}` },
 ])
 
-// ── 分布区块（重构��环形卡设计）────────────────────
+// ── 分布区块 ─────────────────────────────────────────
 const DISTR_META: Record<string, { title: string; color: string }> = {
-  mbti:   { title: 'MBTI 类型', color: '#4F46E5' },
-  disc:   { title: 'DISC 特质', color: '#0EA5E9' },
-  pdp:    { title: 'PDP 能量', color: '#F59E0B' },
-  sbti:   { title: 'SBTI 商业', color: '#7C3AED' },
+  mbti:   { title: 'MBTI', color: '#4F46E5' },
+  disc:   { title: 'DISC 主+辅', color: '#0EA5E9' },
+  pdp:    { title: 'PDP 主+辅', color: '#F59E0B' },
   face:   { title: '面相分析', color: '#10B981' },
+  sbti:   { title: 'SBTI', color: '#7C3AED' },
   gaokao: { title: '高考志愿', color: '#E11D48' },
+}
+
+// DISC：取前两位字母组合，按 D>I>S>C 标准顺序排列
+const DISC_ORDER = ['D', 'I', 'S', 'C']
+function buildDiscCombos(raw: Array<{ label: string; count: number }>) {
+  const seen = new Map<string, number>()
+  for (const it of (raw || [])) {
+    const chars = (it.label || '').toUpperCase().replace(/[^DISC]/g, '').split('').slice(0, 2)
+    if (!chars.length) continue
+    chars.sort((a, b) => DISC_ORDER.indexOf(a) - DISC_ORDER.indexOf(b))
+    const display = chars.length >= 2 ? `${chars[0]}+${chars[1]}` : chars[0]
+    seen.set(display, (seen.get(display) || 0) + it.count)
+  }
+  return Array.from(seen.entries()).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count)
+}
+
+// PDP：考拉=无尾熊，取「主+辅」动物组合
+const PDP_ALIAS: Record<string, string> = { 考拉: '无尾熊', Koala: '无尾熊', koala: '无尾熊', koala_type: '无尾熊' }
+function normPdp(s: string) { return PDP_ALIAS[s?.trim()] ?? s?.trim() ?? '' }
+function buildPdpCombos(raw: Array<{ label: string; count: number }>) {
+  const seen = new Map<string, number>()
+  for (const it of (raw || [])) {
+    const parts = (it.label || '').split(/[+\-、/·]/).map(normPdp).filter(Boolean)
+    const display = parts.length >= 2 ? `${parts[0]}+${parts[1]}` : normPdp(it.label || '')
+    if (!display) continue
+    seen.set(display, (seen.get(display) || 0) + it.count)
+  }
+  return Array.from(seen.entries()).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count)
+}
+
+// 面相：主（性格维度）+ 辅（面相子类），合并展示
+function buildFaceCombos(fh: { mbti: Array<{ label: string; count: number }>; disc: Array<{ label: string; count: number }>; pdp: Array<{ label: string; count: number }> }) {
+  const out: Array<{ label: string; count: number }> = []
+  for (const it of (fh.mbti || []).slice(0, 4)) out.push({ label: it.label, count: it.count })
+  for (const it of (fh.disc || []).slice(0, 3)) out.push({ label: it.label, count: it.count })
+  for (const it of (fh.pdp  || []).slice(0, 3)) out.push({ label: normPdp(it.label), count: it.count })
+  return out.sort((a, b) => b.count - a.count)
 }
 
 function sliceItems(items: Array<{ label: string; count: number }>, n: number) {
@@ -532,20 +554,17 @@ function sliceItems(items: Array<{ label: string; count: number }>, n: number) {
 
 const distributionBlocks = computed(() => {
   const fh = faceSubtypeHints.value || { mbti: [], disc: [], pdp: [] }
-  const faceMerged: Array<{ label: string; count: number }> = []
-  const pushPref = (prefix: string, arr: Array<{ label: string; count: number }>, max: number) => {
-    let k = 0
-    for (const it of arr || []) { if (k >= max) break; faceMerged.push({ label: `${prefix}${it.label}`, count: it.count }); k++ }
-  }
-  pushPref('', fh.mbti, 3); pushPref('', fh.disc, 3); pushPref('', fh.pdp, 3)
+  const discItems  = distributionDisc.value?.length  ? buildDiscCombos(distributionDisc.value)   : []
+  const pdpItems   = distributionPdp.value?.length   ? buildPdpCombos(distributionPdp.value)    : []
+  const faceItems  = (fh.mbti?.length || fh.disc?.length || fh.pdp?.length) ? buildFaceCombos(fh) : []
 
   const sources = [
-    { key: 'mbti',   items: sliceItems(distributionMbti.value,  8) },
-    { key: 'disc',   items: sliceItems(distributionDisc.value,   8) },
-    { key: 'pdp',    items: sliceItems(distributionPdp.value,    8) },
-    { key: 'sbti',   items: sliceItems(distributionSbti.value,   8) },
-    { key: 'face',   items: sliceItems(faceMerged, 8) },
-    { key: 'gaokao', items: sliceItems(distributionGaokao.value, 8) },
+    { key: 'mbti',   items: sliceItems(distributionMbti.value,   5) },
+    { key: 'disc',   items: sliceItems(discItems,                 5) },
+    { key: 'pdp',    items: sliceItems(pdpItems,                  5) },
+    { key: 'face',   items: sliceItems(faceItems,                 5) },
+    { key: 'sbti',   items: sliceItems(distributionSbti.value,   5) },
+    { key: 'gaokao', items: sliceItems(distributionGaokao.value,  5) },
   ]
 
   return sources
@@ -593,7 +612,7 @@ const mbtiMatchDb: Record<string, MbtiProfile> = {
   ENTP: { name: '辩论家', bestMatch: ['INFJ', 'INTJ'], strengths: ['创新能力', '辩证思维', '适应力'], teamRole: '创新推动者', tone: 'orange', gradient: 'linear-gradient(135deg,#EA580C,#F97316)', complementNote: '思维活跃，INFJ 的远见能帮助筛选最优创意' },
   INFJ: { name: '提倡者', bestMatch: ['ENFP', 'ENTP'], strengths: ['洞察力', '同理心', '远见'], teamRole: '价值传递者', tone: 'purple', gradient: 'linear-gradient(135deg,#9333EA,#A855F7)', complementNote: '深度洞察人心，与 ENFP 搭配能激发最大潜力' },
   INFP: { name: '调停者', bestMatch: ['ENFJ', 'ENTJ'], strengths: ['创造力', '价值观坚守', '共情能力'], teamRole: '文化塑造者', tone: 'pink', gradient: 'linear-gradient(135deg,#DB2777,#EC4899)', complementNote: '是团队的精神纽带，与 ENTJ 搭档实现创意落地' },
-  ENFJ: { name: '主人公', bestMatch: ['INFP', 'ISFP'], strengths: ['激励他人', '社交能力', '感召力'], teamRole: '人才培育者', tone: 'teal', gradient: 'linear-gradient(135deg,#0D9488,#14B8A6)', complementNote: '天然的团队凝聚者，擅长发现并培养潜力成员' },
+  ENFJ: { name: '主人公', bestMatch: ['INFP', 'ISFP'], strengths: ['激励他人', '社交能力', '感召力'], teamRole: '人才培育���', tone: 'teal', gradient: 'linear-gradient(135deg,#0D9488,#14B8A6)', complementNote: '天然的团队凝聚者，擅长发现并培养潜力成员' },
   ENFP: { name: '竞选者', bestMatch: ['INTJ', 'INFJ'], strengths: ['热情感染力', '创意思维', '人际关系'], teamRole: '关系连接者', tone: 'green', gradient: 'linear-gradient(135deg,#16A34A,#22C55E)', complementNote: '创意源泉，INTJ 的系统思维能帮助落地执行' },
   ISTJ: { name: '物流师', bestMatch: ['ESTP', 'ESFP'], strengths: ['责任心', '执行力', '细节把控'], teamRole: '流程守护者', tone: 'slate', gradient: 'linear-gradient(135deg,#475569,#64748B)', complementNote: '是团队规则的守护者，让系统高效可靠运转' },
   ISFJ: { name: '守卫者', bestMatch: ['ESFP', 'ESTP'], strengths: ['忠诚度', '细心', '实际支持'], teamRole: '团队稳定器', tone: 'emerald', gradient: 'linear-gradient(135deg,#059669,#10B981)', complementNote: '默默付出支撑团队，是稳定运转不可或缺的力量' },
@@ -912,67 +931,104 @@ onMounted(() => { void loadData(); void loadInviteQrcode() })
 .panel-sub   { margin: 3px 0 0; font-size: 11px; color: #94A3B8; }
 .panel-meta  { font-size: 11px; color: #94A3B8; font-weight: 500; }
 
-/* ── 分布区块：紧凑单列 ── */
-.distr-compact {
-  display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;
+/* ── 分布区块：横向5列 ── */
+.distr-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+  align-items: start;
 }
 
-.distr-compact-block {
-  background: #FAFBFF; border-radius: 12px;
-  border: 1px solid #EEF2FF; overflow: hidden;
-  transition: box-shadow 0.2s;
-  &:hover { box-shadow: 0 4px 14px rgba(79,70,229,0.08); }
+.distr-col {
+  background: #FAFBFF;
+  border: 1px solid #EEF2FF;
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: 0;
 }
 
-.distr-compact-head {
-  display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px; border-bottom: 1px solid #F1F5F9;
+.distr-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 6px 8px 5px;
+  border-bottom: 1px solid #F1F5F9;
+  background: #fff;
 }
 
-.distr-compact-badge {
-  display: inline-flex; align-items: center;
-  padding: 2px 9px; border-radius: 20px;
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.01em;
+.distr-col-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
   flex-shrink: 0;
 }
 
-.distr-compact-total {
-  font-size: 12px; color: #94A3B8; font-variant-numeric: tabular-nums; margin-right: auto;
+.distr-col-total {
+  font-size: 10px;
+  color: #94A3B8;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.distr-mini-ring-wrap {
-  position: relative; width: 36px; height: 36px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
+.distr-col-list {
+  display: flex;
+  flex-direction: column;
 }
 
-.distr-mini-ring-pct {
-  position: absolute; font-size: 8px; font-weight: 800; color: #1E293B;
-  font-variant-numeric: tabular-nums; line-height: 1;
-}
-
-.distr-compact-list { display: flex; flex-direction: column; gap: 0; }
-
-.distr-compact-row {
-  display: grid; grid-template-columns: 18px 64px 1fr 32px;
-  align-items: center; gap: 8px;
-  padding: 5px 12px;
+.distr-col-row {
+  display: grid;
+  grid-template-columns: 14px 1fr 36px 24px;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
   border-bottom: 1px solid #F8FAFC;
   &:last-child { border-bottom: none; }
   &:hover { background: #F5F7FF; }
 }
 
-.distr-cr-rank {
-  font-size: 10px; font-weight: 800; text-align: center; color: #CBD5E1;
+.distr-col-rank {
+  font-size: 9px; font-weight: 800; text-align: center; color: #D1D5DB;
   &.gold   { color: #D97706; }
   &.silver { color: #6B7280; }
   &.bronze { color: #92400E; }
 }
-.distr-cr-label { font-size: 11.5px; font-weight: 600; color: #374151; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.distr-cr-bar-wrap { height: 4px; background: #EEF2FF; border-radius: 2px; overflow: hidden; }
-.distr-cr-bar { height: 100%; border-radius: 2px; transition: width 0.55s cubic-bezier(0.4,0,0.2,1); }
-.distr-cr-num { font-size: 11px; font-weight: 700; color: #1E293B; text-align: right; font-variant-numeric: tabular-nums; }
 
-/* 原大卡样式保留备用（不再使用） */
+.distr-col-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.distr-col-bar-wrap {
+  height: 3px;
+  background: #EEF2FF;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.distr-col-bar {
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.75;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+.distr-col-num {
+  font-size: 10px;
+  font-weight: 700;
+  color: #1E293B;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .distr-ring-circle { animation: ringDraw 0.75s cubic-bezier(0.4, 0, 0.2, 1) 0.15s both; }
 
 /* ── 团队匹配洞察 ── */

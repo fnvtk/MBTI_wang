@@ -89,7 +89,7 @@
     <div class="search-section admin-filter-bar">
         <el-input
           v-model="searchTerm"
-        placeholder="搜索昵称、手机号、地区、MBTI..."
+          placeholder="搜索昵称、手机号、地区、MBTI..."
           clearable
           class="search-input"
           @clear="loadUsers"
@@ -104,13 +104,30 @@
           multiple
           collapse-tags
           collapse-tags-tooltip
-          placeholder="冷脸分析"
+          placeholder="侧脸筛选"
           class="coldface-select"
-          @change="() => { currentPage = 1; loadUsers() }"
+          @change="() => { currentPage.value = 1; loadUsers() }"
         >
           <el-option label="暖" value="warm" />
           <el-option label="中" value="neutral" />
           <el-option label="冷" value="cold" />
+        </el-select>
+        <!-- 列显示选择 -->
+        <el-select
+          v-model="visibleCols"
+          multiple
+          collapse-tags
+          collapse-tags-tooltip
+          placeholder="显示列"
+          class="col-select"
+          style="width: 130px"
+        >
+          <el-option
+            v-for="opt in colOptions"
+            :key="opt.value"
+            :label="opt.label"
+            :value="opt.value"
+          />
         </el-select>
         <el-button type="primary" @click="loadUsers">搜索</el-button>
       </div>
@@ -143,8 +160,8 @@
           </template>
         </el-table-column>
 
-        <!-- 联系方式 -->
-        <el-table-column label="联系方式" min-width="140">
+        <!-- 联系方式（可选列） -->
+        <el-table-column v-if="hasCol('contact')" label="联系方式" min-width="130">
           <template #default="{ row }">
             <div class="contact-cell">
               <div class="phone">{{ row.phone || '—' }}</div>
@@ -155,18 +172,18 @@
           </template>
         </el-table-column>
 
-        <!-- 简历 -->
-        <el-table-column label="简历" width="80" align="center">
+        <!-- 简历（可选列） -->
+        <el-table-column v-if="hasCol('resume')" label="简历" width="60" align="center">
           <template #default="{ row }">
             <span v-if="row.hasResume || (row.phone && row.testCount > 0)" class="col-dot col-dot--yes" title="有简历">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </span>
             <span v-else class="col-dot col-dot--no">—</span>
           </template>
         </el-table-column>
 
-        <!-- 侧脸 -->
-        <el-table-column label="侧脸" width="100" align="center">
+        <!-- 侧脸（可选列） -->
+        <el-table-column v-if="hasCol('face')" label="侧脸" width="90" align="center">
           <template #default="{ row }">
             <span v-if="row.coldFaceLevel" :class="['coldface-tag', 'coldface-' + row.coldFaceLevel]" :title="coldFaceTooltip(row)">
               {{ coldFaceLabel(row.coldFaceLevel) }}<template v-if="row.coldFaceScore != null"> · {{ row.coldFaceScore }}</template>
@@ -175,28 +192,79 @@
           </template>
         </el-table-column>
 
-        <!-- 测评结果 -->
-        <el-table-column label="测评" min-width="180">
+        <!-- 测评汇总（可选列） -->
+        <el-table-column v-if="hasCol('test')" label="测评" min-width="160">
           <template #default="{ row }">
             <div class="test-chips">
-              <span v-if="row.mbtiType" class="chip chip--mbti">MBTI · {{ row.mbtiType }}</span>
-              <span v-if="row.sbtiType" class="chip chip--sbti">SBTI · {{ row.sbtiType }}</span>
-              <span v-if="row.discType" class="chip chip--disc">DISC · {{ row.discType }}</span>
-              <span v-if="row.pdpType"  class="chip chip--pdp">PDP · {{ row.pdpType }}</span>
-              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType" class="col-dot col-dot--no">—</span>
+              <span v-if="row.mbtiType"   class="chip chip--mbti">{{ row.mbtiType }}</span>
+              <span v-if="row.sbtiType"   class="chip chip--sbti">{{ row.sbtiType }}</span>
+              <span v-if="row.discType"   class="chip chip--disc">{{ row.discType }}</span>
+              <span v-if="row.pdpType"    class="chip chip--pdp">{{ row.pdpType }}</span>
+              <span v-if="row.gaokaoType" class="chip chip--gaokao">{{ row.gaokaoType }}</span>
+              <span v-if="!row.mbtiType && !row.sbtiType && !row.discType && !row.pdpType && !row.gaokaoType" class="col-dot col-dot--no">—</span>
             </div>
           </template>
         </el-table-column>
 
-        <!-- 注册时间 -->
-        <el-table-column label="注册时间" width="130">
+        <!-- MBTI 独立列（可选） -->
+        <el-table-column v-if="hasCol('mbti') && !hasCol('test')" label="MBTI" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.mbtiType" class="chip chip--mbti">{{ row.mbtiType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- DISC 独立列（可选） -->
+        <el-table-column v-if="hasCol('disc') && !hasCol('test')" label="DISC" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.discType" class="chip chip--disc">{{ row.discType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- PDP 独立列（可选） -->
+        <el-table-column v-if="hasCol('pdp') && !hasCol('test')" label="PDP" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.pdpType" class="chip chip--pdp">{{ row.pdpType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- SBTI 独立列（可选） -->
+        <el-table-column v-if="hasCol('sbti') && !hasCol('test')" label="SBTI" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.sbtiType" class="chip chip--sbti">{{ row.sbtiType }}</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 高考志愿独立列（可选） -->
+        <el-table-column v-if="hasCol('gaokao')" label="高考志愿" width="120" align="center">
+          <template #default="{ row }">
+            <span v-if="row.gaokaoType || row.gaokaoMajor" class="chip chip--gaokao">
+              {{ row.gaokaoType || row.gaokaoMajor }}
+            </span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 分销商标注（可选列） -->
+        <el-table-column v-if="hasCol('distributor')" label="分销" width="65" align="center">
+          <template #default="{ row }">
+            <span v-if="row.isDistributor" class="dist-badge">分销</span>
+            <span v-else class="col-dot col-dot--no">—</span>
+          </template>
+        </el-table-column>
+
+        <!-- 注册时间（可选列） -->
+        <el-table-column v-if="hasCol('regtime')" label="注册时间" width="110">
           <template #default="{ row }">
             <span class="time-cell">{{ formatDate(row.createdAt) }}</span>
           </template>
         </el-table-column>
 
         <!-- 操作 -->
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column label="操作" width="70" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click.stop="handleView(row)">查看</el-button>
           </template>
@@ -755,6 +823,24 @@ const currentPage = ref(1)
 const pageSize = 10
 const searchTerm = ref('')
 const coldFaceFilter = ref<string[]>([])
+
+// 可选显示列
+type ColKey = 'contact' | 'resume' | 'face' | 'test' | 'mbti' | 'disc' | 'pdp' | 'sbti' | 'gaokao' | 'distributor' | 'regtime'
+const visibleCols = ref<ColKey[]>(['contact', 'resume', 'face', 'test', 'regtime'])
+const colOptions: { label: string; value: ColKey }[] = [
+  { label: '联系方式', value: 'contact' },
+  { label: '简历', value: 'resume' },
+  { label: '侧脸', value: 'face' },
+  { label: '测评汇总', value: 'test' },
+  { label: 'MBTI', value: 'mbti' },
+  { label: 'DISC', value: 'disc' },
+  { label: 'PDP', value: 'pdp' },
+  { label: 'SBTI', value: 'sbti' },
+  { label: '高考志愿', value: 'gaokao' },
+  { label: '分销商', value: 'distributor' },
+  { label: '注册时间', value: 'regtime' },
+]
+function hasCol(key: ColKey) { return visibleCols.value.includes(key) }
 const showDetailDialog = ref(false)
 const detailUser = ref<Record<string, any> | null>(null)
 
@@ -1726,10 +1812,11 @@ onMounted(() => {
   font-weight: 600;
   white-space: nowrap;
 
-  &--mbti { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
-  &--sbti { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
-  &--disc { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
-  &--pdp  { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  &--mbti   { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+  &--sbti   { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  &--disc   { background: #fdf4ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+  &--pdp    { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+  &--gaokao { background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; }
 }
 
 /* ── 用户信息列胶囊标签（旧，保留兼容） ── */
