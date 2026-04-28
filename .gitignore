@@ -15,6 +15,7 @@ build/
 .env.bak.*
 # 宝塔 API 本地密钥（deploy_mbti_bt_api.py 可选读取）
 scripts/.env.bt
+scripts/.env.tencent
 .venv-bt/
 
 # 日志与运行时

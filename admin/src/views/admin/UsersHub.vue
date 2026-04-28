@@ -1,30 +1,38 @@
 <template>
   <div class="users-hub">
+    <!-- 页面头部 -->
     <div class="hub-header">
-      <h2>用户运营</h2>
+      <div class="hub-header-left">
+        <h1 class="hub-title">用户管理</h1>
+        <p class="hub-desc">用户信息、联系方式、简历与侧脸档案、合作意向全览</p>
+      </div>
     </div>
 
-    <div class="pill-tabs" role="tablist">
+    <!-- Tab 导航 -->
+    <div class="tab-bar" role="tablist">
       <button
         v-for="t in innerTabs"
         :key="t.value"
         type="button"
-        class="pill-tab"
+        class="tab-btn"
         :class="{ 'is-active': activeTab === t.value }"
         @click="selectTab(t.value)"
+        :aria-selected="activeTab === t.value"
+        role="tab"
       >
-        {{ t.label }}
+        <component :is="t.icon" class="tab-icon" />
+        <span>{{ t.label }}</span>
+        <span v-if="t.value === 'cooperation'" class="tab-dot"></span>
       </button>
     </div>
 
+    <!-- 内容区 -->
     <div
-      class="hub-card"
-      :class="{ 'flat-embed': activeTab === 'users' || activeTab === 'journey' || activeTab === 'rfm' }"
+      class="hub-body"
+      :class="{ 'no-padding': true }"
     >
       <Users v-if="activeTab === 'users'" embedded />
-      <TopTestUsersPanel v-else-if="activeTab === 'top20'" />
-      <UserJourneyPanel v-else-if="activeTab === 'journey'" />
-      <UserRfmPanel v-else-if="activeTab === 'rfm'" />
+      <CooperationChoicesPanel v-else-if="activeTab === 'cooperation'" />
     </div>
   </div>
 </template>
@@ -33,11 +41,12 @@
 import { ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Users from './Users.vue'
-import TopTestUsersPanel from '@/components/TopTestUsersPanel.vue'
-import UserJourneyPanel from '@/components/UserJourneyPanel.vue'
-import UserRfmPanel from '@/components/UserRfmPanel.vue'
+import CooperationChoices from './CooperationChoices.vue'
+import { User, Connection } from '@element-plus/icons-vue'
 
-const TAB_IDS = ['users', 'journey', 'rfm', 'top20'] as const
+const CooperationChoicesPanel = CooperationChoices
+
+const TAB_IDS = ['users', 'cooperation'] as const
 type TabId = (typeof TAB_IDS)[number]
 
 function isTabId(s: string): s is TabId {
@@ -48,11 +57,9 @@ const route = useRoute()
 const router = useRouter()
 const activeTab = ref<TabId>('users')
 
-const innerTabs: { label: string; value: TabId }[] = [
-  { label: '用户列表', value: 'users' },
-  { label: '旅程漏斗', value: 'journey' },
-  { label: 'RFM 价值分层', value: 'rfm' },
-  { label: '测评 Top 20', value: 'top20' }
+const innerTabs: { label: string; value: TabId; icon: any }[] = [
+  { label: '用户列表', value: 'users',       icon: User       },
+  { label: '合作意向', value: 'cooperation', icon: Connection },
 ]
 
 const applyRouteTab = () => {
@@ -77,90 +84,114 @@ const selectTab = (tab: TabId) => {
       q[k] = Array.isArray(v) ? String(v[0]) : String(v)
     }
   })
-  if (tab !== 'users') {
-    q.tab = tab
-  }
+  if (tab !== 'users') q.tab = tab
   router.replace({ path: '/admin/users', query: Object.keys(q).length ? q : {} })
 }
 
-watch(
-  () => route.query.tab,
-  () => {
-    applyRouteTab()
-  }
-)
-
-onMounted(() => {
-  applyRouteTab()
-})
+watch(() => route.query.tab, () => { applyRouteTab() })
+onMounted(() => { applyRouteTab() })
 </script>
 
 <style scoped lang="scss">
 .users-hub {
-  padding: 24px;
-  min-height: 100vh;
-  background: #f9fafb;
+  min-height: calc(100vh - 56px);
+  background: #F4F6FB;
+  display: flex;
+  flex-direction: column;
 }
 
+/* ── 头部 ── */
 .hub-header {
-  margin-bottom: 20px;
-
-  h2 {
-    margin: 0;
-    font-size: 22px;
-    font-weight: 700;
-    color: #111827;
-  }
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 24px 0;
+  gap: 12px;
+}
+.hub-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+.hub-desc {
+  margin: 0;
+  font-size: 12.5px;
+  color: #6B7280;
 }
 
-.pill-tabs {
-  display: inline-flex;
-  background: #f1f5f9;
-  padding: 4px;
-  border-radius: 10px;
+/* ── Tab 导航 ── */
+.tab-bar {
+  display: flex;
   gap: 2px;
-  margin-bottom: 20px;
-  max-width: 100%;
+  padding: 16px 24px 0;
+  border-bottom: 1px solid #E5E7EB;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar { display: none; }
 }
 
-.pill-tab {
-  border: 0;
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border: none;
   background: transparent;
-  color: #64748b;
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
-  padding: 7px 18px;
-  border-radius: 6px;
+  color: #6B7280;
   cursor: pointer;
   white-space: nowrap;
+  border-radius: 8px 8px 0 0;
   transition: all 0.18s;
+  position: relative;
+
+  .tab-icon {
+    font-size: 15px;
+    opacity: 0.7;
+  }
+
+  .tab-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4F46E5;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+  }
 
   &:hover {
-    color: #0f172a;
+    background: #F3F4F6;
+    color: #374151;
   }
 
   &.is-active {
-    background: #ffffff;
-    color: #0f172a;
-    font-weight: 600;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    color: #4F46E5;
+    font-weight: 700;
+    background: #fff;
+    box-shadow: 0 -2px 0 0 #4F46E5 inset, 1px 0 0 0 #E5E7EB inset, -1px 0 0 0 #E5E7EB inset;
+
+    .tab-icon { opacity: 1; }
   }
 }
 
-.hub-card {
+/* ── 内容区 ── */
+.hub-body {
+  flex: 1;
   background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
+  border-top: none;
   padding: 24px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 12px rgba(15, 23, 42, 0.03);
+  min-height: 0;
 
-  &.flat-embed {
-    background: transparent;
-    border: none;
-    box-shadow: none;
+  &.no-padding {
     padding: 0;
+    background: #F4F6FB;
   }
 }
 </style>

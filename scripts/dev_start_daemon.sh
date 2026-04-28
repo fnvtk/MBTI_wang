@@ -127,6 +127,9 @@ echo "Starting Vite on 0.0.0.0:${ADMIN_PORT} (proxy -> API) ..."
 cd "$ADMIN"
 export VITE_DEV_API_PROXY="http://127.0.0.1:${API_PORT}"
 export MBTI_ADMIN_PORT="$ADMIN_PORT"
+# 强制走本机代理，避免系统级 VITE_API_BASE_URL 覆盖导致 Network Error
+unset VITE_API_BASE_URL
+export VITE_API_BASE_URL=
 nohup npx vite --host 0.0.0.0 --port "$ADMIN_PORT" >>"$VITE_LOG" 2>&1 </dev/null &
 VITE_PID=$!
 echo "$VITE_PID" >"$VITE_PID_FILE"

@@ -121,4 +121,7 @@ fi
 
 export VITE_DEV_API_PROXY="http://127.0.0.1:${API_PORT}"
 export MBTI_ADMIN_PORT="$ADMIN_PORT"
+# 强制走本机代理，避免系统级 VITE_API_BASE_URL 覆盖导致 Network Error
+unset VITE_API_BASE_URL
+export VITE_API_BASE_URL=
 exec npm run dev -- --port "$ADMIN_PORT" --host 0.0.0.0

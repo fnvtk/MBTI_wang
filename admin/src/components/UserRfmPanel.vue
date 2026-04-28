@@ -3,15 +3,25 @@
     <div class="rfm-head">
       <div>
         <h3 class="rfm-title">RFM 价值分层</h3>
-        <p class="rfm-desc">
-          R 最近付费 · F 付费频次 · M 累计金额 · 合并推荐/轨迹/资料，按档位 S/A/B/C/D 排序
-          <span class="rfm-beta">前端占位版 · 待后端接口上线</span>
-        </p>
+        <p class="rfm-desc">R 最近付费 · F 付费频次 · M 累计金额 · 综合得分按 S/A/B/C/D 五档分层</p>
       </div>
-      <el-button type="primary" link size="small" :icon="Refresh" @click="refresh">刷新</el-button>
+      <div class="rfm-head-right">
+        <span class="rfm-updated" v-if="lastUpdated">更新于 {{ lastUpdated }}</span>
+        <el-button type="primary" link size="small" :icon="Refresh" @click="refresh" :loading="loading">刷新</el-button>
+      </div>
     </div>
 
-    <div class="rfm-kpi-row">
+    <div v-if="loadError" class="rfm-error">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="color:#EF4444">
+        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="12" y1="16" x2="12.01" y2="16" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+      <span>{{ loadError }}</span>
+      <el-button size="small" @click="refresh">重试</el-button>
+    </div>
+
+    <div class="rfm-kpi-row" v-loading="loading">
       <div v-for="bucket in buckets" :key="bucket.level" class="rfm-kpi" :class="`level-${bucket.level.toLowerCase()}`">
         <div class="rfm-kpi-level">{{ bucket.level }}</div>
         <div class="rfm-kpi-count">{{ bucket.count }}</div>
@@ -48,22 +58,15 @@
       </el-table>
     </div>
 
-    <div class="rfm-hint">
-      <el-icon><InfoFilled /></el-icon>
-      <span>
-        数据为示例，后端
-        <code>GET /api/admin/users/rfm</code>
-        上线后自动替换；口径参考 Soul 永平仓库
-        <em>算法-RFM用户价值分层.md</em>，mbti 版本在列表与本排行都采用同一套档位规则，避免「列表与排行分不一致」。
-      </span>
-    </div>
+
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Refresh, InfoFilled } from '@element-plus/icons-vue'
-// import { request } from '@/utils/request'
+import { ref, computed, onMounted } from 'vue'
+import { Refresh } from '@element-plus/icons-vue'
+import { request } from '@/utils/request'
+import { ElMessage } from 'element-plus'
 
 interface RfmRow {
   id: number
@@ -76,39 +79,66 @@ interface RfmRow {
   level: 'S' | 'A' | 'B' | 'C' | 'D'
 }
 
-const mockRows: RfmRow[] = [
-  { id: 1, nickname: '徐先生',   phone: '138****2103', r: 92, f: 88, m: 648.00, score: 89, level: 'S' },
-  { id: 2, nickname: '卡若夏',   phone: '139****8812', r: 86, f: 72, m: 366.00, score: 78, level: 'A' },
-  { id: 3, nickname: 'Anita',    phone: '186****0091', r: 68, f: 40, m: 188.50, score: 65, level: 'B' },
-  { id: 4, nickname: '小陈同学', phone: '131****6602', r: 55, f: 28, m: 92.00,  score: 51, level: 'B' },
-  { id: 5, nickname: '林可可',   phone: '159****7730', r: 42, f: 12, m: 36.80,  score: 36, level: 'C' },
-  { id: 6, nickname: '周周',     phone: '185****4461', r: 20, f: 4,  m: 9.90,   score: 22, level: 'D' }
-]
-
-const rows = ref<RfmRow[]>(mockRows)
+const rows = ref<RfmRow[]>([])
+const loading = ref(false)
+const loadError = ref('')
+const lastUpdated = ref('')
 
 const buckets = computed(() => {
   const levels: RfmRow['level'][] = ['S', 'A', 'B', 'C', 'D']
   const labels: Record<RfmRow['level'], string> = {
-    S: '忠实高价值',
-    A: '重点维护',
-    B: '潜力用户',
-    C: '普通用户',
-    D: '流失风险'
+    S: '忠实高价值', A: '重点维护', B: '潜力用户', C: '普通用户', D: '流失风险'
   }
   return levels.map((lv) => ({
-    level: lv,
-    label: labels[lv],
+    level: lv, label: labels[lv],
     count: rows.value.filter((r) => r.level === lv).length
   }))
 })
 
-async function refresh() {
-  // TODO: 后端上线后替换为：
-  // const res: any = await request.get('/admin/users/rfm', { params: { limit: 20 } })
-  // rows.value = res.data?.list || []
-  rows.value = [...mockRows]
+// 前端 RFM 算法：根据后端返回原始数据计算 R/F/M 得分和档位
+function computeRfmLevel(r: number, f: number, m: number): RfmRow['level'] {
+  // R: 0-100 越大越好（最近付费），F: 频次归一化，M: 金额对数归一化
+  const score = r * 0.35 + Math.min(f * 15, 100) * 0.25 + Math.min(Math.log(m + 1) * 12, 100) * 0.40
+  if (score >= 75) return 'S'
+  if (score >= 55) return 'A'
+  if (score >= 38) return 'B'
+  if (score >= 22) return 'C'
+  return 'D'
 }
+
+async function refresh() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const res: any = await request.get('/admin/users/rfm', { params: { limit: 50 } })
+    if (res.code === 200 && Array.isArray(res.data?.list)) {
+      rows.value = res.data.list.map((u: any) => {
+        const r = Number(u.rScore ?? u.r ?? 50)
+        const f = Number(u.fScore ?? u.f ?? 1)
+        const m = Number(u.mScore ?? u.totalPaid ?? u.m ?? 0)
+        const score = Math.round(r * 0.35 + Math.min(f * 15, 100) * 0.25 + Math.min(Math.log(m + 1) * 12, 100) * 0.40)
+        return {
+          id: u.id,
+          nickname: u.nickname || u.nickName || '用户' + u.id,
+          phone: u.phone || u.mobile || '--',
+          r, f, m, score,
+          level: u.level || computeRfmLevel(r, f, m)
+        }
+      })
+      const now = new Date()
+      lastUpdated.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+    } else {
+      loadError.value = res.message || '暂无 RFM 数据'
+    }
+  } catch (e: any) {
+    loadError.value = e?.message || '接口暂未就绪'
+    ElMessage.warning('RFM 接口暂未返回数据')
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(refresh)
 </script>
 
 <style scoped lang="scss">
@@ -142,17 +172,28 @@ async function refresh() {
   line-height: 1.55;
 }
 
-.rfm-beta {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: #b45309;
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  vertical-align: middle;
+.rfm-head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.rfm-updated {
+  font-size: 11px;
+  color: #9CA3AF;
+  font-variant-numeric: tabular-nums;
+}
+.rfm-error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  color: #EF4444;
 }
 
 .rfm-kpi-row {
@@ -238,34 +279,7 @@ async function refresh() {
   font-variant-numeric: tabular-nums;
 }
 
-.rfm-hint {
-  margin-top: 18px;
-  padding: 10px 12px;
-  background: #f8fafc;
-  border: 1px dashed #e2e8f0;
-  border-radius: 8px;
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.55;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
 
-  code {
-    background: #eef2ff;
-    color: #4f46e5;
-    padding: 1px 6px;
-    border-radius: 4px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-    font-size: 11.5px;
-  }
-
-  em {
-    font-style: normal;
-    color: #334155;
-    font-weight: 500;
-  }
-}
 
 @media (max-width: 900px) {
   .rfm-kpi-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
